@@ -1625,9 +1625,9 @@
       // Initialize / reset Leaflet map
       if (!window._leafletMap) {
         window._leafletMap = L.map('leaflet-map', { zoomControl: false, attributionControl: true });
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          attribution: '© OpenStreetMap © CARTO',
-          subdomains: 'abcd', maxZoom: 19
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 19
         }).addTo(window._leafletMap);
         // GT polyline
         window._gtLine = L.polyline([], { color: '#00fff5', weight: 2, opacity: 0.9 }).addTo(window._leafletMap);
