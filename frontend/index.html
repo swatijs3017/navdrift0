@@ -597,29 +597,39 @@ const markerEl = makeMarkerEl('#00fff5');
 const vehicleMarker = new maplibregl.Marker({element:markerEl}).setLngLat([77.22,28.59]).addTo(map);
 
 /* ── SOURCES & LAYERS ON LOAD ── */
-map.on('load',()=>{
-  // tunnel
-  map.addSource('tunnel-source',{type:'geojson',data:emptyGeoJSON()});
-  map.addLayer({id:'tunnel-fill',type:'fill',source:'tunnel-source',paint:{'fill-color':'rgba(255,0,85,0.06)'}});
-  map.addLayer({id:'tunnel-border',type:'line',source:'tunnel-source',paint:{'line-color':'#ff0055','line-width':1.5,'line-dasharray':[3,3]}});
-  // uncertainty
-  map.addSource('uncertainty-source',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
-  map.addLayer({id:'uncertainty-fill',type:'fill',source:'uncertainty-source',paint:{'fill-color':'rgba(255,140,0,0.08)'}});
-  map.addLayer({id:'uncertainty-border',type:'line',source:'uncertainty-source',paint:{'line-color':'#ff8c00','line-width':1.5}});
-  // corrected track
-  map.addSource('corr-track-source',{type:'geojson',data:lineGeoJSON([])});
-  map.addLayer({id:'corr-track',type:'line',source:'corr-track-source',paint:{'line-color':'#00ff9d','line-width':3}});
-  // dr track
-  map.addSource('dr-track-source',{type:'geojson',data:lineGeoJSON([])});
-  map.addLayer({id:'dr-track',type:'line',source:'dr-track-source',paint:{'line-color':'#ff8c00','line-width':2.5,'line-dasharray':[6,4]}});
-  // true track
-  map.addSource('true-track-source',{type:'geojson',data:lineGeoJSON([])});
-  map.addLayer({id:'true-track',type:'line',source:'true-track-source',paint:{'line-color':'#00fff5','line-width':2.5}});
+function initMapLayers() {
+  if(state.mapReady) return; // guard: run once only
+  try {
+    // tunnel
+    if(!map.getSource('tunnel-source')) map.addSource('tunnel-source',{type:'geojson',data:emptyGeoJSON()});
+    if(!map.getLayer('tunnel-fill')) map.addLayer({id:'tunnel-fill',type:'fill',source:'tunnel-source',paint:{'fill-color':'rgba(255,0,85,0.06)'}});
+    if(!map.getLayer('tunnel-border')) map.addLayer({id:'tunnel-border',type:'line',source:'tunnel-source',paint:{'line-color':'#ff0055','line-width':1.5,'line-dasharray':[3,3]}});
+    // uncertainty
+    if(!map.getSource('uncertainty-source')) map.addSource('uncertainty-source',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+    if(!map.getLayer('uncertainty-fill')) map.addLayer({id:'uncertainty-fill',type:'fill',source:'uncertainty-source',paint:{'fill-color':'rgba(255,140,0,0.08)'}});
+    if(!map.getLayer('uncertainty-border')) map.addLayer({id:'uncertainty-border',type:'line',source:'uncertainty-source',paint:{'line-color':'#ff8c00','line-width':1.5}});
+    // corrected track
+    if(!map.getSource('corr-track-source')) map.addSource('corr-track-source',{type:'geojson',data:lineGeoJSON([])});
+    if(!map.getLayer('corr-track')) map.addLayer({id:'corr-track',type:'line',source:'corr-track-source',paint:{'line-color':'#00ff9d','line-width':3}});
+    // dr track
+    if(!map.getSource('dr-track-source')) map.addSource('dr-track-source',{type:'geojson',data:lineGeoJSON([])});
+    if(!map.getLayer('dr-track')) map.addLayer({id:'dr-track',type:'line',source:'dr-track-source',paint:{'line-color':'#ff8c00','line-width':2.5,'line-dasharray':[6,4]}});
+    // true track
+    if(!map.getSource('true-track-source')) map.addSource('true-track-source',{type:'geojson',data:lineGeoJSON([])});
+    if(!map.getLayer('true-track')) map.addLayer({id:'true-track',type:'line',source:'true-track-source',paint:{'line-color':'#00fff5','line-width':2.5}});
 
-  state.mapReady=true;
-  drawTunnelZone(state.city);
-  requestAnimationFrame(simTick);
-});
+    state.mapReady=true;
+    drawTunnelZone(state.city);
+    requestAnimationFrame(simTick);
+  } catch(e){ console.error('initMapLayers error',e); }
+}
+
+// Fire on load, style.load, AND idle — whichever comes first
+map.on('load', initMapLayers);
+map.on('style.load', initMapLayers);
+map.once('idle', initMapLayers);
+// Absolute fallback: try after 1.5s regardless
+setTimeout(initMapLayers, 1500);
 
 map.on('error',(e)=>{ console.warn('MapLibre error',e.error); });
 
