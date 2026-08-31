@@ -57,6 +57,24 @@ class _SNAP:
             if abs(ex)<.05 and abs(ey)<.05 and abs(et)<.005: break
         return t
 
+
+import urllib.request as _ur
+
+def download_models(local_dir="/tmp/navdrift_models"):
+    dr_url = os.environ.get("NAVDRIFT_DR_MODEL_URL", "")
+    if not dr_url:
+        raise RuntimeError("NAVDRIFT_DR_MODEL_URL env var not set")
+    from pathlib import Path as _P
+    d = _P(local_dir); d.mkdir(parents=True, exist_ok=True)
+    onnx = d / "drift_former.onnx"
+    data = d / "drift_former.onnx.data"
+    data_url = dr_url.replace("drift_former.onnx", "drift_former.onnx.data")
+    for url, dest in [(dr_url, onnx), (data_url, data)]:
+        if not dest.exists():
+            print(f"Downloading {dest.name}...")
+            _ur.urlretrieve(url, str(dest))
+    return str(onnx)
+
 class NavDriftRuntime:
     def __init__(self, onnx_path="./checkpoints/onnx/drift_former.onnx",
                  norm_stats_path="./checkpoints/drift_former/norm_stats.npz",

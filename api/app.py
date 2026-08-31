@@ -56,8 +56,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 NAVDRIFT_API_KEY   = os.environ.get("NAVDRIFT_API_KEY", "")
-ONNX_PATH          = os.environ.get("ONNX_PATH", "./checkpoints/onnx/drift_former.onnx")
-NORM_STATS_PATH    = os.environ.get("NORM_STATS_PATH", "./checkpoints/drift_former/norm_stats.npz")
+ONNX_PATH             = os.environ.get("ONNX_PATH", "")
+NAVDRIFT_DR_MODEL_URL = os.environ.get("NAVDRIFT_DR_MODEL_URL", "")
+NORM_STATS_PATH       = os.environ.get("NORM_STATS_PATH", "")
 ALLOWED_ORIGINS    = os.environ.get("ALLOWED_ORIGINS", "http://localhost:7860").split(",")
 WINDOW             = int(os.environ.get("WINDOW", "200"))
 IMU_HZ             = float(os.environ.get("IMU_HZ", "100.0"))
@@ -84,9 +85,12 @@ async def lifespan(app: FastAPI):
     global _runtime
     logger.info("Loading NAVDRIFT-0 runtime...")
     try:
+        onnx_path = ONNX_PATH or (download_models() if NAVDRIFT_DR_MODEL_URL else None)
+        if not onnx_path:
+            raise RuntimeError("Set ONNX_PATH or NAVDRIFT_DR_MODEL_URL")
         _runtime = NavDriftRuntime(
-            onnx_path        = ONNX_PATH,
-            norm_stats_path  = NORM_STATS_PATH,
+            onnx_path        = onnx_path,
+            norm_stats_path  = NORM_STATS_PATH or None,
             window           = WINDOW,
             imu_hz           = IMU_HZ,
         )
