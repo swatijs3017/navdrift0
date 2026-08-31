@@ -245,6 +245,28 @@ canvas.sparkline{width:100%;height:32px;display:block}
   font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.1em;
   padding:8px 16px;cursor:pointer;box-shadow:0 4px 20px rgba(0,255,245,.3);
 }
+/* scenarios panel */
+.scenarios-panel{
+  background:var(--bg-card);border:1px solid var(--border-dim);border-radius:5px;
+  padding:8px 10px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:5px;
+}
+.scenario-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.14em;color:var(--text-dim);margin-bottom:2px}
+.scenario-btn{
+  font-family:var(--font-mono);font-size:9px;font-weight:600;letter-spacing:.06em;
+  padding:4px 8px;border-radius:3px;cursor:pointer;transition:all .15s;text-align:center;
+  background:rgba(0,255,245,0.06);color:var(--cyan);border:1px solid rgba(0,255,245,0.25);
+}
+.scenario-btn:hover{background:rgba(0,255,245,0.15)}
+/* IMU readout */
+.imu-readout{
+  background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;
+  padding:5px 8px;font-family:var(--font-mono);font-size:8px;color:var(--text-dim);
+  display:flex;flex-direction:column;gap:2px;
+}
+.imu-readout-title{font-size:7px;letter-spacing:.14em;color:var(--text-dim);margin-bottom:1px}
+.imu-row{display:flex;justify-content:space-between;gap:6px;font-size:8px}
+/* NHC button off state */
+.nhc-off{background:rgba(255,0,85,0.12)!important;color:var(--red)!important;border:1px solid rgba(255,0,85,0.4)!important}
 /* responsive */
 @media(max-width:767px){
   body{grid-template-rows:52px 1fr 88px}
@@ -305,6 +327,8 @@ canvas.sparkline{width:100%;height:32px;display:block}
       <div class="map-btn-row">
         <button class="map-ctrl-btn active" id="btn-signal">SIGNAL</button>
       </div>
+      <!-- NHC Toggle -->
+      <button class="mc-btn" id="btn-nhc" style="background:rgba(0,255,157,0.12);color:#00ff9d;border:1px solid rgba(0,255,157,0.3)">NHC ON</button>
       <div id="replay-progress-wrap" class="replay-progress-wrap" style="display:none">
         <div class="replay-progress-label"><span>IO-VNBD REPLAY</span><span id="replay-pct">0%</span></div>
         <div class="replay-bar-track"><div class="replay-bar-fill" id="replay-bar" style="width:0%"></div></div>
@@ -317,6 +341,24 @@ canvas.sparkline{width:100%;height:32px;display:block}
         <div id="fleet-legend" style="display:none">
           <div class="legend-row"><span class="leg-line violet-line"></span>V2 Mumbai</div>
           <div class="legend-row"><span class="leg-line yellow-line"></span>V3 Delhi-B</div>
+        </div>
+      </div>
+      <!-- Scenarios Panel -->
+      <div class="scenarios-panel">
+        <div class="scenario-label">OUTAGE SCENARIOS</div>
+        <button class="scenario-btn" id="sc-short">50m · 35km/h</button>
+        <button class="scenario-btn" id="sc-mid">500m · 60km/h</button>
+        <button class="scenario-btn" id="sc-long">1km · 60km/h</button>
+      </div>
+      <!-- IMU Model Readout -->
+      <div class="imu-readout" id="imu-readout">
+        <div class="imu-readout-title">IMU MODEL</div>
+        <div class="imu-row"><span style="color:var(--cyan)">ARW</span><span id="imu-arw">0.000</span></div>
+        <div class="imu-row"><span style="color:var(--orange)">BI</span><span id="imu-bi">0.000</span></div>
+        <div class="imu-row"><span style="color:var(--violet-bright)">RRW</span><span id="imu-rrw">0.000</span></div>
+        <div class="imu-row" style="border-top:1px solid var(--border-dim);padding-top:2px;margin-top:1px">
+          <span style="color:var(--text-dim)">σ∥</span><span id="imu-salong">—</span>
+          <span style="color:var(--text-dim)">σ⊥</span><span id="imu-scross">—</span>
         </div>
       </div>
     </div>
@@ -341,6 +383,11 @@ canvas.sparkline{width:100%;height:32px;display:block}
         <div class="metric"><div class="metric-label">UNCERTAINTY</div><div class="metric-val" id="m-sigma">±1.5 <span class="metric-unit">m</span></div></div>
         <div class="metric"><div class="metric-label">EKF STEPS</div><div class="metric-val cyan" id="m-steps">0</div></div>
         <div class="metric"><div class="metric-label">OUTAGE</div><div class="metric-val" id="m-outage-t">—</div></div>
+      </div>
+      <!-- Events counter -->
+      <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;padding:5px 9px">
+        <span style="font-family:var(--font-mono);font-size:8px;letter-spacing:.1em;color:var(--text-dim)">EVENTS FILTERED</span>
+        <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--yellow)" id="m-events">0</span>
       </div>
     </div>
 
@@ -383,7 +430,7 @@ canvas.sparkline{width:100%;height:32px;display:block}
       <div class="panel-title">ALGORITHM STACK</div>
       <div class="algo-list">
         <div class="algo-row"><div><div class="algo-name">FusionEKF+™</div><div class="algo-sub">GNSS+INS · SE(2) state</div></div><div class="algo-status status-active" id="ekf-status">ACTIVE</div></div>
-        <div class="algo-row"><div><div class="algo-name">NHC Engine™</div><div class="algo-sub">Non-holonomic constraint</div></div><div class="algo-status status-active">ACTIVE</div></div>
+        <div class="algo-row"><div><div class="algo-name">NHC Engine™</div><div class="algo-sub">Non-holonomic constraint</div></div><div class="algo-status status-active" id="nhc-status">ACTIVE</div></div>
         <div class="algo-row"><div><div class="algo-name">DRIFT-Former™</div><div class="algo-sub">Causal Transformer · ONNX</div></div><div class="algo-status status-demo">DEMO</div></div>
         <div class="algo-row"><div><div class="algo-name">SNAP-Retrograde™</div><div class="algo-sub">Backward trajectory correction</div></div><div class="algo-status status-ready" id="snap-status">READY</div></div>
         <div class="algo-row"><div><div class="algo-name">RoadSnap™</div><div class="algo-sub">HMM map matching · OSM</div></div><div class="algo-status status-active">ACTIVE</div></div>
@@ -476,14 +523,12 @@ const CITIES = {
 };
 
 /* ─────────────────────────────────────────────
-   IO-VNBD REPLAY DATA  (200 Delhi coordinate pairs)
-   true[] = exact route; dr[] = correlated random-walk drift t^1.5
+   IO-VNBD REPLAY DATA
 ───────────────────────────────────────────── */
 (function generateReplayData(){
   const route = CITIES.delhi.route;
   const N = 200;
   window.REPLAY_DATA = [];
-  // deterministic seeded noise for repeatable replay
   let seed = 42;
   function seededRand(){ seed=(seed*1664525+1013904223)&0xffffffff; return (seed>>>0)/4294967296; }
   function seededNorm(){ let u=seededRand()||1e-10,v=seededRand()||1e-10; return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
@@ -498,7 +543,6 @@ const CITIES = {
     const a = route[Math.min(idx,n)], b = route[Math.min(idx+1,n)];
     const trueLat = a[0]+(b[0]-a[0])*frac;
     const trueLng = a[1]+(b[1]-a[1])*frac;
-    // correlated random walk with t^1.5 growth envelope
     const tPow = Math.pow(t+0.01, 1.5);
     const sigma = 0.000015 * tPow;
     driftLat += seededNorm()*sigma + biasLat*0.016;
@@ -514,7 +558,21 @@ const CITIES = {
 ───────────────────────────────────────────── */
 let config={apiUrl:'https://navdrift0-api.onrender.com',simSpeed:1,autoTunnel:true};
 const API_KEY = 'navdrift0demo';
-let state={city:'delhi',t:0,mode:'gnss',drOffset:[0,0],drAccErr:0,drBias:[0,0],steps:0,lastTs:0,simSpeed:1,outageStart:null,snapStart:null,snapFromOffset:null,truePts:[],drPts:[],corrPts:[],heading:0,speed:35,inTunnel:false,tunnelEnteredByAuto:false,paused:false};
+let state={
+  city:'delhi',t:0,mode:'gnss',drOffset:[0,0],drAccErr:0,drBias:[0,0],steps:0,lastTs:0,simSpeed:1,
+  outageStart:null,snapStart:null,snapFromOffset:null,truePts:[],drPts:[],corrPts:[],
+  heading:0,speed:35,inTunnel:false,tunnelEnteredByAuto:false,paused:false,
+  // IMU model (Improvement 1)
+  imuBias:[0,0], imuBiasRate:[0,0], imuCorr:[0,0],
+  // NHC toggle (Improvement 3)
+  nhcEnabled:true,
+  // Road events (Improvement 5)
+  eventQueue:[], eventsFiltered:0,
+  // SNAP retrograde track (Improvement 4)
+  snapTrack:null,
+  // Scenario (Improvement 6)
+  activeScenario:null,
+};
 let sparkData={error:[],speed:[],innov:[],lat:[]};
 const MAX_SPARK=120, MAX_TRACK=300;
 
@@ -544,6 +602,38 @@ function totalRouteLen(route){let l=0;for(let i=1;i<route.length;i++)l+=haversin
 function pushSpark(arr,v){arr.push(v);if(arr.length>MAX_SPARK)arr.shift();}
 
 /* ─────────────────────────────────────────────
+   IMPROVEMENT 5: ROAD EVENT GENERATOR
+───────────────────────────────────────────── */
+function generateEvents(cityKey) {
+  const events = [];
+  const count = 3 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < count; i++) {
+    events.push({
+      t: 0.1 + Math.random() * 0.8,
+      type: ['pothole','brake','speedbump'][Math.floor(Math.random()*3)],
+      magnitude: 1 + Math.random() * 2,
+      fired: false
+    });
+  }
+  return events.sort((a,b) => a.t - b.t);
+}
+
+function showEventFlash(latLng, type) {
+  const colors = {pothole:'#ffc800', brake:'#ff0055', speedbump:'#ff8c00'};
+  const labels = {pothole:'POTHOLE', brake:'BRAKE', speedbump:'SPEEDBUMP'};
+  const m = L.circleMarker(latLng, {
+    radius: 12, color: colors[type], fillColor: colors[type],
+    fillOpacity: 0.4, weight: 2
+  }).addTo(map);
+  const div = L.divIcon({
+    html: `<div style="font-family:monospace;font-size:9px;color:${colors[type]};background:rgba(0,0,0,0.7);padding:2px 5px;border-radius:2px;white-space:nowrap">${labels[type]}</div>`,
+    className: '', iconAnchor: [0, -15]
+  });
+  const label = L.marker(latLng, {icon: div}).addTo(map);
+  setTimeout(() => { try{map.removeLayer(m);map.removeLayer(label);}catch(e){} }, 3000);
+}
+
+/* ─────────────────────────────────────────────
    LIVE API
 ───────────────────────────────────────────── */
 function apiSyncOk(){
@@ -557,7 +647,6 @@ function apiPost(endpoint, body=null){
   if(body) opts.body=JSON.stringify(body);
   return fetch(config.apiUrl+endpoint, opts).then(r=>{if(r.ok)apiSyncOk();return r;}).catch(()=>{});
 }
-// POST /init on page load
 apiPost('/init');
 
 function apiIngest(lat,lng){
@@ -577,21 +666,45 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 }).addTo(map);
 
 /* ─────────────────────────────────────────────
+   IMPROVEMENT 2: COVARIANCE ELLIPSE
+───────────────────────────────────────────── */
+function ellipseLatLngs(center, semiMajorM, semiMinorM, headingDeg, steps=40) {
+  const [lat, lng] = center;
+  const angle = headingDeg * Math.PI / 180;
+  const pts = [];
+  const mPerDegLat = 111320;
+  const mPerDegLng = 111320 * Math.cos(lat * Math.PI / 180);
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * 2 * Math.PI;
+    const ex = semiMajorM * Math.cos(t);
+    const ey = semiMinorM * Math.sin(t);
+    const rx = ex * Math.cos(angle) - ey * Math.sin(angle);
+    const ry = ex * Math.sin(angle) + ey * Math.cos(angle);
+    pts.push([lat + ry / mPerDegLat, lng + rx / mPerDegLng]);
+  }
+  return pts;
+}
+
+/* ─────────────────────────────────────────────
    LEAFLET LAYERS
 ───────────────────────────────────────────── */
 const tunnelLayer=L.polygon([],{color:'#ff0055',fillColor:'#ff0055',fillOpacity:0.06,weight:1.5,dashArray:'4 4'}).addTo(map);
-const uncertaintyLayer=L.circle([28.59,77.22],{radius:30,color:'#ff8c00',fillColor:'#ff8c00',fillOpacity:0.08,weight:1.5}).addTo(map);
+
+// Improvement 2: polygon ellipse instead of circle
+const uncertaintyLayer=L.polygon([],{
+  color:'#ff8c00',fillColor:'#ff8c00',fillOpacity:0.12,
+  weight:1.5,dashArray:'4 3'
+}).addTo(map);
+
 const trueTrack=L.polyline([],{color:'#00fff5',weight:2.5,opacity:0.9}).addTo(map);
 const drTrack=L.polyline([],{color:'#ff8c00',weight:2.5,opacity:0.9,dashArray:'8 5'}).addTo(map);
 const corrTrack=L.polyline([],{color:'#00ff9d',weight:3,opacity:0.95}).addTo(map);
 
-// Main vehicle
 function makeVehicleSVG(color){return `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><defs><filter id="g${color.replace('#','')}"><feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#g${color.replace('#','')})"><path d="M16 4 L22 24 L16 20 L10 24 Z" fill="${color}" opacity="0.95"/><circle cx="16" cy="14" r="3" fill="${color}" opacity="0.6"/></g></svg>`;}
 
 const vehicleIcon=L.divIcon({html:`<div class="vehicle-icon" id="vehicle-div">${makeVehicleSVG('#00fff5')}</div>`,iconSize:[32,32],iconAnchor:[16,16],className:''});
 const vehicleMarker=L.marker([28.59,77.22],{icon:vehicleIcon,zIndexOffset:1000}).addTo(map);
 
-// Fleet vehicles
 const v2Icon=L.divIcon({html:`<div class="vehicle-icon" id="vehicle-v2">${makeVehicleSVG('#a855f7')}</div>`,iconSize:[32,32],iconAnchor:[16,16],className:''});
 const v3Icon=L.divIcon({html:`<div class="vehicle-icon" id="vehicle-v3">${makeVehicleSVG('#ffc800')}</div>`,iconSize:[32,32],iconAnchor:[16,16],className:''});
 const v2Marker=L.marker([19.0050,72.8280],{icon:v2Icon,zIndexOffset:900});
@@ -644,7 +757,6 @@ function drawHeatmap(ts){
   const N=route.length;
   const [tA,tB]=cfg.tunnelIdx;
 
-  // Draw signal quality ellipses along the route
   for(let i=0;i<N-1;i++){
     const p=route[i],q=route[i+1];
     const [x1,y1]=latLngToCanvasPx(p[0],p[1]);
@@ -672,7 +784,6 @@ function drawHeatmap(ts){
     heatCtx.restore();
   }
 
-  // Tunnel pulsing overlay
   tunnelPulsePhase=(ts||0)*0.002;
   const pulseFactor=0.18+0.12*Math.sin(tunnelPulsePhase);
   for(let i=tA;i<=tB;i++){
@@ -715,14 +826,27 @@ function switchCity(key){
   state.drOffset=[0,0];state.drBias=[0,0];state.drAccErr=0;
   state.truePts=[];state.drPts=[];state.corrPts=[];
   state.steps=0;state.outageStart=null;state.snapStart=null;state.inTunnel=false;
+  // Reset IMU model
+  state.imuBias=[(Math.random()-0.5)*0.000002,(Math.random()-0.5)*0.000002];
+  state.imuBiasRate=[0,0];
+  state.imuCorr=[(Math.random()-0.5)*0.000001,(Math.random()-0.5)*0.000001];
+  // Reset snap/events
+  state.snapTrack=null;
+  state.eventQueue=generateEvents(key);
+  state.eventsFiltered=0;
+  state.activeScenario=null;
   ateAccum=0;ateSamples=0;
   const cfg=CITIES[key];
   map.flyTo(cfg.center,cfg.zoom,{duration:0.8});
   trueTrack.setLatLngs([]);drTrack.setLatLngs([]);corrTrack.setLatLngs([]);
-  uncertaintyLayer.setLatLng(cfg.center);
+  uncertaintyLayer.setLatLngs([]);
   drawTunnelZone(key);
   updateModeUI();
+  document.getElementById('m-events').textContent='0';
 }
+
+// Init events for delhi on load
+state.eventQueue=generateEvents('delhi');
 
 /* ─────────────────────────────────────────────
    MODE UI
@@ -765,22 +889,56 @@ function triggerOutage(){
   if(state.mode==='dr') return;
   state.mode='dr';state.outageStart=performance.now();
   state.drBias=[(Math.random()-0.5)*0.000008,(Math.random()-0.5)*0.000008];
+  // Reset IMU with small random seeds on outage
+  state.imuBias=[(Math.random()-0.5)*0.000003,(Math.random()-0.5)*0.000003];
+  state.imuBiasRate=[(Math.random()-0.5)*0.0000005,(Math.random()-0.5)*0.0000005];
+  state.imuCorr=[(Math.random()-0.5)*0.000002,(Math.random()-0.5)*0.000002];
   ateAccum=0;ateSamples=0;
   updateModeUI();
-  // API
-  const tp=interpRoute(CITIES[state.city].route,state.t);
   apiPost('/gnss_lost');
 }
+
 function reacquireGnss(){
   if(state.mode!=='dr') return;
+  // Store snap track for retrograde animation (Improvement 4)
+  state.snapTrack = [...state.drPts];
   state.mode='snap';state.snapStart=performance.now();
-  state.snapFromOffset=[...state.drOffset];updateModeUI();
-  // API
+  state.snapFromOffset=[...state.drOffset];
+  updateModeUI();
   const tp=interpRoute(CITIES[state.city].route,state.t);
   apiPost('/reacquire',{lat:tp[0]+state.drOffset[0],lng:tp[1]+state.drOffset[1]});
+
+  // Scenario result toast (Improvement 6)
+  if(state.activeScenario){
+    const finalErr=state.drAccErr;
+    showScenarioResult(state.activeScenario.distM, finalErr);
+    state.activeScenario=null;
+  }
 }
+
 document.getElementById('btn-outage').addEventListener('click',triggerOutage);
 document.getElementById('btn-reacquire').addEventListener('click',reacquireGnss);
+
+/* ─────────────────────────────────────────────
+   IMPROVEMENT 3: NHC TOGGLE
+───────────────────────────────────────────── */
+document.getElementById('btn-nhc').addEventListener('click', function(){
+  state.nhcEnabled = !state.nhcEnabled;
+  const nhcStatus=document.getElementById('nhc-status');
+  if(state.nhcEnabled){
+    this.textContent='NHC ON';
+    this.style.background='rgba(0,255,157,0.12)';
+    this.style.color='#00ff9d';
+    this.style.border='1px solid rgba(0,255,157,0.3)';
+    nhcStatus.textContent='ACTIVE';nhcStatus.className='algo-status status-active';
+  } else {
+    this.textContent='NHC OFF';
+    this.style.background='rgba(255,0,85,0.12)';
+    this.style.color='var(--red)';
+    this.style.border='1px solid rgba(255,0,85,0.4)';
+    nhcStatus.textContent='OFF';nhcStatus.className='algo-status status-demo';
+  }
+});
 
 /* ─────────────────────────────────────────────
    PAUSE
@@ -901,7 +1059,6 @@ function updateBenchmark(errM){
   } else {
     ateEl.textContent='—'; ateEl.style.color='var(--text-dim)';
   }
-  // 50m error
   const e50 = errM;
   const pct50 = Math.min(e50/5,1);
   const col50 = pct50<0.5?'var(--green)':pct50<0.85?'var(--yellow)':'var(--red)';
@@ -909,7 +1066,6 @@ function updateBenchmark(errM){
   document.getElementById('bench-50m-val').style.color=col50;
   document.getElementById('bench-50m-bar').style.width=(pct50*100)+'%';
   document.getElementById('bench-50m-bar').style.background=col50;
-  // 1km extrapolated
   const e1km = errM*20;
   const pct1km = Math.min(e1km/100,1);
   const col1km = pct1km<0.5?'var(--green)':pct1km<0.85?'var(--yellow)':'var(--red)';
@@ -960,27 +1116,71 @@ function drawSparklines(){
 ───────────────────────────────────────────── */
 function updateFleet(ts){
   if(!fleetMode) return;
-  // V2: Mumbai route offset +0.3
   const v2t=((ts/1000*(CITIES.mumbai.speedKmh/3.6)/totalRouteLen(CITIES.mumbai.route))+0.3)%1;
   const v2pos=interpRoute(CITIES.mumbai.route,v2t);
   const v2head=routeHeading(CITIES.mumbai.route,v2t);
   v2Marker.setLatLng(v2pos);
   updateVehicleRotation('vehicle-v2',v2head);
-  // V3: Delhi route starting at t=0.6
   const v3t=((ts/1000*(CITIES.delhi.speedKmh/3.6)/totalRouteLen(CITIES.delhi.route))+0.6)%1;
   const v3pos=interpRoute(CITIES.delhi.route,v3t);
   const v3head=routeHeading(CITIES.delhi.route,v3t);
   v3Marker.setLatLng(v3pos);
   updateVehicleRotation('vehicle-v3',v3head);
-  // update fleet panel
   document.getElementById('fp-v1').textContent=`V1 · ${state.city.toUpperCase()} · ${state.mode.toUpperCase()}`;
   document.getElementById('fp-v2').textContent=`V2 · MUMBAI · GNSS`;
   document.getElementById('fp-v3').textContent=`V3 · DELHI-B · GNSS`;
 }
 
 /* ─────────────────────────────────────────────
+   IMPROVEMENT 6: SCENARIO RESULT TOAST
+───────────────────────────────────────────── */
+function showScenarioResult(distM, finalError) {
+  const target = distM <= 50 ? 5 : distM <= 500 ? 25 : 100;
+  const pass = finalError <= target;
+  const toast = document.createElement('div');
+  toast.style.cssText = `position:absolute;bottom:80px;left:50%;transform:translateX(-50%);z-index:1500;
+    background:${pass?'rgba(0,255,157,0.15)':'rgba(255,0,85,0.15)'};
+    border:1px solid ${pass?'#00ff9d':'#ff0055'};border-radius:6px;padding:10px 18px;
+    font-family:monospace;font-size:11px;color:${pass?'#00ff9d':'#ff0055'};
+    text-align:center;white-space:nowrap;pointer-events:none;`;
+  toast.textContent = `${distM}m scenario: error ${finalError.toFixed(1)}m — PS target <${target}m ${pass?'✓ PASS':'✗ FAIL'}`;
+  document.getElementById('map-wrap').appendChild(toast);
+  setTimeout(() => { try{toast.remove();}catch(e){} }, 4500);
+}
+
+/* ─────────────────────────────────────────────
+   IMPROVEMENT 6: RUN SCENARIO
+───────────────────────────────────────────── */
+function runScenario(distM, speedKmh) {
+  const durationS = (distM / (speedKmh / 3.6));
+  if(state.mode !== 'gnss') reacquireGnss();
+  setTimeout(() => {
+    triggerOutage();
+    state.activeScenario = {distM};
+    const prevSpeed = config.simSpeed;
+    config.simSpeed = 4;
+    state.simSpeed = 4;
+    setTimeout(() => {
+      reacquireGnss();
+      config.simSpeed = prevSpeed;
+      state.simSpeed = prevSpeed;
+    }, durationS * 250);
+  }, 500);
+}
+
+document.getElementById('sc-short').addEventListener('click', () => runScenario(50, 35));
+document.getElementById('sc-mid').addEventListener('click', () => runScenario(500, 60));
+document.getElementById('sc-long').addEventListener('click', () => runScenario(1000, 60));
+
+/* ─────────────────────────────────────────────
    SIM TICK
 ───────────────────────────────────────────── */
+// IMU noise constants (Improvement 1)
+const ARW = 0.000015;      // angle random walk
+const BI_SIGMA = 0.000008; // bias instability magnitude
+const BI_TAU = 120;        // correlation time in seconds
+const RRW = 0.000001;      // rate random walk
+
 function simTick(ts){
   if(state.paused){state.lastTs=ts;requestAnimationFrame(simTick);return;}
   const dt=state.lastTs?Math.min((ts-state.lastTs)/1000,0.1):0.016;
@@ -989,7 +1189,6 @@ function simTick(ts){
   let truePos, drPos, corrPos;
 
   if(replayMode){
-    // Advance replay index
     if(ts-replayLastAdvance>300/config.simSpeed){
       replayIdx=(replayIdx+1)%REPLAY_DATA.length;
       replayLastAdvance=ts;
@@ -1001,7 +1200,6 @@ function simTick(ts){
     state.drAccErr=haversineM(truePos,drPos);
     state.heading=routeHeading(CITIES.delhi.route,replayIdx/REPLAY_DATA.length);
     state.speed=CITIES.delhi.speedKmh*(0.9+0.2*Math.random());
-    // replay progress
     const pct=Math.round(replayIdx/REPLAY_DATA.length*100);
     document.getElementById('replay-bar').style.width=pct+'%';
     document.getElementById('replay-pct').textContent=pct+'%';
@@ -1025,80 +1223,192 @@ function simTick(ts){
       if(!inT&&state.inTunnel&&state.tunnelEnteredByAuto&&state.mode==='dr'){state.inTunnel=false;state.tunnelEnteredByAuto=false;reacquireGnss();}
     }
 
+    // IMPROVEMENT 5: Road event check
+    let innovSpike = 0;
+    state.eventQueue.forEach(ev => {
+      if (!ev.fired && Math.abs(state.t - ev.t) < 0.002) {
+        ev.fired = true;
+        if(state.mode === 'dr') {
+          const spike = ev.magnitude * 0.00008;
+          state.drOffset[0] += (Math.random()-0.5) * spike;
+          state.drOffset[1] += (Math.random()-0.5) * spike;
+          innovSpike = ev.magnitude * 2;
+          showEventFlash(interpRoute(CITIES[state.city].route, ev.t), ev.type);
+          setTimeout(() => {
+            state.drOffset[0] *= 0.6;
+            state.drOffset[1] *= 0.6;
+          }, 2000);
+          state.eventsFiltered++;
+          document.getElementById('m-events').textContent = state.eventsFiltered;
+        }
+      }
+    });
+
     // DR update
     if(state.mode==='dr'){
-      const sigma=0.00004;
-      state.drOffset[0]+=randn()*sigma*dt*30+state.drBias[0]*dt;
-      state.drOffset[1]+=randn()*sigma*dt*30+state.drBias[1]*dt;
-      state.drBias[0]+=(Math.random()-0.5)*0.000001;
-      state.drBias[1]+=(Math.random()-0.5)*0.000001;
+      // IMPROVEMENT 1: Allan variance-based MEMS IMU noise model
+      // Update correlated bias instability (first-order Markov)
+      state.imuCorr[0] += (-state.imuCorr[0]/BI_TAU)*dt + randn()*BI_SIGMA*Math.sqrt(dt);
+      state.imuCorr[1] += (-state.imuCorr[1]/BI_TAU)*dt + randn()*BI_SIGMA*Math.sqrt(dt);
+      // Update rate random walk
+      state.imuBiasRate[0] += randn()*RRW*Math.sqrt(dt);
+      state.imuBiasRate[1] += randn()*RRW*Math.sqrt(dt);
+      // Update integrated bias
+      state.imuBias[0] += state.imuBiasRate[0]*dt;
+      state.imuBias[1] += state.imuBiasRate[1]*dt;
+      // Total noise increments
+      const noise0 = randn()*ARW*Math.sqrt(dt) + (state.imuCorr[0] + state.imuBias[0])*dt;
+      const noise1 = randn()*ARW*Math.sqrt(dt) + (state.imuCorr[1] + state.imuBias[1])*dt;
+
+      // IMPROVEMENT 3: NHC decomposition
+      const hdgRad = state.heading * Math.PI / 180;
+      const along = [Math.sin(hdgRad), Math.cos(hdgRad)];
+      const cross = [-Math.cos(hdgRad), Math.sin(hdgRad)];
+      const nhcScale = state.nhcEnabled ? 0.08 : 1.0;
+      const noiseAlong = noise0 * along[0] + noise1 * along[1];
+      const noiseCross = (noise0 * cross[0] + noise1 * cross[1]) * nhcScale;
+      state.drOffset[0] += noiseAlong * along[0] + noiseCross * cross[0];
+      state.drOffset[1] += noiseAlong * along[1] + noiseCross * cross[1];
+
       state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
+
+      // Update IMU readout
+      const arwMag = ARW * Math.sqrt(dt);
+      const biMag = Math.sqrt(state.imuCorr[0]**2 + state.imuCorr[1]**2);
+      const rrwMag = RRW * Math.sqrt(dt);
+      document.getElementById('imu-arw').textContent = (arwMag*1e5).toFixed(3);
+      document.getElementById('imu-bi').textContent = (biMag*1e5).toFixed(3);
+      document.getElementById('imu-rrw').textContent = (rrwMag*1e6).toFixed(3);
+
     } else if(state.mode==='snap'){
       const snapDur=3.0;const elapsed=state.snapStart?(ts-state.snapStart)/1000:0;
-      const f=Math.min(elapsed/snapDur,1);const ease=1-Math.pow(1-f,3);
+      const f=Math.min(elapsed/snapDur,1);
+      const ease=1-Math.pow(1-f,3);
       state.drOffset=[state.snapFromOffset[0]*(1-ease),state.snapFromOffset[1]*(1-ease)];
       state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
-      if(f>=1){state.mode='gnss';state.drOffset=[0,0];state.drAccErr=0;state.outageStart=null;updateModeUI();}
+
+      // IMPROVEMENT 4: SNAP retrograde full-track animation
+      if(state.snapTrack && state.snapTrack.length > 1){
+        const n = state.snapTrack.length - 1;
+        const warpedTrack = state.snapTrack.map((pt, i) => {
+          const weight = Math.pow(i / n, 1.5) * ease;
+          return [
+            pt[0] - state.snapFromOffset[0] * weight,
+            pt[1] - state.snapFromOffset[1] * weight
+          ];
+        });
+        drTrack.setLatLngs(warpedTrack);
+        // Cyan glow pulse on corrected track
+        const pulseW = 3 + 2 * Math.abs(Math.sin(ts/100));
+        corrTrack.setLatLngs(warpedTrack);
+        corrTrack.setStyle({weight: pulseW, color:'#00fff5', opacity:0.95});
+      }
+
+      if(f>=1){
+        state.mode='gnss';state.drOffset=[0,0];state.drAccErr=0;state.outageStart=null;
+        state.snapTrack=null;
+        corrTrack.setStyle({color:'#00ff9d',weight:3,opacity:0.95});
+        updateModeUI();
+      }
     } else {
       state.drOffset=[0,0];state.drAccErr=0;
     }
 
     drPos=[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]];
     corrPos=(state.mode==='snap')?drPos:truePos;
-  }
 
-  if(!replayMode){
     if(state.steps%2===0){
       state.truePts.push([...truePos]);state.drPts.push([...drPos]);state.corrPts.push([...corrPos]);
       if(state.truePts.length>MAX_TRACK){state.truePts.shift();state.drPts.shift();state.corrPts.shift();}
     }
-    trueTrack.setLatLngs(state.truePts);
-    drTrack.setLatLngs(state.drPts);
-    corrTrack.setLatLngs(state.corrPts);
+    if(state.mode!=='snap'){
+      trueTrack.setLatLngs(state.truePts);
+      drTrack.setLatLngs(state.drPts);
+      corrTrack.setLatLngs(state.corrPts);
+    } else {
+      trueTrack.setLatLngs(state.truePts);
+    }
+
+    // IMPROVEMENT 2: Covariance ellipse update
+    const errM = state.drAccErr;
+    const uncPos=(state.mode==='dr'||state.mode==='snap')?drPos:truePos;
+    const nhcScale2 = state.nhcEnabled ? 1.0 : 5.0;
+    const semiMaj = Math.max(2, errM * 0.5 + 2);
+    const semiMin = state.nhcEnabled
+      ? Math.max(1, errM * 0.08 + 1)
+      : Math.max(2, errM * 0.5 + 2);
+    uncertaintyLayer.setLatLngs(ellipseLatLngs(uncPos, semiMaj * 10, semiMin * 10, state.heading));
+    uncertaintyLayer.setStyle({
+      color: state.mode === 'gnss' ? '#00fff5' : '#ff8c00',
+      fillColor: state.mode === 'gnss' ? '#00fff5' : '#ff8c00',
+      fillOpacity: state.mode === 'gnss' ? 0.05 : 0.12,
+    });
+
+    // Update axis readout
+    document.getElementById('imu-salong').textContent = (semiMaj*10).toFixed(0)+'m';
+    document.getElementById('imu-scross').textContent = (semiMin*10).toFixed(0)+'m';
+
+    const markerPos=(state.mode==='dr')?drPos:truePos;
+    vehicleMarker.setLatLng(markerPos);
+    updateVehicleRotation('vehicle-div',state.heading);
+    apiIngest(markerPos[0],markerPos[1]);
+
+    // DOM
+    document.getElementById('m-speed').innerHTML=`${state.speed.toFixed(0)} <span class="metric-unit">km/h</span>`;
+    document.getElementById('m-heading').textContent=`${state.heading.toFixed(0)}°`;
+    document.getElementById('m-error').innerHTML=`${errM.toFixed(1)} <span class="metric-unit">m</span>`;
+    const sigmaM=Math.max(1.5, semiMaj);
+    document.getElementById('m-sigma').innerHTML=`±${sigmaM.toFixed(1)} <span class="metric-unit">m</span>`;
+    document.getElementById('m-steps').textContent=state.steps.toLocaleString();
+    if(state.outageStart&&state.mode==='dr'){document.getElementById('m-outage-t').textContent=`${((ts-state.outageStart)/1000).toFixed(0)}s`;}
+    else document.getElementById('m-outage-t').textContent='—';
+
+    updateBenchmark(errM);
+
+    const innovVal = (randn()*0.5+errM*0.05) + innovSpike;
+    pushSpark(sparkData.error,errM);pushSpark(sparkData.speed,state.speed);
+    pushSpark(sparkData.innov, innovVal);pushSpark(sparkData.lat,10+randn()*3);
+    document.getElementById('sv-error').textContent=`${errM.toFixed(1)} m`;
+    document.getElementById('sv-speed').textContent=`${state.speed.toFixed(0)} km/h`;
+    document.getElementById('sv-innov').textContent=sparkData.innov[sparkData.innov.length-1]?.toFixed(2)??'0.00';
+    document.getElementById('sv-lat').textContent=`${(sparkData.lat[sparkData.lat.length-1]??12).toFixed(0)} ms`;
+
+    drawSparklines();
+    updateFleet(ts);
+    drawHeatmap(ts);
+
   } else {
+    // replay mode: update tracks and DOM outside the else block below
     trueTrack.setLatLngs([[truePos[0],truePos[1]]]);
     drTrack.setLatLngs([[drPos[0],drPos[1]]]);
     corrTrack.setLatLngs([]);
+
+    const errMR=state.drAccErr;
+    const uncPosR=drPos;
+    uncertaintyLayer.setLatLngs(ellipseLatLngs(uncPosR, 20, 5, state.heading));
+    uncertaintyLayer.setStyle({color:'#ff8c00',fillColor:'#ff8c00',fillOpacity:0.08});
+
+    vehicleMarker.setLatLng(drPos);
+    updateVehicleRotation('vehicle-div',state.heading);
+
+    document.getElementById('m-speed').innerHTML=`${state.speed.toFixed(0)} <span class="metric-unit">km/h</span>`;
+    document.getElementById('m-heading').textContent=`${state.heading.toFixed(0)}°`;
+    document.getElementById('m-error').innerHTML=`${errMR.toFixed(1)} <span class="metric-unit">m</span>`;
+    document.getElementById('m-sigma').innerHTML=`±${(errMR*0.4+1.5).toFixed(1)} <span class="metric-unit">m</span>`;
+    document.getElementById('m-steps').textContent=state.steps.toLocaleString();
+    document.getElementById('m-outage-t').textContent='—';
+
+    pushSpark(sparkData.error,errMR);pushSpark(sparkData.speed,state.speed);
+    pushSpark(sparkData.innov,(randn()*0.5+errMR*0.05));pushSpark(sparkData.lat,10+randn()*3);
+    document.getElementById('sv-error').textContent=`${errMR.toFixed(1)} m`;
+    document.getElementById('sv-speed').textContent=`${state.speed.toFixed(0)} km/h`;
+    document.getElementById('sv-innov').textContent=sparkData.innov[sparkData.innov.length-1]?.toFixed(2)??'0.00';
+    document.getElementById('sv-lat').textContent=`${(sparkData.lat[sparkData.lat.length-1]??12).toFixed(0)} ms`;
+
+    drawSparklines();
+    updateFleet(ts);
+    drawHeatmap(ts);
   }
-
-  const errM=state.drAccErr;
-  const sigmaM=Math.max(1.5,errM*0.4+1.5);
-  const uncPos=(state.mode==='dr'||state.mode==='snap')?drPos:truePos;
-  uncertaintyLayer.setLatLng(uncPos).setRadius(sigmaM*20);
-  uncertaintyLayer.setStyle({
-    color:state.mode==='gnss'?'#00fff5':'#ff8c00',
-    fillColor:state.mode==='gnss'?'#00fff5':'#ff8c00',
-    fillOpacity:state.mode==='gnss'?0.04:0.08,
-  });
-
-  const markerPos=(state.mode==='dr')?drPos:truePos;
-  vehicleMarker.setLatLng(markerPos);
-  updateVehicleRotation('vehicle-div',state.heading);
-
-  // ingest
-  apiIngest(markerPos[0],markerPos[1]);
-
-  // DOM
-  document.getElementById('m-speed').innerHTML=`${state.speed.toFixed(0)} <span class="metric-unit">km/h</span>`;
-  document.getElementById('m-heading').textContent=`${state.heading.toFixed(0)}°`;
-  document.getElementById('m-error').innerHTML=`${errM.toFixed(1)} <span class="metric-unit">m</span>`;
-  document.getElementById('m-sigma').innerHTML=`±${sigmaM.toFixed(1)} <span class="metric-unit">m</span>`;
-  document.getElementById('m-steps').textContent=state.steps.toLocaleString();
-  if(state.outageStart&&state.mode==='dr'){document.getElementById('m-outage-t').textContent=`${((ts-state.outageStart)/1000).toFixed(0)}s`;}
-  else document.getElementById('m-outage-t').textContent='—';
-
-  updateBenchmark(errM);
-
-  pushSpark(sparkData.error,errM);pushSpark(sparkData.speed,state.speed);
-  pushSpark(sparkData.innov,(randn()*0.5+errM*0.05));pushSpark(sparkData.lat,10+randn()*3);
-  document.getElementById('sv-error').textContent=`${errM.toFixed(1)} m`;
-  document.getElementById('sv-speed').textContent=`${state.speed.toFixed(0)} km/h`;
-  document.getElementById('sv-innov').textContent=sparkData.innov[sparkData.innov.length-1]?.toFixed(2)??'0.00';
-  document.getElementById('sv-lat').textContent=`${(sparkData.lat[sparkData.lat.length-1]??12).toFixed(0)} ms`;
-
-  drawSparklines();
-  updateFleet(ts);
-  drawHeatmap(ts);
 
   requestAnimationFrame(simTick);
 }
