@@ -1,26 +1,20 @@
 #!/usr/bin/env bash
 set -e
 
-# Make navdrift0 package importable from the repo root
 export PYTHONPATH="/opt/render/project/src:${PYTHONPATH}"
 
-MODEL_DIR="./checkpoints/onnx"
-NORM_DIR="./checkpoints/drift_former"
-mkdir -p "$MODEL_DIR" "$NORM_DIR"
+mkdir -p ./checkpoints/onnx ./checkpoints/drift_former
 
-if [ ! -f "$MODEL_DIR/drift_former_int8.onnx" ]; then
+if [ ! -f "./checkpoints/onnx/drift_former_int8.onnx" ]; then
     python - <<'PYEOF'
 import os
-from huggingface_hub import hf_hub_download
 repo_id = os.environ.get("HF_REPO_ID", "")
 if not repo_id:
     print("HF_REPO_ID not set — running in demo mode.")
 else:
-    token = os.environ.get("HF_TOKEN", None)
-    hf_hub_download(repo_id=repo_id, filename="drift_former_int8.onnx",
-                    local_dir="./checkpoints/onnx", token=token)
-    hf_hub_download(repo_id=repo_id, filename="norm_stats.npz",
-                    local_dir="./checkpoints/drift_former", token=token)
+    from huggingface_hub import hf_hub_download
+    hf_hub_download(repo_id=repo_id, filename="drift_former_int8.onnx", local_dir="./checkpoints/onnx")
+    hf_hub_download(repo_id=repo_id, filename="norm_stats.npz", local_dir="./checkpoints/drift_former")
     print("Model downloaded.")
 PYEOF
 fi
