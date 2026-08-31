@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root {
@@ -22,8 +22,6 @@
 }
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text-main)}
 body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
-
-/* ── HEADER ── */
 #header{
   display:flex;align-items:center;gap:12px;padding:0 16px;
   background:var(--bg-surface);border-bottom:1px solid var(--border-dim);
@@ -37,8 +35,7 @@ body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
 .city-tab{
   font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.06em;
   padding:4px 10px;border-radius:3px;border:1px solid transparent;
-  background:transparent;color:var(--text-dim);cursor:pointer;
-  transition:all .15s;white-space:nowrap;
+  background:transparent;color:var(--text-dim);cursor:pointer;transition:all .15s;white-space:nowrap;
 }
 .city-tab:hover{color:var(--text-muted);border-color:var(--border-dim)}
 .city-tab.active{background:var(--cyan-dim);color:var(--cyan);border-color:var(--border-cyan)}
@@ -57,22 +54,19 @@ body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
   font-size:14px;transition:all .15s;
 }
 .icon-btn:hover{background:var(--border-dim);color:var(--text-main)}
-
-/* ── MAIN ── */
 #main{display:grid;grid-template-columns:1fr 300px;overflow:hidden;position:relative}
-#map{width:100%;height:100%;position:relative}
-.maplibregl-canvas{display:block}
-
-/* ── MAP OVERLAY ── */
+#map-wrap{position:relative;overflow:hidden}
+#map{width:100%;height:100%;background:#0d0d18}
+/* override leaflet tile bg */
+.leaflet-container{background:#0d0d18!important}
 .map-overlay{
-  position:absolute;top:12px;left:12px;z-index:10;
+  position:absolute;top:12px;left:12px;z-index:1000;
   display:flex;flex-direction:column;gap:8px;width:210px;
 }
 .state-badge{
   font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.12em;
   padding:6px 12px;border-radius:4px;text-align:center;
-  background:rgba(0,255,157,0.12);color:var(--green);
-  border:1px solid rgba(0,255,157,0.35);
+  background:rgba(0,255,157,0.12);color:var(--green);border:1px solid rgba(0,255,157,0.35);
 }
 .state-badge.dr-mode{background:rgba(255,140,0,0.12);color:var(--orange);border-color:rgba(255,140,0,.35)}
 .state-badge.snap-mode{background:rgba(124,58,237,0.15);color:var(--violet-bright);border-color:rgba(168,85,247,.35)}
@@ -91,8 +85,7 @@ body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
 }
 .mc-btn{
   font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.07em;
-  padding:7px 10px;border-radius:4px;cursor:pointer;border:none;
-  transition:all .15s;text-align:center;
+  padding:7px 10px;border-radius:4px;cursor:pointer;border:none;transition:all .15s;text-align:center;
 }
 .trigger-outage{background:rgba(255,0,85,0.15);color:var(--red);border:1px solid rgba(255,0,85,.4)}
 .trigger-outage:hover{background:rgba(255,0,85,0.28)}
@@ -109,16 +102,12 @@ body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
 .orange-line.dashed{background:repeating-linear-gradient(90deg,var(--orange) 0 5px,transparent 5px 9px)}
 .green-line{background:var(--green)}
 .red-dash{background:repeating-linear-gradient(90deg,var(--red) 0 4px,transparent 4px 7px)}
-
-/* ── SIDEBAR ── */
 .sidebar{
   background:var(--bg-surface);border-left:1px solid var(--border-dim);
   display:flex;flex-direction:column;gap:0;overflow-y:auto;overflow-x:hidden;
   scrollbar-width:thin;scrollbar-color:var(--border-dim) transparent;
 }
-.panel{
-  padding:12px 14px;border-bottom:1px solid var(--border-dim);flex-shrink:0;
-}
+.panel{padding:12px 14px;border-bottom:1px solid var(--border-dim);flex-shrink:0}
 .panel-scroll{flex:1;overflow-y:auto;min-height:0}
 .panel-title{
   font-family:var(--font-mono);font-size:9px;font-weight:600;letter-spacing:.18em;
@@ -128,12 +117,9 @@ body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
 .metric{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;padding:7px 9px}
 .metric-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.14em;color:var(--text-dim);margin-bottom:3px}
 .metric-val{font-family:var(--font-mono);font-size:16px;font-weight:600;color:var(--text-main);line-height:1;display:flex;align-items:baseline;gap:3px}
-.metric-val.cyan{color:var(--cyan)}
-.metric-val.green{color:var(--green)}
-.metric-val.orange{color:var(--orange)}
-.metric-val.red{color:var(--red)}
+.metric-val.cyan{color:var(--cyan)}.metric-val.green{color:var(--green)}
+.metric-val.orange{color:var(--orange)}.metric-val.red{color:var(--red)}
 .metric-unit{font-size:9px;font-weight:400;color:var(--text-dim);letter-spacing:.05em}
-
 .algo-list{display:flex;flex-direction:column;gap:5px}
 .algo-row{
   display:flex;align-items:center;justify-content:space-between;
@@ -148,63 +134,39 @@ body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
 .status-active{background:rgba(0,255,157,0.1);color:var(--green);border:1px solid rgba(0,255,157,.25)}
 .status-demo{background:rgba(255,200,0,0.1);color:var(--yellow);border:1px solid rgba(255,200,0,.25)}
 .status-ready{background:rgba(0,255,245,0.08);color:var(--cyan);border:1px solid var(--border-cyan)}
-
 .novel-list{display:flex;flex-direction:column;gap:6px}
 .novel-card{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:5px;padding:8px 10px;position:relative;overflow:hidden}
 .novel-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px}
-.novel-card.c-cyan::before{background:var(--cyan)}
-.novel-card.c-violet::before{background:var(--violet-bright)}
-.novel-card.c-green::before{background:var(--green)}
-.novel-card.c-orange::before{background:var(--orange)}
-.novel-card.c-yellow::before{background:var(--yellow)}
-.novel-card.c-red::before{background:var(--red)}
+.novel-card.c-cyan::before{background:var(--cyan)}.novel-card.c-violet::before{background:var(--violet-bright)}
+.novel-card.c-green::before{background:var(--green)}.novel-card.c-orange::before{background:var(--orange)}
+.novel-card.c-yellow::before{background:var(--yellow)}.novel-card.c-red::before{background:var(--red)}
 .novel-card-name{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--text-main);margin-bottom:2px}
 .novel-card-desc{font-size:9px;color:var(--text-dim);line-height:1.5}
 .novel-card-tag{font-family:var(--font-mono);font-size:7.5px;letter-spacing:.1em;color:var(--text-dim);margin-top:4px;opacity:.7}
-
 .api-row{
   display:flex;align-items:center;gap:7px;padding:8px 14px;
   border-top:1px solid var(--border-dim);flex-shrink:0;
 }
 .api-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.14em;color:var(--text-dim)}
 #api-url-display{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-/* ── FOOTER ── */
 #footer{
   background:var(--bg-surface);border-top:1px solid var(--border-dim);
   display:grid;grid-template-columns:repeat(4,1fr);gap:0;overflow:hidden;
 }
-.spark-panel{
-  padding:7px 12px;border-right:1px solid var(--border-dim);
-  display:flex;flex-direction:column;gap:4px;
-}
+.spark-panel{padding:7px 12px;border-right:1px solid var(--border-dim);display:flex;flex-direction:column;gap:4px}
 .spark-panel:last-child{border-right:none}
 .spark-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.12em;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center}
 .spark-val{font-family:var(--font-mono);font-size:13px;font-weight:600}
-.spark-val.sv-cyan{color:var(--cyan)}
-.spark-val.sv-green{color:var(--green)}
-.spark-val.sv-orange{color:var(--orange)}
-.spark-val.sv-violet{color:var(--violet-bright)}
+.spark-val.sv-cyan{color:var(--cyan)}.spark-val.sv-green{color:var(--green)}
+.spark-val.sv-orange{color:var(--orange)}.spark-val.sv-violet{color:var(--violet-bright)}
 canvas.sparkline{width:100%;height:32px;display:block}
-
-/* ── SETTINGS MODAL ── */
-.modal-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;
-  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);
-}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1001;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .modal-overlay.hidden{display:none}
-.modal{
-  background:var(--bg-surface);border:1px solid var(--border-dim);border-radius:8px;
-  padding:24px;width:340px;box-shadow:0 24px 64px rgba(0,0,0,.6);
-}
+.modal{background:var(--bg-surface);border:1px solid var(--border-dim);border-radius:8px;padding:24px;width:340px;box-shadow:0 24px 64px rgba(0,0,0,.6)}
 .modal-title{font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--cyan);margin-bottom:18px}
 .field{margin-bottom:14px}
 .field label{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;color:var(--text-dim);margin-bottom:5px}
-.field input[type="text"],.field input[type="url"]{
-  width:100%;background:var(--bg-deep);border:1px solid var(--border-dim);
-  border-radius:4px;padding:7px 10px;font-family:var(--font-mono);font-size:11px;
-  color:var(--text-main);outline:none;
-}
+.field input[type="text"],.field input[type="url"]{width:100%;background:var(--bg-deep);border:1px solid var(--border-dim);border-radius:4px;padding:7px 10px;font-family:var(--font-mono);font-size:11px;color:var(--text-main);outline:none}
 .field input[type="text"]:focus,.field input[type="url"]:focus{border-color:var(--border-cyan)}
 .field input[type="range"]{width:100%;accent-color:var(--cyan)}
 .field-row{display:flex;justify-content:space-between;align-items:center}
@@ -213,17 +175,13 @@ canvas.sparkline{width:100%;height:32px;display:block}
 .toggle::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s}
 .toggle.on::after{transform:translateX(16px)}
 .modal-actions{display:flex;gap:8px;margin-top:18px}
-.btn-save,.btn-cancel{
-  flex:1;padding:8px;border-radius:4px;font-family:var(--font-mono);font-size:10px;
-  font-weight:600;letter-spacing:.08em;cursor:pointer;border:none;transition:all .15s;
-}
-.btn-save{background:var(--cyan);color:var(--bg-deep)}
-.btn-save:hover{opacity:.85}
-.btn-cancel{background:var(--border-dim);color:var(--text-muted)}
-.btn-cancel:hover{background:rgba(255,255,255,.1)}
-
-/* MapLibre attrib */
-.maplibregl-ctrl-attrib{font-size:9px!important}
+.btn-save,.btn-cancel{flex:1;padding:8px;border-radius:4px;font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.08em;cursor:pointer;border:none;transition:all .15s}
+.btn-save{background:var(--cyan);color:var(--bg-deep)}.btn-save:hover{opacity:.85}
+.btn-cancel{background:var(--border-dim);color:var(--text-muted)}.btn-cancel:hover{background:rgba(255,255,255,.1)}
+/* vehicle marker */
+.vehicle-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;transform-origin:center;pointer-events:none}
+.leaflet-attribution-flag{display:none!important}
+.leaflet-control-attribution{background:rgba(0,0,0,.5)!important;color:#666!important;font-size:8px!important}
 </style>
 </head>
 <body>
@@ -245,16 +203,15 @@ canvas.sparkline{width:100%;height:32px;display:block}
   <div class="city-tabs" id="city-tabs"></div>
   <div class="header-right">
     <div class="gnss-badge" id="gnss-badge">⬤ GNSS</div>
-    <button class="icon-btn" id="btn-pause" title="Pause simulation">⏸</button>
+    <button class="icon-btn" id="btn-pause" title="Pause">⏸</button>
     <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
   </div>
 </div>
 
 <!-- MAIN -->
 <div id="main">
-  <div style="position:relative;overflow:hidden">
+  <div id="map-wrap">
     <div id="map"></div>
-    <!-- MAP OVERLAY -->
     <div class="map-overlay">
       <div class="state-badge" id="state-label">GNSS ACTIVE</div>
       <div id="outage-flash" class="outage-flash">⚠ GNSS OUTAGE</div>
@@ -272,7 +229,6 @@ canvas.sparkline{width:100%;height:32px;display:block}
 
   <!-- SIDEBAR -->
   <div class="sidebar">
-    <!-- LIVE TELEMETRY -->
     <div class="panel">
       <div class="panel-title">LIVE TELEMETRY</div>
       <div class="metrics-grid">
@@ -284,76 +240,28 @@ canvas.sparkline{width:100%;height:32px;display:block}
         <div class="metric"><div class="metric-label">OUTAGE</div><div class="metric-val" id="m-outage-t">—</div></div>
       </div>
     </div>
-
-    <!-- ALGORITHM STACK -->
     <div class="panel">
       <div class="panel-title">ALGORITHM STACK</div>
       <div class="algo-list">
-        <div class="algo-row">
-          <div><div class="algo-name">FusionEKF+™</div><div class="algo-sub">GNSS+INS · SE(2) state</div></div>
-          <div class="algo-status status-active" id="ekf-status">ACTIVE</div>
-        </div>
-        <div class="algo-row">
-          <div><div class="algo-name">NHC Engine™</div><div class="algo-sub">Non-holonomic constraint</div></div>
-          <div class="algo-status status-active">ACTIVE</div>
-        </div>
-        <div class="algo-row">
-          <div><div class="algo-name">DRIFT-Former™</div><div class="algo-sub">Causal Transformer · ONNX</div></div>
-          <div class="algo-status status-demo">DEMO</div>
-        </div>
-        <div class="algo-row">
-          <div><div class="algo-name">SNAP-Retrograde™</div><div class="algo-sub">Backward trajectory correction</div></div>
-          <div class="algo-status status-ready" id="snap-status">READY</div>
-        </div>
-        <div class="algo-row">
-          <div><div class="algo-name">RoadSnap™</div><div class="algo-sub">HMM map matching · OSM</div></div>
-          <div class="algo-status status-active">ACTIVE</div>
-        </div>
-        <div class="algo-row">
-          <div><div class="algo-name">AdaptiMount™</div><div class="algo-sub">Phone pose auto-calibration</div></div>
-          <div class="algo-status status-active">ACTIVE</div>
-        </div>
+        <div class="algo-row"><div><div class="algo-name">FusionEKF+™</div><div class="algo-sub">GNSS+INS · SE(2) state</div></div><div class="algo-status status-active" id="ekf-status">ACTIVE</div></div>
+        <div class="algo-row"><div><div class="algo-name">NHC Engine™</div><div class="algo-sub">Non-holonomic constraint</div></div><div class="algo-status status-active">ACTIVE</div></div>
+        <div class="algo-row"><div><div class="algo-name">DRIFT-Former™</div><div class="algo-sub">Causal Transformer · ONNX</div></div><div class="algo-status status-demo">DEMO</div></div>
+        <div class="algo-row"><div><div class="algo-name">SNAP-Retrograde™</div><div class="algo-sub">Backward trajectory correction</div></div><div class="algo-status status-ready" id="snap-status">READY</div></div>
+        <div class="algo-row"><div><div class="algo-name">RoadSnap™</div><div class="algo-sub">HMM map matching · OSM</div></div><div class="algo-status status-active">ACTIVE</div></div>
+        <div class="algo-row"><div><div class="algo-name">AdaptiMount™</div><div class="algo-sub">Phone pose auto-calibration</div></div><div class="algo-status status-active">ACTIVE</div></div>
       </div>
     </div>
-
-    <!-- NOVEL CONTRIBUTIONS -->
     <div class="panel panel-scroll">
       <div class="panel-title">NOVEL CONTRIBUTIONS</div>
       <div class="novel-list">
-        <div class="novel-card c-cyan">
-          <div class="novel-card-name">AdaptiMount™</div>
-          <div class="novel-card-desc">Real-time phone pose estimation from accelerometer + gyro without pre-placement. Handles dashboard, seat, hand, pocket.</div>
-          <div class="novel-card-tag">CALIBRATION · POSE · MEMS</div>
-        </div>
-        <div class="novel-card c-violet">
-          <div class="novel-card-name">PhaseNet-IMU™</div>
-          <div class="novel-card-desc">Lightweight 1-D conv net for IMU noise phase estimation. Reduces heading drift by 40% vs classical low-pass.</div>
-          <div class="novel-card-tag">NEURAL · IMU · NOISE</div>
-        </div>
-        <div class="novel-card c-green">
-          <div class="novel-card-name">VeloSpec™</div>
-          <div class="novel-card-desc">Velocity spectral decomposition from barometric + odometer fusion. Eliminates wheel-slip bias on inclines.</div>
-          <div class="novel-card-tag">BARO · ODOMETRY · FUSION</div>
-        </div>
-        <div class="novel-card c-orange">
-          <div class="novel-card-name">SNAP-Retrograde™</div>
-          <div class="novel-card-desc">Post-outage backward trajectory correction using re-acquired GNSS fix. Smooths full DR segment in &lt;150 ms.</div>
-          <div class="novel-card-tag">RETROGRADE · SMOOTHER · EKF</div>
-        </div>
-        <div class="novel-card c-yellow">
-          <div class="novel-card-name">FusionEKF+™</div>
-          <div class="novel-card-desc">SE(2) manifold EKF with adaptive noise covariance scaling. Handles multi-modal sensor dropout gracefully.</div>
-          <div class="novel-card-tag">EKF · SE(2) · ADAPTIVE-Q</div>
-        </div>
-        <div class="novel-card c-red">
-          <div class="novel-card-name">RoadSnap™</div>
-          <div class="novel-card-desc">Online HMM map-matching with OSM tile streaming. Constrains DR error within road topology bounds.</div>
-          <div class="novel-card-tag">HMM · MAP-MATCH · OSM</div>
-        </div>
+        <div class="novel-card c-cyan"><div class="novel-card-name">AdaptiMount™</div><div class="novel-card-desc">Real-time phone pose estimation from accelerometer + gyro without pre-placement. Handles dashboard, seat, hand, pocket.</div><div class="novel-card-tag">CALIBRATION · POSE · MEMS</div></div>
+        <div class="novel-card c-violet"><div class="novel-card-name">PhaseNet-IMU™</div><div class="novel-card-desc">Lightweight 1-D conv net for IMU noise phase estimation. Reduces heading drift by 40% vs classical low-pass.</div><div class="novel-card-tag">NEURAL · IMU · NOISE</div></div>
+        <div class="novel-card c-green"><div class="novel-card-name">VeloSpec™</div><div class="novel-card-desc">Velocity spectral decomposition from barometric + odometer fusion. Eliminates wheel-slip bias on inclines.</div><div class="novel-card-tag">BARO · ODOMETRY · FUSION</div></div>
+        <div class="novel-card c-orange"><div class="novel-card-name">SNAP-Retrograde™</div><div class="novel-card-desc">Post-outage backward trajectory correction using re-acquired GNSS fix. Smooths full DR segment in &lt;150 ms.</div><div class="novel-card-tag">RETROGRADE · SMOOTHER · EKF</div></div>
+        <div class="novel-card c-yellow"><div class="novel-card-name">FusionEKF+™</div><div class="novel-card-desc">SE(2) manifold EKF with adaptive noise covariance scaling. Handles multi-modal sensor dropout gracefully.</div><div class="novel-card-tag">EKF · SE(2) · ADAPTIVE-Q</div></div>
+        <div class="novel-card c-red"><div class="novel-card-name">RoadSnap™</div><div class="novel-card-desc">Online HMM map-matching with OSM tile streaming. Constrains DR error within road topology bounds.</div><div class="novel-card-tag">HMM · MAP-MATCH · OSM</div></div>
       </div>
     </div>
-
-    <!-- API STATUS -->
     <div class="api-row">
       <span class="api-label">API</span>
       <span id="api-url-display">navdrift0-api.onrender.com</span>
@@ -362,303 +270,116 @@ canvas.sparkline{width:100%;height:32px;display:block}
   </div>
 </div>
 
-<!-- FOOTER SPARKLINES -->
+<!-- FOOTER -->
 <div id="footer">
-  <div class="spark-panel">
-    <div class="spark-label"><span>POSITION ERROR</span><span class="spark-val sv-orange" id="sv-error">0.0 m</span></div>
-    <canvas class="sparkline" id="sp-error"></canvas>
-  </div>
-  <div class="spark-panel">
-    <div class="spark-label"><span>SPEED</span><span class="spark-val sv-cyan" id="sv-speed">35 km/h</span></div>
-    <canvas class="sparkline" id="sp-speed"></canvas>
-  </div>
-  <div class="spark-panel">
-    <div class="spark-label"><span>EKF INNOVATION</span><span class="spark-val sv-violet" id="sv-innov">0.0</span></div>
-    <canvas class="sparkline" id="sp-innov"></canvas>
-  </div>
-  <div class="spark-panel">
-    <div class="spark-label"><span>IMU LATENCY</span><span class="spark-val sv-green" id="sv-lat">12 ms</span></div>
-    <canvas class="sparkline" id="sp-lat"></canvas>
-  </div>
+  <div class="spark-panel"><div class="spark-label"><span>POSITION ERROR</span><span class="spark-val sv-orange" id="sv-error">0.0 m</span></div><canvas class="sparkline" id="sp-error"></canvas></div>
+  <div class="spark-panel"><div class="spark-label"><span>SPEED</span><span class="spark-val sv-cyan" id="sv-speed">35 km/h</span></div><canvas class="sparkline" id="sp-speed"></canvas></div>
+  <div class="spark-panel"><div class="spark-label"><span>EKF INNOVATION</span><span class="spark-val sv-violet" id="sv-innov">0.0</span></div><canvas class="sparkline" id="sp-innov"></canvas></div>
+  <div class="spark-panel"><div class="spark-label"><span>IMU LATENCY</span><span class="spark-val sv-green" id="sv-lat">12 ms</span></div><canvas class="sparkline" id="sp-lat"></canvas></div>
 </div>
 
 <!-- SETTINGS MODAL -->
 <div class="modal-overlay hidden" id="modal-overlay">
   <div class="modal">
     <div class="modal-title">⚙ CONFIGURATION</div>
-    <div class="field">
-      <label>BACKEND API URL</label>
-      <input type="url" id="cfg-api" value="https://navdrift0-api.onrender.com" placeholder="https://...">
-    </div>
-    <div class="field">
-      <label>SIM SPEED — <span id="cfg-speed-val">1×</span></label>
-      <input type="range" id="cfg-speed" min="0.25" max="8" step="0.25" value="1">
-    </div>
-    <div class="field">
-      <div class="field-row">
-        <label style="margin-bottom:0">AUTO TUNNEL DETECTION</label>
-        <button class="toggle on" id="cfg-tunnel" type="button"></button>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-save" id="btn-save">SAVE</button>
-      <button class="btn-cancel" id="btn-cancel">CANCEL</button>
-    </div>
+    <div class="field"><label>BACKEND API URL</label><input type="url" id="cfg-api" value="https://navdrift0-api.onrender.com" placeholder="https://..."></div>
+    <div class="field"><label>SIM SPEED — <span id="cfg-speed-val">1×</span></label><input type="range" id="cfg-speed" min="0.25" max="8" step="0.25" value="1"></div>
+    <div class="field"><div class="field-row"><label style="margin-bottom:0">AUTO TUNNEL DETECTION</label><button class="toggle on" id="cfg-tunnel" type="button"></button></div></div>
+    <div class="modal-actions"><button class="btn-save" id="btn-save">SAVE</button><button class="btn-cancel" id="btn-cancel">CANCEL</button></div>
   </div>
 </div>
 
 <script>
 /* ── CITY DATA ── */
 const CITIES = {
-  delhi: {
-    name:'New Delhi — India Gate → AIIMS Corridor',
-    center:[28.5900,77.2200],zoom:14,
-    route:[
-      [28.6129,77.2295],[28.6117,77.2170],[28.6110,77.2093],
-      [28.6074,77.2200],[28.5999,77.2287],[28.5908,77.2236],
-      [28.5783,77.2151],[28.5671,77.2020],[28.5633,77.1972],
-      [28.5567,77.1891],[28.5494,77.1724],[28.5531,77.1629],
-      [28.5598,77.1524],[28.5681,77.1435],[28.5754,77.1380],
-    ],
+  delhi:{
+    name:'New Delhi — India Gate → AIIMS Corridor',center:[28.5900,77.2200],zoom:14,
+    route:[[28.6129,77.2295],[28.6117,77.2170],[28.6110,77.2093],[28.6074,77.2200],[28.5999,77.2287],[28.5908,77.2236],[28.5783,77.2151],[28.5671,77.2020],[28.5633,77.1972],[28.5567,77.1891],[28.5494,77.1724],[28.5531,77.1629],[28.5598,77.1524],[28.5681,77.1435],[28.5754,77.1380]],
     tunnelIdx:[8,10],tunnelName:'AIIMS Underpass',speedKmh:35,
   },
-  mumbai: {
-    name:'Mumbai — Gateway → Marine Drive → BKC',
-    center:[19.0000,72.8500],zoom:13,
-    route:[
-      [18.9220,72.8347],[18.9280,72.8265],[18.9380,72.8244],
-      [18.9439,72.8231],[18.9550,72.8213],[18.9671,72.8178],
-      [18.9871,72.8210],[19.0050,72.8280],[19.0178,72.8151],
-      [19.0280,72.8320],[19.0420,72.8474],[19.0541,72.8384],
-      [19.0656,72.8679],[19.0720,72.8750],[19.0780,72.8820],
-    ],
+  mumbai:{
+    name:'Mumbai — Gateway → Marine Drive → BKC',center:[19.0000,72.8500],zoom:13,
+    route:[[18.9220,72.8347],[18.9280,72.8265],[18.9380,72.8244],[18.9439,72.8231],[18.9550,72.8213],[18.9671,72.8178],[18.9871,72.8210],[19.0050,72.8280],[19.0178,72.8151],[19.0280,72.8320],[19.0420,72.8474],[19.0541,72.8384],[19.0656,72.8679],[19.0720,72.8750],[19.0780,72.8820]],
     tunnelIdx:[10,12],tunnelName:'BKC Tunnel',speedKmh:40,
   },
-  bengaluru: {
-    name:'Bengaluru — MG Road → Koramangala → BTM',
-    center:[12.9400,77.6100],zoom:13,
-    route:[
-      [12.9756,77.6097],[12.9710,77.6080],[12.9680,77.6140],
-      [12.9640,77.6200],[12.9590,77.6230],[12.9540,77.6190],
-      [12.9490,77.6220],[12.9440,77.6270],[12.9390,77.6250],
-      [12.9340,77.6200],[12.9280,77.6150],[12.9230,77.6100],
-      [12.9180,77.6050],[12.9130,77.6000],[12.9080,77.5950],
-    ],
+  bengaluru:{
+    name:'Bengaluru — MG Road → Koramangala → BTM',center:[12.9400,77.6100],zoom:13,
+    route:[[12.9756,77.6097],[12.9710,77.6080],[12.9680,77.6140],[12.9640,77.6200],[12.9590,77.6230],[12.9540,77.6190],[12.9490,77.6220],[12.9440,77.6270],[12.9390,77.6250],[12.9340,77.6200],[12.9280,77.6150],[12.9230,77.6100],[12.9180,77.6050],[12.9130,77.6000],[12.9080,77.5950]],
     tunnelIdx:[6,8],tunnelName:'Koramangala Underpass',speedKmh:30,
   },
-  chennai: {
-    name:'Chennai — Marina → Adyar → Besant Nagar → OMR',
-    center:[12.9800,80.2500],zoom:13,
-    route:[
-      [13.0500,80.2824],[13.0420,80.2780],[13.0340,80.2720],
-      [13.0250,80.2680],[13.0150,80.2620],[13.0050,80.2560],
-      [12.9950,80.2500],[12.9850,80.2460],[12.9750,80.2480],
-      [12.9650,80.2520],[12.9550,80.2480],[12.9450,80.2450],
-      [12.9350,80.2420],[12.9250,80.2430],[12.9150,80.2450],
-    ],
+  chennai:{
+    name:'Chennai — Marina → Adyar → OMR',center:[12.9800,80.2500],zoom:13,
+    route:[[13.0500,80.2824],[13.0420,80.2780],[13.0340,80.2720],[13.0250,80.2680],[13.0150,80.2620],[13.0050,80.2560],[12.9950,80.2500],[12.9850,80.2460],[12.9750,80.2480],[12.9650,80.2520],[12.9550,80.2480],[12.9450,80.2450],[12.9350,80.2420],[12.9250,80.2430],[12.9150,80.2450]],
     tunnelIdx:[7,9],tunnelName:'Adyar Flyover',speedKmh:38,
   },
-  hyderabad: {
-    name:'Hyderabad — HITEC City → Banjara Hills → Nampally',
-    center:[17.4100,78.4600],zoom:13,
-    route:[
-      [17.4435,78.3772],[17.4400,78.3850],[17.4360,78.3940],
-      [17.4310,78.4020],[17.4260,78.4100],[17.4210,78.4180],
-      [17.4160,78.4260],[17.4120,78.4340],[17.4080,78.4420],
-      [17.4040,78.4500],[17.3990,78.4540],[17.3950,78.4580],
-      [17.3900,78.4620],[17.3860,78.4650],[17.3820,78.4680],
-    ],
+  hyderabad:{
+    name:'Hyderabad — HITEC City → Banjara Hills → Nampally',center:[17.4100,78.4600],zoom:13,
+    route:[[17.4435,78.3772],[17.4400,78.3850],[17.4360,78.3940],[17.4310,78.4020],[17.4260,78.4100],[17.4210,78.4180],[17.4160,78.4260],[17.4120,78.4340],[17.4080,78.4420],[17.4040,78.4500],[17.3990,78.4540],[17.3950,78.4580],[17.3900,78.4620],[17.3860,78.4650],[17.3820,78.4680]],
     tunnelIdx:[9,11],tunnelName:'Nampally Underpass',speedKmh:42,
   },
 };
 
-/* ── CONFIG & STATE ── */
-let config = {apiUrl:'https://navdrift0-api.onrender.com',simSpeed:1,autoTunnel:true};
-let state = {
-  city:'delhi',t:0,mode:'gnss',
-  drOffset:[0,0],drAccErr:0,drBias:[0,0],
-  steps:0,lastTs:0,simSpeed:1,
-  outageStart:null,snapStart:null,snapFromOffset:null,
-  truePts:[],drPts:[],corrPts:[],
-  mapReady:false,paused:false,heading:0,speed:35,
-  inTunnel:false,tunnelEnteredByAuto:false,
-};
-let sparkData = {error:[],speed:[],innov:[],lat:[]};
-const MAX_SPARK = 120;
-const MAX_TRACK = 300;
+/* ── STATE & CONFIG ── */
+let config={apiUrl:'https://navdrift0-api.onrender.com',simSpeed:1,autoTunnel:true};
+let state={city:'delhi',t:0,mode:'gnss',drOffset:[0,0],drAccErr:0,drBias:[0,0],steps:0,lastTs:0,simSpeed:1,outageStart:null,snapStart:null,snapFromOffset:null,truePts:[],drPts:[],corrPts:[],heading:0,speed:35,inTunnel:false,tunnelEnteredByAuto:false,paused:false};
+let sparkData={error:[],speed:[],innov:[],lat:[]};
+const MAX_SPARK=120, MAX_TRACK=300;
 
-/* ── COORD HELPERS ── */
-const toLngLat = ([lat,lng]) => [lng,lat];
+/* ── HELPERS ── */
+function randn(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function haversineM([lat1,lng1],[lat2,lng2]){const R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+function interpRoute(route,t){if(t<=0)return[...route[0]];if(t>=1)return[...route[route.length-1]];const n=route.length-1;const idx=Math.floor(t*n);const frac=t*n-idx;const a=route[Math.min(idx,n)],b=route[Math.min(idx+1,n)];return[a[0]+(b[0]-a[0])*frac,a[1]+(b[1]-a[1])*frac];}
+function routeHeading(route,t){const dt=0.005;const a=interpRoute(route,Math.max(0,t-dt)),b=interpRoute(route,Math.min(1,t+dt));const dlat=b[0]-a[0],dlng=b[1]-a[1];return((Math.atan2(dlng,dlat)*180/Math.PI)+360)%360;}
+function totalRouteLen(route){let l=0;for(let i=1;i<route.length;i++)l+=haversineM(route[i-1],route[i]);return l;}
+function pushSpark(arr,v){arr.push(v);if(arr.length>MAX_SPARK)arr.shift();}
 
-function interpRoute(route,t) {
-  if(t<=0) return [...route[0]];
-  if(t>=1) return [...route[route.length-1]];
-  const n = route.length-1;
-  const idx = Math.floor(t*n);
-  const frac = t*n - idx;
-  const a = route[Math.min(idx,n)];
-  const b = route[Math.min(idx+1,n)];
-  return [a[0]+(b[0]-a[0])*frac, a[1]+(b[1]-a[1])*frac];
-}
+/* ── MAP INIT (Leaflet — synchronous, no load event needed) ── */
+const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([28.59,77.22],14);
 
-function routeHeading(route,t) {
-  const dt = 0.005;
-  const a = interpRoute(route,Math.max(0,t-dt));
-  const b = interpRoute(route,Math.min(1,t+dt));
-  const dlat = b[0]-a[0], dlng = b[1]-a[1];
-  const deg = Math.atan2(dlng,dlat)*180/Math.PI;
-  return (deg+360)%360;
-}
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{
+  attribution:'© Esri, HERE, DeLorme, OpenStreetMap',
+  maxZoom:18,
+}).addTo(map);
 
-function haversineM([lat1,lng1],[lat2,lng2]) {
-  const R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
-  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
+/* ── LEAFLET LAYERS ── */
+const tunnelLayer=L.polygon([],{color:'#ff0055',fillColor:'#ff0055',fillOpacity:0.06,weight:1.5,dashArray:'4 4'}).addTo(map);
+const uncertaintyLayer=L.circle([28.59,77.22],{radius:30,color:'#ff8c00',fillColor:'#ff8c00',fillOpacity:0.08,weight:1.5}).addTo(map);
+const trueTrack=L.polyline([],{color:'#00fff5',weight:2.5,opacity:0.9}).addTo(map);
+const drTrack=L.polyline([],{color:'#ff8c00',weight:2.5,opacity:0.9,dashArray:'8 5'}).addTo(map);
+const corrTrack=L.polyline([],{color:'#00ff9d',weight:3,opacity:0.95}).addTo(map);
 
-/* ── GEOJSON BUILDERS ── */
-function lineGeoJSON(latlngPairs) {
-  const coords = latlngPairs.map(toLngLat);
-  return {type:'FeatureCollection',features:coords.length<2?[]:[{
-    type:'Feature',geometry:{type:'LineString',coordinates:coords}
-  }]};
-}
+/* vehicle marker as rotatable divIcon */
+const vehicleIconEl=document.createElement('div');
+vehicleIconEl.className='vehicle-icon';
+vehicleIconEl.id='vehicle-div';
+vehicleIconEl.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs><filter id="mglow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+  <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <g filter="url(#mglow)">
+    <path d="M16 4 L22 24 L16 20 L10 24 Z" fill="#00fff5" opacity="0.95"/>
+    <circle cx="16" cy="14" r="3" fill="#00fff5" opacity="0.6"/>
+  </g></svg>`;
 
-function circleGeoJSON(latLng,radiusMeters,steps=48) {
-  const [lat,lng]=latLng;
-  const coords=[];
-  for(let i=0;i<=steps;i++){
-    const a=(i/steps)*2*Math.PI;
-    const dlat=(radiusMeters/111320)*Math.cos(a);
-    const dlng=(radiusMeters/(111320*Math.cos(lat*Math.PI/180)))*Math.sin(a);
-    coords.push([lng+dlng,lat+dlat]);
-  }
-  return {type:'Feature',geometry:{type:'Polygon',coordinates:[coords]}};
-}
+const vehicleIcon=L.divIcon({html:vehicleIconEl.outerHTML,iconSize:[32,32],iconAnchor:[16,16],className:''});
+const vehicleMarker=L.marker([28.59,77.22],{icon:vehicleIcon,zIndexOffset:1000}).addTo(map);
 
-function polygonGeoJSON(latlngPairs) {
-  const coords=latlngPairs.map(toLngLat);
-  return {type:'Feature',geometry:{type:'Polygon',coordinates:[coords]}};
-}
-
-function tunnelPolygon(route,idxA,idxB) {
-  const pts=[];
-  const width=0.0003;
-  for(let i=idxA;i<=idxB;i++){
-    const p=route[Math.min(i,route.length-1)];
-    pts.push([p[0]+width,p[1]+width]);
-  }
-  for(let i=idxB;i>=idxA;i--){
-    const p=route[Math.min(i,route.length-1)];
-    pts.push([p[0]-width,p[1]-width]);
-  }
-  pts.push(pts[0]);
-  return {type:'FeatureCollection',features:[polygonGeoJSON(pts)]};
-}
-
-function emptyGeoJSON() {
-  return {type:'FeatureCollection',features:[]};
-}
-
-/* ── RAND HELPERS ── */
-function randn(){
-  let u=0,v=0;
-  while(u===0)u=Math.random();
-  while(v===0)v=Math.random();
-  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
-}
-
-/* ── MAP SETUP ── */
-const ESRI_DARK_STYLE = {
-  version:8,
-  sources:{
-    'esri-dark':{
-      type:'raster',
-      tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
-      tileSize:256,
-      attribution:'© Esri, HERE, DeLorme, MapmyIndia, © OpenStreetMap contributors'
-    }
-  },
-  layers:[{id:'esri-dark-bg',type:'raster',source:'esri-dark',minzoom:0,maxzoom:22}],
-  glyphs:'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
-  sprite:'https://demotiles.maplibre.org/sprite/sprite'
-};
-const map = new maplibregl.Map({
-  container:'map',
-  style:ESRI_DARK_STYLE,
-  center:[77.22,28.59],
-  zoom:14,
-  attributionControl:false,
-  pitchWithRotate:false,
-});
-map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
-map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
-
-/* ── VEHICLE MARKER ── */
-function makeMarkerEl(col) {
-  const el=document.createElement('div');
-  el.style.cssText='width:32px;height:32px;pointer-events:none;';
-  el.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-    <defs><filter id="mglow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-    <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-    <g filter="url(#mglow)">
-      <path d="M16 4 L22 24 L16 20 L10 24 Z" fill="${col}" opacity="0.95"/>
-      <circle cx="16" cy="14" r="3" fill="${col}" opacity="0.6"/>
-    </g></svg>`;
-  return el;
-}
-const markerEl = makeMarkerEl('#00fff5');
-const vehicleMarker = new maplibregl.Marker({element:markerEl}).setLngLat([77.22,28.59]).addTo(map);
-
-/* ── SOURCES & LAYERS ON LOAD ── */
-function initMapLayers() {
-  if(state.mapReady) return; // guard: run once only
-  try {
-    // tunnel
-    if(!map.getSource('tunnel-source')) map.addSource('tunnel-source',{type:'geojson',data:emptyGeoJSON()});
-    if(!map.getLayer('tunnel-fill')) map.addLayer({id:'tunnel-fill',type:'fill',source:'tunnel-source',paint:{'fill-color':'rgba(255,0,85,0.06)'}});
-    if(!map.getLayer('tunnel-border')) map.addLayer({id:'tunnel-border',type:'line',source:'tunnel-source',paint:{'line-color':'#ff0055','line-width':1.5,'line-dasharray':[3,3]}});
-    // uncertainty
-    if(!map.getSource('uncertainty-source')) map.addSource('uncertainty-source',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
-    if(!map.getLayer('uncertainty-fill')) map.addLayer({id:'uncertainty-fill',type:'fill',source:'uncertainty-source',paint:{'fill-color':'rgba(255,140,0,0.08)'}});
-    if(!map.getLayer('uncertainty-border')) map.addLayer({id:'uncertainty-border',type:'line',source:'uncertainty-source',paint:{'line-color':'#ff8c00','line-width':1.5}});
-    // corrected track
-    if(!map.getSource('corr-track-source')) map.addSource('corr-track-source',{type:'geojson',data:lineGeoJSON([])});
-    if(!map.getLayer('corr-track')) map.addLayer({id:'corr-track',type:'line',source:'corr-track-source',paint:{'line-color':'#00ff9d','line-width':3}});
-    // dr track
-    if(!map.getSource('dr-track-source')) map.addSource('dr-track-source',{type:'geojson',data:lineGeoJSON([])});
-    if(!map.getLayer('dr-track')) map.addLayer({id:'dr-track',type:'line',source:'dr-track-source',paint:{'line-color':'#ff8c00','line-width':2.5,'line-dasharray':[6,4]}});
-    // true track
-    if(!map.getSource('true-track-source')) map.addSource('true-track-source',{type:'geojson',data:lineGeoJSON([])});
-    if(!map.getLayer('true-track')) map.addLayer({id:'true-track',type:'line',source:'true-track-source',paint:{'line-color':'#00fff5','line-width':2.5}});
-
-    state.mapReady=true;
-    drawTunnelZone(state.city);
-    requestAnimationFrame(simTick);
-  } catch(e){ console.error('initMapLayers error',e); }
-}
-
-// Fire on load, style.load, AND idle — whichever comes first
-map.on('load', initMapLayers);
-map.on('style.load', initMapLayers);
-map.once('idle', initMapLayers);
-// Absolute fallback: try after 1.5s regardless
-setTimeout(initMapLayers, 1500);
-
-map.on('error',(e)=>{ console.warn('MapLibre error',e.error); });
-
-function setSourceData(id,data) {
-  if(!state.mapReady) return;
-  const src=map.getSource(id);
-  if(src) src.setData(data);
+function updateVehicleRotation(deg){
+  const el=document.querySelector('#map .vehicle-icon');
+  if(el) el.style.transform=`rotate(${deg}deg)`;
 }
 
 /* ── TUNNEL ZONE ── */
-function drawTunnelZone(cityKey) {
-  const cfg=CITIES[cityKey];
-  const [a,b]=cfg.tunnelIdx;
-  setSourceData('tunnel-source',tunnelPolygon(cfg.route,a,b));
+function tunnelLatLngs(route,idxA,idxB){
+  const pts=[],width=0.003; // degrees ~330m
+  for(let i=idxA;i<=idxB;i++){const p=route[Math.min(i,route.length-1)];pts.push([p[0]+width*0.1,p[1]+width*0.1]);}
+  for(let i=idxB;i>=idxA;i--){const p=route[Math.min(i,route.length-1)];pts.push([p[0]-width*0.1,p[1]-width*0.1]);}
+  return pts;
 }
+function drawTunnelZone(cityKey){
+  const cfg=CITIES[cityKey];
+  tunnelLayer.setLatLngs(tunnelLatLngs(cfg.route,cfg.tunnelIdx[0],cfg.tunnelIdx[1]));
+}
+drawTunnelZone('delhi');
 
 /* ── CITY TABS ── */
 const tabsEl=document.getElementById('city-tabs');
@@ -671,27 +392,22 @@ Object.entries(CITIES).forEach(([key,cfg])=>{
   tabsEl.appendChild(btn);
 });
 
-function switchCity(key) {
+function switchCity(key){
   document.querySelectorAll('.city-tab').forEach(b=>b.classList.toggle('active',b.dataset.city===key));
   state.city=key;state.t=0;state.mode='gnss';
   state.drOffset=[0,0];state.drBias=[0,0];state.drAccErr=0;
   state.truePts=[];state.drPts=[];state.corrPts=[];
-  state.steps=0;state.outageStart=null;state.snapStart=null;
-  state.inTunnel=false;
+  state.steps=0;state.outageStart=null;state.snapStart=null;state.inTunnel=false;
   const cfg=CITIES[key];
-  if(state.mapReady){
-    map.flyTo({center:toLngLat(cfg.center),zoom:cfg.zoom,duration:800});
-    setSourceData('true-track-source',lineGeoJSON([]));
-    setSourceData('dr-track-source',lineGeoJSON([]));
-    setSourceData('corr-track-source',lineGeoJSON([]));
-    setSourceData('uncertainty-source',{type:'FeatureCollection',features:[]});
-    drawTunnelZone(key);
-  }
+  map.flyTo(cfg.center,cfg.zoom,{duration:0.8});
+  trueTrack.setLatLngs([]);drTrack.setLatLngs([]);corrTrack.setLatLngs([]);
+  uncertaintyLayer.setLatLng(cfg.center);
+  drawTunnelZone(key);
   updateModeUI();
 }
 
 /* ── MODE UI ── */
-function updateModeUI() {
+function updateModeUI(){
   const {mode}=state;
   const sl=document.getElementById('state-label');
   const gb=document.getElementById('gnss-badge');
@@ -700,233 +416,40 @@ function updateModeUI() {
   const bRe=document.getElementById('btn-reacquire');
   const sSnap=document.getElementById('snap-status');
   const mErr=document.getElementById('m-error');
-
-  sl.className='state-badge';
-  gb.className='gnss-badge';
-
+  sl.className='state-badge';gb.className='gnss-badge';
   if(mode==='gnss'){
-    sl.textContent='GNSS ACTIVE';
-    gb.textContent='⬤ GNSS';
-    of_.classList.remove('visible');
-    bOut.style.display='';bRe.style.display='none';
+    sl.textContent='GNSS ACTIVE';gb.textContent='⬤ GNSS';
+    of_.classList.remove('visible');bOut.style.display='';bRe.style.display='none';
     sSnap.textContent='READY';sSnap.className='algo-status status-ready';
-    mErr.className='metric-val green';
-    document.getElementById('tunnel-alert').style.display='none';
+    mErr.className='metric-val green';document.getElementById('tunnel-alert').style.display='none';
   } else if(mode==='dr'){
     sl.className='state-badge dr-mode';sl.textContent='DR ACTIVE';
     gb.className='gnss-badge dr';gb.textContent='⬤ DR';
-    of_.classList.add('visible');
-    bOut.style.display='none';bRe.style.display='';
+    of_.classList.add('visible');bOut.style.display='none';bRe.style.display='';
     sSnap.textContent='ARMED';sSnap.className='algo-status status-demo';
     mErr.className='metric-val orange';
     if(state.inTunnel) document.getElementById('tunnel-alert').style.display='';
   } else if(mode==='snap'){
     sl.className='state-badge snap-mode';sl.textContent='SNAP CORRECTING';
     gb.className='gnss-badge snap';gb.textContent='⬤ SNAP';
-    of_.classList.remove('visible');
-    bOut.style.display='';bRe.style.display='none';
+    of_.classList.remove('visible');bOut.style.display='';bRe.style.display='none';
     sSnap.textContent='RUNNING';sSnap.className='algo-status status-active';
-    mErr.className='metric-val green';
-    document.getElementById('tunnel-alert').style.display='none';
+    mErr.className='metric-val green';document.getElementById('tunnel-alert').style.display='none';
   }
-}
-
-/* ── SIM TICK ── */
-function simTick(ts) {
-  if(!state.mapReady){requestAnimationFrame(simTick);return;}
-  if(state.paused){state.lastTs=ts;requestAnimationFrame(simTick);return;}
-  const dt=state.lastTs?Math.min((ts-state.lastTs)/1000,0.1):0.016;
-  state.lastTs=ts;
-
-  const cfg=CITIES[state.city];
-  const speedMs=(cfg.speedKmh/3.6)*state.simSpeed;
-  const routeLen=totalRouteLen(cfg.route);
-  state.t+=speedMs*dt/routeLen;
-  if(state.t>=1){state.t=0;state.truePts=[];state.drPts=[];state.corrPts=[];}
-  state.steps++;
-
-  const truePos=interpRoute(cfg.route,state.t);
-  state.heading=routeHeading(cfg.route,state.t);
-  state.speed=cfg.speedKmh*(0.9+0.2*Math.random());
-
-  // Auto tunnel detection
-  if(config.autoTunnel){
-    const [tA,tB]=cfg.tunnelIdx;
-    const n=cfg.route.length-1;
-    const idxNow=state.t*n;
-    const inT=idxNow>=tA&&idxNow<=tB;
-    if(inT&&!state.inTunnel&&state.mode==='gnss'){
-      state.inTunnel=true;
-      state.tunnelEnteredByAuto=true;
-      triggerOutage();
-    }
-    if(!inT&&state.inTunnel&&state.tunnelEnteredByAuto&&state.mode==='dr'){
-      state.inTunnel=false;
-      state.tunnelEnteredByAuto=false;
-      reacquireGnss();
-    }
-  }
-
-  // DR offset update
-  if(state.mode==='dr'){
-    const sigma=0.00004;
-    state.drOffset[0]+=randn()*sigma*dt*30+state.drBias[0]*dt;
-    state.drOffset[1]+=randn()*sigma*dt*30+state.drBias[1]*dt;
-    state.drBias[0]+=(Math.random()-0.5)*0.000001;
-    state.drBias[1]+=(Math.random()-0.5)*0.000001;
-    state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
-  } else if(state.mode==='snap'){
-    const snapDur=3.0;
-    const elapsed=state.snapStart?(ts-state.snapStart)/1000:0;
-    const f=Math.min(elapsed/snapDur,1);
-    const ease=1-Math.pow(1-f,3);
-    state.drOffset=[state.snapFromOffset[0]*(1-ease),state.snapFromOffset[1]*(1-ease)];
-    state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
-    if(f>=1){state.mode='gnss';state.drOffset=[0,0];state.drAccErr=0;state.outageStart=null;updateModeUI();}
-  } else {
-    state.drOffset=[0,0];state.drAccErr=0;
-  }
-
-  const drPos=[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]];
-  const corrPos=(state.mode==='snap')?drPos:truePos;
-
-  // Append track points (decimated)
-  if(state.steps%2===0){
-    state.truePts.push([...truePos]);
-    state.drPts.push([...drPos]);
-    state.corrPts.push([...corrPos]);
-    if(state.truePts.length>MAX_TRACK){state.truePts.shift();state.drPts.shift();state.corrPts.shift();}
-  }
-
-  // Update map
-  setSourceData('true-track-source',lineGeoJSON(state.truePts));
-  setSourceData('dr-track-source',lineGeoJSON(state.drPts));
-  setSourceData('corr-track-source',lineGeoJSON(state.corrPts));
-
-  const sigma=Math.max(1.5,state.drAccErr*0.4+1.5);
-  if(state.mode==='dr'||state.mode==='snap'){
-    setSourceData('uncertainty-source',{type:'FeatureCollection',features:[circleGeoJSON(drPos,sigma*20)]});
-  } else {
-    setSourceData('uncertainty-source',{type:'FeatureCollection',features:[circleGeoJSON(truePos,5)]});
-  }
-
-  // Vehicle marker
-  const markerPos=state.mode==='dr'?drPos:truePos;
-  vehicleMarker.setLngLat(toLngLat(markerPos));
-  const svgEl=markerEl.querySelector('svg');
-  if(svgEl) svgEl.style.transform=`rotate(${state.heading}deg)`;
-
-  // Update telemetry DOM
-  const errM=state.drAccErr;
-  document.getElementById('m-speed').innerHTML=`${state.speed.toFixed(0)} <span class="metric-unit">km/h</span>`;
-  document.getElementById('m-heading').textContent=`${state.heading.toFixed(0)}°`;
-  document.getElementById('m-error').innerHTML=`${errM.toFixed(1)} <span class="metric-unit">m</span>`;
-  document.getElementById('m-sigma').innerHTML=`±${sigma.toFixed(1)} <span class="metric-unit">m</span>`;
-  document.getElementById('m-steps').textContent=state.steps.toLocaleString();
-  if(state.outageStart&&state.mode==='dr'){
-    const ot=((ts-state.outageStart)/1000).toFixed(0);
-    document.getElementById('m-outage-t').textContent=`${ot}s`;
-  } else {
-    document.getElementById('m-outage-t').textContent='—';
-  }
-
-  // Sparkline data
-  pushSpark(sparkData.error,errM);
-  pushSpark(sparkData.speed,state.speed);
-  pushSpark(sparkData.innov,(randn()*0.5+state.drAccErr*0.05));
-  pushSpark(sparkData.lat,10+randn()*3);
-
-  document.getElementById('sv-error').textContent=`${errM.toFixed(1)} m`;
-  document.getElementById('sv-speed').textContent=`${state.speed.toFixed(0)} km/h`;
-  document.getElementById('sv-innov').textContent=sparkData.innov[sparkData.innov.length-1]?.toFixed(2)??'0.00';
-  document.getElementById('sv-lat').textContent=`${(sparkData.lat[sparkData.lat.length-1]??12).toFixed(0)} ms`;
-
-  drawSparklines();
-  requestAnimationFrame(simTick);
-}
-
-function totalRouteLen(route){
-  let l=0;
-  for(let i=1;i<route.length;i++) l+=haversineM(route[i-1],route[i]);
-  return l;
-}
-
-function pushSpark(arr,v){arr.push(v);if(arr.length>MAX_SPARK)arr.shift();}
-
-/* ── SPARKLINES ── */
-function drawSparklines(){
-  drawSpark('sp-error',sparkData.error,'#ff8c00',0);
-  drawSpark('sp-speed',sparkData.speed,'#00fff5',0);
-  drawSpark('sp-innov',sparkData.innov,'#a855f7',null);
-  drawSpark('sp-lat',sparkData.lat,'#00ff9d',0);
-}
-
-function drawSpark(id,data,color,minVal){
-  const cv=document.getElementById(id);
-  if(!cv||data.length<2) return;
-  const dpr=window.devicePixelRatio||1;
-  const w=cv.offsetWidth,h=cv.offsetHeight;
-  if(!w||!h) return;
-  if(cv.width!==w*dpr){cv.width=w*dpr;cv.height=h*dpr;}
-  const ctx=cv.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,w,h);
-  let lo=Infinity,hi=-Infinity;
-  data.forEach(v=>{if(v<lo)lo=v;if(v>hi)hi=v;});
-  if(minVal!==null&&minVal!==undefined) lo=Math.min(lo,minVal);
-  const range=Math.max(hi-lo,0.001);
-  const px=(v)=>w-(data.length-1-data.indexOf(v))*(w/(data.length-1));
-  const py=(v)=>h-((v-lo)/range)*(h-4)-2;
-  // area fill
-  ctx.beginPath();
-  data.forEach((v,i)=>{
-    const x=i*(w/(data.length-1)),y=py(v);
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  });
-  ctx.lineTo((data.length-1)*(w/(data.length-1)),h);
-  ctx.lineTo(0,h);
-  ctx.closePath();
-  const grad=ctx.createLinearGradient(0,0,0,h);
-  grad.addColorStop(0,color.replace(')',',0.25)').replace('rgb','rgba').replace('#','').length>7?color+'40':hexAlpha(color,0.25));
-  grad.addColorStop(1,hexAlpha(color,0));
-  ctx.fillStyle=grad;ctx.fill();
-  // line
-  ctx.beginPath();
-  data.forEach((v,i)=>{
-    const x=i*(w/(data.length-1)),y=py(v);
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  });
-  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
-  // endpoint dot
-  const lv=data[data.length-1];
-  const lx=(data.length-1)*(w/(data.length-1));
-  const ly=py(lv);
-  ctx.beginPath();ctx.arc(lx,ly,2.5,0,Math.PI*2);
-  ctx.fillStyle=color;ctx.fill();
-}
-
-function hexAlpha(hex,a){
-  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
-  return `rgba(${r},${g},${b},${a})`;
 }
 
 /* ── OUTAGE / REACQUIRE ── */
 function triggerOutage(){
   if(state.mode==='dr') return;
-  state.mode='dr';
-  state.outageStart=performance.now();
+  state.mode='dr';state.outageStart=performance.now();
   state.drBias=[(Math.random()-0.5)*0.000008,(Math.random()-0.5)*0.000008];
   updateModeUI();
 }
-
 function reacquireGnss(){
   if(state.mode!=='dr') return;
-  state.mode='snap';
-  state.snapStart=performance.now();
-  state.snapFromOffset=[...state.drOffset];
-  updateModeUI();
+  state.mode='snap';state.snapStart=performance.now();
+  state.snapFromOffset=[...state.drOffset];updateModeUI();
 }
-
 document.getElementById('btn-outage').addEventListener('click',triggerOutage);
 document.getElementById('btn-reacquire').addEventListener('click',reacquireGnss);
 
@@ -946,14 +469,8 @@ document.getElementById('btn-settings').addEventListener('click',()=>{
 });
 document.getElementById('btn-cancel').addEventListener('click',()=>document.getElementById('modal-overlay').classList.add('hidden'));
 document.getElementById('modal-overlay').addEventListener('click',(e)=>{if(e.target===e.currentTarget)e.currentTarget.classList.add('hidden');});
-
-document.getElementById('cfg-speed').addEventListener('input',function(){
-  document.getElementById('cfg-speed-val').textContent=this.value+'×';
-});
-document.getElementById('cfg-tunnel').addEventListener('click',function(){
-  this.classList.toggle('on');
-});
-
+document.getElementById('cfg-speed').addEventListener('input',function(){document.getElementById('cfg-speed-val').textContent=this.value+'×';});
+document.getElementById('cfg-tunnel').addEventListener('click',function(){this.classList.toggle('on');});
 document.getElementById('btn-save').addEventListener('click',()=>{
   config.apiUrl=document.getElementById('cfg-api').value||config.apiUrl;
   config.simSpeed=parseFloat(document.getElementById('cfg-speed').value)||1;
@@ -968,22 +485,139 @@ document.getElementById('btn-save').addEventListener('click',()=>{
 function checkApiHealth(){
   const status=document.getElementById('api-status');
   fetch(config.apiUrl+'/health',{signal:AbortSignal.timeout(5000)})
-    .then(r=>{
-      if(r.ok){status.textContent='LIVE';status.className='algo-status status-active';}
-      else{status.textContent='ERR';status.className='algo-status status-demo';}
-    })
+    .then(r=>{if(r.ok){status.textContent='LIVE';status.className='algo-status status-active';}else{status.textContent='ERR';status.className='algo-status status-demo';}})
     .catch(()=>{status.textContent='DEMO';status.className='algo-status status-demo';});
 }
 checkApiHealth();
 
-/* ── RESIZE ── */
-window.addEventListener('resize',()=>{if(state.mapReady)map.resize();});
+/* ── SPARKLINES ── */
+function hexAlpha(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;}
+function drawSpark(id,data,color){
+  const cv=document.getElementById(id);
+  if(!cv||data.length<2) return;
+  const dpr=window.devicePixelRatio||1;
+  const w=cv.offsetWidth,h=cv.offsetHeight;
+  if(!w||!h) return;
+  if(cv.width!==w*dpr){cv.width=w*dpr;cv.height=h*dpr;}
+  const ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+  let lo=Infinity,hi=-Infinity;
+  data.forEach(v=>{if(v<lo)lo=v;if(v>hi)hi=v;});
+  const range=Math.max(hi-lo,0.001);
+  ctx.beginPath();
+  data.forEach((v,i)=>{const x=i*(w/(data.length-1)),y=h-((v-lo)/range)*(h-4)-2;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.lineTo((data.length-1)*(w/(data.length-1)),h);ctx.lineTo(0,h);ctx.closePath();
+  const grad=ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,hexAlpha(color,0.25));grad.addColorStop(1,hexAlpha(color,0));
+  ctx.fillStyle=grad;ctx.fill();
+  ctx.beginPath();
+  data.forEach((v,i)=>{const x=i*(w/(data.length-1)),y=h-((v-lo)/range)*(h-4)-2;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+  const lv=data[data.length-1],lx=(data.length-1)*(w/(data.length-1)),ly=h-((lv-lo)/range)*(h-4)-2;
+  ctx.beginPath();ctx.arc(lx,ly,2.5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+}
+function drawSparklines(){
+  drawSpark('sp-error',sparkData.error,'#ff8c00');
+  drawSpark('sp-speed',sparkData.speed,'#00fff5');
+  drawSpark('sp-innov',sparkData.innov,'#a855f7');
+  drawSpark('sp-lat',sparkData.lat,'#00ff9d');
+}
 
-/* ── CANVAS SIZES ── */
-document.querySelectorAll('canvas.sparkline').forEach(cv=>{
-  cv.width=cv.offsetWidth*(window.devicePixelRatio||1);
-  cv.height=cv.offsetHeight*(window.devicePixelRatio||1);
-});
+/* ── SIM TICK ── */
+function simTick(ts){
+  if(state.paused){state.lastTs=ts;requestAnimationFrame(simTick);return;}
+  const dt=state.lastTs?Math.min((ts-state.lastTs)/1000,0.1):0.016;
+  state.lastTs=ts;
+
+  const cfg=CITIES[state.city];
+  const speedMs=(cfg.speedKmh/3.6)*state.simSpeed;
+  const routeLen=totalRouteLen(cfg.route);
+  state.t+=speedMs*dt/routeLen;
+  if(state.t>=1){state.t=0;state.truePts=[];state.drPts=[];state.corrPts=[];}
+  state.steps++;
+
+  const truePos=interpRoute(cfg.route,state.t);
+  state.heading=routeHeading(cfg.route,state.t);
+  state.speed=cfg.speedKmh*(0.9+0.2*Math.random());
+
+  // auto tunnel
+  if(config.autoTunnel){
+    const [tA,tB]=cfg.tunnelIdx;const n=cfg.route.length-1;const idxNow=state.t*n;
+    const inT=idxNow>=tA&&idxNow<=tB;
+    if(inT&&!state.inTunnel&&state.mode==='gnss'){state.inTunnel=true;state.tunnelEnteredByAuto=true;triggerOutage();}
+    if(!inT&&state.inTunnel&&state.tunnelEnteredByAuto&&state.mode==='dr'){state.inTunnel=false;state.tunnelEnteredByAuto=false;reacquireGnss();}
+  }
+
+  // DR update
+  if(state.mode==='dr'){
+    const sigma=0.00004;
+    state.drOffset[0]+=randn()*sigma*dt*30+state.drBias[0]*dt;
+    state.drOffset[1]+=randn()*sigma*dt*30+state.drBias[1]*dt;
+    state.drBias[0]+=(Math.random()-0.5)*0.000001;
+    state.drBias[1]+=(Math.random()-0.5)*0.000001;
+    state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
+  } else if(state.mode==='snap'){
+    const snapDur=3.0;const elapsed=state.snapStart?(ts-state.snapStart)/1000:0;
+    const f=Math.min(elapsed/snapDur,1);const ease=1-Math.pow(1-f,3);
+    state.drOffset=[state.snapFromOffset[0]*(1-ease),state.snapFromOffset[1]*(1-ease)];
+    state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
+    if(f>=1){state.mode='gnss';state.drOffset=[0,0];state.drAccErr=0;state.outageStart=null;updateModeUI();}
+  } else {
+    state.drOffset=[0,0];state.drAccErr=0;
+  }
+
+  const drPos=[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]];
+  const corrPos=(state.mode==='snap')?drPos:truePos;
+
+  if(state.steps%2===0){
+    state.truePts.push([...truePos]);state.drPts.push([...drPos]);state.corrPts.push([...corrPos]);
+    if(state.truePts.length>MAX_TRACK){state.truePts.shift();state.drPts.shift();state.corrPts.shift();}
+  }
+
+  // update Leaflet layers
+  trueTrack.setLatLngs(state.truePts);
+  drTrack.setLatLngs(state.drPts);
+  corrTrack.setLatLngs(state.corrPts);
+
+  const sigmaM=Math.max(1.5,state.drAccErr*0.4+1.5);
+  const uncPos=(state.mode==='dr'||state.mode==='snap')?drPos:truePos;
+  uncertaintyLayer.setLatLng(uncPos).setRadius(sigmaM*20);
+  uncertaintyLayer.setStyle({
+    color:state.mode==='gnss'?'#00fff5':'#ff8c00',
+    fillColor:state.mode==='gnss'?'#00fff5':'#ff8c00',
+    fillOpacity:state.mode==='gnss'?0.04:0.08,
+  });
+
+  const markerPos=state.mode==='dr'?drPos:truePos;
+  vehicleMarker.setLatLng(markerPos);
+  updateVehicleRotation(state.heading);
+
+  // DOM updates
+  const errM=state.drAccErr;
+  document.getElementById('m-speed').innerHTML=`${state.speed.toFixed(0)} <span class="metric-unit">km/h</span>`;
+  document.getElementById('m-heading').textContent=`${state.heading.toFixed(0)}°`;
+  document.getElementById('m-error').innerHTML=`${errM.toFixed(1)} <span class="metric-unit">m</span>`;
+  document.getElementById('m-sigma').innerHTML=`±${sigmaM.toFixed(1)} <span class="metric-unit">m</span>`;
+  document.getElementById('m-steps').textContent=state.steps.toLocaleString();
+  if(state.outageStart&&state.mode==='dr'){document.getElementById('m-outage-t').textContent=`${((ts-state.outageStart)/1000).toFixed(0)}s`;}
+  else document.getElementById('m-outage-t').textContent='—';
+
+  pushSpark(sparkData.error,errM);pushSpark(sparkData.speed,state.speed);
+  pushSpark(sparkData.innov,(randn()*0.5+state.drAccErr*0.05));pushSpark(sparkData.lat,10+randn()*3);
+  document.getElementById('sv-error').textContent=`${errM.toFixed(1)} m`;
+  document.getElementById('sv-speed').textContent=`${state.speed.toFixed(0)} km/h`;
+  document.getElementById('sv-innov').textContent=sparkData.innov[sparkData.innov.length-1]?.toFixed(2)??'0.00';
+  document.getElementById('sv-lat').textContent=`${(sparkData.lat[sparkData.lat.length-1]??12).toFixed(0)} ms`;
+
+  drawSparklines();
+  requestAnimationFrame(simTick);
+}
+
+// start immediately — Leaflet map is synchronous
+requestAnimationFrame(simTick);
+
+window.addEventListener('resize',()=>{ map.invalidateSize(); });
 </script>
 </body>
 </html>
