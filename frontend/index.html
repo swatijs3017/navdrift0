@@ -1377,8 +1377,9 @@ function simTick(ts){
     updateFleet(ts);
     drawHeatmap(ts);
 
-  } else {
-    // replay mode: update tracks and DOM outside the else block below
+  } // end non-replay else
+  if(replayMode) {
+    // replay mode: update tracks and DOM
     trueTrack.setLatLngs([[truePos[0],truePos[1]]]);
     drTrack.setLatLngs([[drPos[0],drPos[1]]]);
     corrTrack.setLatLngs([]);
