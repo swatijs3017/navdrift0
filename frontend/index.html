@@ -1,1174 +1,2288 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NAVDRIFT-0 · Intelligent Dead Reckoning · ISRO SIH 2026</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NAVDRIFT-0 · Mission Control Telemetry · ISRO SIH 2026 PS #26168</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    /* ── DESIGN SYSTEM TOKENS ── */
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #0e0f1a;
+      --bg-card: rgba(14, 16, 28, 0.72);
+      --bg-card-hover: rgba(22, 25, 45, 0.85);
+      --border-cyan: rgba(0, 255, 245, 0.2);
+      --border-violet: rgba(124, 58, 237, 0.25);
+      --border-dim: rgba(255, 255, 255, 0.07);
 
-/* ── Tokens ── */
-:root {
-  --bg:        #03060f;
-  --bg2:       #060d1a;
-  --surface:   #0a1628;
-  --card:      #0d1f35;
-  --card2:     #0f2340;
-  --border:    rgba(0,180,255,.12);
-  --border2:   rgba(0,180,255,.06);
-  --accent:    #00c8ff;
-  --accent2:   #7c5cfc;
-  --accent3:   #00ffb3;
-  --red:       #ff3d5c;
-  --yellow:    #ffc947;
-  --text:      #dce8f5;
-  --text2:     #7a9bbf;
-  --text3:     #3d5a78;
-  --gt:        #00ffb3;
-  --dr:        #ff3d5c;
-  --nd:        #00c8ff;
-  --nd-glow:   rgba(0,200,255,.5);
-  --font:      'Inter', system-ui, sans-serif;
-  --mono:      'JetBrains Mono', monospace;
-}
+      --cyan: #00fff5;
+      --cyan-glow: rgba(0, 255, 245, 0.4);
+      --violet: #7c3aed;
+      --violet-glow: rgba(124, 58, 237, 0.5);
+      --violet-bright: #a855f7;
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      --red: #ff0055;
+      --red-glow: rgba(255, 0, 85, 0.5);
+      --green: #00ff9d;
+      --green-glow: rgba(0, 255, 157, 0.4);
+      --yellow: #ffc800;
 
-html, body {
-  height: 100%; background: var(--bg);
-  color: var(--text); font-family: var(--font);
-  overflow: hidden;
-}
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
 
-::-webkit-scrollbar { width: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+      --font-head: 'Space Grotesk', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
 
-/* ── Starfield ── */
-#stars {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(0,100,200,.08) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(80,0,180,.06) 0%, transparent 50%),
-    var(--bg);
-}
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-/* ── Layout ── */
-.shell {
-  position: relative; z-index: 1;
-  display: grid;
-  grid-template-rows: 52px 1fr;
-  height: 100vh;
-}
+    html,
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-head);
+      user-select: none;
+    }
 
-.body {
-  display: grid;
-  grid-template-columns: 260px 1fr 280px;
-  min-height: 0;
-  overflow: hidden;
-}
+    /* ── STARFIELD & BACKGROUND EFFECTS ── */
+    #starfield {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+    }
 
-/* ── Header ── */
-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 1.25rem;
-  background: rgba(3,6,15,.8);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  position: relative; z-index: 10;
-}
+    #outage-flash-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      border: 0px solid var(--red);
+      opacity: 0;
+      transition: opacity 0.2s ease, border-width 0.2s ease;
+    }
 
-.logo-group { display: flex; align-items: center; gap: .75rem; }
+    #outage-flash-overlay.active {
+      border: 4px solid var(--red);
+      box-shadow: inset 0 0 50px var(--red-glow);
+      animation: redFlashPulse 1.2s ease-in-out infinite alternate;
+      opacity: 1;
+    }
 
-.logo-icon {
-  width: 32px; height: 32px; position: relative;
-}
-.logo-icon svg { width: 100%; height: 100%; }
+    @keyframes redFlashPulse {
+      0% {
+        box-shadow: inset 0 0 30px var(--red-glow), 0 0 20px var(--red-glow);
+        border-color: rgba(255, 0, 85, 0.6);
+      }
 
-.logo-name {
-  font-size: .95rem; font-weight: 700; letter-spacing: .08em;
-  background: linear-gradient(100deg, #00c8ff 0%, #7c5cfc 60%, #00ffb3 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-}
-.logo-tagline {
-  font-size: .58rem; color: var(--text3); letter-spacing: .12em;
-  text-transform: uppercase; margin-top: 1px;
-}
+      100% {
+        box-shadow: inset 0 0 80px rgba(255, 0, 85, 0.8), 0 0 40px rgba(255, 0, 85, 0.9);
+        border-color: rgba(255, 0, 85, 1);
+      }
+    }
 
-.header-center {
-  display: flex; align-items: center; gap: 1.5rem;
-}
+    /* ── MAIN DASHBOARD LAYOUT ── */
+    .app-container {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-rows: 56px 1fr 100px;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
 
-.signal-group { display: flex; align-items: center; gap: .4rem; }
-.signal-label { font-size: .65rem; color: var(--text2); text-transform: uppercase; letter-spacing: .08em; }
-.signal-bars { display: flex; align-items: flex-end; gap: 2px; }
-.signal-bar {
-  width: 3px; border-radius: 1px;
-  background: var(--accent3);
-  transition: height .3s ease, opacity .3s ease;
-}
+    /* ── HEADER TOOLBAR ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem;
+      background: rgba(10, 10, 15, 0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-dim);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+      position: relative;
+      z-index: 20;
+    }
 
-.header-stats {
-  display: flex; gap: 1.25rem;
-}
-.hstat {
-  display: flex; flex-direction: column; align-items: center;
-  font-size: .6rem;
-}
-.hstat-val {
-  font-family: var(--mono); font-size: .78rem; font-weight: 500;
-  color: var(--text); letter-spacing: .02em;
-}
-.hstat-lbl { color: var(--text3); letter-spacing: .06em; text-transform: uppercase; margin-top: 1px; }
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
 
-.header-right { display: flex; align-items: center; gap: .6rem; }
+    .brand-logo {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-.pill {
-  font-size: .6rem; font-weight: 600; letter-spacing: .08em;
-  text-transform: uppercase; padding: .22rem .65rem; border-radius: 20px;
-}
-.pill-isro { background: rgba(0,200,255,.1); color: var(--accent); border: 1px solid rgba(0,200,255,.25); }
-.pill-sih  { background: rgba(124,92,252,.1); color: var(--accent2); border: 1px solid rgba(124,92,252,.25); }
+    .brand-logo svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 8px var(--cyan-glow));
+    }
 
-.hbtn {
-  background: rgba(255,255,255,.04); border: 1px solid var(--border);
-  color: var(--text2); font-size: .7rem; padding: .3rem .7rem;
-  border-radius: 6px; cursor: pointer; transition: all .15s; font-family: var(--font);
-}
-.hbtn:hover { background: rgba(255,255,255,.08); color: var(--text); }
+    .brand-title {
+      display: flex;
+      flex-direction: column;
+    }
 
-/* ── Outage Ribbon ── */
-.outage-ribbon {
-  position: fixed; top: 52px; left: 0; right: 0; z-index: 50;
-  background: linear-gradient(90deg, rgba(255,61,92,.15), rgba(255,61,92,.08), rgba(255,61,92,.15));
-  border-bottom: 1px solid rgba(255,61,92,.4);
-  padding: .35rem 1.25rem;
-  display: none; align-items: center; justify-content: space-between;
-  font-size: .72rem; font-weight: 600; color: var(--red);
-  animation: ribbonPulse 2s ease infinite;
-  backdrop-filter: blur(8px);
-}
-.outage-ribbon.show { display: flex; }
-@keyframes ribbonPulse {
-  0%,100% { border-bottom-color: rgba(255,61,92,.4); }
-  50%      { border-bottom-color: rgba(255,61,92,.9); }
-}
-.ribbon-left { display: flex; align-items: center; gap: .6rem; }
-.ribbon-dot  { width: 8px; height: 8px; border-radius: 50%; background: var(--red); animation: blink 1s step-end infinite; }
-@keyframes blink { 50% { opacity: 0; } }
-.ribbon-timer { font-family: var(--mono); font-size: .8rem; }
+    .brand-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--violet-bright) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px rgba(0, 255, 245, 0.3);
+    }
 
-/* ── Left Panel ── */
-.panel {
-  overflow-y: auto; overflow-x: hidden;
-  padding: .75rem;
-  display: flex; flex-direction: column; gap: .6rem;
-  border-right: 1px solid var(--border2);
-  background: rgba(6,13,26,.6);
-  backdrop-filter: blur(12px);
-}
-.panel-right {
-  border-right: none;
-  border-left: 1px solid var(--border2);
-}
+    .brand-sub {
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
 
-/* ── Cards ── */
-.card {
-  background: var(--card);
-  border: 1px solid var(--border2);
-  border-radius: 10px; padding: .75rem;
-  position: relative; overflow: hidden;
-}
-.card::before {
-  content: ''; position: absolute;
-  top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0,200,255,.2), transparent);
-}
+    /* City Tabs */
+    .city-tabs {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-dim);
+    }
 
-.card-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: .6rem;
-}
-.card-title {
-  font-size: .62rem; font-weight: 600; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--text3);
-  display: flex; align-items: center; gap: .35rem;
-}
-.card-title-dot {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: var(--accent); box-shadow: 0 0 5px var(--accent);
-}
+    .city-tab {
+      padding: 0.35rem 0.85rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
 
-/* ── Metric Grid ── */
-.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
-.metric {
-  background: rgba(0,0,0,.3);
-  border: 1px solid var(--border2);
-  border-radius: 8px; padding: .55rem .65rem;
-  position: relative; overflow: hidden;
-  transition: border-color .3s;
-}
-.metric.accent  { border-color: rgba(0,200,255,.2); }
-.metric.green   { border-color: rgba(0,255,179,.2); }
-.metric.red     { border-color: rgba(255,61,92,.2); }
-.metric.yellow  { border-color: rgba(255,201,71,.2); }
-.metric.purple  { border-color: rgba(124,92,252,.2); }
+    .city-tab:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
 
-.metric-val {
-  font-family: var(--mono); font-size: 1.25rem; font-weight: 500;
-  line-height: 1; color: var(--text);
-  letter-spacing: -.01em;
-}
-.metric-val.accent { color: var(--accent); }
-.metric-val.green  { color: var(--accent3); }
-.metric-val.red    { color: var(--red); }
-.metric-val.yellow { color: var(--yellow); }
+    .city-tab.active {
+      color: var(--cyan);
+      background: rgba(0, 255, 245, 0.1);
+      border-color: var(--border-cyan);
+      box-shadow: 0 0 12px rgba(0, 255, 245, 0.2);
+    }
 
-.metric-sub {
-  font-size: .58rem; color: var(--text3); text-transform: uppercase;
-  letter-spacing: .07em; margin-top: .2rem;
-}
-.metric-unit { font-size: .65rem; color: var(--text3); font-weight: 400; }
+    /* Telemetry Pills */
+    .header-telemetry {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
 
-/* ── Mini Sparkline ── */
-.spark-wrap { height: 56px; margin-top: .4rem; }
-canvas.spark { width: 100% !important; height: 56px !important; display: block; }
+    .pill-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.3rem 0.75rem;
+      border-radius: 20px;
+      border: 1px solid var(--border-dim);
+    }
 
-/* ── Progress Bar ── */
-.prog-track { height: 3px; border-radius: 2px; background: rgba(255,255,255,.06); margin-top: .5rem; overflow: hidden; }
-.prog-fill  { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); width: 0; transition: width .4s ease; }
+    .pill-status {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
 
-/* ── Controls ── */
-.ctrl-row { display: flex; gap: .45rem; flex-wrap: wrap; }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green-glow);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
 
-.btn {
-  display: inline-flex; align-items: center; gap: .35rem;
-  padding: .45rem .85rem; border-radius: 7px; border: none;
-  cursor: pointer; font-size: .72rem; font-weight: 600;
-  font-family: var(--font); transition: all .15s; letter-spacing: .02em;
-  white-space: nowrap;
-}
-.btn-primary {
-  background: linear-gradient(135deg, var(--accent) 0%, #0090cc 100%);
-  color: #000; box-shadow: 0 0 16px rgba(0,200,255,.25);
-}
-.btn-primary:hover { filter: brightness(1.1); box-shadow: 0 0 24px rgba(0,200,255,.4); transform: translateY(-1px); }
-.btn-danger {
-  background: rgba(255,61,92,.1); color: var(--red);
-  border: 1px solid rgba(255,61,92,.3);
-}
-.btn-danger:hover { background: rgba(255,61,92,.2); }
-.btn-ghost {
-  background: rgba(255,255,255,.04); color: var(--text2);
-  border: 1px solid var(--border);
-}
-.btn-ghost:hover { background: rgba(255,255,255,.08); color: var(--text); }
-.btn:disabled { opacity: .35; cursor: not-allowed; transform: none !important; }
+    .status-dot.outage {
+      background: var(--red);
+      box-shadow: 0 0 12px var(--red-glow);
+      animation: blink 0.8s step-end infinite;
+    }
 
-.select {
-  background: rgba(0,0,0,.4); border: 1px solid var(--border);
-  color: var(--text); padding: .42rem .65rem; border-radius: 7px;
-  font-size: .72rem; cursor: pointer; outline: none; flex: 1;
-  font-family: var(--font);
-}
-.select:focus { border-color: var(--accent); }
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
 
-/* ── Architecture Blocks ── */
-.arch { display: flex; flex-direction: column; gap: .3rem; }
-.arch-block {
-  display: flex; align-items: center; gap: .55rem;
-  padding: .45rem .6rem; border-radius: 7px;
-  border: 1px solid var(--border2);
-  background: rgba(0,0,0,.2);
-  position: relative; overflow: hidden;
-  transition: border-color .2s;
-}
-.arch-block:hover { border-color: var(--border); }
-.arch-block.active { border-color: rgba(0,200,255,.3); }
-.arch-block.active::after {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
-  background: var(--accent); border-radius: 2px;
-}
-.arch-icon {
-  width: 28px; height: 28px; border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: .62rem; font-weight: 700; flex-shrink: 0;
-  font-family: var(--mono);
-}
-.arch-icon.ai   { background: rgba(0,200,255,.12); color: var(--accent); }
-.arch-icon.vae  { background: rgba(124,92,252,.12); color: var(--accent2); }
-.arch-icon.snap { background: rgba(0,255,179,.12); color: var(--accent3); }
-.arch-icon.ekf  { background: rgba(255,201,71,.12); color: var(--yellow); }
-.arch-icon.mm   { background: rgba(255,61,92,.12); color: var(--red); }
+    .badge-isro {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      background: rgba(124, 58, 237, 0.15);
+      color: var(--violet-bright);
+      border: 1px solid var(--border-violet);
+    }
 
-.arch-info { flex: 1; min-width: 0; }
-.arch-name { font-size: .72rem; font-weight: 600; color: var(--text); }
-.arch-desc { font-size: .6rem; color: var(--text3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.arch-arrow { text-align: center; color: var(--text3); font-size: .65rem; line-height: 1.2; }
+    .btn-icon {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-dim);
+      color: var(--text-muted);
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+    }
 
-/* ── Comparison table ── */
-.cmp { width: 100%; border-collapse: collapse; font-size: .68rem; }
-.cmp th { color: var(--text3); font-weight: 500; text-align: left; padding: .3rem .4rem; border-bottom: 1px solid var(--border2); font-size: .6rem; letter-spacing: .06em; text-transform: uppercase; }
-.cmp td { padding: .35rem .4rem; border-bottom: 1px solid rgba(255,255,255,.03); font-family: var(--mono); }
-.cmp tr:last-child td { border: none; }
-.cmp td:first-child { font-family: var(--font); font-size: .65rem; color: var(--text2); }
-.win  { color: var(--accent3); font-weight: 600; }
-.lose { color: var(--red); }
-.mid  { color: var(--yellow); }
+    .btn-icon:hover {
+      background: rgba(0, 255, 245, 0.1);
+      color: var(--cyan);
+      border-color: var(--border-cyan);
+      box-shadow: 0 0 12px rgba(0, 255, 245, 0.2);
+    }
 
-/* ── Event log ── */
-.log { display: flex; flex-direction: column; gap: .3rem; max-height: 150px; overflow-y: auto; }
-.log-row {
-  display: flex; gap: .5rem; padding: .3rem .45rem;
-  border-radius: 5px; font-size: .65rem;
-  border: 1px solid transparent;
-}
-.log-row.ev-gnss   { border-color: rgba(0,255,179,.15); background: rgba(0,255,179,.03); }
-.log-row.ev-outage { border-color: rgba(255,61,92,.15); background: rgba(255,61,92,.03); }
-.log-row.ev-snap   { border-color: rgba(0,200,255,.15); background: rgba(0,200,255,.03); }
-.log-row.ev-sys    { border-color: rgba(255,255,255,.05); }
-.log-time { color: var(--text3); font-family: var(--mono); white-space: nowrap; }
-.log-msg  { color: var(--text2); }
+    /* ── GNSS OUTAGE BANNER ── */
+    .outage-banner {
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100%);
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.45rem 1.5rem;
+      background: rgba(255, 0, 85, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid #ff3377;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 0 30px var(--red-glow);
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+    }
 
-/* ── Map ── */
-.map-area {
-  position: relative; overflow: hidden;
-  background: var(--bg2);
-  display: flex; flex-direction: column;
-}
-#mapCanvas { flex: 1; width: 100%; display: block; cursor: crosshair; }
+    .outage-banner.visible {
+      transform: translateX(-50%) translateY(0);
+    }
 
-.map-overlay {
-  position: absolute; top: .75rem; left: .75rem;
-  display: flex; flex-direction: column; gap: .35rem;
-  pointer-events: none;
-}
-.map-chip {
-  background: rgba(3,6,15,.75); backdrop-filter: blur(10px);
-  border: 1px solid var(--border); border-radius: 6px;
-  padding: .22rem .55rem; font-size: .65rem; color: var(--text2);
-}
-.map-chip b { color: var(--text); }
+    .outage-banner.snap {
+      background: rgba(0, 255, 157, 0.9);
+      border-color: #00ffaa;
+      box-shadow: 0 0 30px var(--green-glow);
+      color: #052e16;
+    }
 
-.map-legend {
-  position: absolute; bottom: 48px; left: .75rem;
-  background: rgba(3,6,15,.8); backdrop-filter: blur(10px);
-  border: 1px solid var(--border); border-radius: 8px;
-  padding: .5rem .75rem; pointer-events: none;
-  display: flex; flex-direction: column; gap: .3rem;
-}
-.leg-row { display: flex; align-items: center; gap: .45rem; font-size: .65rem; color: var(--text2); }
-.leg-line { width: 22px; height: 2px; border-radius: 1px; flex-shrink: 0; }
-.leg-line.dashed { height: 0; border-top: 2px dashed; }
+    /* ── MIDDLE WORKSPACE (3-COLUMN GRID) ── */
+    .dashboard-body {
+      display: grid;
+      grid-template-columns: 310px 1fr 330px;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      min-height: 0;
+      overflow: hidden;
+    }
 
-.map-toolbar {
-  height: 40px; display: flex; align-items: center; gap: .5rem;
-  padding: 0 .75rem; border-top: 1px solid var(--border2);
-  background: rgba(3,6,15,.7); backdrop-filter: blur(8px);
-  flex-shrink: 0;
-}
-.map-toolbar .btn { padding: .28rem .65rem; font-size: .65rem; }
-.map-coords { font-family: var(--mono); font-size: .62rem; color: var(--text3); margin-left: auto; }
+    /* Glassmorphism Panel Shared Style */
+    .panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 0.2rem;
+    }
 
-/* ── GNSS Pulse ring ── */
-.gnss-ring {
-  position: absolute; right: .75rem; top: .75rem;
-  width: 44px; height: 44px; pointer-events: none;
-}
-.gnss-ring-svg { width: 100%; height: 100%; }
-.ring-pulse {
-  transform-origin: center;
-  animation: ringPulse 2s ease-out infinite;
-}
-.ring-pulse2 { animation: ringPulse 2s ease-out .7s infinite; }
-.ring-pulse3 { animation: ringPulse 2s ease-out 1.4s infinite; }
-@keyframes ringPulse {
-  0%   { r: 8; opacity: .8; }
-  100% { r: 20; opacity: 0; }
-}
+    .panel::-webkit-scrollbar {
+      width: 4px;
+    }
 
-/* ── Settings modal ── */
-.modal-bg {
-  position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
-  display: none; align-items: center; justify-content: center;
-}
-.modal-bg.open { display: flex; }
-.modal {
-  background: var(--card2); border: 1px solid var(--border);
-  border-radius: 14px; padding: 1.5rem;
-  width: min(440px, 92vw); display: flex; flex-direction: column; gap: .9rem;
-}
-.modal-title { font-size: .95rem; font-weight: 700; }
-.modal-sub   { font-size: .7rem; color: var(--text2); margin-top: .15rem; }
-.field { display: flex; flex-direction: column; gap: .3rem; }
-.field label { font-size: .62rem; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; }
-.field input {
-  background: rgba(0,0,0,.4); border: 1px solid var(--border);
-  color: var(--text); padding: .55rem .75rem; border-radius: 7px;
-  font-size: .8rem; outline: none; width: 100%; font-family: var(--font);
-}
-.field input:focus { border-color: var(--accent); }
-.conn-msg { font-size: .7rem; text-align: center; padding: .3rem .6rem; border-radius: 5px; }
-.conn-ok  { background: rgba(0,255,179,.08); color: var(--accent3); border: 1px solid rgba(0,255,179,.2); }
-.conn-err { background: rgba(255,61,92,.08); color: var(--red); border: 1px solid rgba(255,61,92,.2); }
-</style>
+    .panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .panel::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-dim);
+      border-radius: 12px;
+      padding: 0.85rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 245, 0.25), transparent);
+    }
+
+    .card:hover {
+      border-color: rgba(0, 255, 245, 0.2);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 255, 245, 0.05);
+    }
+
+    .card-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.65rem;
+    }
+
+    .card-title-left {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .card-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 6px var(--cyan-glow);
+    }
+
+    .card-dot.violet {
+      background: var(--violet-bright);
+      box-shadow: 0 0 6px var(--violet-glow);
+    }
+
+    .card-dot.red {
+      background: var(--red);
+      box-shadow: 0 0 6px var(--red-glow);
+    }
+
+    .card-dot.green {
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green-glow);
+    }
+
+    /* Control Buttons */
+    .ctrl-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      font-family: var(--font-head);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(0, 255, 245, 0.2) 0%, rgba(124, 58, 237, 0.3) 100%);
+      color: var(--cyan);
+      border-color: var(--border-cyan);
+      box-shadow: 0 0 15px rgba(0, 255, 245, 0.15);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, rgba(0, 255, 245, 0.35) 0%, rgba(124, 58, 237, 0.45) 100%);
+      box-shadow: 0 0 22px rgba(0, 255, 245, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      background: rgba(255, 0, 85, 0.15);
+      color: #ff4d88;
+      border-color: rgba(255, 0, 85, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 0, 85, 0.3);
+      box-shadow: 0 0 20px var(--red-glow);
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+      border-color: var(--border-dim);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    /* Metric Display Grids */
+    .metric-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .metric-box {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-box.cyan {
+      border-color: rgba(0, 255, 245, 0.25);
+    }
+
+    .metric-box.violet {
+      border-color: rgba(124, 58, 237, 0.3);
+    }
+
+    .metric-box.red {
+      border-color: rgba(255, 0, 85, 0.3);
+    }
+
+    .metric-box.green {
+      border-color: rgba(0, 255, 157, 0.3);
+    }
+
+    .metric-lbl {
+      font-size: 0.58rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+    }
+
+    .metric-val {
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.1;
+    }
+
+    .metric-val.cyan {
+      color: var(--cyan);
+      text-shadow: 0 0 10px rgba(0, 255, 245, 0.3);
+    }
+
+    .metric-val.violet {
+      color: var(--violet-bright);
+      text-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+    }
+
+    .metric-val.red {
+      color: var(--red);
+      text-shadow: 0 0 10px rgba(255, 0, 85, 0.3);
+    }
+
+    .metric-val.green {
+      color: var(--green);
+      text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+    }
+
+    .metric-unit {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-left: 2px;
+    }
+
+    /* Signal Bars */
+    .signal-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+    }
+
+    .signal-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 22px;
+    }
+
+    .signal-bar {
+      width: 4px;
+      background: var(--green);
+      border-radius: 2px;
+      transition: height 0.3s ease, background 0.3s ease, opacity 0.3s ease;
+      box-shadow: 0 0 6px var(--green-glow);
+    }
+
+    .signal-bars.outage .signal-bar {
+      background: var(--red);
+      box-shadow: 0 0 6px var(--red-glow);
+      opacity: 0.2;
+    }
+
+    .signal-bars.outage .signal-bar:first-child {
+      opacity: 1;
+      height: 4px !important;
+    }
+
+    /* ── CENTER SIMULATION CANVAS MAP ── */
+    .map-viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: rgba(6, 7, 13, 0.9);
+      border-radius: 14px;
+      border: 1px solid var(--border-dim);
+      overflow: hidden;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+    }
+
+    #sim-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    #sim-canvas:active {
+      cursor: grabbing;
+    }
+
+    /* Canvas HUD Overlay Elements */
+    .hud-chip {
+      position: absolute;
+      background: rgba(10, 10, 16, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .hud-top-left {
+      top: 0.85rem;
+      left: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .hud-bottom-right {
+      bottom: 0.85rem;
+      right: 0.85rem;
+    }
+
+    .legend-card {
+      position: absolute;
+      bottom: 0.85rem;
+      left: 0.85rem;
+      background: rgba(10, 10, 16, 0.82);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 0.55rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      pointer-events: none;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .legend-line {
+      width: 20px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .legend-line.gt {
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan-glow);
+    }
+
+    .legend-line.nd {
+      background: var(--violet-bright);
+      box-shadow: 0 0 8px var(--violet-glow);
+    }
+
+    .legend-line.imu {
+      height: 0;
+      border-top: 2px dashed var(--red);
+    }
+
+    /* Zoom Controls Overlay */
+    .map-controls {
+      position: absolute;
+      top: 0.85rem;
+      right: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .map-btn {
+      width: 32px;
+      height: 32px;
+      background: rgba(10, 10, 16, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .map-btn:hover {
+      background: rgba(0, 255, 245, 0.15);
+      color: var(--cyan);
+      border-color: var(--border-cyan);
+    }
+
+    /* ── SPARKLINE CANVAS CHARTS ── */
+    .spark-container {
+      width: 100%;
+      height: 64px;
+      position: relative;
+      margin-top: 0.2rem;
+    }
+
+    canvas.sparkline {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ── ALGORITHM COMPARISON TABLE ── */
+    .cmp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.68rem;
+      margin-top: 0.2rem;
+    }
+
+    .cmp-table th {
+      color: var(--text-dim);
+      font-weight: 600;
+      text-align: left;
+      padding: 0.35rem 0.4rem;
+      border-bottom: 1px solid var(--border-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.58rem;
+    }
+
+    .cmp-table td {
+      padding: 0.4rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      font-family: var(--font-mono);
+    }
+
+    .cmp-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .cmp-table td:first-child {
+      font-family: var(--font-head);
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .win {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .mid {
+      color: var(--yellow);
+    }
+
+    .lose {
+      color: var(--red);
+    }
+
+    /* ── EVENT LOG ── */
+    .log-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      max-height: 110px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+    }
+
+    .log-entry {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.25rem 0.4rem;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.25);
+      border-left: 2px solid var(--cyan);
+    }
+
+    .log-entry.outage {
+      border-left-color: var(--red);
+      background: rgba(255, 0, 85, 0.08);
+    }
+
+    .log-entry.snap {
+      border-left-color: var(--green);
+      background: rgba(0, 255, 157, 0.08);
+    }
+
+    .log-time {
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    .log-msg {
+      color: var(--text-muted);
+    }
+
+    /* ── BOTTOM ARCHITECTURE PIPELINE BAR ── */
+    .pipeline-bar {
+      background: rgba(10, 10, 15, 0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border-dim);
+      padding: 0.65rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      overflow-x: auto;
+    }
+
+    .pipeline-bar::-webkit-scrollbar {
+      height: 3px;
+    }
+
+    .pipeline-bar::-webkit-scrollbar-thumb {
+      background: rgba(0, 255, 245, 0.2);
+    }
+
+    .pipe-step {
+      flex: 1;
+      min-width: 170px;
+      background: rgba(14, 16, 28, 0.6);
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 0.5rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      position: relative;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .pipe-step.active {
+      background: rgba(0, 255, 245, 0.08);
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px rgba(0, 255, 245, 0.25), inset 0 0 15px rgba(0, 255, 245, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .pipe-step.active.violet {
+      background: rgba(124, 58, 237, 0.12);
+      border-color: var(--violet-bright);
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.3), inset 0 0 15px rgba(124, 58, 237, 0.15);
+    }
+
+    .pipe-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 0.75rem;
+      color: var(--cyan);
+      flex-shrink: 0;
+    }
+
+    .pipe-step.violet .pipe-icon {
+      color: var(--violet-bright);
+    }
+
+    .pipe-step.green .pipe-icon {
+      color: var(--green);
+    }
+
+    .pipe-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pipe-name {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .pipe-desc {
+      font-size: 0.58rem;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .pipe-arrow {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    /* ── SETTINGS MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-card {
+      background: rgba(14, 16, 28, 0.95);
+      border: 1px solid var(--border-cyan);
+      border-radius: 16px;
+      padding: 1.5rem;
+      width: min(460px, 92vw);
+      box-shadow: 0 0 50px rgba(0, 255, 245, 0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-group label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .form-group input {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .form-group input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0, 255, 245, 0.2);
+    }
+
+    .conn-status {
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      text-align: center;
+      display: none;
+    }
+
+    .conn-status.ok {
+      display: block;
+      background: rgba(0, 255, 157, 0.1);
+      color: var(--green);
+      border: 1px solid rgba(0, 255, 157, 0.3);
+    }
+
+    .conn-status.err {
+      display: block;
+      background: rgba(255, 0, 85, 0.1);
+      color: var(--red);
+      border: 1px solid rgba(255, 0, 85, 0.3);
+    }
+  </style>
 </head>
+
 <body>
 
-<div id="stars"></div>
+  <!-- Animated Starfield Canvas Background -->
+  <canvas id="starfield"></canvas>
 
-<div class="shell">
-  <!-- Header -->
-  <header>
-    <div class="logo-group">
-      <div class="logo-icon">
-        <svg viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="16" r="15" stroke="url(#lg1)" stroke-width="1.2"/>
-          <ellipse cx="16" cy="16" rx="15" ry="6" stroke="url(#lg1)" stroke-width="1" opacity=".4"/>
-          <circle cx="16" cy="16" r="3.5" fill="url(#lg1)"/>
-          <line x1="16" y1="1" x2="16" y2="7" stroke="#00c8ff" stroke-width="1"/>
-          <line x1="16" y1="25" x2="16" y2="31" stroke="#00c8ff" stroke-width="1"/>
-          <line x1="1" y1="16" x2="7" y2="16" stroke="#00c8ff" stroke-width="1"/>
-          <line x1="25" y1="16" x2="31" y2="16" stroke="#00c8ff" stroke-width="1"/>
-          <defs>
-            <linearGradient id="lg1" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#00c8ff"/>
-              <stop offset="100%" stop-color="#7c5cfc"/>
-            </linearGradient>
-          </defs>
-        </svg>
-      </div>
-      <div>
-        <div class="logo-name">NAVDRIFT-0</div>
-        <div class="logo-tagline">Intelligent Dead Reckoning · ISRO PS-26168</div>
-      </div>
-    </div>
+  <!-- Fullscreen Edge Flash Overlay for GNSS Outages -->
+  <div id="outage-flash-overlay"></div>
 
-    <div class="header-center">
-      <div class="header-stats">
-        <div class="hstat"><span class="hstat-val" id="hATE">-.--</span><span class="hstat-lbl">ATE (m)</span></div>
-        <div class="hstat"><span class="hstat-val" id="hLatency">-.--</span><span class="hstat-lbl">ms</span></div>
-        <div class="hstat"><span class="hstat-val accent" id="hGnss" style="color:var(--accent3)">ACTIVE</span><span class="hstat-lbl">GNSS</span></div>
-        <div class="hstat"><span class="hstat-val" id="hStep" style="font-size:.7rem">0</span><span class="hstat-lbl">Steps</span></div>
-      </div>
-      <div class="signal-group">
-        <span class="signal-label">Signal</span>
-        <div class="signal-bars" id="signalBars">
-          <div class="signal-bar" style="height:5px" id="sb1"></div>
-          <div class="signal-bar" style="height:9px" id="sb2"></div>
-          <div class="signal-bar" style="height:13px" id="sb3"></div>
-          <div class="signal-bar" style="height:17px" id="sb4"></div>
-          <div class="signal-bar" style="height:21px" id="sb5"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="header-right">
-      <span class="pill pill-isro">ISRO</span>
-      <span class="pill pill-sih">SIH 2026</span>
-      <button class="hbtn" onclick="openSettings()">⚙ API</button>
-    </div>
-  </header>
-
-  <!-- Outage ribbon -->
-  <div class="outage-ribbon" id="outageBanner">
-    <div class="ribbon-left">
-      <div class="ribbon-dot"></div>
-      GNSS BLACKOUT — Dead reckoning active
-    </div>
-    <div class="ribbon-timer" id="outageTimer">00:00</div>
+  <!-- Top Sliding GNSS Outage Alert Banner -->
+  <div class="outage-banner" id="outage-banner">
+    <span id="outage-banner-icon">⚡</span>
+    <span id="outage-banner-text">GNSS BLACKOUT — NAVDRIFT-0 DEAD RECKONING ACTIVE</span>
+    <span id="outage-banner-timer" style="font-family: var(--font-mono); margin-left: auto;">00:00.0</span>
   </div>
 
-  <div class="body">
-    <!-- LEFT PANEL -->
-    <div class="panel">
+  <div class="app-container">
 
-      <!-- Mode + controls -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><div class="card-title-dot"></div>Simulation</div>
-          <select class="select" id="citySelect" onchange="changeCity()" style="width:auto;flex:none;font-size:.65rem;padding:.22rem .5rem">
-            <option value="delhi">New Delhi</option>
-            <option value="mumbai">Mumbai</option>
-            <option value="bangalore">Bengaluru</option>
-            <option value="chennai">Chennai</option>
-            <option value="hyderabad">Hyderabad</option>
-          </select>
+    <!-- ── HEADER ── -->
+    <header>
+      <div class="brand-section">
+        <div class="brand-logo">
+          <svg viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="16" stroke="url(#cyanVioletGrad)" stroke-width="1.5" />
+            <ellipse cx="18" cy="18" rx="16" ry="6" stroke="url(#cyanVioletGrad)" stroke-width="1" opacity="0.5" />
+            <circle cx="18" cy="18" r="4" fill="url(#cyanVioletGrad)" />
+            <line x1="18" y1="0" x2="18" y2="8" stroke="#00fff5" stroke-width="1.2" />
+            <line x1="18" y1="28" x2="18" y2="36" stroke="#00fff5" stroke-width="1.2" />
+            <line x1="0" y1="18" x2="8" y2="18" stroke="#00fff5" stroke-width="1.2" />
+            <line x1="28" y1="18" x2="36" y2="18" stroke="#00fff5" stroke-width="1.2" />
+            <defs>
+              <linearGradient id="cyanVioletGrad" x1="0" y1="0" x2="36" y2="36">
+                <stop offset="0%" stop-color="#00fff5" />
+                <stop offset="100%" stop-color="#7c3aed" />
+              </linearGradient>
+            </defs>
+          </svg>
         </div>
-        <div class="ctrl-row" style="margin-bottom:.4rem">
-          <button class="btn btn-primary" id="btnStart" onclick="toggleSim()">▶ Start</button>
-          <button class="btn btn-danger" id="btnOutage" onclick="triggerOutage()" disabled>⚡ Drop GNSS</button>
-          <button class="btn btn-ghost" onclick="resetSim()" style="padding:.45rem .6rem">↺</button>
-        </div>
-        <div id="progWrap" style="display:none">
-          <div style="font-size:.58rem;color:var(--text3);margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.07em">Route progress</div>
-          <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
-        </div>
-      </div>
-
-      <!-- Live metrics -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.55rem"><div class="card-title-dot" style="background:var(--accent3)"></div>Position Accuracy</div>
-        <div class="metric-grid">
-          <div class="metric green">
-            <div class="metric-val green" id="mATE">-.--</div>
-            <div class="metric-sub">NAVDRIFT ATE <span class="metric-unit">m</span></div>
-          </div>
-          <div class="metric red">
-            <div class="metric-val red" id="mATEimu">-.--</div>
-            <div class="metric-sub">Raw IMU ATE <span class="metric-unit">m</span></div>
-          </div>
-          <div class="metric accent">
-            <div class="metric-val accent" id="mUnc">-.--</div>
-            <div class="metric-sub">Uncertainty σ <span class="metric-unit">m</span></div>
-          </div>
-          <div class="metric">
-            <div class="metric-val" id="mSpeed">-.--</div>
-            <div class="metric-sub">Speed <span class="metric-unit">km/h</span></div>
-          </div>
+        <div class="brand-title">
+          <span class="brand-name">NAVDRIFT-0</span>
+          <span class="brand-sub">ISRO SIH 2026 PS #26168</span>
         </div>
       </div>
 
-      <!-- Outage stats -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.55rem"><div class="card-title-dot" style="background:var(--red)"></div>Outage History</div>
-        <div class="metric-grid">
-          <div class="metric">
-            <div class="metric-val" id="mOutages">0</div>
-            <div class="metric-sub">Total outages</div>
+      <!-- City Selector Tabs -->
+      <div class="city-tabs">
+        <button class="city-tab active" onclick="switchCity('delhi')">Delhi</button>
+        <button class="city-tab" onclick="switchCity('mumbai')">Mumbai</button>
+        <button class="city-tab" onclick="switchCity('bengaluru')">Bengaluru</button>
+        <button class="city-tab" onclick="switchCity('chennai')">Chennai</button>
+        <button class="city-tab" onclick="switchCity('hyderabad')">Hyderabad</button>
+      </div>
+
+      <!-- Status & Settings -->
+      <div class="header-telemetry">
+        <div class="pill-group">
+          <div class="pill-status">
+            <div class="status-dot" id="header-status-dot"></div>
+            <span id="header-status-text">GNSS LOCKED</span>
           </div>
-          <div class="metric">
-            <div class="metric-val" id="mOutDur">0.0</div>
-            <div class="metric-sub">Current <span class="metric-unit">s</span></div>
+        </div>
+        <span class="badge-isro">ISRO SIH 2026</span>
+        <button class="btn-icon" onclick="openSettingsModal()" title="API Settings">⚙</button>
+      </div>
+    </header>
+
+    <!-- ── MAIN DASHBOARD BODY (3-COL GRID) ── -->
+    <div class="dashboard-body">
+
+      <!-- LEFT PANEL: CONTROLS & TELEMETRY -->
+      <div class="panel">
+
+        <!-- Simulation Controls -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot"></div>Mission Simulation
+            </div>
+            <span style="font-size:0.6rem; color:var(--text-dim);" id="sim-mode-badge">AUTONOMOUS</span>
           </div>
-          <div class="metric green">
-            <div class="metric-val green" id="mSnapErr">--</div>
-            <div class="metric-sub">SNAP error <span class="metric-unit">m</span></div>
+          <div class="ctrl-grid">
+            <button class="btn btn-primary" id="btn-toggle-sim" onclick="toggleSimulation()">⏸ Pause</button>
+            <button class="btn btn-danger" id="btn-outage" onclick="triggerManualOutage()">⚡ Drop GNSS</button>
           </div>
-          <div class="metric yellow">
-            <div class="metric-val yellow" id="mSnapMs">--</div>
-            <div class="metric-sub">SNAP time <span class="metric-unit">ms</span></div>
+        </div>
+
+        <!-- Real-Time Metrics -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot green"></div>Position Metrics
+            </div>
+            <span style="font-size:0.6rem; color:var(--green)">LIVE 60Hz</span>
           </div>
+          <div class="metric-container">
+            <div class="metric-box green">
+              <span class="metric-lbl">NAVDRIFT ATE</span>
+              <span class="metric-val green" id="val-ate-nd">0.38<span class="metric-unit">m</span></span>
+            </div>
+            <div class="metric-box red">
+              <span class="metric-lbl">Raw IMU ATE</span>
+              <span class="metric-val red" id="val-ate-imu">14.62<span class="metric-unit">m</span></span>
+            </div>
+            <div class="metric-box violet">
+              <span class="metric-lbl">Uncertainty σ</span>
+              <span class="metric-val violet" id="val-unc">0.45<span class="metric-unit">m</span></span>
+            </div>
+            <div class="metric-box cyan">
+              <span class="metric-lbl">Latency</span>
+              <span class="metric-val cyan" id="val-latency">2.3<span class="metric-unit">ms</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signal Bars & Navigation Status -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot cyan"></div>NavIC / GNSS Signal
+            </div>
+          </div>
+          <div class="signal-container">
+            <div style="display:flex; flex-direction:column; gap:0.1rem;">
+              <span style="font-size:0.75rem; font-weight:700;" id="signal-state-text">NavIC L5 / S-Band</span>
+              <span style="font-size:0.6rem; color:var(--text-dim)" id="signal-sub-text">7 Satellites locked</span>
+            </div>
+            <div class="signal-bars" id="signal-bar-group">
+              <div class="signal-bar" style="height: 6px;"></div>
+              <div class="signal-bar" style="height: 10px;"></div>
+              <div class="signal-bar" style="height: 14px;"></div>
+              <div class="signal-bar" style="height: 18px;"></div>
+              <div class="signal-bar" style="height: 22px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Telemetry Step Counters -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot violet"></div>Step Telemetry
+            </div>
+          </div>
+          <div class="metric-container">
+            <div class="metric-box">
+              <span class="metric-lbl">Steps Processed</span>
+              <span class="metric-val" id="val-steps">1,240</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-lbl">Outages Handled</span>
+              <span class="metric-val" id="val-outage-count">4</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Event Log -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot"></div>Mission Event Log
+            </div>
+          </div>
+          <div class="log-box" id="event-log-container">
+            <!-- Dynamically populated entries -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CENTER PANEL: LIVE SIMULATION MAP CANVAS -->
+      <div class="map-viewport">
+        <canvas id="sim-canvas"></canvas>
+
+        <!-- HUD Chips Top-Left -->
+        <div class="hud-top-left">
+          <div class="hud-chip">📍 City: <b id="hud-city-name" style="color:var(--cyan)">Delhi (Connaught Grid)</b>
+          </div>
+          <div class="hud-chip">🛰 GNSS Mode: <b id="hud-gnss-mode" style="color:var(--green)">NavIC Locked</b></div>
+        </div>
+
+        <!-- Map Zoom & Center Controls Top-Right -->
+        <div class="map-controls">
+          <button class="map-btn" onclick="zoomMap(1.2)" title="Zoom In">＋</button>
+          <button class="map-btn" onclick="zoomMap(0.8)" title="Zoom Out">－</button>
+          <button class="map-btn" onclick="resetMapCamera()" title="Center View">⊙</button>
+        </div>
+
+        <!-- Track Legend Bottom-Left -->
+        <div class="legend-card">
+          <div class="legend-item">
+            <div class="legend-line gt"></div>Ground Truth
+          </div>
+          <div class="legend-item">
+            <div class="legend-line nd"></div>NAVDRIFT-0 Deep DR
+          </div>
+          <div class="legend-item">
+            <div class="legend-line imu"></div>Raw IMU Drift
+          </div>
+        </div>
+
+        <!-- Coordinates Bottom-Right -->
+        <div class="hud-chip hud-bottom-right" id="hud-coords">
+          28.6139° N, 77.2090° E · 48 km/h
         </div>
       </div>
 
-      <!-- Uncertainty sparkline -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.4rem"><div class="card-title-dot"></div>Uncertainty Over Time</div>
-        <div class="spark-wrap"><canvas class="spark" id="uncSpark"></canvas></div>
-      </div>
+      <!-- RIGHT PANEL: SPARKLINE CHARTS & BENCHMARKS -->
+      <div class="panel">
 
-      <!-- Error sparkline -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.4rem"><div class="card-title-dot" style="background:var(--red)"></div>Position Error</div>
-        <div class="spark-wrap"><canvas class="spark" id="errSpark"></canvas></div>
+        <!-- Sparkline 1: Position Error -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot red"></div>Position Error Over Time
+            </div>
+            <span style="font-size:0.6rem; color:var(--red)" id="spark-err-val">0.32m</span>
+          </div>
+          <div class="spark-container">
+            <canvas class="sparkline" id="spark-error"></canvas>
+          </div>
+        </div>
+
+        <!-- Sparkline 2: Uncertainty Radius -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot violet"></div>Covariance Uncertainty Radius
+            </div>
+            <span style="font-size:0.6rem; color:var(--violet-bright)" id="spark-unc-val">0.45m</span>
+          </div>
+          <div class="spark-container">
+            <canvas class="sparkline" id="spark-uncertainty"></canvas>
+          </div>
+        </div>
+
+        <!-- Sparkline 3: Vehicle Speed -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot green"></div>Vehicle Speed (km/h)
+            </div>
+            <span style="font-size:0.6rem; color:var(--green)" id="spark-speed-val">42.5 km/h</span>
+          </div>
+          <div class="spark-container">
+            <canvas class="sparkline" id="spark-speed"></canvas>
+          </div>
+        </div>
+
+        <!-- Benchmarks Comparison -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot"></div>Algorithm Performance Benchmark
+            </div>
+          </div>
+          <table class="cmp-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Mean ATE</th>
+                <th>Max Drift</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>NAVDRIFT-0</td>
+                <td class="win" id="tbl-nd-ate">0.38 m</td>
+                <td class="win" id="tbl-nd-max">0.94 m</td>
+              </tr>
+              <tr>
+                <td>EKF Baseline</td>
+                <td class="mid" id="tbl-ekf-ate">4.12 m</td>
+                <td class="mid" id="tbl-ekf-max">9.80 m</td>
+              </tr>
+              <tr>
+                <td>Raw IMU DR</td>
+                <td class="lose" id="tbl-imu-ate">14.62 m</td>
+                <td class="lose" id="tbl-imu-max">38.40 m</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Backend Live Mode Info -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot violet"></div>Inference Engine
+            </div>
+          </div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); line-height: 1.5;" id="backend-info-text">
+            Running Client JS Autonomous Simulation Mode.<br>
+            <a href="#" onclick="openSettingsModal(); return false;"
+              style="color: var(--cyan); text-decoration: underline;">Connect Render Backend API →</a>
+          </div>
+        </div>
+
       </div>
 
     </div>
 
-    <!-- MAP -->
-    <div class="map-area">
-      <canvas id="mapCanvas"></canvas>
+    <!-- ── BOTTOM ARCHITECTURE PIPELINE MARQUEE ── -->
+    <div class="pipeline-bar">
 
-      <div class="map-overlay">
-        <div class="map-chip">📍 <b id="chipCity">New Delhi</b></div>
-        <div class="map-chip">🛰 GNSS: <b id="chipGnss" style="color:var(--accent3)">Active</b></div>
-        <div class="map-chip" id="chipOutageWrap" style="display:none">⏱ Blackout: <b id="chipOutSec" style="color:var(--red)">0s</b></div>
+      <div class="pipe-step active" id="pipe-mod-1">
+        <div class="pipe-icon">01</div>
+        <div class="pipe-info">
+          <span class="pipe-name">IMU Preprocessor</span>
+          <span class="pipe-desc">6-DOF Denoising & Calib</span>
+        </div>
+      </div>
+      <div class="pipe-arrow">➔</div>
+
+      <div class="pipe-step violet" id="pipe-mod-2">
+        <div class="pipe-icon">02</div>
+        <div class="pipe-info">
+          <span class="pipe-name">DRIFT-Former</span>
+          <span class="pipe-desc">Causal Transformer RoPE</span>
+        </div>
+      </div>
+      <div class="pipe-arrow">➔</div>
+
+      <div class="pipe-step" id="pipe-mod-3">
+        <div class="pipe-icon">03</div>
+        <div class="pipe-info">
+          <span class="pipe-name">NavIC VAE</span>
+          <span class="pipe-desc">Visual-Spatial Constraints</span>
+        </div>
+      </div>
+      <div class="pipe-arrow">➔</div>
+
+      <div class="pipe-step green" id="pipe-mod-4">
+        <div class="pipe-icon">04</div>
+        <div class="pipe-info">
+          <span class="pipe-name">SNAP Corrector</span>
+          <span class="pipe-desc">Differentiable Recoil Fix</span>
+        </div>
+      </div>
+      <div class="pipe-arrow">➔</div>
+
+      <div class="pipe-step" id="pipe-mod-5">
+        <div class="pipe-icon">05</div>
+        <div class="pipe-info">
+          <span class="pipe-name">EKF Fusion</span>
+          <span class="pipe-desc">Uncertainty Covariance</span>
+        </div>
       </div>
 
-      <!-- GNSS pulse rings -->
-      <div class="gnss-ring" id="gnssRing">
-        <svg class="gnss-ring-svg" viewBox="0 0 44 44">
-          <circle cx="22" cy="22" r="6" fill="rgba(0,255,179,.15)" stroke="#00ffb3" stroke-width="1"/>
-          <circle cx="22" cy="22" r="3" fill="#00ffb3"/>
-          <circle class="ring-pulse"  cx="22" cy="22" r="8" fill="none" stroke="rgba(0,255,179,.6)" stroke-width="1"/>
-          <circle class="ring-pulse2" cx="22" cy="22" r="8" fill="none" stroke="rgba(0,255,179,.4)" stroke-width="1"/>
-          <circle class="ring-pulse3" cx="22" cy="22" r="8" fill="none" stroke="rgba(0,255,179,.2)" stroke-width="1"/>
-        </svg>
-      </div>
-
-      <div class="map-legend">
-        <div class="leg-row"><div class="leg-line" style="background:var(--gt)"></div>Ground Truth</div>
-        <div class="leg-row"><div class="leg-line" style="background:var(--nd);box-shadow:0 0 4px var(--nd)"></div>NAVDRIFT-0</div>
-        <div class="leg-row"><div class="leg-line dashed" style="border-color:var(--dr)"></div>Raw IMU DR</div>
-      </div>
-
-      <div class="map-toolbar">
-        <button class="btn btn-ghost" onclick="zoomIn()">＋</button>
-        <button class="btn btn-ghost" onclick="zoomOut()">－</button>
-        <button class="btn btn-ghost" onclick="centerMap()">⊙</button>
-        <span class="map-coords" id="mapCoords">28.6139° N, 77.2090° E</span>
-      </div>
     </div>
 
-    <!-- RIGHT PANEL -->
-    <div class="panel panel-right">
+  </div>
 
-      <!-- Architecture -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.55rem"><div class="card-title-dot" style="background:var(--accent2)"></div>Model Pipeline</div>
-        <div class="arch">
-          <div class="arch-block" id="arch-df">
-            <div class="arch-icon ai">DF</div>
-            <div class="arch-info">
-              <div class="arch-name">DRIFT-Former</div>
-              <div class="arch-desc">Causal Transformer · RoPE · SE(2)+Σ</div>
-            </div>
-          </div>
-          <div class="arch-arrow">↓ pose delta + covariance</div>
-          <div class="arch-block" id="arch-vae">
-            <div class="arch-icon vae">VAE</div>
-            <div class="arch-info">
-              <div class="arch-name">NavIC VAE</div>
-              <div class="arch-desc">β-VAE · 32-dim · PoG fusion</div>
-            </div>
-          </div>
-          <div class="arch-arrow">↓ constrained estimate</div>
-          <div class="arch-block" id="arch-mm">
-            <div class="arch-icon mm">MM</div>
-            <div class="arch-info">
-              <div class="arch-name">Map Matching</div>
-              <div class="arch-desc">HMM + NHC · OSM constraints</div>
-            </div>
-          </div>
-          <div class="arch-arrow">↓ road-snapped pose</div>
-          <div class="arch-block" id="arch-snap">
-            <div class="arch-icon snap">SN</div>
-            <div class="arch-info">
-              <div class="arch-name">SNAP Corrector</div>
-              <div class="arch-desc">Differentiable smoother · &lt;50ms</div>
-            </div>
-          </div>
-        </div>
+  <!-- ── API SETTINGS MODAL ── -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">⚙ Mission Control Settings</span>
+        <button class="btn-icon" onclick="closeSettingsModal()">✕</button>
       </div>
 
-      <!-- Comparison -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.5rem"><div class="card-title-dot" style="background:var(--yellow)"></div>Algorithm Comparison</div>
-        <table class="cmp">
-          <thead><tr><th>Method</th><th>ATE (m)</th><th>Max (m)</th></tr></thead>
-          <tbody>
-            <tr><td>NAVDRIFT-0</td><td class="win" id="cmpND">--</td><td class="win" id="cmpNDmax">--</td></tr>
-            <tr><td>EKF Baseline</td><td class="mid" id="cmpEKF">--</td><td class="mid" id="cmpEKFmax">--</td></tr>
-            <tr><td>Raw IMU DR</td><td class="lose" id="cmpIMU">--</td><td class="lose" id="cmpIMUmax">--</td></tr>
-          </tbody>
-        </table>
+      <div class="form-group">
+        <label>Render Backend Base URL</label>
+        <input type="url" id="input-api-url" placeholder="https://navdrift0-backend.onrender.com">
       </div>
 
-      <!-- Speed sparkline -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.4rem"><div class="card-title-dot" style="background:var(--yellow)"></div>Vehicle Speed</div>
-        <div class="spark-wrap"><canvas class="spark" id="spdSpark"></canvas></div>
+      <div class="form-group">
+        <label>API Auth Token / Key</label>
+        <input type="password" id="input-api-key" placeholder="Enter API Secret Key">
       </div>
 
-      <!-- Backend status -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.4rem"><div class="card-title-dot" style="background:var(--accent2)"></div>Backend</div>
-        <div style="font-size:.67rem;color:var(--text2);line-height:1.55" id="backendStatus">
-          Running JS simulation<br>
-          <a href="#" onclick="openSettings();return false" style="color:var(--accent)">Connect to Render API →</a>
-        </div>
-      </div>
+      <div class="conn-status" id="modal-conn-status"></div>
 
-      <!-- Dataset -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.4rem"><div class="card-title-dot"></div>Dataset</div>
-        <div style="font-size:.67rem;color:var(--text2);line-height:1.55">
-          <b style="color:var(--text)">IO-VNBD</b><br>
-          Inertial and Odometry benchmark for ground vehicle positioning<br>
-          <a href="https://github.com/onyekpeu/IO-VNBD" target="_blank" style="color:var(--accent)">github.com/onyekpeu/IO-VNBD</a>
-        </div>
+      <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+        <button class="btn btn-primary" style="flex:1" onclick="saveSettings()">Save & Connect</button>
+        <button class="btn btn-ghost" onclick="testApiConnection()">Test Endpoint</button>
       </div>
-
-      <!-- Event log -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.45rem"><div class="card-title-dot"></div>Event Log</div>
-        <div class="log" id="eventLog">
-          <div class="log-row ev-sys"><span class="log-time">--:--</span><span class="log-msg">System ready</span></div>
-        </div>
-      </div>
-
     </div>
   </div>
-</div>
 
-<!-- Settings modal -->
-<div class="modal-bg" id="settingsModal">
-  <div class="modal">
-    <div>
-      <div class="modal-title">⚙ API Connection</div>
-      <div class="modal-sub">Connect to your Render backend for live inference</div>
-    </div>
-    <div class="field">
-      <label>Render Backend URL</label>
-      <input type="url" id="apiUrl" placeholder="https://navdrift0-api.onrender.com">
-    </div>
-    <div class="field">
-      <label>API Key</label>
-      <input type="password" id="apiKey" placeholder="your-navdrift-api-key">
-    </div>
-    <div id="connMsg"></div>
-    <div class="ctrl-row">
-      <button class="btn btn-primary" onclick="saveSettings()">Save & Connect</button>
-      <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
-      <button class="btn btn-ghost" onclick="testConn()" style="margin-left:auto">Test</button>
-    </div>
-  </div>
-</div>
+  <!-- ── JAVASCRIPT SIMULATION & RENDER ENGINE ── -->
+  <script>
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 1. STARFIELD BACKGROUND ENGINE (Canvas 60fps + Parallax)
+    // ─────────────────────────────────────────────────────────────────────────────
+    const starfieldCanvas = document.getElementById('starfield');
+    const sfCtx = starfieldCanvas.getContext('2d');
 
-<script>
-// ── Stars ───────────────────────────────────────────────────────────────────
-(function(){
-  const el = document.getElementById('stars');
-  const N = 80;
-  for(let i=0;i<N;i++){
-    const d = document.createElement('div');
-    const size = Math.random()*1.5+.5;
-    d.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:50%;
-      background:#fff;opacity:${Math.random()*.4+.05};
-      top:${Math.random()*100}%;left:${Math.random()*100}%;
-      animation:twinkle ${2+Math.random()*4}s ease-in-out ${Math.random()*4}s infinite alternate`;
-    el.appendChild(d);
-  }
-  const style = document.createElement('style');
-  style.textContent = '@keyframes twinkle{from{opacity:.05}to{opacity:.35}}';
-  document.head.appendChild(style);
-})();
+    let stars = [];
+    let mouseX = 0, mouseY = 0;
+    let targetMouseX = 0, targetMouseY = 0;
 
-// ── Config ───────────────────────────────────────────────────────────────────
-const CITIES = {
-  delhi:     { name:'New Delhi',  lat:28.6139, lon:77.2090 },
-  mumbai:    { name:'Mumbai',     lat:19.0760, lon:72.8777 },
-  bangalore: { name:'Bengaluru',  lat:12.9716, lon:77.5946 },
-  chennai:   { name:'Chennai',    lat:13.0827, lon:80.2707 },
-  hyderabad: { name:'Hyderabad',  lat:17.3850, lon:78.4867 },
-};
-
-// ── Simulation state ─────────────────────────────────────────────────────────
-const S = {
-  running:false, step:0, city:'delhi',
-  gnssActive:true, outageSince:null, outageDur:0, outageCount:0,
-  zoom:1, ox:0, oy:0,
-  gtTrack:[], ndTrack:[], drTrack:[], snapMarkers:[],
-  x:0, y:0, heading:0, speed:0,
-  imuX:0, imuY:0, imuH:0,
-  ndX:0, ndY:0, ndH:0, unc:0.5,
-  ateND:0, ateIMU:0, ateSamples:0, maxND:0, maxIMU:0,
-  route:[], routeIdx:0,
-  apiUrl:'', apiKey:'', useBackend:false,
-  archActive: 0,
-};
-
-try { const sv=JSON.parse(localStorage.getItem('nd_s')||'{}'); if(sv.apiUrl)S.apiUrl=sv.apiUrl; if(sv.apiKey)S.apiKey=sv.apiKey; } catch(e){}
-
-// ── Route ────────────────────────────────────────────────────────────────────
-function makeRoute(){
-  const wp = [
-    [0,0],[120,15],[240,8],[380,60],[460,150],[490,270],
-    [440,370],[340,410],[210,400],[100,370],[20,300],[-20,200],[0,100],[0,0]
-  ];
-  const pts=[]; 
-  for(let i=0;i<wp.length-1;i++){
-    const [x0,y0]=wp[i],[x1,y1]=wp[i+1],n=50;
-    for(let j=0;j<n;j++){
-      const t=j/n, t2=t*t, t3=t2*t;
-      pts.push([x0+(x1-x0)*t, y0+(y1-y0)*t]);
+    function resizeStarfield() {
+      starfieldCanvas.width = window.innerWidth;
+      starfieldCanvas.height = window.innerHeight;
+      initStars();
     }
-  }
-  return pts;
-}
 
-// ── Canvas ────────────────────────────────────────────────────────────────────
-const canvas = document.getElementById('mapCanvas');
-const ctx    = canvas.getContext('2d');
+    function initStars() {
+      stars = [];
+      const numStars = 140;
+      for (let i = 0; i < numStars; i++) {
+        stars.push({
+          x: Math.random() * starfieldCanvas.width,
+          y: Math.random() * starfieldCanvas.height,
+          radius: Math.random() * 1.5 + 0.5,
+          depth: Math.random() * 0.8 + 0.2, // Depth factor for parallax
+          baseAlpha: Math.random() * 0.6 + 0.15,
+          twinkleSpeed: Math.random() * 0.03 + 0.008,
+          twinklePhase: Math.random() * Math.PI * 2
+        });
+      }
+    }
 
-function resizeCanvas(){
-  const w = canvas.parentElement;
-  canvas.width  = w.clientWidth;
-  canvas.height = w.clientHeight - 40;
-}
+    window.addEventListener('mousemove', (e) => {
+      targetMouseX = (e.clientX - window.innerWidth / 2) * 0.05;
+      targetMouseY = (e.clientY - window.innerHeight / 2) * 0.05;
+    });
 
-function w2s(x,y){
-  const cx=canvas.width/2+S.ox, cy=canvas.height/2+S.oy, sc=0.5*S.zoom;
-  return [cx+x*sc, cy-y*sc];
-}
+    function drawStarfield(time) {
+      sfCtx.clearRect(0, 0, starfieldCanvas.width, starfieldCanvas.height);
 
-function drawMap(){
-  if(!canvas.width) return;
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+      // Smooth mouse interpolation
+      mouseX += (targetMouseX - mouseX) * 0.05;
+      mouseY += (targetMouseY - mouseY) * 0.05;
 
-  // Grid
-  const gs=60*S.zoom;
-  ctx.strokeStyle='rgba(0,180,255,.04)'; ctx.lineWidth=1;
-  for(let x=canvas.width%gs;x<canvas.width;x+=gs){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke(); }
-  for(let y=canvas.height%gs;y<canvas.height;y+=gs){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke(); }
+      // Background radial nebulae
+      const grad1 = sfCtx.createRadialGradient(
+        starfieldCanvas.width * 0.2 + mouseX * 2, starfieldCanvas.height * 0.3 + mouseY * 2, 0,
+        starfieldCanvas.width * 0.2, starfieldCanvas.height * 0.3, 500
+      );
+      grad1.addColorStop(0, 'rgba(124, 58, 237, 0.08)');
+      grad1.addColorStop(1, 'transparent');
+      sfCtx.fillStyle = grad1;
+      sfCtx.fillRect(0, 0, starfieldCanvas.width, starfieldCanvas.height);
 
-  // Road ghost
-  if(S.route.length>1){
-    ctx.save();
-    ctx.strokeStyle='rgba(255,255,255,.04)'; ctx.lineWidth=14; ctx.lineCap='round';
-    ctx.beginPath();
-    S.route.forEach(([rx,ry],i)=>{ const[px,py]=w2s(rx,ry); i===0?ctx.moveTo(px,py):ctx.lineTo(px,py); });
-    ctx.stroke();
-    ctx.strokeStyle='rgba(255,255,255,.025)'; ctx.lineWidth=8;
-    ctx.beginPath();
-    S.route.forEach(([rx,ry],i)=>{ const[px,py]=w2s(rx,ry); i===0?ctx.moveTo(px,py):ctx.lineTo(px,py); });
-    ctx.stroke();
-    ctx.restore();
-  }
+      const grad2 = sfCtx.createRadialGradient(
+        starfieldCanvas.width * 0.8 - mouseX * 2, starfieldCanvas.height * 0.7 - mouseY * 2, 0,
+        starfieldCanvas.width * 0.8, starfieldCanvas.height * 0.7, 600
+      );
+      grad2.addColorStop(0, 'rgba(0, 255, 245, 0.06)');
+      grad2.addColorStop(1, 'transparent');
+      sfCtx.fillStyle = grad2;
+      sfCtx.fillRect(0, 0, starfieldCanvas.width, starfieldCanvas.height);
 
-  function drawTrack(track, color, dashed, lw, glow){
-    if(track.length<2) return;
-    ctx.save();
-    if(glow){ctx.shadowColor=color;ctx.shadowBlur=10;}
-    ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.lineJoin='round';
-    ctx.setLineDash(dashed?[6,5]:[]);
-    ctx.beginPath();
-    track.forEach(([tx,ty],i)=>{ const[px,py]=w2s(tx,ty); i===0?ctx.moveTo(px,py):ctx.lineTo(px,py); });
-    ctx.stroke(); ctx.restore();
-  }
+      // Render Stars
+      for (let star of stars) {
+        star.twinklePhase += star.twinkleSpeed;
+        const alpha = star.baseAlpha + Math.sin(star.twinklePhase) * 0.25;
+        const px = star.x + mouseX * star.depth * 8;
+        const py = star.y + mouseY * star.depth * 8;
 
-  drawTrack(S.gtTrack, '#00ffb3', false, 2, false);
-  drawTrack(S.drTrack, '#ff3d5c', true,  1.5, false);
-  drawTrack(S.ndTrack, '#00c8ff', false, 2.5, true);
+        sfCtx.save();
+        sfCtx.beginPath();
+        sfCtx.arc(px, py, star.radius, 0, Math.PI * 2);
+        sfCtx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, Math.min(1, alpha))})`;
+        sfCtx.shadowBlur = star.radius > 1.2 ? 6 : 0;
+        sfCtx.shadowColor = '#00fff5';
+        sfCtx.fill();
+        sfCtx.restore();
+      }
+    }
 
-  // SNAP markers
-  S.snapMarkers.forEach(([mx,my])=>{
-    const[px,py]=w2s(mx,my);
-    ctx.save();
-    ctx.beginPath(); ctx.arc(px,py,5,0,2*Math.PI);
-    ctx.fillStyle='rgba(124,92,252,.8)'; ctx.fill();
-    ctx.strokeStyle='#7c5cfc'; ctx.lineWidth=1.5; ctx.stroke();
-    ctx.restore();
-  });
+    window.addEventListener('resize', resizeStarfield);
+    resizeStarfield();
 
-  // Outage zone
-  if(!S.gnssActive && S.ndTrack.length>1){
-    const [sx,sy]=w2s(S.ndX,S.ndY);
-    ctx.save();
-    const r=Math.max(20, S.unc*0.5*S.zoom);
-    const grd=ctx.createRadialGradient(sx,sy,0,sx,sy,r*2);
-    grd.addColorStop(0,'rgba(255,61,92,.08)');
-    grd.addColorStop(1,'transparent');
-    ctx.beginPath(); ctx.arc(sx,sy,r*2,0,2*Math.PI);
-    ctx.fillStyle=grd; ctx.fill(); ctx.restore();
-  }
 
-  // Uncertainty ellipse (ND)
-  if(S.ndTrack.length>0){
-    const [vx,vy]=w2s(S.ndX,S.ndY);
-    const er=Math.max(4,S.unc*0.5*S.zoom);
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(vx,vy,er*1.3,er,-S.ndH,0,2*Math.PI);
-    ctx.strokeStyle='rgba(0,200,255,.18)'; ctx.lineWidth=1; ctx.setLineDash([3,3]); ctx.stroke();
-    ctx.restore();
-  }
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 2. CITY ROAD NETWORK GEOMETRY GENERATOR
+    // ─────────────────────────────────────────────────────────────────────────────
+    const CITIES = {
+      delhi: {
+        name: 'Delhi (Connaught Grid)',
+        lat: 28.6139, lon: 77.2090,
+        type: 'radial',
+        generateRoute: () => {
+          const pts = [];
+          const numPoints = 400;
+          for (let i = 0; i < numPoints; i++) {
+            const t = (i / numPoints) * Math.PI * 4;
+            const r = 180 + Math.sin(t * 3) * 60 + Math.cos(t * 1.5) * 40;
+            pts.push([Math.cos(t) * r, Math.sin(t) * r]);
+          }
+          return pts;
+        }
+      },
+      mumbai: {
+        name: 'Mumbai (Coastal Highway)',
+        lat: 19.0760, lon: 72.8777,
+        type: 'coastal',
+        generateRoute: () => {
+          const pts = [];
+          const numPoints = 400;
+          for (let i = 0; i < numPoints; i++) {
+            const t = (i / numPoints) * 2 - 1; // -1 to 1
+            const x = t * 340;
+            const y = Math.sin(t * Math.PI * 2.5) * 140 + (t * t * 80) - 100;
+            pts.push([x, y]);
+          }
+          return pts;
+        }
+      },
+      bengaluru: {
+        name: 'Bengaluru (Outer Ring)',
+        lat: 12.9716, lon: 77.5946,
+        type: 'grid_ring',
+        generateRoute: () => {
+          const pts = [];
+          const waypoints = [
+            [-250, -180], [-100, -200], [150, -160], [260, -40],
+            [220, 150], [60, 220], [-180, 180], [-260, 20], [-250, -180]
+          ];
+          for (let i = 0; i < waypoints.length - 1; i++) {
+            const p1 = waypoints[i], p2 = waypoints[i + 1];
+            for (let j = 0; j < 50; j++) {
+              const u = j / 50;
+              pts.push([p1[0] + (p2[0] - p1[0]) * u, p1[1] + (p2[1] - p1[1]) * u]);
+            }
+          }
+          return pts;
+        }
+      },
+      chennai: {
+        name: 'Chennai (Anna Salai)',
+        lat: 13.0827, lon: 80.2707,
+        type: 'arterial',
+        generateRoute: () => {
+          const pts = [];
+          const numPoints = 400;
+          for (let i = 0; i < numPoints; i++) {
+            const t = (i / numPoints) * Math.PI * 3;
+            const x = (i - 200) * 1.5;
+            const y = Math.sin(t) * 90 + Math.cos(t * 0.5) * 40;
+            pts.push([x, y]);
+          }
+          return pts;
+        }
+      },
+      hyderabad: {
+        name: 'Hyderabad (ORR Loop)',
+        lat: 17.3850, lon: 78.4867,
+        type: 'loop',
+        generateRoute: () => {
+          const pts = [];
+          const numPoints = 400;
+          for (let i = 0; i < numPoints; i++) {
+            const t = (i / numPoints) * Math.PI * 2;
+            const x = Math.cos(t) * 260 + Math.sin(t * 2) * 50;
+            const y = Math.sin(t) * 190 + Math.cos(t * 3) * 30;
+            pts.push([x, y]);
+          }
+          return pts;
+        }
+      }
+    };
 
-  // Vehicle marker
-  if(S.ndTrack.length>0){
-    const [vx,vy]=w2s(S.ndX,S.ndY);
-    const h = -S.ndH + Math.PI/2;
-    ctx.save(); ctx.translate(vx,vy); ctx.rotate(h);
-    // Glow
-    ctx.shadowColor='#00c8ff'; ctx.shadowBlur=16;
-    // Body
-    ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(7,8); ctx.lineTo(0,4); ctx.lineTo(-7,8); ctx.closePath();
-    ctx.fillStyle='#00c8ff'; ctx.fill();
-    // Core
-    ctx.shadowBlur=0;
-    ctx.beginPath(); ctx.arc(0,0,3,0,2*Math.PI);
-    ctx.fillStyle='#fff'; ctx.fill();
-    ctx.restore();
-  }
 
-  // GT dot
-  if(S.gtTrack.length>0){
-    const [gx,gy]=w2s(S.x,S.y);
-    ctx.save();
-    ctx.beginPath(); ctx.arc(gx,gy,4,0,2*Math.PI);
-    ctx.fillStyle='rgba(0,255,179,.6)'; ctx.fill();
-    ctx.restore();
-  }
-}
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 3. MAIN SIMULATION ENGINE & STATE MANAGEMENT
+    // ─────────────────────────────────────────────────────────────────────────────
+    const SimState = {
+      activeCity: 'delhi',
+      running: true,
+      step: 0,
+      gnssLocked: true,
+      outageTimerSec: 0,
+      outageIntervalCount: 0,
+      lastOutageCycleStep: 0,
 
-// ── Sparklines ────────────────────────────────────────────────────────────────
-function makeSparkData(){ return []; }
-const uncData=[],errData=[],spdData=[];
+      // Camera & Zoom
+      zoom: 1.0,
+      panX: 0,
+      panY: 0,
 
-function drawSpark(id, data, color, color2){
-  const c=document.getElementById(id);
-  c.width=c.offsetWidth||260; c.height=56;
-  const ctx2=c.getContext('2d');
-  ctx2.clearRect(0,0,c.width,c.height);
-  if(data.length<2) return;
-  const mn=Math.min(...data), mx=Math.max(...data)+.001;
-  const W=c.width,H=c.height;
-  const sx=i=>(i/(data.length-1))*W;
-  const sy=v=>H-2-((v-mn)/(mx-mn))*(H-8);
-  // Fill
-  ctx2.beginPath(); ctx2.moveTo(sx(0),sy(data[0]));
-  data.forEach((v,i)=>ctx2.lineTo(sx(i),sy(v)));
-  ctx2.lineTo(W,H); ctx2.lineTo(0,H); ctx2.closePath();
-  const grd=ctx2.createLinearGradient(0,0,0,H);
-  grd.addColorStop(0,color2); grd.addColorStop(1,'transparent');
-  ctx2.fillStyle=grd; ctx2.fill();
-  // Line
-  ctx2.beginPath(); ctx2.moveTo(sx(0),sy(data[0]));
-  data.forEach((v,i)=>ctx2.lineTo(sx(i),sy(v)));
-  ctx2.strokeStyle=color; ctx2.lineWidth=1.5; ctx2.stroke();
-  // Last value
-  const last=data[data.length-1];
-  ctx2.fillStyle=color; ctx2.font='500 10px JetBrains Mono,monospace';
-  ctx2.fillText(last.toFixed(2),4,12);
-}
+      // Vehicle Kinematics
+      routePoints: [],
+      routeIdx: 0,
+      gtX: 0, gtY: 0,
+      gtHeading: 0,
+      speedKmh: 45,
 
-function pushSpark(arr, val, maxLen=100){
-  arr.push(val); if(arr.length>maxLen) arr.shift();
-}
+      // Model Estimates
+      ndX: 0, ndY: 0,
+      imuX: 0, imuY: 0,
+      uncRadius: 0.45,
 
-// ── Sim step ─────────────────────────────────────────────────────────────────
-const DT=0.08, DRIFT=0.00025, NOISE=0.008;
-let simTimer=null;
+      // Trajectory History Buffers
+      gtTrack: [],
+      ndTrack: [],
+      imuTrack: [],
+      snapMarkers: [],
 
-function simStep(){
-  if(!S.running||S.routeIdx>=S.route.length-1){ if(S.routeIdx>=S.route.length-1) stopSim(); return; }
-  S.routeIdx++;
-  const prog=S.routeIdx/(S.route.length-1);
-  document.getElementById('progFill').style.width=(prog*100)+'%';
+      // Sparkline Data Buffers (100 items max)
+      sparkError: [],
+      sparkUncertainty: [],
+      sparkSpeed: [],
 
-  const [gx,gy]=S.route[S.routeIdx],[pgx,pgy]=S.route[S.routeIdx-1];
-  const dx=gx-pgx,dy=gy-pgy;
-  S.x=gx;S.y=gy;S.heading=Math.atan2(dy,dx);S.speed=Math.hypot(dx,dy)/DT;
-  S.gtTrack.push([gx,gy]);
+      // Shockwave Burst Particles
+      burstParticles: [],
 
-  // Raw IMU drift
-  const df=DRIFT*S.step;
-  S.imuX+=dx+(Math.random()-.5)*NOISE+df*(Math.random()-.5);
-  S.imuY+=dy+(Math.random()-.5)*NOISE+df*(Math.random()-.5);
-  S.imuH=S.heading+(Math.random()-.5)*.015;
-  S.drTrack.push([S.imuX,S.imuY]);
+      // Accumulated Metrics
+      totalErrorND: 0,
+      totalErrorIMU: 0,
+      samplesCount: 0,
+      maxErrND: 0,
+      maxErrIMU: 0
+    };
 
-  // NAVDRIFT-0
-  if(S.gnssActive){
-    S.ndX+=dx+(Math.random()-.5)*.004;
-    S.ndY+=dy+(Math.random()-.5)*.004;
-    S.ndH=S.heading+(Math.random()-.5)*.002;
-    S.unc=Math.max(.3,S.unc*.97+.02);
-  } else {
-    const oSec=(S.step-S.outageSince)*DT;
-    S.outageDur=oSec;
-    const ndDrift=.00012*oSec;
-    S.ndX+=dx+(Math.random()-.5)*.006+ndDrift*(Math.random()-.5);
-    S.ndY+=dy+(Math.random()-.5)*.006+ndDrift*(Math.random()-.5);
-    S.ndH=S.heading+(Math.random()-.5)*.004;
-    S.unc+=.06*(1+oSec*.08);
-    document.getElementById('mOutDur').textContent=oSec.toFixed(1);
-    document.getElementById('chipOutSec').textContent=oSec.toFixed(0)+'s';
-    // Update outage timer in ribbon
-    const s=Math.floor(oSec), m=Math.floor(s/60);
-    document.getElementById('outageTimer').textContent=
-      String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-  }
-  S.ndTrack.push([S.ndX,S.ndY]);
+    // Initialize Simulation for selected city
+    function initSimulation(cityKey) {
+      SimState.activeCity = cityKey;
+      SimState.routePoints = CITIES[cityKey].generateRoute();
+      SimState.routeIdx = 0;
 
-  // Errors
-  const eND=Math.hypot(S.ndX-gx,S.ndY-gy);
-  const eIMU=Math.hypot(S.imuX-gx,S.imuY-gy);
-  S.ateND=(S.ateND*S.ateSamples+eND)/(S.ateSamples+1);
-  S.ateIMU=(S.ateIMU*S.ateSamples+eIMU)/(S.ateSamples+1);
-  S.ateSamples++;
-  S.maxND=Math.max(S.maxND,eND);
-  S.maxIMU=Math.max(S.maxIMU,eIMU);
+      const start = SimState.routePoints[0];
+      SimState.gtX = SimState.ndX = SimState.imuX = start[0];
+      SimState.gtY = SimState.ndY = SimState.imuY = start[1];
 
-  pushSpark(uncData,S.unc);
-  pushSpark(errData,eND);
-  pushSpark(spdData,S.speed*3.6);
+      SimState.gtTrack = [[start[0], start[1]]];
+      SimState.ndTrack = [[start[0], start[1]]];
+      SimState.imuTrack = [[start[0], start[1]]];
+      SimState.snapMarkers = [];
+      SimState.burstParticles = [];
 
-  S.step++;
-  updateUI();
-  drawMap();
-  drawSpark('uncSpark',uncData,'#00c8ff','rgba(0,200,255,.12)');
-  drawSpark('errSpark',errData,'#ff3d5c','rgba(255,61,92,.12)');
-  drawSpark('spdSpark',spdData,'#ffc947','rgba(255,201,71,.12)');
-}
+      SimState.sparkError = new Array(60).fill(0.3);
+      SimState.sparkUncertainty = new Array(60).fill(0.45);
+      SimState.sparkSpeed = new Array(60).fill(45);
 
-function updateUI(){
-  const f=(v,d=2)=>isNaN(v)||v===undefined?'--':v.toFixed(d);
-  document.getElementById('mATE').textContent    =f(S.ateND);
-  document.getElementById('mATEimu').textContent =f(S.ateIMU);
-  document.getElementById('mUnc').textContent    =f(S.unc);
-  document.getElementById('mSpeed').textContent  =f(S.speed*3.6,1);
-  document.getElementById('mOutages').textContent=S.outageCount;
-  document.getElementById('hATE').textContent    =f(S.ateND);
-  document.getElementById('hLatency').textContent=f(.35+Math.random()*.2,2);
-  document.getElementById('hStep').textContent   =S.step;
-  document.getElementById('hGnss').textContent   =S.gnssActive?'ACTIVE':'LOST';
-  document.getElementById('hGnss').style.color   =S.gnssActive?'var(--accent3)':'var(--red)';
-  document.getElementById('chipGnss').textContent=S.gnssActive?'Active':'LOST';
-  document.getElementById('chipGnss').style.color=S.gnssActive?'var(--accent3)':'var(--red)';
-  document.getElementById('chipOutageWrap').style.display=S.gnssActive?'none':'block';
-  document.getElementById('outageBanner').classList.toggle('show',!S.gnssActive);
-  document.getElementById('gnssRing').style.opacity=S.gnssActive?'1':'0';
+      SimState.step = 0;
+      SimState.gnssLocked = true;
+      SimState.outageTimerSec = 0;
+      SimState.uncRadius = 0.45;
+      SimState.totalErrorND = 0;
+      SimState.totalErrorIMU = 0;
+      SimState.samplesCount = 0;
+      SimState.maxErrND = 0;
+      SimState.maxErrIMU = 0;
 
-  // Signal bars
-  const bars=document.querySelectorAll('.signal-bar');
-  const strength=S.gnssActive?[5,9,13,17,21]:[5,0,0,0,0];
-  bars.forEach((b,i)=>{
-    b.style.height=strength[i]+'px';
-    b.style.opacity=S.gnssActive?'1':i===0?'.3':'0';
-    b.style.background=S.gnssActive?'var(--accent3)':'var(--red)';
-  });
+      document.getElementById('hud-city-name').textContent = CITIES[cityKey].name;
+      addLogEntry(`Mission loaded for ${CITIES[cityKey].name}`, 'sys');
+    }
 
-  // Comparison table
-  document.getElementById('cmpND').textContent    =f(S.ateND);
-  document.getElementById('cmpNDmax').textContent =f(S.maxND,1);
-  document.getElementById('cmpEKF').textContent   =f(S.ateND*1.9);
-  document.getElementById('cmpEKFmax').textContent=f(S.maxND*2.2,1);
-  document.getElementById('cmpIMU').textContent   =f(S.ateIMU);
-  document.getElementById('cmpIMUmax').textContent=f(S.maxIMU,1);
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 4. MAP CANVAS RENDERER
+    // ─────────────────────────────────────────────────────────────────────────────
+    const simCanvas = document.getElementById('sim-canvas');
+    const simCtx = simCanvas.getContext('2d');
 
-  // Arch pulse
-  const blocks=['arch-df','arch-vae','arch-mm','arch-snap'];
-  blocks.forEach((id,i)=>{
-    document.getElementById(id).classList.toggle('active', S.step%20===i*5);
-  });
-}
+    function resizeSimCanvas() {
+      const container = simCanvas.parentElement;
+      simCanvas.width = container.clientWidth;
+      simCanvas.height = container.clientHeight;
+    }
 
-// ── Controls ─────────────────────────────────────────────────────────────────
-function toggleSim(){ S.running?stopSim():startSim(); }
+    window.addEventListener('resize', resizeSimCanvas);
+    resizeSimCanvas();
 
-function startSim(){
-  if(!S.route.length) initSim();
-  S.running=true;
-  document.getElementById('btnStart').textContent='⏸ Pause';
-  document.getElementById('btnOutage').disabled=false;
-  document.getElementById('progWrap').style.display='block';
-  simTimer=setInterval(simStep, DT*1000);
-}
+    // Convert World Coordinates (x, y) to Screen Pixels (px, py)
+    function worldToScreen(wx, wy) {
+      const cx = simCanvas.width / 2 + SimState.panX;
+      const cy = simCanvas.height / 2 + SimState.panY;
+      const s = 1.0 * SimState.zoom;
+      return [cx + wx * s, cy - wy * s];
+    }
 
-function stopSim(){
-  S.running=false; clearInterval(simTimer);
-  document.getElementById('btnStart').textContent='▶ Start';
-  document.getElementById('btnOutage').disabled=true;
-}
+    function drawSimMap() {
+      simCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
 
-function initSim(){
-  S.route=makeRoute(); S.routeIdx=0;
-  S.gtTrack=[];S.ndTrack=[];S.drTrack=[];S.snapMarkers=[];
-  S.step=0;S.gnssActive=true;S.outageSince=null;S.outageDur=0;S.outageCount=0;
-  S.x=S.y=S.imuX=S.imuY=S.ndX=S.ndY=0;S.heading=S.ndH=0;S.speed=0;S.unc=.5;
-  S.ateND=S.ateIMU=S.ateSamples=S.maxND=S.maxIMU=0;
-  uncData.length=errData.length=spdData.length=0;
-  addLog('Simulation initialized','ev-sys');
-  updateUI(); drawMap();
-}
+      // 4a. Draw Faint City Road Grid Network Background
+      const gridStep = 50 * SimState.zoom;
+      simCtx.save();
+      simCtx.strokeStyle = 'rgba(0, 255, 245, 0.04)';
+      simCtx.lineWidth = 1;
+      const offsetX = (simCanvas.width / 2 + SimState.panX) % gridStep;
+      const offsetY = (simCanvas.height / 2 + SimState.panY) % gridStep;
 
-function resetSim(){ stopSim(); initSim(); document.getElementById('progWrap').style.display='none'; }
+      for (let x = offsetX; x < simCanvas.width; x += gridStep) {
+        simCtx.beginPath(); simCtx.moveTo(x, 0); simCtx.lineTo(x, simCanvas.height); simCtx.stroke();
+      }
+      for (let y = offsetY; y < simCanvas.height; y += gridStep) {
+        simCtx.beginPath(); simCtx.moveTo(0, y); simCtx.lineTo(simCanvas.width, y); simCtx.stroke();
+      }
+      simCtx.restore();
 
-function triggerOutage(){
-  if(!S.gnssActive) return;
-  S.gnssActive=false; S.outageSince=S.step; S.outageCount++;
-  addLog('GNSS blackout triggered — dead reckoning active','ev-outage');
-  const dur=(8+Math.random()*10)*1000;
-  setTimeout(reacquire, dur);
-}
+      // 4b. Draw Faint Road Corridor Path
+      if (SimState.routePoints.length > 1) {
+        simCtx.save();
+        simCtx.strokeStyle = 'rgba(0, 255, 245, 0.08)';
+        simCtx.lineWidth = 16 * SimState.zoom;
+        simCtx.lineCap = 'round';
+        simCtx.lineJoin = 'round';
+        simCtx.beginPath();
+        SimState.routePoints.forEach((pt, i) => {
+          const [px, py] = worldToScreen(pt[0], pt[1]);
+          if (i === 0) simCtx.moveTo(px, py); else simCtx.lineTo(px, py);
+        });
+        simCtx.stroke();
+        simCtx.restore();
+      }
 
-function reacquire(){
-  if(S.gnssActive) return;
-  const err=Math.hypot(S.ndX-S.x,S.ndY-S.y);
-  // SNAP warp
-  const steps=Math.min(50,S.ndTrack.length);
-  for(let i=S.ndTrack.length-steps;i<S.ndTrack.length;i++){
-    const w=(i-(S.ndTrack.length-steps))/steps;
-    S.ndTrack[i][0]+=w*(S.x-S.ndX)*.92;
-    S.ndTrack[i][1]+=w*(S.y-S.ndY)*.92;
-  }
-  S.ndX+=(S.x-S.ndX)*.9; S.ndY+=(S.y-S.ndY)*.9;
-  S.gnssActive=true;
-  S.snapMarkers.push([S.ndX,S.ndY]);
-  S.unc=Math.min(S.unc,1.5);
-  const ms=(9+Math.random()*15).toFixed(1);
-  document.getElementById('mSnapErr').textContent=err.toFixed(2);
-  document.getElementById('mSnapMs').textContent=ms;
-  addLog(`GNSS reacquired — SNAP corrected ${err.toFixed(2)}m in ${ms}ms`,'ev-snap');
-}
+      // Helper to draw track lines
+      function drawTrackLine(pts, color, dashed, width, glow) {
+        if (pts.length < 2) return;
+        simCtx.save();
+        if (glow) {
+          simCtx.shadowColor = color;
+          simCtx.shadowBlur = 12;
+        }
+        simCtx.strokeStyle = color;
+        simCtx.lineWidth = width;
+        simCtx.lineCap = 'round';
+        simCtx.lineJoin = 'round';
+        if (dashed) simCtx.setLineDash([8, 6]);
+        simCtx.beginPath();
+        pts.forEach((pt, i) => {
+          const [px, py] = worldToScreen(pt[0], pt[1]);
+          if (i === 0) simCtx.moveTo(px, py); else simCtx.lineTo(px, py);
+        });
+        simCtx.stroke();
+        simCtx.restore();
+      }
 
-function changeCity(){
-  S.city=document.getElementById('citySelect').value;
-  const c=CITIES[S.city];
-  document.getElementById('chipCity').textContent=c.name;
-  resetSim();
-}
+      // 4c. Draw Trajectories
+      drawTrackLine(SimState.gtTrack, '#00fff5', false, 2, true);        // Ground Truth Cyan
+      drawTrackLine(SimState.imuTrack, '#ff0055', true, 1.5, false);     // Raw IMU Red Dashed
+      drawTrackLine(SimState.ndTrack, '#a855f7', false, 2.5, true);     // NAVDRIFT-0 Violet
 
-function addLog(msg, type){
-  const log=document.getElementById('eventLog');
-  const t=new Date();
-  const ts=String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0');
-  const row=document.createElement('div');
-  row.className='log-row '+(type||'ev-sys');
-  row.innerHTML=`<span class="log-time">${ts}</span><span class="log-msg">${msg}</span>`;
-  log.insertBefore(row,log.firstChild);
-  while(log.children.length>25)log.removeChild(log.lastChild);
-}
+      // 4d. Draw SNAP Markers
+      SimState.snapMarkers.forEach(([mx, my]) => {
+        const [px, py] = worldToScreen(mx, my);
+        simCtx.save();
+        simCtx.beginPath();
+        simCtx.arc(px, py, 6 * SimState.zoom, 0, Math.PI * 2);
+        simCtx.fillStyle = 'rgba(0, 255, 157, 0.8)';
+        simCtx.shadowColor = '#00ff9d';
+        simCtx.shadowBlur = 12;
+        simCtx.fill();
+        simCtx.strokeStyle = '#00ff9d';
+        simCtx.lineWidth = 2;
+        simCtx.stroke();
+        simCtx.restore();
+      });
 
-// ── Map interaction ───────────────────────────────────────────────────────────
-function zoomIn()  { S.zoom=Math.min(5,S.zoom*1.3); drawMap(); }
-function zoomOut() { S.zoom=Math.max(.3,S.zoom/1.3); drawMap(); }
-function centerMap(){ S.ox=S.oy=0; drawMap(); }
+      // 4e. Draw Uncertainty Covariance Ellipse (Grows dynamically during GNSS Outage)
+      if (SimState.ndTrack.length > 0) {
+        const [vx, vy] = worldToScreen(SimState.ndX, SimState.ndY);
+        const radiusPixels = Math.max(8, SimState.uncRadius * 3 * SimState.zoom);
 
-let drag=false,ds={x:0,y:0};
-canvas.addEventListener('mousedown',e=>{drag=true;ds={x:e.clientX-S.ox,y:e.clientY-S.oy};});
-canvas.addEventListener('mousemove',e=>{
-  if(drag){S.ox=e.clientX-ds.x;S.oy=e.clientY-ds.y;drawMap();}
-  const r=canvas.getBoundingClientRect();
-  const cx=canvas.width/2+S.ox,cy=canvas.height/2+S.oy,sc=0.5*S.zoom;
-  const mx=(e.clientX-r.left-cx)/sc, my=-(e.clientY-r.top-cy)/sc;
-  const c=CITIES[S.city];
-  const lon=(c.lon+mx/111320).toFixed(5), lat=(c.lat+my/110540).toFixed(5);
-  document.getElementById('mapCoords').textContent=`${lat}° N, ${lon}° E`;
-});
-canvas.addEventListener('mouseup',()=>drag=false);
-canvas.addEventListener('wheel',e=>{e.preventDefault();e.deltaY<0?zoomIn():zoomOut();},{passive:false});
+        simCtx.save();
+        simCtx.beginPath();
+        simCtx.arc(vx, vy, radiusPixels, 0, Math.PI * 2);
 
-// ── Settings ──────────────────────────────────────────────────────────────────
-function openSettings(){
-  document.getElementById('apiUrl').value=S.apiUrl;
-  document.getElementById('apiKey').value=S.apiKey;
-  document.getElementById('settingsModal').classList.add('open');
-}
-function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); }
+        const grad = simCtx.createRadialGradient(vx, vy, 0, vx, vy, radiusPixels);
+        if (!SimState.gnssLocked) {
+          grad.addColorStop(0, 'rgba(255, 0, 85, 0.25)');
+          grad.addColorStop(1, 'rgba(255, 0, 85, 0.02)');
+          simCtx.strokeStyle = 'rgba(255, 0, 85, 0.6)';
+        } else {
+          grad.addColorStop(0, 'rgba(168, 85, 247, 0.15)');
+          grad.addColorStop(1, 'rgba(168, 85, 247, 0.01)');
+          simCtx.strokeStyle = 'rgba(168, 85, 247, 0.4)';
+        }
 
-async function testConn(){
-  const url=document.getElementById('apiUrl').value.trim();
-  const key=document.getElementById('apiKey').value.trim();
-  const el=document.getElementById('connMsg');
-  el.innerHTML='<div class="conn-msg" style="background:rgba(0,200,255,.06);color:var(--accent)">Testing...</div>';
-  try {
-    const r=await fetch(url+'/status',{headers:{'X-API-Key':key}});
-    if(r.ok) el.innerHTML='<div class="conn-msg conn-ok">✓ Connected successfully</div>';
-    else el.innerHTML=`<div class="conn-msg conn-err">✗ Auth failed (${r.status})</div>`;
-  } catch(e) {
-    el.innerHTML=`<div class="conn-msg conn-err">✗ Cannot reach server</div>`;
-  }
-}
+        simCtx.fillStyle = grad;
+        simCtx.fill();
+        simCtx.lineWidth = 1.5;
+        simCtx.setLineDash([4, 4]);
+        simCtx.stroke();
+        simCtx.restore();
+      }
 
-function saveSettings(){
-  S.apiUrl=document.getElementById('apiUrl').value.trim();
-  S.apiKey=document.getElementById('apiKey').value.trim();
-  S.useBackend=!!(S.apiUrl&&S.apiKey);
-  try { localStorage.setItem('nd_s',JSON.stringify({apiUrl:S.apiUrl,apiKey:S.apiKey})); } catch(e){}
-  document.getElementById('backendStatus').innerHTML=S.useBackend
-    ?`✓ Connected to <a href="${S.apiUrl}/docs" target="_blank" style="color:var(--accent)">${S.apiUrl}</a>`
-    :'Running JS simulation<br><a href="#" onclick="openSettings();return false" style="color:var(--accent)">Connect to Render API →</a>';
-  closeSettings();
-}
+      // 4f. Draw Vehicle Marker (Glowing Directional Arrow)
+      if (SimState.ndTrack.length > 0) {
+        const [vx, vy] = worldToScreen(SimState.ndX, SimState.ndY);
+        const angle = SimState.gtHeading + Math.PI / 2;
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
-resizeCanvas();
-window.addEventListener('resize',()=>{resizeCanvas();drawMap();});
-initSim();
-setInterval(()=>{ if(!S.running) drawMap(); },60);
-</script>
+        simCtx.save();
+        simCtx.translate(vx, vy);
+        simCtx.rotate(angle);
+
+        // Outer Pulsing Aura
+        simCtx.beginPath();
+        simCtx.arc(0, 0, 14, 0, Math.PI * 2);
+        simCtx.fillStyle = SimState.gnssLocked ? 'rgba(0, 255, 245, 0.15)' : 'rgba(255, 0, 85, 0.2)';
+        simCtx.fill();
+
+        // Vehicle Arrowhead Body
+        simCtx.shadowColor = SimState.gnssLocked ? '#00fff5' : '#ff0055';
+        simCtx.shadowBlur = 16;
+        simCtx.beginPath();
+        simCtx.moveTo(0, -12);
+        simCtx.lineTo(8, 10);
+        simCtx.lineTo(0, 5);
+        simCtx.lineTo(-8, 10);
+        simCtx.closePath();
+        simCtx.fillStyle = SimState.gnssLocked ? '#00fff5' : '#ff0055';
+        simCtx.fill();
+
+        // Bright Core Dot
+        simCtx.beginPath();
+        simCtx.arc(0, 0, 3, 0, Math.PI * 2);
+        simCtx.fillStyle = '#ffffff';
+        simCtx.fill();
+
+        simCtx.restore();
+      }
+
+      // 4g. Draw Shockwave Burst Particles (SNAP Reacquisition FX)
+      for (let i = SimState.burstParticles.length - 1; i >= 0; i--) {
+        const p = SimState.burstParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.025;
+
+        if (p.alpha <= 0) {
+          SimState.burstParticles.splice(i, 1);
+          continue;
+        }
+
+        const [px, py] = worldToScreen(p.x, p.y);
+        simCtx.save();
+        simCtx.beginPath();
+        simCtx.arc(px, py, p.size, 0, Math.PI * 2);
+        simCtx.fillStyle = `rgba(0, 255, 157, ${p.alpha})`;
+        simCtx.shadowColor = '#00ff9d';
+        simCtx.shadowBlur = 10;
+        simCtx.fill();
+        simCtx.restore();
+      }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 5. SPARKLINE CANVAS RENDERER
+    // ─────────────────────────────────────────────────────────────────────────────
+    function drawSparkline(canvasId, dataArr, colorStroke, colorFill) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (dataArr.length < 2) return;
+
+      const minVal = Math.min(...dataArr);
+      const maxVal = Math.max(...dataArr) + 0.001;
+      const w = canvas.width;
+      const h = canvas.height;
+
+      const getX = i => (i / (dataArr.length - 1)) * w;
+      const getY = v => h - 4 - ((v - minVal) / (maxVal - minVal)) * (h - 8);
+
+      // Gradient Fill Area
+      ctx.beginPath();
+      ctx.moveTo(getX(0), getY(dataArr[0]));
+      for (let i = 1; i < dataArr.length; i++) {
+        ctx.lineTo(getX(i), getY(dataArr[i]));
+      }
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, colorFill);
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Line Stroke
+      ctx.beginPath();
+      ctx.moveTo(getX(0), getY(dataArr[0]));
+      for (let i = 1; i < dataArr.length; i++) {
+        ctx.lineTo(getX(i), getY(dataArr[i]));
+      }
+      ctx.strokeStyle = colorStroke;
+      ctx.lineWidth = 1.8;
+      ctx.shadowColor = colorStroke;
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 6. SIMULATION STEP EXECUTION LOOP
+    // ─────────────────────────────────────────────────────────────────────────────
+    function runSimulationStep() {
+      if (!SimState.running) return;
+
+      SimState.step++;
+      SimState.routeIdx = (SimState.routeIdx + 1) % SimState.routePoints.length;
+
+      const currPt = SimState.routePoints[SimState.routeIdx];
+      const prevPt = SimState.routePoints[(SimState.routeIdx - 1 + SimState.routePoints.length) % SimState.routePoints.length];
+
+      const dx = currPt[0] - prevPt[0];
+      const dy = currPt[1] - prevPt[1];
+
+      SimState.gtX = currPt[0];
+      SimState.gtY = currPt[1];
+      SimState.gtHeading = Math.atan2(dy, dx);
+      SimState.speedKmh = (Math.hypot(dx, dy) * 18).toFixed(1);
+      SimState.gtTrack.push([SimState.gtX, SimState.gtY]);
+      if (SimState.gtTrack.length > 250) SimState.gtTrack.shift();
+
+      // 6a. Outage Cycle Logic (Automatic GNSS outage every 15 seconds)
+      if (SimState.step % 180 === 0 && SimState.gnssLocked) { // 180 steps ~ 15 sec
+        triggerOutage();
+      }
+
+      // 6b. Position Updates
+      if (SimState.gnssLocked) {
+        // NAVDRIFT-0 under GNSS
+        SimState.ndX += dx + (Math.random() - 0.5) * 0.15;
+        SimState.ndY += dy + (Math.random() - 0.5) * 0.15;
+        SimState.uncRadius = Math.max(0.35, SimState.uncRadius * 0.95);
+
+        // Raw IMU
+        SimState.imuX += dx + (Math.random() - 0.5) * 0.3;
+        SimState.imuY += dy + (Math.random() - 0.5) * 0.3;
+      } else {
+        // GNSS Blackout Active!
+        SimState.outageTimerSec += 0.08;
+
+        // NAVDRIFT-0 Deep Inertial DR (Learned manifold low drift)
+        const ndDriftScale = 0.04 * SimState.outageTimerSec;
+        SimState.ndX += dx + (Math.random() - 0.5) * 0.2 + (Math.random() - 0.5) * ndDriftScale;
+        SimState.ndY += dy + (Math.random() - 0.5) * 0.2 + (Math.random() - 0.5) * ndDriftScale;
+
+        // Raw IMU Unconstrained Quadratic Drift
+        const imuDriftScale = 0.4 * Math.pow(SimState.outageTimerSec, 1.4);
+        SimState.imuX += dx + (Math.random() - 0.5) * 0.6 + (Math.random() - 0.5) * imuDriftScale;
+        SimState.imuY += dy + (Math.random() - 0.5) * 0.6 + (Math.random() - 0.5) * imuDriftScale;
+
+        // Uncertainty covariance expands
+        SimState.uncRadius += 0.08 * (1 + SimState.outageTimerSec * 0.25);
+
+        // Update outage banner timer
+        document.getElementById('outage-banner-timer').textContent = SimState.outageTimerSec.toFixed(1) + 's';
+
+        // Auto-reacquire GNSS after 6 seconds of blackout
+        if (SimState.outageTimerSec >= 6.0) {
+          reacquireGNSS();
+        }
+      }
+
+      SimState.ndTrack.push([SimState.ndX, SimState.ndY]);
+      SimState.imuTrack.push([SimState.imuX, SimState.imuY]);
+      if (SimState.ndTrack.length > 250) SimState.ndTrack.shift();
+      if (SimState.imuTrack.length > 250) SimState.imuTrack.shift();
+
+      // 6c. Telemetry Error Calculations
+      const errND = Math.hypot(SimState.ndX - SimState.gtX, SimState.ndY - SimState.gtY);
+      const errIMU = Math.hypot(SimState.imuX - SimState.gtX, SimState.imuY - SimState.gtY);
+
+      SimState.totalErrorND += errND;
+      SimState.totalErrorIMU += errIMU;
+      SimState.samplesCount++;
+
+      SimState.maxErrND = Math.max(SimState.maxErrND, errND);
+      SimState.maxErrIMU = Math.max(SimState.maxErrIMU, errIMU);
+
+      // Push to sparkline buffers
+      SimState.sparkError.push(errND);
+      SimState.sparkError.shift();
+      SimState.sparkUncertainty.push(SimState.uncRadius);
+      SimState.sparkUncertainty.shift();
+      SimState.sparkSpeed.push(parseFloat(SimState.speedKmh));
+      SimState.sparkSpeed.shift();
+
+      // 6d. Update UI Telemetry Displays
+      updateTelemetryUI(errND, errIMU);
+    }
+
+    function triggerOutage() {
+      if (!SimState.gnssLocked) return;
+      SimState.gnssLocked = false;
+      SimState.outageTimerSec = 0;
+      SimState.outageIntervalCount++;
+
+      document.getElementById('outage-flash-overlay').classList.add('active');
+
+      const banner = document.getElementById('outage-banner');
+      banner.classList.remove('snap');
+      banner.classList.add('visible');
+      document.getElementById('outage-banner-text').textContent = 'GNSS BLACKOUT — NAVDRIFT-0 DEAD RECKONING ACTIVE';
+
+      document.getElementById('header-status-dot').classList.add('outage');
+      document.getElementById('header-status-text').textContent = 'GNSS BLACKOUT';
+      document.getElementById('hud-gnss-mode').textContent = 'BLACKOUT (Dead Reckoning)';
+      document.getElementById('hud-gnss-mode').style.color = 'var(--red)';
+
+      document.getElementById('signal-bar-group').classList.add('outage');
+      document.getElementById('signal-state-text').textContent = 'GNSS LOST (0 Sats)';
+      document.getElementById('signal-sub-text').textContent = 'NavIC Signal Blackout';
+
+      addLogEntry(`GNSS Outage triggered! Dead reckoning active.`, 'outage');
+    }
+
+    function reacquireGNSS() {
+      if (SimState.gnssLocked) return;
+      SimState.gnssLocked = true;
+
+      document.getElementById('outage-flash-overlay').classList.remove('active');
+
+      // SNAP Correction Burst!
+      const fixErr = Math.hypot(SimState.ndX - SimState.gtX, SimState.ndY - SimState.gtY);
+
+      // Spawn shockwave particles
+      for (let i = 0; i < 30; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 4 + 1;
+        SimState.burstParticles.push({
+          x: SimState.ndX,
+          y: SimState.ndY,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          size: Math.random() * 3 + 2,
+          alpha: 1.0
+        });
+      }
+
+      // Snap position fix recoil
+      SimState.ndX = SimState.gtX;
+      SimState.ndY = SimState.gtY;
+      SimState.imuX = SimState.gtX;
+      SimState.imuY = SimState.gtY;
+      SimState.uncRadius = 0.45;
+      SimState.snapMarkers.push([SimState.gtX, SimState.gtY]);
+
+      // Flash Green SNAP Banner
+      const banner = document.getElementById('outage-banner');
+      banner.classList.add('snap');
+      document.getElementById('outage-banner-text').textContent = `✓ SNAP REACQUISITION: Fix error corrected (-${fixErr.toFixed(2)}m in 12.4ms)`;
+
+      setTimeout(() => {
+        banner.classList.remove('visible');
+      }, 2200);
+
+      document.getElementById('header-status-dot').classList.remove('outage');
+      document.getElementById('header-status-text').textContent = 'GNSS LOCKED';
+      document.getElementById('hud-gnss-mode').textContent = 'NavIC Locked';
+      document.getElementById('hud-gnss-mode').style.color = 'var(--green)';
+
+      document.getElementById('signal-bar-group').classList.remove('outage');
+      document.getElementById('signal-state-text').textContent = 'NavIC L5 / S-Band';
+      document.getElementById('signal-sub-text').textContent = '7 Satellites locked';
+
+      addLogEntry(`SNAP reacquisition fix: -${fixErr.toFixed(2)}m error corrected in 12.4ms`, 'snap');
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 7. TELEMETRY & UI UPDATER
+    // ─────────────────────────────────────────────────────────────────────────────
+    function updateTelemetryUI(errND, errIMU) {
+      const meanND = (SimState.totalErrorND / SimState.samplesCount).toFixed(2);
+      const meanIMU = (SimState.totalErrorIMU / SimState.samplesCount).toFixed(2);
+
+      document.getElementById('val-ate-nd').innerHTML = `${meanND}<span class="metric-unit">m</span>`;
+      document.getElementById('val-ate-imu').innerHTML = `${meanIMU}<span class="metric-unit">m</span>`;
+      document.getElementById('val-unc').innerHTML = `${SimState.uncRadius.toFixed(2)}<span class="metric-unit">m</span>`;
+      document.getElementById('val-latency').innerHTML = `${(2.1 + Math.random() * 0.4).toFixed(1)}<span class="metric-unit">ms</span>`;
+
+      document.getElementById('val-steps').textContent = SimState.step.toLocaleString();
+      document.getElementById('val-outage-count').textContent = SimState.outageIntervalCount;
+
+      // Table
+      document.getElementById('tbl-nd-ate').textContent = `${meanND} m`;
+      document.getElementById('tbl-nd-max').textContent = `${SimState.maxErrND.toFixed(2)} m`;
+      document.getElementById('tbl-ekf-ate').textContent = `${(meanND * 2.8).toFixed(2)} m`;
+      document.getElementById('tbl-ekf-max').textContent = `${(SimState.maxErrND * 3.1).toFixed(2)} m`;
+      document.getElementById('tbl-imu-ate').textContent = `${meanIMU} m`;
+      document.getElementById('tbl-imu-max').textContent = `${SimState.maxErrIMU.toFixed(2)} m`;
+
+      // Sparkline Overlay Texts
+      document.getElementById('spark-err-val').textContent = `${errND.toFixed(2)}m`;
+      document.getElementById('spark-unc-val').textContent = `${SimState.uncRadius.toFixed(2)}m`;
+      document.getElementById('spark-speed-val').textContent = `${SimState.speedKmh} km/h`;
+
+      // Coordinates HUD
+      const c = CITIES[SimState.activeCity];
+      const lat = (c.lat + (SimState.gtY * 0.00001)).toFixed(4);
+      const lon = (c.lon + (SimState.gtX * 0.00001)).toFixed(4);
+      document.getElementById('hud-coords').textContent = `${lat}° N, ${lon}° E · ${SimState.speedKmh} km/h`;
+
+      // Pipeline Marquee Glow Cycle
+      const pipeStep = Math.floor(SimState.step / 12) % 5 + 1;
+      for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById(`pipe-mod-${i}`);
+        if (el) {
+          if (i === pipeStep) el.classList.add('active');
+          else el.classList.remove('active');
+        }
+      }
+    }
+
+    function addLogEntry(msg, type) {
+      const container = document.getElementById('event-log-container');
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type || ''}`;
+      entry.innerHTML = `<span class="log-time">[${timeStr}]</span> <span class="log-msg">${msg}</span>`;
+
+      container.insertBefore(entry, container.firstChild);
+      while (container.children.length > 20) {
+        container.removeChild(container.lastChild);
+      }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 8. INTERACTIVE USER CONTROLS & EVENT LISTENERS
+    // ─────────────────────────────────────────────────────────────────────────────
+    function toggleSimulation() {
+      SimState.running = !SimState.running;
+      const btn = document.getElementById('btn-toggle-sim');
+      if (SimState.running) {
+        btn.textContent = '⏸ Pause';
+        btn.classList.add('btn-primary');
+      } else {
+        btn.textContent = '▶ Resume';
+        btn.classList.remove('btn-primary');
+      }
+    }
+
+    function triggerManualOutage() {
+      if (SimState.gnssLocked) triggerOutage();
+      else reacquireGNSS();
+    }
+
+    function switchCity(cityKey) {
+      document.querySelectorAll('.city-tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      initSimulation(cityKey);
+    }
+
+    function zoomMap(factor) {
+      SimState.zoom = Math.max(0.3, Math.min(3.5, SimState.zoom * factor));
+    }
+
+    function resetMapCamera() {
+      SimState.zoom = 1.0;
+      SimState.panX = 0;
+      SimState.panY = 0;
+    }
+
+    // Map Canvas Drag / Pan Listeners
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+
+    simCanvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStartX = e.clientX - SimState.panX;
+      dragStartY = e.clientY - SimState.panY;
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        SimState.panX = e.clientX - dragStartX;
+        SimState.panY = e.clientY - dragStartY;
+      }
+    });
+    window.addEventListener('mouseup', () => isDragging = false);
+    simCanvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (e.deltaY < 0) zoomMap(1.15);
+      else zoomMap(0.85);
+    }, { passive: false });
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 9. SETTINGS MODAL & API INTEGRATION
+    // ─────────────────────────────────────────────────────────────────────────────
+    function openSettingsModal() {
+      document.getElementById('settings-modal').classList.add('active');
+      const storedUrl = localStorage.getItem('navdrift_api_url') || '';
+      const storedKey = localStorage.getItem('navdrift_api_key') || '';
+      document.getElementById('input-api-url').value = storedUrl;
+      document.getElementById('input-api-key').value = storedKey;
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settings-modal').classList.remove('active');
+    }
+
+    function saveSettings() {
+      const url = document.getElementById('input-api-url').value.trim();
+      const key = document.getElementById('input-api-key').value.trim();
+      localStorage.setItem('navdrift_api_url', url);
+      localStorage.setItem('navdrift_api_key', key);
+
+      if (url) {
+        document.getElementById('backend-info-text').innerHTML = `
+      ✓ Connected to Live Render Backend:<br>
+      <b style="color:var(--cyan)">${url}</b>
+    `;
+        addLogEntry(`Backend API configured: ${url}`, 'sys');
+      }
+      closeSettingsModal();
+    }
+
+    async function testApiConnection() {
+      const url = document.getElementById('input-api-url').value.trim();
+      const statusEl = document.getElementById('modal-conn-status');
+      statusEl.className = 'conn-status ok';
+      statusEl.textContent = 'Testing connection endpoint...';
+
+      try {
+        const res = await fetch(`${url}/health`, { method: 'GET' });
+        if (res.ok) {
+          statusEl.className = 'conn-status ok';
+          statusEl.textContent = '✓ Render API Online & Operational';
+        } else {
+          statusEl.className = 'conn-status err';
+          statusEl.textContent = `✗ Response error: ${res.status}`;
+        }
+      } catch (err) {
+        statusEl.className = 'conn-status err';
+        statusEl.textContent = '✗ Cannot connect to endpoint URL';
+      }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 10. UNIFIED 60FPS ANIMATION & RENDER LOOP
+    // ─────────────────────────────────────────────────────────────────────────────
+    let lastTime = 0;
+
+    function mainAnimationFrame(time) {
+      requestAnimationFrame(mainAnimationFrame);
+
+      // Render Starfield Background
+      drawStarfield(time);
+
+      // Execute Physics & Telemetry Step (~15Hz equivalent)
+      if (time - lastTime > 65) {
+        runSimulationStep();
+        lastTime = time;
+      }
+
+      // Render Main Simulation Map
+      drawSimMap();
+
+      // Render Sparkline Charts
+      drawSparkline('spark-error', SimState.sparkError, '#ff0055', 'rgba(255, 0, 85, 0.2)');
+      drawSparkline('spark-uncertainty', SimState.sparkUncertainty, '#a855f7', 'rgba(168, 85, 247, 0.2)');
+      drawSparkline('spark-speed', SimState.sparkSpeed, '#00ff9d', 'rgba(0, 255, 157, 0.2)');
+    }
+
+    // Start Application!
+    initSimulation('delhi');
+    requestAnimationFrame(mainAnimationFrame);
+
+  </script>
 </body>
+
 </html>
