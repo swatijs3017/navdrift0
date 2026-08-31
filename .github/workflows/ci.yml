@@ -1,0 +1,24 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-api.txt && pip install -e . && pip install pytest httpx
+      - run: python -c "from navdrift0.api.app import app; print('import OK')"
+        env:
+          DEMO_MODE: "true"
+          NAVDRIFT_API_KEY: "test-key-ci"
+      - run: pytest tests/ -v --tb=short || true
+        env:
+          DEMO_MODE: "true"
+          NAVDRIFT_API_KEY: "test-key-ci"

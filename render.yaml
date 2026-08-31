@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: navdrift0-api
+    runtime: python
+    buildCommand: pip install -r requirements-api.txt && pip install -e .
+    startCommand: bash start.sh
+    envVars:
+      - key: DEMO_MODE
+        value: "true"
+      - key: NAVDRIFT_API_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: "https://navdrift0.pages.dev,http://localhost:3000"
+      - key: HF_REPO_ID
+        value: ""

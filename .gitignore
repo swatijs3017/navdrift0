@@ -1,0 +1,45 @@
+# Secrets — never commit these
+.env
+*.key
+*.pem
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Model artifacts (large files)
+checkpoints/
+*.pt
+*.pth
+*.onnx
+*.npz
+
+# Dataset
+data/IO-VNBD/
+data/*.csv
+data/*.zip
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+wandb/
+runs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
