@@ -51,6 +51,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 #map{width:100%;height:100%}
 /* Leaflet overrides for dark theme */
 .leaflet-container{background:#0a0a12}
+/* Dark filter: invert OSM tiles, shift hue back for natural colours */
+.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(0.85) saturate(0.7)}
 .leaflet-control-zoom{display:none}
 /* Map overlay UI */
 .map-overlay{position:absolute;z-index:800;pointer-events:none}
@@ -475,9 +477,9 @@ const map = L.map('map', {
   attributionControl: true,
 }).setView([28.5900, 77.2200], 14);
 
-// CartoDB Dark Matter tiles (free, attribution required)
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+// OpenStreetMap tiles — completely free, no API key ever
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   subdomains: 'abcd',
   maxZoom: 20,
 }).addTo(map);
