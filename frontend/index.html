@@ -50,9 +50,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 1
 #map-wrap{position:relative;overflow:hidden}
 #map{width:100%;height:100%}
 /* Leaflet overrides for dark theme */
-.leaflet-container{background:#0a0a12}
-/* Dark filter: invert OSM tiles, shift hue back for natural colours */
-.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(0.85) saturate(0.7)}
+.leaflet-container{background:#1a1a1f}
 .leaflet-control-zoom{display:none}
 /* Map overlay UI */
 .map-overlay{position:absolute;z-index:800;pointer-events:none}
@@ -477,12 +475,16 @@ const map = L.map('map', {
   attributionControl: true,
 }).setView([28.5900, 77.2200], 14);
 
-// OpenStreetMap tiles — completely free, no API key ever
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  subdomains: 'abcd',
-  maxZoom: 20,
-}).addTo(map);
+// Esri World Dark Gray — free, no API key, natively dark
+const baseLayer = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+  { attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ', maxZoom: 16, opacity: 1 }
+).addTo(map);
+// Reference labels layer (road names, POIs) on top
+L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+  { attribution: '', maxZoom: 16, opacity: 1 }
+).addTo(map);
 
 // Custom zoom control (bottom-right)
 L.control.zoom({ position: 'bottomright' }).addTo(map);
