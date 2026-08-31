@@ -182,6 +182,8 @@ canvas.sparkline{width:100%;height:32px;display:block}
 .vehicle-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;transform-origin:center;pointer-events:none}
 .leaflet-attribution-flag{display:none!important}
 .leaflet-control-attribution{background:rgba(0,0,0,.5)!important;color:#666!important;font-size:8px!important}
+/* dark tile filter — works with any raster tile source */
+.leaflet-tile-pane{filter:invert(1) hue-rotate(195deg) saturate(0.45) brightness(0.75)}
 </style>
 </head>
 <body>
@@ -336,9 +338,10 @@ function pushSpark(arr,v){arr.push(v);if(arr.length>MAX_SPARK)arr.shift();}
 /* ── MAP INIT (Leaflet — synchronous, no load event needed) ── */
 const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([28.59,77.22],14);
 
-L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{
-  attribution:'© Esri, HERE, DeLorme, OpenStreetMap',
-  maxZoom:18,
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+  maxZoom:19,
+  subdomains:'abc',
 }).addTo(map);
 
 /* ── LEAFLET LAYERS ── */
