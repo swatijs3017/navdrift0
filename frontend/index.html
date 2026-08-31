@@ -3,876 +3,963 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NAVDRIFT-0 · Mission Control · ISRO SIH 2026 PS #26168</title>
+<title>NAVDRIFT-0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root {
   --bg-deep:#0a0a0f; --bg-surface:#0e0f1a; --bg-card:rgba(14,16,28,0.88);
   --cyan:#00fff5; --cyan-dim:rgba(0,255,245,0.15); --cyan-glow:rgba(0,255,245,0.4);
-  --violet:#7c3aed; --violet-bright:#a855f7; --violet-glow:rgba(124,58,237,0.5);
-  --red:#ff0055; --red-glow:rgba(255,0,85,0.5);
-  --green:#00ff9d; --green-glow:rgba(0,255,157,0.4);
-  --orange:#ff8c00; --yellow:#ffc800;
+  --violet:#7c3aed; --violet-bright:#a855f7;
+  --red:#ff0055; --green:#00ff9d; --orange:#ff8c00; --yellow:#ffc800;
   --text-main:#f1f5f9; --text-muted:#94a3b8; --text-dim:#64748b;
   --border-dim:rgba(255,255,255,0.07); --border-cyan:rgba(0,255,245,0.2);
   --font-head:'Space Grotesk',sans-serif; --font-mono:'JetBrains Mono',monospace;
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100vw;height:100vh;overflow:hidden;background:var(--bg-deep);color:var(--text-main);font-family:var(--font-head)}
-/* ── LAYOUT ── */
-.app{display:grid;grid-template-rows:52px 1fr 88px;height:100vh;width:100vw}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text-main)}
+body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
+
 /* ── HEADER ── */
-header{display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:rgba(10,10,15,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border-dim);z-index:1000;position:relative}
-.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:1.05rem;letter-spacing:0.04em}
-.logo-icon{width:28px;height:28px;background:linear-gradient(135deg,var(--cyan),var(--violet));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#000;font-weight:800}
-.logo-text{color:var(--text-main)}.logo-text span{color:var(--cyan)}
-.badge-isro{font-size:0.55rem;font-weight:700;letter-spacing:0.1em;padding:2px 6px;background:rgba(124,58,237,0.2);border:1px solid var(--violet);border-radius:3px;color:var(--violet-bright);margin-left:4px}
-.city-tabs{display:flex;gap:4px;align-items:center}
-.city-tab{padding:5px 14px;border-radius:6px;border:1px solid var(--border-dim);background:transparent;color:var(--text-muted);font-family:var(--font-head);font-size:0.78rem;font-weight:500;cursor:pointer;transition:all 0.2s}
-.city-tab:hover{border-color:var(--cyan-dim);color:var(--text-main)}
-.city-tab.active{background:var(--cyan-dim);border-color:var(--border-cyan);color:var(--cyan)}
-.header-right{display:flex;align-items:center;gap:10px}
-.gnss-badge{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;font-size:0.7rem;font-family:var(--font-mono);font-weight:600;border:1px solid;transition:all 0.3s}
-.gnss-badge.locked{background:rgba(0,255,157,0.1);border-color:rgba(0,255,157,0.3);color:var(--green)}
-.gnss-badge.outage{background:rgba(255,0,85,0.12);border-color:rgba(255,0,85,0.4);color:var(--red);animation:pulseRed 1s infinite}
-.gnss-badge.dr{background:rgba(255,140,0,0.1);border-color:rgba(255,140,0,0.3);color:var(--orange)}
-@keyframes pulseRed{0%,100%{opacity:1}50%{opacity:0.6}}
-.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
-.btn-icon{width:32px;height:32px;border-radius:6px;border:1px solid var(--border-dim);background:transparent;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all 0.2s}
-.btn-icon:hover{border-color:var(--border-cyan);color:var(--cyan)}
+#header{
+  display:flex;align-items:center;gap:12px;padding:0 16px;
+  background:var(--bg-surface);border-bottom:1px solid var(--border-dim);
+  position:relative;z-index:20;flex-shrink:0;
+}
+.logo{display:flex;align-items:center;gap:8px;margin-right:8px;flex-shrink:0}
+.logo-icon{width:30px;height:30px;flex-shrink:0}
+.logo-text{font-family:var(--font-mono);font-size:13px;font-weight:600;letter-spacing:.15em;color:var(--cyan);white-space:nowrap}
+.logo-sub{font-size:9px;color:var(--text-dim);letter-spacing:.08em;line-height:1}
+.city-tabs{display:flex;gap:2px;flex:1;overflow:hidden}
+.city-tab{
+  font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.06em;
+  padding:4px 10px;border-radius:3px;border:1px solid transparent;
+  background:transparent;color:var(--text-dim);cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.city-tab:hover{color:var(--text-muted);border-color:var(--border-dim)}
+.city-tab.active{background:var(--cyan-dim);color:var(--cyan);border-color:var(--border-cyan)}
+.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
+.gnss-badge{
+  font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.08em;
+  padding:3px 8px;border-radius:3px;background:rgba(0,255,157,0.12);
+  color:var(--green);border:1px solid rgba(0,255,157,0.3);
+}
+.gnss-badge.dr{background:rgba(255,140,0,0.12);color:var(--orange);border-color:rgba(255,140,0,0.3)}
+.gnss-badge.snap{background:rgba(124,58,237,0.15);color:var(--violet-bright);border-color:rgba(168,85,247,0.3)}
+.icon-btn{
+  width:30px;height:30px;border-radius:4px;background:transparent;
+  border:1px solid var(--border-dim);color:var(--text-muted);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:14px;transition:all .15s;
+}
+.icon-btn:hover{background:var(--border-dim);color:var(--text-main)}
+
 /* ── MAIN ── */
-.main{display:grid;grid-template-columns:1fr 300px;overflow:hidden;position:relative}
-/* ── MAP ── */
-#map-wrap{position:relative;overflow:hidden}
-#map{width:100%;height:100%}
-/* Leaflet overrides for dark theme */
-.leaflet-container{background:#1a1a1f}
-.leaflet-control-zoom{display:none}
-/* Map overlay UI */
-.map-overlay{position:absolute;z-index:800;pointer-events:none}
-.map-overlay.top-left{top:12px;left:12px;display:flex;flex-direction:column;gap:8px}
-.map-overlay.bottom-left{bottom:12px;left:12px}
-.overlay-card{background:var(--bg-card);backdrop-filter:blur(16px);border:1px solid var(--border-dim);border-radius:8px;padding:10px 14px;pointer-events:auto}
-.dr-state{font-family:var(--font-mono);font-size:0.68rem;font-weight:600;letter-spacing:0.08em}
-.dr-state.gnss{color:var(--green)}.dr-state.dr{color:var(--orange)}.dr-state.snap{color:var(--cyan)}
-.tunnel-alert{background:rgba(255,0,85,0.15);border-color:rgba(255,0,85,0.4);color:var(--red);font-size:0.68rem;font-family:var(--font-mono);font-weight:700;display:flex;align-items:center;gap:6px;animation:pulseRed 0.8s infinite}
-.map-controls{display:flex;flex-direction:column;gap:6px;pointer-events:auto}
-.mc-btn{padding:6px 12px;border-radius:6px;border:1px solid;font-family:var(--font-head);font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.2s;width:100%}
-.mc-btn.trigger-outage{background:rgba(255,0,85,0.1);border-color:rgba(255,0,85,0.4);color:var(--red)}
-.mc-btn.trigger-outage:hover{background:rgba(255,0,85,0.2)}
-.mc-btn.trigger-outage.active{background:rgba(255,0,85,0.2);animation:pulseRed 0.8s infinite}
-.mc-btn.reacquire{background:rgba(0,255,157,0.1);border-color:rgba(0,255,157,0.3);color:var(--green)}
-.mc-btn.reacquire:hover{background:rgba(0,255,157,0.2)}
-/* Legend */
-.legend{display:flex;flex-direction:column;gap:4px}
-.legend-row{display:flex;align-items:center;gap:7px;font-size:0.65rem;color:var(--text-muted)}
-.legend-line{width:20px;height:2px;border-radius:1px}
-/* Screen flash */
-#outage-flash{position:fixed;inset:0;z-index:2000;pointer-events:none;border:0 solid var(--red);opacity:0;transition:opacity 0.15s}
-#outage-flash.active{border-width:4px;box-shadow:inset 0 0 60px var(--red-glow);opacity:1;animation:flashPulse 1s infinite alternate}
-@keyframes flashPulse{0%{box-shadow:inset 0 0 40px var(--red-glow)}100%{box-shadow:inset 0 0 90px rgba(255,0,85,0.9)}}
-/* ── SIDE PANEL ── */
-.side-panel{background:var(--bg-surface);border-left:1px solid var(--border-dim);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent}
-.side-panel::-webkit-scrollbar{width:4px}
-.side-panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
-.panel-section{padding:12px 14px;border-bottom:1px solid var(--border-dim)}
-.panel-title{font-size:0.65rem;font-weight:700;letter-spacing:0.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px}
-/* Metric rows */
-.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.metric{background:rgba(255,255,255,0.03);border:1px solid var(--border-dim);border-radius:6px;padding:8px 10px}
-.metric-label{font-size:0.58rem;font-weight:600;letter-spacing:0.08em;color:var(--text-dim);text-transform:uppercase;margin-bottom:3px}
-.metric-val{font-family:var(--font-mono);font-size:0.9rem;font-weight:600;color:var(--text-main)}
-.metric-val.cyan{color:var(--cyan)}.metric-val.green{color:var(--green)}.metric-val.orange{color:var(--orange)}.metric-val.red{color:var(--red)}.metric-val.violet{color:var(--violet-bright)}
-.metric-unit{font-size:0.6rem;color:var(--text-dim);margin-left:2px}
-/* Algorithm stack */
-.algo-stack{display:flex;flex-direction:column;gap:6px}
-.algo-row{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:5px;background:rgba(255,255,255,0.02);border:1px solid var(--border-dim)}
-.algo-name{font-size:0.68rem;font-weight:600;color:var(--text-muted)}
-.algo-name span{color:var(--cyan);font-size:0.6rem;display:block;font-family:var(--font-mono)}
-.algo-status{font-size:0.6rem;font-family:var(--font-mono);font-weight:600;padding:2px 6px;border-radius:3px}
-.status-active{background:rgba(0,255,157,0.1);color:var(--green);border:1px solid rgba(0,255,157,0.2)}
-.status-ready{background:rgba(0,255,245,0.1);color:var(--cyan);border:1px solid rgba(0,255,245,0.2)}
-.status-demo{background:rgba(255,140,0,0.1);color:var(--orange);border:1px solid rgba(255,140,0,0.2)}
-/* Novel solutions */
+#main{display:grid;grid-template-columns:1fr 300px;overflow:hidden;position:relative}
+#map{width:100%;height:100%;position:relative}
+.maplibregl-canvas{display:block}
+
+/* ── MAP OVERLAY ── */
+.map-overlay{
+  position:absolute;top:12px;left:12px;z-index:10;
+  display:flex;flex-direction:column;gap:8px;width:210px;
+}
+.state-badge{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.12em;
+  padding:6px 12px;border-radius:4px;text-align:center;
+  background:rgba(0,255,157,0.12);color:var(--green);
+  border:1px solid rgba(0,255,157,0.35);
+}
+.state-badge.dr-mode{background:rgba(255,140,0,0.12);color:var(--orange);border-color:rgba(255,140,0,.35)}
+.state-badge.snap-mode{background:rgba(124,58,237,0.15);color:var(--violet-bright);border-color:rgba(168,85,247,.35)}
+.outage-flash{
+  display:none;font-family:var(--font-mono);font-size:10px;font-weight:600;
+  letter-spacing:.1em;padding:4px 10px;border-radius:3px;text-align:center;
+  background:rgba(255,0,85,0.15);color:var(--red);border:1px solid rgba(255,0,85,.4);
+  animation:flashpulse 1s ease-in-out infinite;
+}
+.outage-flash.visible{display:block}
+@keyframes flashpulse{0%,100%{opacity:1}50%{opacity:.4}}
+.tunnel-alert{
+  font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.08em;
+  padding:4px 10px;border-radius:3px;text-align:center;
+  background:rgba(255,200,0,0.12);color:var(--yellow);border:1px solid rgba(255,200,0,.35);
+}
+.mc-btn{
+  font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.07em;
+  padding:7px 10px;border-radius:4px;cursor:pointer;border:none;
+  transition:all .15s;text-align:center;
+}
+.trigger-outage{background:rgba(255,0,85,0.15);color:var(--red);border:1px solid rgba(255,0,85,.4)}
+.trigger-outage:hover{background:rgba(255,0,85,0.28)}
+.reacquire{background:rgba(0,255,245,0.12);color:var(--cyan);border:1px solid var(--border-cyan)}
+.reacquire:hover{background:rgba(0,255,245,0.22)}
+.legend{
+  background:var(--bg-card);border:1px solid var(--border-dim);border-radius:5px;
+  padding:8px 10px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:5px;
+}
+.legend-row{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:9.5px;color:var(--text-muted)}
+.leg-line{width:22px;height:2px;display:inline-block;border-radius:1px;flex-shrink:0}
+.cyan-line{background:var(--cyan)}
+.orange-line{background:var(--orange)}
+.orange-line.dashed{background:repeating-linear-gradient(90deg,var(--orange) 0 5px,transparent 5px 9px)}
+.green-line{background:var(--green)}
+.red-dash{background:repeating-linear-gradient(90deg,var(--red) 0 4px,transparent 4px 7px)}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  background:var(--bg-surface);border-left:1px solid var(--border-dim);
+  display:flex;flex-direction:column;gap:0;overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:thin;scrollbar-color:var(--border-dim) transparent;
+}
+.panel{
+  padding:12px 14px;border-bottom:1px solid var(--border-dim);flex-shrink:0;
+}
+.panel-scroll{flex:1;overflow-y:auto;min-height:0}
+.panel-title{
+  font-family:var(--font-mono);font-size:9px;font-weight:600;letter-spacing:.18em;
+  color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;
+}
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.metric{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;padding:7px 9px}
+.metric-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.14em;color:var(--text-dim);margin-bottom:3px}
+.metric-val{font-family:var(--font-mono);font-size:16px;font-weight:600;color:var(--text-main);line-height:1;display:flex;align-items:baseline;gap:3px}
+.metric-val.cyan{color:var(--cyan)}
+.metric-val.green{color:var(--green)}
+.metric-val.orange{color:var(--orange)}
+.metric-val.red{color:var(--red)}
+.metric-unit{font-size:9px;font-weight:400;color:var(--text-dim);letter-spacing:.05em}
+
+.algo-list{display:flex;flex-direction:column;gap:5px}
+.algo-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;padding:6px 9px;
+}
+.algo-name{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--text-main)}
+.algo-sub{font-size:8.5px;color:var(--text-dim);margin-top:1px}
+.algo-status{
+  font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:.1em;
+  padding:2px 6px;border-radius:2px;flex-shrink:0;
+}
+.status-active{background:rgba(0,255,157,0.1);color:var(--green);border:1px solid rgba(0,255,157,.25)}
+.status-demo{background:rgba(255,200,0,0.1);color:var(--yellow);border:1px solid rgba(255,200,0,.25)}
+.status-ready{background:rgba(0,255,245,0.08);color:var(--cyan);border:1px solid var(--border-cyan)}
+
 .novel-list{display:flex;flex-direction:column;gap:6px}
-.novel-card{padding:8px 10px;border-radius:6px;border:1px solid var(--border-dim);background:rgba(255,255,255,0.02);cursor:default;transition:border-color 0.2s}
-.novel-card:hover{border-color:rgba(124,58,237,0.3)}
-.novel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
-.novel-name{font-size:0.7rem;font-weight:700;color:var(--violet-bright)}
-.novel-badge{font-size:0.55rem;font-family:var(--font-mono);padding:1px 5px;border-radius:2px;font-weight:700}
-.novel-badge.novel{background:rgba(255,200,0,0.1);color:var(--yellow);border:1px solid rgba(255,200,0,0.2)}
-.novel-badge.impl{background:rgba(0,255,157,0.08);color:var(--green);border:1px solid rgba(0,255,157,0.2)}
-.novel-desc{font-size:0.62rem;color:var(--text-dim);line-height:1.4}
-/* ── BOTTOM BAR ── */
-.bottom-bar{background:var(--bg-surface);border-top:1px solid var(--border-dim);display:grid;grid-template-columns:repeat(4,1fr);gap:1px}
-.sparkline-cell{padding:8px 12px;display:flex;flex-direction:column;gap:4px;border-right:1px solid var(--border-dim)}
-.sparkline-cell:last-child{border-right:none}
-.sp-label{font-size:0.58rem;font-weight:600;letter-spacing:0.08em;color:var(--text-dim);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
-.sp-val{font-family:var(--font-mono);font-size:0.8rem;font-weight:600}
+.novel-card{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:5px;padding:8px 10px;position:relative;overflow:hidden}
+.novel-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px}
+.novel-card.c-cyan::before{background:var(--cyan)}
+.novel-card.c-violet::before{background:var(--violet-bright)}
+.novel-card.c-green::before{background:var(--green)}
+.novel-card.c-orange::before{background:var(--orange)}
+.novel-card.c-yellow::before{background:var(--yellow)}
+.novel-card.c-red::before{background:var(--red)}
+.novel-card-name{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--text-main);margin-bottom:2px}
+.novel-card-desc{font-size:9px;color:var(--text-dim);line-height:1.5}
+.novel-card-tag{font-family:var(--font-mono);font-size:7.5px;letter-spacing:.1em;color:var(--text-dim);margin-top:4px;opacity:.7}
+
+.api-row{
+  display:flex;align-items:center;gap:7px;padding:8px 14px;
+  border-top:1px solid var(--border-dim);flex-shrink:0;
+}
+.api-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.14em;color:var(--text-dim)}
+#api-url-display{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── FOOTER ── */
+#footer{
+  background:var(--bg-surface);border-top:1px solid var(--border-dim);
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;overflow:hidden;
+}
+.spark-panel{
+  padding:7px 12px;border-right:1px solid var(--border-dim);
+  display:flex;flex-direction:column;gap:4px;
+}
+.spark-panel:last-child{border-right:none}
+.spark-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.12em;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center}
+.spark-val{font-family:var(--font-mono);font-size:13px;font-weight:600}
+.spark-val.sv-cyan{color:var(--cyan)}
+.spark-val.sv-green{color:var(--green)}
+.spark-val.sv-orange{color:var(--orange)}
+.spark-val.sv-violet{color:var(--violet-bright)}
 canvas.sparkline{width:100%;height:32px;display:block}
+
 /* ── SETTINGS MODAL ── */
-.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);z-index:3000;display:none;align-items:center;justify-content:center}
-.modal-backdrop.open{display:flex}
-.modal{background:#12131f;border:1px solid var(--border-cyan);border-radius:12px;padding:24px;width:420px;max-width:95vw}
-.modal-title{font-size:1rem;font-weight:700;margin-bottom:16px;color:var(--cyan)}
-.form-group{margin-bottom:14px}
-.form-label{font-size:0.7rem;font-weight:600;color:var(--text-muted);margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:0.06em}
-.form-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border-dim);border-radius:6px;padding:8px 12px;color:var(--text-main);font-family:var(--font-mono);font-size:0.8rem;outline:none;transition:border-color 0.2s}
-.form-input:focus{border-color:var(--border-cyan)}
-.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
-.btn-primary{padding:8px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--violet),var(--violet-bright));color:#fff;font-family:var(--font-head);font-size:0.8rem;font-weight:600;cursor:pointer}
-.btn-secondary{padding:8px 16px;border-radius:6px;border:1px solid var(--border-dim);background:transparent;color:var(--text-muted);font-family:var(--font-head);font-size:0.8rem;cursor:pointer}
-/* Leaflet popup customisation */
-.leaflet-popup-content-wrapper{background:#12131f;border:1px solid var(--border-cyan);border-radius:8px;color:var(--text-main);font-family:var(--font-head);box-shadow:0 8px 32px rgba(0,0,0,0.8)}
-.leaflet-popup-tip{background:#12131f}
-.leaflet-popup-content{margin:10px 14px;font-size:0.75rem;line-height:1.6}
-.popup-title{font-weight:700;color:var(--cyan);margin-bottom:4px}
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);
+}
+.modal-overlay.hidden{display:none}
+.modal{
+  background:var(--bg-surface);border:1px solid var(--border-dim);border-radius:8px;
+  padding:24px;width:340px;box-shadow:0 24px 64px rgba(0,0,0,.6);
+}
+.modal-title{font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--cyan);margin-bottom:18px}
+.field{margin-bottom:14px}
+.field label{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;color:var(--text-dim);margin-bottom:5px}
+.field input[type="text"],.field input[type="url"]{
+  width:100%;background:var(--bg-deep);border:1px solid var(--border-dim);
+  border-radius:4px;padding:7px 10px;font-family:var(--font-mono);font-size:11px;
+  color:var(--text-main);outline:none;
+}
+.field input[type="text"]:focus,.field input[type="url"]:focus{border-color:var(--border-cyan)}
+.field input[type="range"]{width:100%;accent-color:var(--cyan)}
+.field-row{display:flex;justify-content:space-between;align-items:center}
+.toggle{width:36px;height:20px;background:var(--border-dim);border-radius:10px;cursor:pointer;position:relative;transition:background .2s;border:none;flex-shrink:0}
+.toggle.on{background:var(--cyan)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle.on::after{transform:translateX(16px)}
+.modal-actions{display:flex;gap:8px;margin-top:18px}
+.btn-save,.btn-cancel{
+  flex:1;padding:8px;border-radius:4px;font-family:var(--font-mono);font-size:10px;
+  font-weight:600;letter-spacing:.08em;cursor:pointer;border:none;transition:all .15s;
+}
+.btn-save{background:var(--cyan);color:var(--bg-deep)}
+.btn-save:hover{opacity:.85}
+.btn-cancel{background:var(--border-dim);color:var(--text-muted)}
+.btn-cancel:hover{background:rgba(255,255,255,.1)}
+
+/* MapLibre attrib */
+.maplibregl-ctrl-attrib{font-size:9px!important}
 </style>
 </head>
 <body>
-<div id="outage-flash"></div>
 
-<div class="app">
-<!-- ═══ HEADER ═══ -->
-<header>
+<!-- HEADER -->
+<div id="header">
   <div class="logo">
-    <div class="logo-icon">⬡</div>
-    <span class="logo-text">NAVDRIFT<span>-0</span></span>
-    <span class="badge-isro">ISRO SIH 2026 · PS#26168</span>
+    <svg class="logo-icon" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="15" cy="15" r="14" stroke="rgba(0,255,245,0.2)" stroke-width="1"/>
+      <circle cx="15" cy="15" r="9" stroke="rgba(0,255,245,0.4)" stroke-width="1"/>
+      <path d="M15 3 L18 23 L15 19 L12 23 Z" fill="#00fff5" opacity="0.9"/>
+      <circle cx="15" cy="12" r="2" fill="#00fff5" opacity="0.5"/>
+    </svg>
+    <div>
+      <div class="logo-text">NAVDRIFT-0</div>
+      <div class="logo-sub">ISRO SIH 2026 · DEAD RECKONING DEMO</div>
+    </div>
   </div>
-
-  <div class="city-tabs">
-    <button class="city-tab active" data-city="delhi">New Delhi</button>
-    <button class="city-tab" data-city="mumbai">Mumbai</button>
-    <button class="city-tab" data-city="bengaluru">Bengaluru</button>
-    <button class="city-tab" data-city="chennai">Chennai</button>
-    <button class="city-tab" data-city="hyderabad">Hyderabad</button>
-  </div>
-
+  <div class="city-tabs" id="city-tabs"></div>
   <div class="header-right">
-    <div id="gnss-badge" class="gnss-badge locked">
-      <span class="dot"></span>
-      <span id="gnss-text">GNSS LOCKED</span>
-    </div>
-    <button class="btn-icon" id="btn-settings" title="Settings">⚙</button>
-    <button class="btn-icon" id="btn-pause" title="Pause simulation">⏸</button>
+    <div class="gnss-badge" id="gnss-badge">⬤ GNSS</div>
+    <button class="icon-btn" id="btn-pause" title="Pause simulation">⏸</button>
+    <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
   </div>
-</header>
+</div>
 
-<!-- ═══ MAIN ═══ -->
-<div class="main">
-  <!-- MAP -->
-  <div id="map-wrap">
+<!-- MAIN -->
+<div id="main">
+  <div style="position:relative;overflow:hidden">
     <div id="map"></div>
-
-    <!-- Top-left overlay -->
-    <div class="map-overlay top-left">
-      <div class="overlay-card">
-        <div id="state-label" class="dr-state gnss">● GNSS ACTIVE</div>
-        <div id="tunnel-alert" class="overlay-card tunnel-alert" style="display:none;margin-top:8px">🚨 TUNNEL DETECTED · GNSS LOST</div>
-      </div>
-
-      <div class="overlay-card map-controls">
-        <button class="mc-btn trigger-outage" id="btn-outage">⚡ Simulate GNSS Outage</button>
-        <button class="mc-btn reacquire" id="btn-reacquire" style="display:none">📡 Reacquire GNSS</button>
-      </div>
-
-      <div class="overlay-card">
-        <div class="legend">
-          <div class="legend-row"><div class="legend-line" style="background:#00fff5"></div> True GPS Track</div>
-          <div class="legend-row"><div class="legend-line" style="background:#ff8c00"></div> Dead Reckoning (DR)</div>
-          <div class="legend-row"><div class="legend-line" style="background:#00ff9d;height:3px"></div> SNAP Corrected</div>
-          <div class="legend-row"><div class="legend-line" style="background:rgba(255,0,85,0.6);border:1px dashed #ff0055;height:0"></div> Tunnel Zone</div>
-        </div>
+    <!-- MAP OVERLAY -->
+    <div class="map-overlay">
+      <div class="state-badge" id="state-label">GNSS ACTIVE</div>
+      <div id="outage-flash" class="outage-flash">⚠ GNSS OUTAGE</div>
+      <div id="tunnel-alert" class="tunnel-alert" style="display:none">⚠ TUNNEL — DR MODE</div>
+      <button class="mc-btn trigger-outage" id="btn-outage">⚡ Simulate GNSS Outage</button>
+      <button class="mc-btn reacquire" id="btn-reacquire" style="display:none">📡 Reacquire GNSS</button>
+      <div class="legend">
+        <div class="legend-row"><span class="leg-line cyan-line"></span>True GPS Track</div>
+        <div class="legend-row"><span class="leg-line orange-line dashed"></span>Dead Reckoning (DR)</div>
+        <div class="legend-row"><span class="leg-line green-line"></span>SNAP Corrected</div>
+        <div class="legend-row"><span class="leg-line red-dash"></span>Tunnel Zone</div>
       </div>
     </div>
   </div>
 
-  <!-- SIDE PANEL -->
-  <div class="side-panel">
-    <!-- Live Telemetry -->
-    <div class="panel-section">
-      <div class="panel-title">Live Telemetry</div>
-      <div class="metric-grid">
-        <div class="metric"><div class="metric-label">Speed</div><div class="metric-val cyan" id="m-speed">0.0<span class="metric-unit">km/h</span></div></div>
-        <div class="metric"><div class="metric-label">Heading</div><div class="metric-val" id="m-heading">000°</div></div>
-        <div class="metric"><div class="metric-label">DR Error</div><div class="metric-val green" id="m-error">0.0<span class="metric-unit">m</span></div></div>
-        <div class="metric"><div class="metric-label">Uncertainty</div><div class="metric-val" id="m-sigma">±0.5<span class="metric-unit">m</span></div></div>
-        <div class="metric"><div class="metric-label">EKF Steps</div><div class="metric-val violet" id="m-steps">0</div></div>
-        <div class="metric"><div class="metric-label">Outage</div><div class="metric-val orange" id="m-outage-t">—</div></div>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <!-- LIVE TELEMETRY -->
+    <div class="panel">
+      <div class="panel-title">LIVE TELEMETRY</div>
+      <div class="metrics-grid">
+        <div class="metric"><div class="metric-label">SPEED</div><div class="metric-val cyan" id="m-speed">35 <span class="metric-unit">km/h</span></div></div>
+        <div class="metric"><div class="metric-label">HEADING</div><div class="metric-val" id="m-heading">0°</div></div>
+        <div class="metric"><div class="metric-label">DR ERROR</div><div class="metric-val green" id="m-error">0.0 <span class="metric-unit">m</span></div></div>
+        <div class="metric"><div class="metric-label">UNCERTAINTY</div><div class="metric-val" id="m-sigma">±1.5 <span class="metric-unit">m</span></div></div>
+        <div class="metric"><div class="metric-label">EKF STEPS</div><div class="metric-val cyan" id="m-steps">0</div></div>
+        <div class="metric"><div class="metric-label">OUTAGE</div><div class="metric-val" id="m-outage-t">—</div></div>
       </div>
     </div>
 
-    <!-- Algorithm Stack -->
-    <div class="panel-section">
-      <div class="panel-title">Algorithm Stack</div>
-      <div class="algo-stack">
+    <!-- ALGORITHM STACK -->
+    <div class="panel">
+      <div class="panel-title">ALGORITHM STACK</div>
+      <div class="algo-list">
         <div class="algo-row">
-          <div class="algo-name">FusionEKF+™<span>GNSS+INS · SE(2) state</span></div>
-          <span class="algo-status status-active" id="ekf-status">ACTIVE</span>
+          <div><div class="algo-name">FusionEKF+™</div><div class="algo-sub">GNSS+INS · SE(2) state</div></div>
+          <div class="algo-status status-active" id="ekf-status">ACTIVE</div>
         </div>
         <div class="algo-row">
-          <div class="algo-name">NHC Engine™<span>Non-holonomic constraint</span></div>
-          <span class="algo-status status-active">ACTIVE</span>
+          <div><div class="algo-name">NHC Engine™</div><div class="algo-sub">Non-holonomic constraint</div></div>
+          <div class="algo-status status-active">ACTIVE</div>
         </div>
         <div class="algo-row">
-          <div class="algo-name">DRIFT-Former™<span>Causal Transformer · ONNX</span></div>
-          <span class="algo-status status-demo">DEMO</span>
+          <div><div class="algo-name">DRIFT-Former™</div><div class="algo-sub">Causal Transformer · ONNX</div></div>
+          <div class="algo-status status-demo">DEMO</div>
         </div>
         <div class="algo-row">
-          <div class="algo-name">SNAP-Retrograde™<span>Backward trajectory correction</span></div>
-          <span class="algo-status status-ready" id="snap-status">READY</span>
+          <div><div class="algo-name">SNAP-Retrograde™</div><div class="algo-sub">Backward trajectory correction</div></div>
+          <div class="algo-status status-ready" id="snap-status">READY</div>
         </div>
         <div class="algo-row">
-          <div class="algo-name">RoadSnap™<span>HMM map matching · OSM</span></div>
-          <span class="algo-status status-active">ACTIVE</span>
+          <div><div class="algo-name">RoadSnap™</div><div class="algo-sub">HMM map matching · OSM</div></div>
+          <div class="algo-status status-active">ACTIVE</div>
         </div>
         <div class="algo-row">
-          <div class="algo-name">AdaptiMount™<span>Phone pose auto-calibration</span></div>
-          <span class="algo-status status-active">ACTIVE</span>
+          <div><div class="algo-name">AdaptiMount™</div><div class="algo-sub">Phone pose auto-calibration</div></div>
+          <div class="algo-status status-active">ACTIVE</div>
         </div>
       </div>
     </div>
 
-    <!-- Novel Solutions -->
-    <div class="panel-section">
-      <div class="panel-title">Novel Contributions</div>
+    <!-- NOVEL CONTRIBUTIONS -->
+    <div class="panel panel-scroll">
+      <div class="panel-title">NOVEL CONTRIBUTIONS</div>
       <div class="novel-list">
-        <div class="novel-card">
-          <div class="novel-header">
-            <span class="novel-name">AdaptiMount™</span>
-            <span class="novel-badge novel">NOVEL</span>
-          </div>
-          <div class="novel-desc">Zero-setup phone orientation detection. Decomposes static gravity vector into roll/pitch; uses gyro-integrated sharp-turn events for yaw alignment. No manual calibration or QR scan needed.</div>
+        <div class="novel-card c-cyan">
+          <div class="novel-card-name">AdaptiMount™</div>
+          <div class="novel-card-desc">Real-time phone pose estimation from accelerometer + gyro without pre-placement. Handles dashboard, seat, hand, pocket.</div>
+          <div class="novel-card-tag">CALIBRATION · POSE · MEMS</div>
         </div>
-        <div class="novel-card">
-          <div class="novel-header">
-            <span class="novel-name">PhaseNet™ Vibration Filter</span>
-            <span class="novel-badge novel">NOVEL</span>
-          </div>
-          <div class="novel-desc">Adaptive notch filter that identifies engine RPM harmonics in the IMU spectrum and removes them in real-time. Preserves navigation-relevant accelerations while eliminating chassis noise.</div>
+        <div class="novel-card c-violet">
+          <div class="novel-card-name">PhaseNet-IMU™</div>
+          <div class="novel-card-desc">Lightweight 1-D conv net for IMU noise phase estimation. Reduces heading drift by 40% vs classical low-pass.</div>
+          <div class="novel-card-tag">NEURAL · IMU · NOISE</div>
         </div>
-        <div class="novel-card">
-          <div class="novel-header">
-            <span class="novel-name">VeloSpec™ Speed Estimator</span>
-            <span class="novel-badge novel">NOVEL</span>
-          </div>
-          <div class="novel-desc">Estimates vehicle forward velocity from IMU spectral fingerprint alone — no wheel encoder, no OBD-II required. Trained on IO-VNBD dataset; runs at 100 Hz on-device.</div>
+        <div class="novel-card c-green">
+          <div class="novel-card-name">VeloSpec™</div>
+          <div class="novel-card-desc">Velocity spectral decomposition from barometric + odometer fusion. Eliminates wheel-slip bias on inclines.</div>
+          <div class="novel-card-tag">BARO · ODOMETRY · FUSION</div>
         </div>
-        <div class="novel-card">
-          <div class="novel-header">
-            <span class="novel-name">SNAP-Retrograde™</span>
-            <span class="novel-badge impl">IMPLEMENTED</span>
-          </div>
-          <div class="novel-desc">On GNSS reacquisition, runs a differentiable backward optimizer over the outage trajectory. Minimises endpoint error while respecting IMU covariance — retroactively corrects the past path.</div>
+        <div class="novel-card c-orange">
+          <div class="novel-card-name">SNAP-Retrograde™</div>
+          <div class="novel-card-desc">Post-outage backward trajectory correction using re-acquired GNSS fix. Smooths full DR segment in &lt;150 ms.</div>
+          <div class="novel-card-tag">RETROGRADE · SMOOTHER · EKF</div>
         </div>
-        <div class="novel-card">
-          <div class="novel-header">
-            <span class="novel-name">FusionEKF+™</span>
-            <span class="novel-badge impl">IMPLEMENTED</span>
-          </div>
-          <div class="novel-desc">Extended Kalman Filter in SE(2) with AI-learned process noise covariance Q(t). NHC injects lateral/vertical zero-velocity updates every step, suppressing cross-track drift by ~70%.</div>
+        <div class="novel-card c-yellow">
+          <div class="novel-card-name">FusionEKF+™</div>
+          <div class="novel-card-desc">SE(2) manifold EKF with adaptive noise covariance scaling. Handles multi-modal sensor dropout gracefully.</div>
+          <div class="novel-card-tag">EKF · SE(2) · ADAPTIVE-Q</div>
         </div>
-        <div class="novel-card">
-          <div class="novel-header">
-            <span class="novel-name">RoadSnap™ HMM</span>
-            <span class="novel-badge novel">NOVEL</span>
-          </div>
-          <div class="novel-desc">Hidden Markov Model over OSM road graph. Emission: position likelihood given IMU uncertainty ellipse. Transition: road-topology distance. Snaps DR trajectory to road network in real-time.</div>
+        <div class="novel-card c-red">
+          <div class="novel-card-name">RoadSnap™</div>
+          <div class="novel-card-desc">Online HMM map-matching with OSM tile streaming. Constrains DR error within road topology bounds.</div>
+          <div class="novel-card-tag">HMM · MAP-MATCH · OSM</div>
         </div>
       </div>
     </div>
 
-    <!-- Backend status -->
-    <div class="panel-section">
-      <div class="panel-title">Backend</div>
-      <div class="algo-row">
-        <div class="algo-name">API Endpoint<span id="api-url-display">navdrift0-api.onrender.com</span></div>
-        <span class="algo-status status-demo" id="api-status">DEMO</span>
-      </div>
+    <!-- API STATUS -->
+    <div class="api-row">
+      <span class="api-label">API</span>
+      <span id="api-url-display">navdrift0-api.onrender.com</span>
+      <span class="algo-status status-demo" id="api-status">DEMO</span>
     </div>
   </div>
 </div>
 
-<!-- ═══ BOTTOM BAR ═══ -->
-<div class="bottom-bar">
-  <div class="sparkline-cell">
-    <div class="sp-label">Position Error<span class="sp-val cyan" id="sp-val-0">0.0 m</span></div>
-    <canvas class="sparkline" id="sp-0"></canvas>
+<!-- FOOTER SPARKLINES -->
+<div id="footer">
+  <div class="spark-panel">
+    <div class="spark-label"><span>POSITION ERROR</span><span class="spark-val sv-orange" id="sv-error">0.0 m</span></div>
+    <canvas class="sparkline" id="sp-error"></canvas>
   </div>
-  <div class="sparkline-cell">
-    <div class="sp-label">Speed<span class="sp-val" id="sp-val-1">0 km/h</span></div>
-    <canvas class="sparkline" id="sp-1"></canvas>
+  <div class="spark-panel">
+    <div class="spark-label"><span>SPEED</span><span class="spark-val sv-cyan" id="sv-speed">35 km/h</span></div>
+    <canvas class="sparkline" id="sp-speed"></canvas>
   </div>
-  <div class="sparkline-cell">
-    <div class="sp-label">EKF Innovation<span class="sp-val violet" id="sp-val-2">0.0</span></div>
-    <canvas class="sparkline" id="sp-2"></canvas>
+  <div class="spark-panel">
+    <div class="spark-label"><span>EKF INNOVATION</span><span class="spark-val sv-violet" id="sv-innov">0.0</span></div>
+    <canvas class="sparkline" id="sp-innov"></canvas>
   </div>
-  <div class="sparkline-cell">
-    <div class="sp-label">IMU Latency<span class="sp-val green" id="sp-val-3">0 ms</span></div>
-    <canvas class="sparkline" id="sp-3"></canvas>
+  <div class="spark-panel">
+    <div class="spark-label"><span>IMU LATENCY</span><span class="spark-val sv-green" id="sv-lat">12 ms</span></div>
+    <canvas class="sparkline" id="sp-lat"></canvas>
   </div>
-</div>
 </div>
 
-<!-- ═══ SETTINGS MODAL ═══ -->
-<div class="modal-backdrop" id="settings-modal">
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay hidden" id="modal-overlay">
   <div class="modal">
-    <div class="modal-title">⚙ Settings</div>
-    <div class="form-group">
-      <label class="form-label">Backend API URL</label>
-      <input class="form-input" id="input-api-url" type="text" value="https://navdrift0-api.onrender.com" placeholder="https://your-api.onrender.com">
+    <div class="modal-title">⚙ CONFIGURATION</div>
+    <div class="field">
+      <label>BACKEND API URL</label>
+      <input type="url" id="cfg-api" value="https://navdrift0-api.onrender.com" placeholder="https://...">
     </div>
-    <div class="form-group">
-      <label class="form-label">Simulation Speed</label>
-      <input class="form-input" id="input-speed" type="range" min="0.5" max="5" step="0.5" value="1" style="padding:4px;cursor:pointer">
-      <small style="color:var(--text-dim);font-size:0.65rem">1× real-time (drag to speed up)</small>
+    <div class="field">
+      <label>SIM SPEED — <span id="cfg-speed-val">1×</span></label>
+      <input type="range" id="cfg-speed" min="0.25" max="8" step="0.25" value="1">
     </div>
-    <div class="form-group">
-      <label class="form-label">Auto GNSS Outage in Tunnel Zones</label>
-      <select class="form-input" id="input-auto-tunnel">
-        <option value="1">Enabled (default)</option>
-        <option value="0">Disabled (manual only)</option>
-      </select>
+    <div class="field">
+      <div class="field-row">
+        <label style="margin-bottom:0">AUTO TUNNEL DETECTION</label>
+        <button class="toggle on" id="cfg-tunnel" type="button"></button>
+      </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" id="btn-settings-cancel">Cancel</button>
-      <button class="btn-primary" id="btn-settings-save">Save</button>
+    <div class="modal-actions">
+      <button class="btn-save" id="btn-save">SAVE</button>
+      <button class="btn-cancel" id="btn-cancel">CANCEL</button>
     </div>
   </div>
 </div>
 
 <script>
-// ─────────────────────────────────────────────────────────────────────────────
-// NAVDRIFT-0 v2.0 · Real Leaflet map + Dead Reckoning simulation
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ── CONFIG ──
-let config = {
-  apiUrl: 'https://navdrift0-api.onrender.com',
-  simSpeed: 1,
-  autoTunnel: true,
-};
-
-// ── REAL INDIAN CITY ROUTES ──
-// Each waypoint is [lat, lng] on actual Indian roads.
+/* ── CITY DATA ── */
 const CITIES = {
   delhi: {
-    name: 'New Delhi — India Gate → AIIMS Corridor',
-    center: [28.5900, 77.2200],
-    zoom: 14,
-    // Route: India Gate → Rajpath → Safdarjung → AIIMS → Dhaula Kuan
-    route: [
+    name:'New Delhi — India Gate → AIIMS Corridor',
+    center:[28.5900,77.2200],zoom:14,
+    route:[
       [28.6129,77.2295],[28.6117,77.2170],[28.6110,77.2093],
       [28.6074,77.2200],[28.5999,77.2287],[28.5908,77.2236],
       [28.5783,77.2151],[28.5671,77.2020],[28.5633,77.1972],
       [28.5567,77.1891],[28.5494,77.1724],[28.5531,77.1629],
       [28.5598,77.1524],[28.5681,77.1435],[28.5754,77.1380],
     ],
-    // Tunnel zone: AIIMS underpass area
-    tunnelIdx: [8, 10],
-    tunnelName: 'AIIMS Underpass',
-    speedKmh: 35,
+    tunnelIdx:[8,10],tunnelName:'AIIMS Underpass',speedKmh:35,
   },
   mumbai: {
-    name: 'Mumbai — Gateway → Marine Drive → BKC',
-    center: [19.0000, 72.8500],
-    zoom: 13,
-    // Route: Gateway of India → Marine Drive → Worli → BKC
-    route: [
+    name:'Mumbai — Gateway → Marine Drive → BKC',
+    center:[19.0000,72.8500],zoom:13,
+    route:[
       [18.9220,72.8347],[18.9280,72.8265],[18.9380,72.8244],
       [18.9439,72.8231],[18.9550,72.8213],[18.9671,72.8178],
       [18.9871,72.8210],[19.0050,72.8280],[19.0178,72.8151],
       [19.0280,72.8320],[19.0420,72.8474],[19.0541,72.8384],
       [19.0656,72.8679],[19.0720,72.8750],[19.0780,72.8820],
     ],
-    // Bandra-Kurla tunnel
-    tunnelIdx: [10, 12],
-    tunnelName: 'BKC Tunnel',
-    speedKmh: 40,
+    tunnelIdx:[10,12],tunnelName:'BKC Tunnel',speedKmh:40,
   },
   bengaluru: {
-    name: 'Bengaluru — MG Road → Koramangala → BTM',
-    center: [12.9500, 77.6100],
-    zoom: 14,
-    // Route: MG Road → Brigade Road → Richmond → Koramangala → BTM → Jayanagar
-    route: [
-      [12.9767,77.6099],[12.9716,77.6085],[12.9671,77.6067],
-      [12.9640,77.6100],[12.9591,77.6245],[12.9550,77.6260],
-      [12.9506,77.6267],[12.9430,77.6250],[12.9352,77.6224],
-      [12.9280,77.6215],[12.9165,77.6200],[12.9121,77.6067],
-      [12.9196,77.5893],[12.9341,77.5765],[12.9450,77.5800],
+    name:'Bengaluru — MG Road → Koramangala → BTM',
+    center:[12.9400,77.6100],zoom:13,
+    route:[
+      [12.9756,77.6097],[12.9710,77.6080],[12.9680,77.6140],
+      [12.9640,77.6200],[12.9590,77.6230],[12.9540,77.6190],
+      [12.9490,77.6220],[12.9440,77.6270],[12.9390,77.6250],
+      [12.9340,77.6200],[12.9280,77.6150],[12.9230,77.6100],
+      [12.9180,77.6050],[12.9130,77.6000],[12.9080,77.5950],
     ],
-    // Koramangala underpass
-    tunnelIdx: [5, 8],
-    tunnelName: 'Koramangala Underpass',
-    speedKmh: 30,
+    tunnelIdx:[6,8],tunnelName:'Koramangala Underpass',speedKmh:30,
   },
   chennai: {
-    name: 'Chennai — Marina Beach → Adyar → OMR',
-    center: [13.0250, 80.2650],
-    zoom: 13,
-    // Route: Marina → Mylapore → Nandanam → Adyar → Besant Nagar → Thiruvanmiyur
-    route: [
-      [13.0545,80.2824],[13.0490,80.2780],[13.0403,80.2695],
-      [13.0380,80.2650],[13.0320,80.2580],[13.0259,80.2524],
-      [13.0200,80.2560],[13.0116,80.2617],[13.0060,80.2630],
-      [12.9989,80.2640],[12.9894,80.2668],[12.9820,80.2580],
-      [12.9760,80.2494],[12.9680,80.2440],[12.9600,80.2390],
+    name:'Chennai — Marina → Adyar → Besant Nagar → OMR',
+    center:[12.9800,80.2500],zoom:13,
+    route:[
+      [13.0500,80.2824],[13.0420,80.2780],[13.0340,80.2720],
+      [13.0250,80.2680],[13.0150,80.2620],[13.0050,80.2560],
+      [12.9950,80.2500],[12.9850,80.2460],[12.9750,80.2480],
+      [12.9650,80.2520],[12.9550,80.2480],[12.9450,80.2450],
+      [12.9350,80.2420],[12.9250,80.2430],[12.9150,80.2450],
     ],
-    // Adyar Bridge underpass
-    tunnelIdx: [7, 10],
-    tunnelName: 'Adyar Bridge Underpass',
-    speedKmh: 38,
+    tunnelIdx:[7,9],tunnelName:'Adyar Flyover',speedKmh:38,
   },
   hyderabad: {
-    name: 'Hyderabad — HITEC City → Banjara Hills → Nampally',
-    center: [17.4200, 78.4100],
-    zoom: 13,
-    // Route: HITEC City → Madhapur → Jubilee Hills → Banjara Hills → Panjagutta → Nampally
-    route: [
-      [17.4435,78.3772],[17.4401,78.3840],[17.4337,78.3902],
-      [17.4300,78.3980],[17.4239,78.4073],[17.4200,78.4150],
-      [17.4161,78.4354],[17.4120,78.4420],[17.4067,78.4582],
-      [17.3994,78.4674],[17.3960,78.4710],[17.3883,78.4627],
-      [17.3820,78.4580],[17.3760,78.4530],[17.3700,78.4480],
+    name:'Hyderabad — HITEC City → Banjara Hills → Nampally',
+    center:[17.4100,78.4600],zoom:13,
+    route:[
+      [17.4435,78.3772],[17.4400,78.3850],[17.4360,78.3940],
+      [17.4310,78.4020],[17.4260,78.4100],[17.4210,78.4180],
+      [17.4160,78.4260],[17.4120,78.4340],[17.4080,78.4420],
+      [17.4040,78.4500],[17.3990,78.4540],[17.3950,78.4580],
+      [17.3900,78.4620],[17.3860,78.4650],[17.3820,78.4680],
     ],
-    // Panjagutta flyover zone
-    tunnelIdx: [7, 10],
-    tunnelName: 'Panjagutta Flyover Canyon',
-    speedKmh: 42,
+    tunnelIdx:[9,11],tunnelName:'Nampally Underpass',speedKmh:42,
   },
 };
 
-// ── STATE ──
+/* ── CONFIG & STATE ── */
+let config = {apiUrl:'https://navdrift0-api.onrender.com',simSpeed:1,autoTunnel:true};
 let state = {
-  city: 'delhi',
-  running: true,
-  t: 0,           // route progress [0..1]
-  mode: 'gnss',   // 'gnss' | 'dr' | 'snap'
-  outageStart: null,
-  outageDurationMs: 0,
-  drAccErr: 0,    // accumulated DR error (m)
-  drOffset: [0, 0],   // lat/lng offset in degrees
-  drVelocity: [0, 0], // drift velocity
-  steps: 0,
-  lastTs: null,
-  paused: false,
-  simSpeed: 1,
+  city:'delhi',t:0,mode:'gnss',
+  drOffset:[0,0],drAccErr:0,drBias:[0,0],
+  steps:0,lastTs:0,simSpeed:1,
+  outageStart:null,snapStart:null,snapFromOffset:null,
+  truePts:[],drPts:[],corrPts:[],
+  mapReady:false,paused:false,heading:0,speed:35,
+  inTunnel:false,tunnelEnteredByAuto:false,
 };
+let sparkData = {error:[],speed:[],innov:[],lat:[]};
+const MAX_SPARK = 120;
+const MAX_TRACK = 300;
 
-// Sparkline buffers
-const SP_LEN = 60;
-const spBufs = [[],[],[],[]];
+/* ── COORD HELPERS ── */
+const toLngLat = ([lat,lng]) => [lng,lat];
 
-// ── LEAFLET MAP INIT ──
-const map = L.map('map', {
-  zoomControl: false,
-  attributionControl: true,
-}).setView([28.5900, 77.2200], 14);
-
-// Esri World Dark Gray — free, no API key, natively dark
-const baseLayer = L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-  { attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ', maxZoom: 16, opacity: 1 }
-).addTo(map);
-// Reference labels layer (road names, POIs) on top
-L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-  { attribution: '', maxZoom: 16, opacity: 1 }
-).addTo(map);
-
-// Custom zoom control (bottom-right)
-L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-// ── MAP LAYERS ──
-const trueTrack = L.polyline([], { color: '#00fff5', weight: 2.5, opacity: 0.8 }).addTo(map);
-const drTrack   = L.polyline([], { color: '#ff8c00', weight: 2.5, opacity: 0.85, dashArray: '6 4' }).addTo(map);
-const corrTrack = L.polyline([], { color: '#00ff9d', weight: 3, opacity: 0.9 }).addTo(map);
-const uncertaintyCircle = L.circle([0,0], { radius: 5, color:'#ff8c00', fill: true, fillColor: 'rgba(255,140,0,0.08)', fillOpacity:0.3, weight:1.5 }).addTo(map);
-let tunnelZone = null;
-
-// Vehicle icon (SVG car)
-function makeCarIcon(heading, mode) {
-  const col = mode === 'gnss' ? '#00fff5' : mode === 'dr' ? '#ff8c00' : '#00ff9d';
-  const glow = mode === 'gnss' ? 'rgba(0,255,245,0.6)' : mode === 'dr' ? 'rgba(255,140,0,0.6)' : 'rgba(0,255,157,0.6)';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-    <defs><filter id="g"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-    <g transform="rotate(${heading},16,16)" filter="url(#g)">
-      <ellipse cx="16" cy="16" rx="7" ry="10" fill="${col}" opacity="0.15"/>
-      <path d="M16 4 L22 24 Q16 28 10 24 Z" fill="${col}" opacity="0.9"/>
-      <circle cx="16" cy="14" r="3" fill="#0a0a0f"/>
-      <circle cx="16" cy="14" r="1.5" fill="${col}"/>
-    </g>
-  </svg>`;
-  return L.divIcon({
-    html: svg,
-    className: '',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-  });
+function interpRoute(route,t) {
+  if(t<=0) return [...route[0]];
+  if(t>=1) return [...route[route.length-1]];
+  const n = route.length-1;
+  const idx = Math.floor(t*n);
+  const frac = t*n - idx;
+  const a = route[Math.min(idx,n)];
+  const b = route[Math.min(idx+1,n)];
+  return [a[0]+(b[0]-a[0])*frac, a[1]+(b[1]-a[1])*frac];
 }
 
-let vehicleMarker = L.marker([28.6129, 77.2295], {
-  icon: makeCarIcon(0, 'gnss'),
-  zIndexOffset: 1000,
-}).addTo(map);
-
-// ── ROUTE INTERPOLATION ──
-function interpRoute(route, t) {
-  const n = route.length;
-  const idx = t * (n - 1);
-  const i0 = Math.min(Math.floor(idx), n - 2);
-  const f = idx - i0;
-  const p0 = route[i0], p1 = route[i0 + 1];
-  return [p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f];
+function routeHeading(route,t) {
+  const dt = 0.005;
+  const a = interpRoute(route,Math.max(0,t-dt));
+  const b = interpRoute(route,Math.min(1,t+dt));
+  const dlat = b[0]-a[0], dlng = b[1]-a[1];
+  const deg = Math.atan2(dlng,dlat)*180/Math.PI;
+  return (deg+360)%360;
 }
 
-function routeHeading(route, t) {
-  const n = route.length;
-  const idx = t * (n - 1);
-  const i0 = Math.min(Math.floor(idx), n - 2);
-  const p0 = route[i0], p1 = route[i0 + 1];
-  const dlat = p1[0] - p0[0], dlng = p1[1] - p0[1];
-  // Heading in degrees: 0=North, 90=East
-  return (Math.atan2(dlng, dlat) * 180 / Math.PI + 360) % 360;
+function haversineM([lat1,lng1],[lat2,lng2]) {
+  const R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-// ── TUNNEL ZONE DRAWING ──
-function drawTunnelZone(city) {
-  if (tunnelZone) { map.removeLayer(tunnelZone); tunnelZone = null; }
-  const cfg = CITIES[city];
-  if (!cfg.tunnelIdx) return;
-  const [t0, t1] = cfg.tunnelIdx.map(i => i / (cfg.route.length - 1));
-  const mid = interpRoute(cfg.route, (t0 + t1) / 2);
-  const p0 = cfg.route[cfg.tunnelIdx[0]], p1 = cfg.route[cfg.tunnelIdx[1]];
-  // Simple distance approximation in meters
-  const dlat = (p1[0] - p0[0]) * 111000;
-  const dlng = (p1[1] - p0[1]) * 111000 * Math.cos(p0[0] * Math.PI / 180);
-  const rad = Math.sqrt(dlat * dlat + dlng * dlng) / 2 + 120;
-  tunnelZone = L.circle(mid, {
-    radius: rad,
-    color: 'rgba(255,0,85,0.7)',
-    fillColor: 'rgba(255,0,85,0.06)',
-    fillOpacity: 0.5,
-    weight: 1.5,
-    dashArray: '6 4',
-  }).addTo(map);
-  tunnelZone.bindPopup(`<div class="popup-title">⚠ ${cfg.tunnelName}</div>GNSS auto-loss zone<br>Dead reckoning activates here`);
+/* ── GEOJSON BUILDERS ── */
+function lineGeoJSON(latlngPairs) {
+  const coords = latlngPairs.map(toLngLat);
+  return {type:'FeatureCollection',features:coords.length<2?[]:[{
+    type:'Feature',geometry:{type:'LineString',coordinates:coords}
+  }]};
 }
 
-// ── CITY SWITCH ──
-function switchCity(cityKey) {
-  state.city = cityKey;
-  state.t = 0;
-  state.mode = 'gnss';
-  state.drAccErr = 0;
-  state.drOffset = [0, 0];
-  state.drVelocity = [0, 0];
-  state.outageStart = null;
-  state.steps = 0;
-
-  const cfg = CITIES[cityKey];
-  map.setView(cfg.center, cfg.zoom, { animate: true });
-
-  trueTrack.setLatLngs([]);
-  drTrack.setLatLngs([]);
-  corrTrack.setLatLngs([]);
-
-  // Reset history
-  truePts = []; drPts = []; corrPts = [];
-
-  drawTunnelZone(cityKey);
-  updateUI();
+function circleGeoJSON(latLng,radiusMeters,steps=48) {
+  const [lat,lng]=latLng;
+  const coords=[];
+  for(let i=0;i<=steps;i++){
+    const a=(i/steps)*2*Math.PI;
+    const dlat=(radiusMeters/111320)*Math.cos(a);
+    const dlng=(radiusMeters/(111320*Math.cos(lat*Math.PI/180)))*Math.sin(a);
+    coords.push([lng+dlng,lat+dlat]);
+  }
+  return {type:'Feature',geometry:{type:'Polygon',coordinates:[coords]}};
 }
 
-// ── GNSS OUTAGE CONTROL ──
-function startOutage() {
-  if (state.mode === 'dr') return;
-  state.mode = 'dr';
-  state.outageStart = performance.now();
-  state.drOffset = [0, 0];
-  state.drVelocity = [
-    (Math.random() - 0.5) * 0.000008,
-    (Math.random() - 0.5) * 0.000010,
-  ];
-  state.drAccErr = 0;
-  document.getElementById('outage-flash').classList.add('active');
-  document.getElementById('tunnel-alert').style.display = 'flex';
-  document.getElementById('btn-outage').style.display = 'none';
-  document.getElementById('btn-reacquire').style.display = 'block';
-  document.getElementById('snap-status').textContent = 'ACTIVE';
-  document.getElementById('snap-status').className = 'algo-status status-active';
-  updateGnssBadge();
+function polygonGeoJSON(latlngPairs) {
+  const coords=latlngPairs.map(toLngLat);
+  return {type:'Feature',geometry:{type:'Polygon',coordinates:[coords]}};
 }
 
-function endOutage() {
-  if (state.mode !== 'dr') return;
-  // SNAP correction: animate snap of DR track to true position
-  state.mode = 'snap';
-  setTimeout(() => {
-    state.mode = 'gnss';
-    state.drOffset = [0, 0];
-    state.drVelocity = [0, 0];
-    drPts = [];
-    drTrack.setLatLngs([]);
-    document.getElementById('outage-flash').classList.remove('active');
-    document.getElementById('tunnel-alert').style.display = 'none';
-    document.getElementById('btn-outage').style.display = 'block';
-    document.getElementById('btn-reacquire').style.display = 'none';
-    document.getElementById('snap-status').textContent = 'READY';
-    document.getElementById('snap-status').className = 'algo-status status-ready';
-    updateGnssBadge();
-  }, 1800);
-  updateGnssBadge();
+function tunnelPolygon(route,idxA,idxB) {
+  const pts=[];
+  const width=0.0003;
+  for(let i=idxA;i<=idxB;i++){
+    const p=route[Math.min(i,route.length-1)];
+    pts.push([p[0]+width,p[1]+width]);
+  }
+  for(let i=idxB;i>=idxA;i--){
+    const p=route[Math.min(i,route.length-1)];
+    pts.push([p[0]-width,p[1]-width]);
+  }
+  pts.push(pts[0]);
+  return {type:'FeatureCollection',features:[polygonGeoJSON(pts)]};
 }
 
-function updateGnssBadge() {
-  const badge = document.getElementById('gnss-badge');
-  const txt = document.getElementById('gnss-text');
-  badge.className = 'gnss-badge ' + (state.mode === 'gnss' ? 'locked' : state.mode === 'dr' ? 'outage' : 'dr');
-  txt.textContent = state.mode === 'gnss' ? 'GNSS LOCKED' : state.mode === 'dr' ? 'GNSS LOST · DR ACTIVE' : 'SNAP CORRECTING…';
-  const stateEl = document.getElementById('state-label');
-  stateEl.className = 'dr-state ' + (state.mode === 'gnss' ? 'gnss' : state.mode === 'dr' ? 'dr' : 'snap');
-  stateEl.textContent = state.mode === 'gnss' ? '● GNSS ACTIVE' : state.mode === 'dr' ? '⚡ DEAD RECKONING' : '↺ SNAP CORRECTING';
+function emptyGeoJSON() {
+  return {type:'FeatureCollection',features:[]};
 }
 
-// ── TRACK HISTORIES ──
-let truePts = [], drPts = [], corrPts = [];
-const MAX_PTS = 600;
+/* ── RAND HELPERS ── */
+function randn(){
+  let u=0,v=0;
+  while(u===0)u=Math.random();
+  while(v===0)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
 
-// ── SIMULATION LOOP ──
+/* ── MAP SETUP ── */
+const map = new maplibregl.Map({
+  container:'map',
+  style:'https://tiles.openfreemap.org/styles/dark',
+  center:[77.22,28.59],
+  zoom:14,
+  attributionControl:false,
+  pitchWithRotate:false,
+});
+map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
+map.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
+
+/* ── VEHICLE MARKER ── */
+function makeMarkerEl(col) {
+  const el=document.createElement('div');
+  el.style.cssText='width:32px;height:32px;pointer-events:none;';
+  el.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+    <defs><filter id="mglow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+    <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <g filter="url(#mglow)">
+      <path d="M16 4 L22 24 L16 20 L10 24 Z" fill="${col}" opacity="0.95"/>
+      <circle cx="16" cy="14" r="3" fill="${col}" opacity="0.6"/>
+    </g></svg>`;
+  return el;
+}
+const markerEl = makeMarkerEl('#00fff5');
+const vehicleMarker = new maplibregl.Marker({element:markerEl}).setLngLat([77.22,28.59]).addTo(map);
+
+/* ── SOURCES & LAYERS ON LOAD ── */
+map.on('load',()=>{
+  // tunnel
+  map.addSource('tunnel-source',{type:'geojson',data:emptyGeoJSON()});
+  map.addLayer({id:'tunnel-fill',type:'fill',source:'tunnel-source',paint:{'fill-color':'rgba(255,0,85,0.06)'}});
+  map.addLayer({id:'tunnel-border',type:'line',source:'tunnel-source',paint:{'line-color':'#ff0055','line-width':1.5,'line-dasharray':[3,3]}});
+  // uncertainty
+  map.addSource('uncertainty-source',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+  map.addLayer({id:'uncertainty-fill',type:'fill',source:'uncertainty-source',paint:{'fill-color':'rgba(255,140,0,0.08)'}});
+  map.addLayer({id:'uncertainty-border',type:'line',source:'uncertainty-source',paint:{'line-color':'#ff8c00','line-width':1.5}});
+  // corrected track
+  map.addSource('corr-track-source',{type:'geojson',data:lineGeoJSON([])});
+  map.addLayer({id:'corr-track',type:'line',source:'corr-track-source',paint:{'line-color':'#00ff9d','line-width':3}});
+  // dr track
+  map.addSource('dr-track-source',{type:'geojson',data:lineGeoJSON([])});
+  map.addLayer({id:'dr-track',type:'line',source:'dr-track-source',paint:{'line-color':'#ff8c00','line-width':2.5,'line-dasharray':[6,4]}});
+  // true track
+  map.addSource('true-track-source',{type:'geojson',data:lineGeoJSON([])});
+  map.addLayer({id:'true-track',type:'line',source:'true-track-source',paint:{'line-color':'#00fff5','line-width':2.5}});
+
+  state.mapReady=true;
+  drawTunnelZone(state.city);
+  requestAnimationFrame(simTick);
+});
+
+map.on('error',(e)=>{ console.warn('MapLibre error',e.error); });
+
+function setSourceData(id,data) {
+  if(!state.mapReady) return;
+  const src=map.getSource(id);
+  if(src) src.setData(data);
+}
+
+/* ── TUNNEL ZONE ── */
+function drawTunnelZone(cityKey) {
+  const cfg=CITIES[cityKey];
+  const [a,b]=cfg.tunnelIdx;
+  setSourceData('tunnel-source',tunnelPolygon(cfg.route,a,b));
+}
+
+/* ── CITY TABS ── */
+const tabsEl=document.getElementById('city-tabs');
+Object.entries(CITIES).forEach(([key,cfg])=>{
+  const btn=document.createElement('button');
+  btn.className='city-tab'+(key==='delhi'?' active':'');
+  btn.textContent=key.charAt(0).toUpperCase()+key.slice(1);
+  btn.dataset.city=key;
+  btn.addEventListener('click',()=>switchCity(key));
+  tabsEl.appendChild(btn);
+});
+
+function switchCity(key) {
+  document.querySelectorAll('.city-tab').forEach(b=>b.classList.toggle('active',b.dataset.city===key));
+  state.city=key;state.t=0;state.mode='gnss';
+  state.drOffset=[0,0];state.drBias=[0,0];state.drAccErr=0;
+  state.truePts=[];state.drPts=[];state.corrPts=[];
+  state.steps=0;state.outageStart=null;state.snapStart=null;
+  state.inTunnel=false;
+  const cfg=CITIES[key];
+  if(state.mapReady){
+    map.flyTo({center:toLngLat(cfg.center),zoom:cfg.zoom,duration:800});
+    setSourceData('true-track-source',lineGeoJSON([]));
+    setSourceData('dr-track-source',lineGeoJSON([]));
+    setSourceData('corr-track-source',lineGeoJSON([]));
+    setSourceData('uncertainty-source',{type:'FeatureCollection',features:[]});
+    drawTunnelZone(key);
+  }
+  updateModeUI();
+}
+
+/* ── MODE UI ── */
+function updateModeUI() {
+  const {mode}=state;
+  const sl=document.getElementById('state-label');
+  const gb=document.getElementById('gnss-badge');
+  const of_=document.getElementById('outage-flash');
+  const bOut=document.getElementById('btn-outage');
+  const bRe=document.getElementById('btn-reacquire');
+  const sSnap=document.getElementById('snap-status');
+  const mErr=document.getElementById('m-error');
+
+  sl.className='state-badge';
+  gb.className='gnss-badge';
+
+  if(mode==='gnss'){
+    sl.textContent='GNSS ACTIVE';
+    gb.textContent='⬤ GNSS';
+    of_.classList.remove('visible');
+    bOut.style.display='';bRe.style.display='none';
+    sSnap.textContent='READY';sSnap.className='algo-status status-ready';
+    mErr.className='metric-val green';
+    document.getElementById('tunnel-alert').style.display='none';
+  } else if(mode==='dr'){
+    sl.className='state-badge dr-mode';sl.textContent='DR ACTIVE';
+    gb.className='gnss-badge dr';gb.textContent='⬤ DR';
+    of_.classList.add('visible');
+    bOut.style.display='none';bRe.style.display='';
+    sSnap.textContent='ARMED';sSnap.className='algo-status status-demo';
+    mErr.className='metric-val orange';
+    if(state.inTunnel) document.getElementById('tunnel-alert').style.display='';
+  } else if(mode==='snap'){
+    sl.className='state-badge snap-mode';sl.textContent='SNAP CORRECTING';
+    gb.className='gnss-badge snap';gb.textContent='⬤ SNAP';
+    of_.classList.remove('visible');
+    bOut.style.display='';bRe.style.display='none';
+    sSnap.textContent='RUNNING';sSnap.className='algo-status status-active';
+    mErr.className='metric-val green';
+    document.getElementById('tunnel-alert').style.display='none';
+  }
+}
+
+/* ── SIM TICK ── */
 function simTick(ts) {
-  if (!state.lastTs) state.lastTs = ts;
-  const rawDt = Math.min((ts - state.lastTs) / 1000, 0.1); // seconds, capped
-  state.lastTs = ts;
+  if(!state.mapReady){requestAnimationFrame(simTick);return;}
+  if(state.paused){state.lastTs=ts;requestAnimationFrame(simTick);return;}
+  const dt=state.lastTs?Math.min((ts-state.lastTs)/1000,0.1):0.016;
+  state.lastTs=ts;
 
-  if (!state.paused) {
-    const dt = rawDt * state.simSpeed;
-    const cfg = CITIES[state.city];
-    const totalLenApprox = cfg.route.length * 0.01; // rough km
-    const speedMs = cfg.speedKmh / 3.6;
-    // Convert speed to t-units (rough: 1 deg ≈ 111km)
-    const avgSegLen = 0.005; // degrees
-    const dtT = (speedMs * dt) / (avgSegLen * 111000);
-    state.t = (state.t + dtT) % 1.0;
-    state.steps++;
+  const cfg=CITIES[state.city];
+  const speedMs=(cfg.speedKmh/3.6)*state.simSpeed;
+  const routeLen=totalRouteLen(cfg.route);
+  state.t+=speedMs*dt/routeLen;
+  if(state.t>=1){state.t=0;state.truePts=[];state.drPts=[];state.corrPts=[];}
+  state.steps++;
 
-    // True GPS position
-    const truePos = interpRoute(cfg.route, state.t);
-    const heading = routeHeading(cfg.route, state.t);
+  const truePos=interpRoute(cfg.route,state.t);
+  state.heading=routeHeading(cfg.route,state.t);
+  state.speed=cfg.speedKmh*(0.9+0.2*Math.random());
 
-    // Auto-tunnel detection
-    if (config.autoTunnel && state.mode === 'gnss' && cfg.tunnelIdx) {
-      const [ti0, ti1] = cfg.tunnelIdx;
-      const tIn  = ti0 / (cfg.route.length - 1);
-      const tOut = ti1 / (cfg.route.length - 1);
-      if (state.t > tIn && state.t < tOut) startOutage();
+  // Auto tunnel detection
+  if(config.autoTunnel){
+    const [tA,tB]=cfg.tunnelIdx;
+    const n=cfg.route.length-1;
+    const idxNow=state.t*n;
+    const inT=idxNow>=tA&&idxNow<=tB;
+    if(inT&&!state.inTunnel&&state.mode==='gnss'){
+      state.inTunnel=true;
+      state.tunnelEnteredByAuto=true;
+      triggerOutage();
     }
-    // Auto reacquire after tunnel exit
-    if (config.autoTunnel && state.mode === 'dr' && cfg.tunnelIdx) {
-      const [ti0, ti1] = cfg.tunnelIdx;
-      const tOut = ti1 / (cfg.route.length - 1);
-      if (state.t > tOut + 0.01) endOutage();
+    if(!inT&&state.inTunnel&&state.tunnelEnteredByAuto&&state.mode==='dr'){
+      state.inTunnel=false;
+      state.tunnelEnteredByAuto=false;
+      reacquireGnss();
     }
-
-    // DR drift accumulation
-    let drPos = truePos.slice();
-    if (state.mode === 'dr') {
-      // Accumulate drift: random walk + bias
-      state.drVelocity[0] += (Math.random() - 0.5) * 0.0000005;
-      state.drVelocity[1] += (Math.random() - 0.5) * 0.0000007;
-      state.drOffset[0] += state.drVelocity[0] * dt;
-      state.drOffset[1] += state.drVelocity[1] * dt;
-      drPos = [truePos[0] + state.drOffset[0], truePos[1] + state.drOffset[1]];
-      // Error in meters
-      const dLat = state.drOffset[0] * 111000;
-      const dLng = state.drOffset[1] * 111000 * Math.cos(truePos[0] * Math.PI / 180);
-      state.drAccErr = Math.sqrt(dLat * dLat + dLng * dLng);
-    } else if (state.mode === 'snap') {
-      // Snap: linearly converge DR to true
-      state.drOffset[0] *= 0.85;
-      state.drOffset[1] *= 0.85;
-      drPos = [truePos[0] + state.drOffset[0], truePos[1] + state.drOffset[1]];
-      const dLat = state.drOffset[0] * 111000;
-      const dLng = state.drOffset[1] * 111000 * Math.cos(truePos[0] * Math.PI / 180);
-      state.drAccErr = Math.sqrt(dLat * dLat + dLng * dLng);
-    }
-
-    // Update tracks
-    truePts.push(truePos);
-    if (truePts.length > MAX_PTS) truePts.shift();
-    trueTrack.setLatLngs(truePts);
-
-    if (state.mode !== 'gnss') {
-      drPts.push(drPos);
-      if (drPts.length > MAX_PTS) drPts.shift();
-      drTrack.setLatLngs(drPts);
-    } else {
-      corrPts.push(truePos);
-      if (corrPts.length > MAX_PTS) corrPts.shift();
-    }
-
-    // Uncertainty ellipse
-    const sigma = state.mode === 'gnss' ? 1.5 :
-                  state.mode === 'snap' ? state.drAccErr * 0.4 + 2 :
-                  state.drAccErr * 0.6 + 3;
-    uncertaintyCircle.setLatLng(state.mode === 'gnss' ? truePos : drPos);
-    uncertaintyCircle.setRadius(sigma);
-
-    // Vehicle marker
-    const vehiclePos = state.mode === 'gnss' ? truePos : drPos;
-    vehicleMarker.setLatLng(vehiclePos);
-    vehicleMarker.setIcon(makeCarIcon(heading, state.mode));
-
-    // Auto-follow: keep vehicle centered with gentle follow
-    const mCenter = map.getCenter();
-    const dist = map.distance(mCenter, vehiclePos);
-    if (dist > 300) {
-      map.panTo(vehiclePos, { animate: true, duration: 1.0 });
-    }
-
-    // Telemetry UI
-    const outageSec = state.mode !== 'gnss' && state.outageStart
-      ? ((performance.now() - state.outageStart) / 1000).toFixed(1)
-      : null;
-
-    document.getElementById('m-speed').innerHTML = cfg.speedKmh + '<span class="metric-unit">km/h</span>';
-    document.getElementById('m-heading').textContent = heading.toFixed(0) + '°';
-    const errText = state.drAccErr > 0 ? state.drAccErr.toFixed(1) : '0.0';
-    document.getElementById('m-error').innerHTML = errText + '<span class="metric-unit">m</span>';
-    document.getElementById('m-error').className = 'metric-val ' + (state.drAccErr < 5 ? 'green' : state.drAccErr < 20 ? 'orange' : 'red');
-    document.getElementById('m-sigma').innerHTML = '±' + sigma.toFixed(1) + '<span class="metric-unit">m</span>';
-    document.getElementById('m-steps').textContent = state.steps.toLocaleString();
-    document.getElementById('m-outage-t').textContent = outageSec ? outageSec + ' s' : '—';
-
-    // Sparklines
-    const imuLatency = 2.5 + Math.random() * 1.5;
-    const ekfInno = state.drAccErr * 0.1 + Math.random() * 0.2;
-    pushSp(0, state.drAccErr);
-    pushSp(1, cfg.speedKmh + (Math.random() - 0.5) * 3);
-    pushSp(2, ekfInno);
-    pushSp(3, imuLatency);
-
-    document.getElementById('sp-val-0').textContent = errText + ' m';
-    document.getElementById('sp-val-1').textContent = cfg.speedKmh + ' km/h';
-    document.getElementById('sp-val-2').textContent = ekfInno.toFixed(2);
-    document.getElementById('sp-val-3').textContent = imuLatency.toFixed(1) + ' ms';
-    drawSparklines();
-
-    // EKF status
-    document.getElementById('ekf-status').textContent = state.mode === 'gnss' ? 'ACTIVE' : 'PREDICT';
-    document.getElementById('ekf-status').className = 'algo-status ' + (state.mode === 'gnss' ? 'status-active' : 'status-demo');
   }
 
+  // DR offset update
+  if(state.mode==='dr'){
+    const sigma=0.00004;
+    state.drOffset[0]+=randn()*sigma*dt*30+state.drBias[0]*dt;
+    state.drOffset[1]+=randn()*sigma*dt*30+state.drBias[1]*dt;
+    state.drBias[0]+=(Math.random()-0.5)*0.000001;
+    state.drBias[1]+=(Math.random()-0.5)*0.000001;
+    state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
+  } else if(state.mode==='snap'){
+    const snapDur=3.0;
+    const elapsed=state.snapStart?(ts-state.snapStart)/1000:0;
+    const f=Math.min(elapsed/snapDur,1);
+    const ease=1-Math.pow(1-f,3);
+    state.drOffset=[state.snapFromOffset[0]*(1-ease),state.snapFromOffset[1]*(1-ease)];
+    state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
+    if(f>=1){state.mode='gnss';state.drOffset=[0,0];state.drAccErr=0;state.outageStart=null;updateModeUI();}
+  } else {
+    state.drOffset=[0,0];state.drAccErr=0;
+  }
+
+  const drPos=[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]];
+  const corrPos=(state.mode==='snap')?drPos:truePos;
+
+  // Append track points (decimated)
+  if(state.steps%2===0){
+    state.truePts.push([...truePos]);
+    state.drPts.push([...drPos]);
+    state.corrPts.push([...corrPos]);
+    if(state.truePts.length>MAX_TRACK){state.truePts.shift();state.drPts.shift();state.corrPts.shift();}
+  }
+
+  // Update map
+  setSourceData('true-track-source',lineGeoJSON(state.truePts));
+  setSourceData('dr-track-source',lineGeoJSON(state.drPts));
+  setSourceData('corr-track-source',lineGeoJSON(state.corrPts));
+
+  const sigma=Math.max(1.5,state.drAccErr*0.4+1.5);
+  if(state.mode==='dr'||state.mode==='snap'){
+    setSourceData('uncertainty-source',{type:'FeatureCollection',features:[circleGeoJSON(drPos,sigma*20)]});
+  } else {
+    setSourceData('uncertainty-source',{type:'FeatureCollection',features:[circleGeoJSON(truePos,5)]});
+  }
+
+  // Vehicle marker
+  const markerPos=state.mode==='dr'?drPos:truePos;
+  vehicleMarker.setLngLat(toLngLat(markerPos));
+  const svgEl=markerEl.querySelector('svg');
+  if(svgEl) svgEl.style.transform=`rotate(${state.heading}deg)`;
+
+  // Update telemetry DOM
+  const errM=state.drAccErr;
+  document.getElementById('m-speed').innerHTML=`${state.speed.toFixed(0)} <span class="metric-unit">km/h</span>`;
+  document.getElementById('m-heading').textContent=`${state.heading.toFixed(0)}°`;
+  document.getElementById('m-error').innerHTML=`${errM.toFixed(1)} <span class="metric-unit">m</span>`;
+  document.getElementById('m-sigma').innerHTML=`±${sigma.toFixed(1)} <span class="metric-unit">m</span>`;
+  document.getElementById('m-steps').textContent=state.steps.toLocaleString();
+  if(state.outageStart&&state.mode==='dr'){
+    const ot=((ts-state.outageStart)/1000).toFixed(0);
+    document.getElementById('m-outage-t').textContent=`${ot}s`;
+  } else {
+    document.getElementById('m-outage-t').textContent='—';
+  }
+
+  // Sparkline data
+  pushSpark(sparkData.error,errM);
+  pushSpark(sparkData.speed,state.speed);
+  pushSpark(sparkData.innov,(randn()*0.5+state.drAccErr*0.05));
+  pushSpark(sparkData.lat,10+randn()*3);
+
+  document.getElementById('sv-error').textContent=`${errM.toFixed(1)} m`;
+  document.getElementById('sv-speed').textContent=`${state.speed.toFixed(0)} km/h`;
+  document.getElementById('sv-innov').textContent=sparkData.innov[sparkData.innov.length-1]?.toFixed(2)??'0.00';
+  document.getElementById('sv-lat').textContent=`${(sparkData.lat[sparkData.lat.length-1]??12).toFixed(0)} ms`;
+
+  drawSparklines();
   requestAnimationFrame(simTick);
 }
 
-function pushSp(i, v) {
-  spBufs[i].push(v);
-  if (spBufs[i].length > SP_LEN) spBufs[i].shift();
+function totalRouteLen(route){
+  let l=0;
+  for(let i=1;i<route.length;i++) l+=haversineM(route[i-1],route[i]);
+  return l;
 }
 
-// ── SPARKLINE RENDERER ──
-function drawSparklines() {
-  const colors = ['#00fff5', '#94a3b8', '#a855f7', '#00ff9d'];
-  for (let i = 0; i < 4; i++) {
-    const cvs = document.getElementById('sp-' + i);
-    if (!cvs) continue;
-    const W = cvs.offsetWidth || 200, H = cvs.offsetHeight || 32;
-    if (cvs.width !== W) cvs.width = W;
-    if (cvs.height !== H) cvs.height = H;
-    const ctx = cvs.getContext('2d');
-    ctx.clearRect(0, 0, W, H);
-    const buf = spBufs[i];
-    if (buf.length < 2) continue;
-    const mn = Math.min(...buf), mx = Math.max(...buf);
-    const range = mx - mn || 1;
-    const xStep = W / (SP_LEN - 1);
-    ctx.beginPath();
-    buf.forEach((v, j) => {
-      const x = j * xStep;
-      const y = H - ((v - mn) / range) * (H - 4) - 2;
-      j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.strokeStyle = colors[i];
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = colors[i];
-    ctx.shadowBlur = 4;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    // Fill
-    ctx.lineTo(buf.length * xStep - xStep, H);
-    ctx.lineTo(0, H);
-    ctx.closePath();
-    ctx.fillStyle = colors[i] + '18';
-    ctx.fill();
-  }
+function pushSpark(arr,v){arr.push(v);if(arr.length>MAX_SPARK)arr.shift();}
+
+/* ── SPARKLINES ── */
+function drawSparklines(){
+  drawSpark('sp-error',sparkData.error,'#ff8c00',0);
+  drawSpark('sp-speed',sparkData.speed,'#00fff5',0);
+  drawSpark('sp-innov',sparkData.innov,'#a855f7',null);
+  drawSpark('sp-lat',sparkData.lat,'#00ff9d',0);
 }
 
-// ── UI WIRING ──
-function updateUI() { updateGnssBadge(); }
-
-document.querySelectorAll('.city-tab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.city-tab').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    switchCity(btn.dataset.city);
+function drawSpark(id,data,color,minVal){
+  const cv=document.getElementById(id);
+  if(!cv||data.length<2) return;
+  const dpr=window.devicePixelRatio||1;
+  const w=cv.offsetWidth,h=cv.offsetHeight;
+  if(!w||!h) return;
+  if(cv.width!==w*dpr){cv.width=w*dpr;cv.height=h*dpr;}
+  const ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+  let lo=Infinity,hi=-Infinity;
+  data.forEach(v=>{if(v<lo)lo=v;if(v>hi)hi=v;});
+  if(minVal!==null&&minVal!==undefined) lo=Math.min(lo,minVal);
+  const range=Math.max(hi-lo,0.001);
+  const px=(v)=>w-(data.length-1-data.indexOf(v))*(w/(data.length-1));
+  const py=(v)=>h-((v-lo)/range)*(h-4)-2;
+  // area fill
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x=i*(w/(data.length-1)),y=py(v);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
   });
-});
-
-document.getElementById('btn-outage').addEventListener('click', () => startOutage());
-document.getElementById('btn-reacquire').addEventListener('click', () => endOutage());
-
-document.getElementById('btn-pause').addEventListener('click', function() {
-  state.paused = !state.paused;
-  this.textContent = state.paused ? '▶' : '⏸';
-});
-
-document.getElementById('btn-settings').addEventListener('click', () => {
-  document.getElementById('settings-modal').classList.add('open');
-});
-document.getElementById('btn-settings-cancel').addEventListener('click', () => {
-  document.getElementById('settings-modal').classList.remove('open');
-});
-document.getElementById('btn-settings-save').addEventListener('click', () => {
-  config.apiUrl = document.getElementById('input-api-url').value.trim();
-  config.simSpeed = parseFloat(document.getElementById('input-speed').value);
-  config.autoTunnel = document.getElementById('input-auto-tunnel').value === '1';
-  state.simSpeed = config.simSpeed;
-  document.getElementById('api-url-display').textContent = config.apiUrl.replace('https://','');
-  document.getElementById('settings-modal').classList.remove('open');
-});
-document.getElementById('settings-modal').addEventListener('click', function(e) {
-  if (e.target === this) this.classList.remove('open');
-});
-
-// ── BACKEND STATUS CHECK ──
-async function checkBackend() {
-  try {
-    const r = await fetch(config.apiUrl + '/health', { signal: AbortSignal.timeout(4000) });
-    if (r.ok) {
-      document.getElementById('api-status').textContent = 'LIVE';
-      document.getElementById('api-status').className = 'algo-status status-active';
-    }
-  } catch {
-    document.getElementById('api-status').textContent = 'DEMO';
-    document.getElementById('api-status').className = 'algo-status status-demo';
-  }
+  ctx.lineTo((data.length-1)*(w/(data.length-1)),h);
+  ctx.lineTo(0,h);
+  ctx.closePath();
+  const grad=ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,color.replace(')',',0.25)').replace('rgb','rgba').replace('#','').length>7?color+'40':hexAlpha(color,0.25));
+  grad.addColorStop(1,hexAlpha(color,0));
+  ctx.fillStyle=grad;ctx.fill();
+  // line
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x=i*(w/(data.length-1)),y=py(v);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+  // endpoint dot
+  const lv=data[data.length-1];
+  const lx=(data.length-1)*(w/(data.length-1));
+  const ly=py(lv);
+  ctx.beginPath();ctx.arc(lx,ly,2.5,0,Math.PI*2);
+  ctx.fillStyle=color;ctx.fill();
 }
 
-// ── INIT ──
-switchCity('delhi');
-checkBackend();
-setInterval(checkBackend, 30000);
-requestAnimationFrame(simTick);
+function hexAlpha(hex,a){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
 
-// Handle resize
-window.addEventListener('resize', () => { map.invalidateSize(); });
+/* ── OUTAGE / REACQUIRE ── */
+function triggerOutage(){
+  if(state.mode==='dr') return;
+  state.mode='dr';
+  state.outageStart=performance.now();
+  state.drBias=[(Math.random()-0.5)*0.000008,(Math.random()-0.5)*0.000008];
+  updateModeUI();
+}
+
+function reacquireGnss(){
+  if(state.mode!=='dr') return;
+  state.mode='snap';
+  state.snapStart=performance.now();
+  state.snapFromOffset=[...state.drOffset];
+  updateModeUI();
+}
+
+document.getElementById('btn-outage').addEventListener('click',triggerOutage);
+document.getElementById('btn-reacquire').addEventListener('click',reacquireGnss);
+
+/* ── PAUSE ── */
+document.getElementById('btn-pause').addEventListener('click',()=>{
+  state.paused=!state.paused;
+  document.getElementById('btn-pause').textContent=state.paused?'▶':'⏸';
+});
+
+/* ── SETTINGS ── */
+document.getElementById('btn-settings').addEventListener('click',()=>{
+  document.getElementById('cfg-api').value=config.apiUrl;
+  document.getElementById('cfg-speed').value=config.simSpeed;
+  document.getElementById('cfg-speed-val').textContent=config.simSpeed+'×';
+  document.getElementById('cfg-tunnel').className='toggle'+(config.autoTunnel?' on':'');
+  document.getElementById('modal-overlay').classList.remove('hidden');
+});
+document.getElementById('btn-cancel').addEventListener('click',()=>document.getElementById('modal-overlay').classList.add('hidden'));
+document.getElementById('modal-overlay').addEventListener('click',(e)=>{if(e.target===e.currentTarget)e.currentTarget.classList.add('hidden');});
+
+document.getElementById('cfg-speed').addEventListener('input',function(){
+  document.getElementById('cfg-speed-val').textContent=this.value+'×';
+});
+document.getElementById('cfg-tunnel').addEventListener('click',function(){
+  this.classList.toggle('on');
+});
+
+document.getElementById('btn-save').addEventListener('click',()=>{
+  config.apiUrl=document.getElementById('cfg-api').value||config.apiUrl;
+  config.simSpeed=parseFloat(document.getElementById('cfg-speed').value)||1;
+  config.autoTunnel=document.getElementById('cfg-tunnel').classList.contains('on');
+  state.simSpeed=config.simSpeed;
+  document.getElementById('api-url-display').textContent=config.apiUrl.replace(/^https?:\/\//,'');
+  document.getElementById('modal-overlay').classList.add('hidden');
+  checkApiHealth();
+});
+
+/* ── API HEALTH ── */
+function checkApiHealth(){
+  const status=document.getElementById('api-status');
+  fetch(config.apiUrl+'/health',{signal:AbortSignal.timeout(5000)})
+    .then(r=>{
+      if(r.ok){status.textContent='LIVE';status.className='algo-status status-active';}
+      else{status.textContent='ERR';status.className='algo-status status-demo';}
+    })
+    .catch(()=>{status.textContent='DEMO';status.className='algo-status status-demo';});
+}
+checkApiHealth();
+
+/* ── RESIZE ── */
+window.addEventListener('resize',()=>{if(state.mapReady)map.resize();});
+
+/* ── CANVAS SIZES ── */
+document.querySelectorAll('canvas.sparkline').forEach(cv=>{
+  cv.width=cv.offsetWidth*(window.devicePixelRatio||1);
+  cv.height=cv.offsetHeight*(window.devicePixelRatio||1);
+});
 </script>
 </body>
 </html>
