@@ -39,7 +39,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel, Field, validator
 
-from navdrift0.inference.runtime import NavDriftRuntime
+from inference.runtime import NavDriftRuntime
 
 # ---------------------------------------------------------------------------
 # Logging
