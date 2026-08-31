@@ -1,935 +1,1174 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NAVDRIFT-0 · AI Dead Reckoning · ISRO SIH 2026</title>
+<title>NAVDRIFT-0 · Intelligent Dead Reckoning · ISRO SIH 2026</title>
 <style>
-/* ── Design tokens ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Tokens ── */
 :root {
-  --bg:       #090c14;
-  --surface:  #0f1623;
-  --card:     #141d2e;
-  --border:   #1e2d45;
-  --accent:   #00d4ff;
-  --accent2:  #7c5cfc;
-  --green:    #00e5a0;
-  --red:      #ff4d6d;
-  --yellow:   #ffd166;
-  --text:     #e8edf5;
-  --muted:    #8899b0;
-  --track-gt: #00e5a0;
-  --track-dr: #ff4d6d;
-  --track-nd: #00d4ff;
-  --glow:     rgba(0,212,255,.18);
-  --glow2:    rgba(124,92,252,.18);
-  font-size: 14px;
-}
-[data-theme="light"] {
-  --bg:#f0f4fa; --surface:#fff; --card:#f7f9fd; --border:#dde4f0;
-  --text:#1a2233; --muted:#5a6f8a;
+  --bg:        #03060f;
+  --bg2:       #060d1a;
+  --surface:   #0a1628;
+  --card:      #0d1f35;
+  --card2:     #0f2340;
+  --border:    rgba(0,180,255,.12);
+  --border2:   rgba(0,180,255,.06);
+  --accent:    #00c8ff;
+  --accent2:   #7c5cfc;
+  --accent3:   #00ffb3;
+  --red:       #ff3d5c;
+  --yellow:    #ffc947;
+  --text:      #dce8f5;
+  --text2:     #7a9bbf;
+  --text3:     #3d5a78;
+  --gt:        #00ffb3;
+  --dr:        #ff3d5c;
+  --nd:        #00c8ff;
+  --nd-glow:   rgba(0,200,255,.5);
+  --font:      'Inter', system-ui, sans-serif;
+  --mono:      'JetBrains Mono', monospace;
 }
 
-/* ── Reset ── */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;overflow-x:hidden}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-
-/* ── Header ── */
-header{
-  position:sticky;top:0;z-index:100;
-  background:rgba(9,12,20,.85);backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;
-  padding:.75rem 1.5rem;gap:1rem;
+html, body {
+  height: 100%; background: var(--bg);
+  color: var(--text); font-family: var(--font);
+  overflow: hidden;
 }
-.logo{display:flex;align-items:center;gap:.6rem}
-.logo svg{width:28px;height:28px}
-.logo-text{font-size:1.1rem;font-weight:700;letter-spacing:.04em;
-  background:linear-gradient(90deg,var(--accent),var(--accent2));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.logo-sub{font-size:.65rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
-.header-right{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
-.badge{font-size:.65rem;padding:.25rem .6rem;border-radius:20px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
-.badge-isro{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
-.badge-sih{background:rgba(124,92,252,.12);color:var(--accent2);border:1px solid rgba(124,92,252,.3)}
-.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
-.status-label{font-size:.75rem;color:var(--green);font-weight:500}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Starfield ── */
+#stars {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(0,100,200,.08) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(80,0,180,.06) 0%, transparent 50%),
+    var(--bg);
+}
 
 /* ── Layout ── */
-.app{display:grid;grid-template-columns:280px 1fr 300px;grid-template-rows:1fr;height:calc(100vh - 53px);min-height:0}
-@media(max-width:1100px){.app{grid-template-columns:1fr;grid-template-rows:auto 420px auto;height:auto}}
+.shell {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  height: 100vh;
+}
 
-/* ── Left panel ── */
-.panel-left{display:flex;flex-direction:column;gap:.75rem;padding:1rem;overflow-y:auto;border-right:1px solid var(--border);background:var(--surface)}
-.panel-right{display:flex;flex-direction:column;gap:.75rem;padding:1rem;overflow-y:auto;border-left:1px solid var(--border);background:var(--surface)}
+.body {
+  display: grid;
+  grid-template-columns: 260px 1fr 280px;
+  min-height: 0;
+  overflow: hidden;
+}
 
-/* ── Map ── */
-.map-wrap{position:relative;background:#060912;display:flex;flex-direction:column}
-canvas#mapCanvas{flex:1;width:100%;cursor:crosshair}
-.map-overlay{position:absolute;top:.75rem;left:.75rem;display:flex;flex-direction:column;gap:.4rem;pointer-events:none}
-.map-chip{background:rgba(9,12,20,.8);border:1px solid var(--border);backdrop-filter:blur(8px);padding:.25rem .6rem;border-radius:6px;font-size:.7rem;color:var(--muted)}
-.map-chip span{font-weight:600;color:var(--text)}
-.map-legend{position:absolute;bottom:.75rem;left:.75rem;background:rgba(9,12,20,.85);border:1px solid var(--border);backdrop-filter:blur(8px);padding:.5rem .75rem;border-radius:8px;display:flex;flex-direction:column;gap:.3rem;pointer-events:none}
-.legend-row{display:flex;align-items:center;gap:.4rem;font-size:.68rem;color:var(--muted)}
-.legend-line{width:24px;height:3px;border-radius:2px}
-.map-toolbar{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-top:1px solid var(--border);background:rgba(9,12,20,.7)}
+/* ── Header ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.25rem;
+  background: rgba(3,6,15,.8);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  position: relative; z-index: 10;
+}
+
+.logo-group { display: flex; align-items: center; gap: .75rem; }
+
+.logo-icon {
+  width: 32px; height: 32px; position: relative;
+}
+.logo-icon svg { width: 100%; height: 100%; }
+
+.logo-name {
+  font-size: .95rem; font-weight: 700; letter-spacing: .08em;
+  background: linear-gradient(100deg, #00c8ff 0%, #7c5cfc 60%, #00ffb3 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo-tagline {
+  font-size: .58rem; color: var(--text3); letter-spacing: .12em;
+  text-transform: uppercase; margin-top: 1px;
+}
+
+.header-center {
+  display: flex; align-items: center; gap: 1.5rem;
+}
+
+.signal-group { display: flex; align-items: center; gap: .4rem; }
+.signal-label { font-size: .65rem; color: var(--text2); text-transform: uppercase; letter-spacing: .08em; }
+.signal-bars { display: flex; align-items: flex-end; gap: 2px; }
+.signal-bar {
+  width: 3px; border-radius: 1px;
+  background: var(--accent3);
+  transition: height .3s ease, opacity .3s ease;
+}
+
+.header-stats {
+  display: flex; gap: 1.25rem;
+}
+.hstat {
+  display: flex; flex-direction: column; align-items: center;
+  font-size: .6rem;
+}
+.hstat-val {
+  font-family: var(--mono); font-size: .78rem; font-weight: 500;
+  color: var(--text); letter-spacing: .02em;
+}
+.hstat-lbl { color: var(--text3); letter-spacing: .06em; text-transform: uppercase; margin-top: 1px; }
+
+.header-right { display: flex; align-items: center; gap: .6rem; }
+
+.pill {
+  font-size: .6rem; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; padding: .22rem .65rem; border-radius: 20px;
+}
+.pill-isro { background: rgba(0,200,255,.1); color: var(--accent); border: 1px solid rgba(0,200,255,.25); }
+.pill-sih  { background: rgba(124,92,252,.1); color: var(--accent2); border: 1px solid rgba(124,92,252,.25); }
+
+.hbtn {
+  background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  color: var(--text2); font-size: .7rem; padding: .3rem .7rem;
+  border-radius: 6px; cursor: pointer; transition: all .15s; font-family: var(--font);
+}
+.hbtn:hover { background: rgba(255,255,255,.08); color: var(--text); }
+
+/* ── Outage Ribbon ── */
+.outage-ribbon {
+  position: fixed; top: 52px; left: 0; right: 0; z-index: 50;
+  background: linear-gradient(90deg, rgba(255,61,92,.15), rgba(255,61,92,.08), rgba(255,61,92,.15));
+  border-bottom: 1px solid rgba(255,61,92,.4);
+  padding: .35rem 1.25rem;
+  display: none; align-items: center; justify-content: space-between;
+  font-size: .72rem; font-weight: 600; color: var(--red);
+  animation: ribbonPulse 2s ease infinite;
+  backdrop-filter: blur(8px);
+}
+.outage-ribbon.show { display: flex; }
+@keyframes ribbonPulse {
+  0%,100% { border-bottom-color: rgba(255,61,92,.4); }
+  50%      { border-bottom-color: rgba(255,61,92,.9); }
+}
+.ribbon-left { display: flex; align-items: center; gap: .6rem; }
+.ribbon-dot  { width: 8px; height: 8px; border-radius: 50%; background: var(--red); animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.ribbon-timer { font-family: var(--mono); font-size: .8rem; }
+
+/* ── Left Panel ── */
+.panel {
+  overflow-y: auto; overflow-x: hidden;
+  padding: .75rem;
+  display: flex; flex-direction: column; gap: .6rem;
+  border-right: 1px solid var(--border2);
+  background: rgba(6,13,26,.6);
+  backdrop-filter: blur(12px);
+}
+.panel-right {
+  border-right: none;
+  border-left: 1px solid var(--border2);
+}
 
 /* ── Cards ── */
-.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.75rem}
-.card-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:.6rem;display:flex;align-items:center;gap:.4rem}
-.card-title svg{width:14px;height:14px;opacity:.7}
+.card {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 10px; padding: .75rem;
+  position: relative; overflow: hidden;
+}
+.card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,200,255,.2), transparent);
+}
 
-/* ── Metric tiles ── */
-.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
-.metric{background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.12);border-radius:8px;padding:.55rem .7rem;position:relative;overflow:hidden}
-.metric::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,212,255,.03),transparent)}
-.metric-val{font-size:1.35rem;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
-.metric-lbl{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:.15rem}
-.metric-unit{font-size:.7rem;font-weight:400;color:var(--muted)}
-.metric.red{background:rgba(255,77,109,.04);border-color:rgba(255,77,109,.2)}
-.metric.green{background:rgba(0,229,160,.04);border-color:rgba(0,229,160,.2)}
-.metric.yellow{background:rgba(255,209,102,.04);border-color:rgba(255,209,102,.2)}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: .6rem;
+}
+.card-title {
+  font-size: .62rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text3);
+  display: flex; align-items: center; gap: .35rem;
+}
+.card-title-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 5px var(--accent);
+}
 
-/* ── GNSS outage banner ── */
-.outage-banner{background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.4);border-radius:8px;padding:.6rem .9rem;display:none;align-items:center;gap:.6rem;font-size:.78rem;font-weight:600;color:var(--red);animation:flashborder 1s ease infinite alternate}
-.outage-banner.visible{display:flex}
-@keyframes flashborder{from{border-color:rgba(255,77,109,.4)}to{border-color:rgba(255,77,109,.9)}}
-.outage-icon{font-size:1rem;animation:spin 2s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+/* ── Metric Grid ── */
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
+.metric {
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--border2);
+  border-radius: 8px; padding: .55rem .65rem;
+  position: relative; overflow: hidden;
+  transition: border-color .3s;
+}
+.metric.accent  { border-color: rgba(0,200,255,.2); }
+.metric.green   { border-color: rgba(0,255,179,.2); }
+.metric.red     { border-color: rgba(255,61,92,.2); }
+.metric.yellow  { border-color: rgba(255,201,71,.2); }
+.metric.purple  { border-color: rgba(124,92,252,.2); }
 
-/* ── Mini charts ── */
-.chart-wrap{position:relative;height:80px}
-canvas.mini-chart{width:100%!important;height:80px!important}
+.metric-val {
+  font-family: var(--mono); font-size: 1.25rem; font-weight: 500;
+  line-height: 1; color: var(--text);
+  letter-spacing: -.01em;
+}
+.metric-val.accent { color: var(--accent); }
+.metric-val.green  { color: var(--accent3); }
+.metric-val.red    { color: var(--red); }
+.metric-val.yellow { color: var(--yellow); }
 
-/* ── Timeline / event log ── */
-.event-log{max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem}
-.event-row{display:flex;gap:.5rem;font-size:.68rem;padding:.3rem .5rem;border-radius:5px;background:rgba(255,255,255,.02);border:1px solid transparent}
-.event-row.gnss{border-color:rgba(0,229,160,.2)}
-.event-row.outage{border-color:rgba(255,77,109,.2)}
-.event-row.snap{border-color:rgba(0,212,255,.2)}
-.event-time{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
-.event-msg{color:var(--text)}
+.metric-sub {
+  font-size: .58rem; color: var(--text3); text-transform: uppercase;
+  letter-spacing: .07em; margin-top: .2rem;
+}
+.metric-unit { font-size: .65rem; color: var(--text3); font-weight: 400; }
 
-/* ── Buttons ── */
-.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:7px;border:none;cursor:pointer;font-size:.78rem;font-weight:600;transition:all .15s;letter-spacing:.02em}
-.btn-primary{background:linear-gradient(135deg,var(--accent),#0090d0);color:#000}
-.btn-primary:hover{filter:brightness(1.15);transform:translateY(-1px)}
-.btn-danger{background:rgba(255,77,109,.15);color:var(--red);border:1px solid rgba(255,77,109,.35)}
-.btn-danger:hover{background:rgba(255,77,109,.25)}
-.btn-ghost{background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--border)}
-.btn-ghost:hover{background:rgba(255,255,255,.1)}
-.btn-sm{padding:.35rem .7rem;font-size:.7rem}
+/* ── Mini Sparkline ── */
+.spark-wrap { height: 56px; margin-top: .4rem; }
+canvas.spark { width: 100% !important; height: 56px !important; display: block; }
+
+/* ── Progress Bar ── */
+.prog-track { height: 3px; border-radius: 2px; background: rgba(255,255,255,.06); margin-top: .5rem; overflow: hidden; }
+.prog-fill  { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); width: 0; transition: width .4s ease; }
 
 /* ── Controls ── */
-.btn-row{display:flex;gap:.5rem;flex-wrap:wrap}
-.city-select{background:var(--card);border:1px solid var(--border);color:var(--text);padding:.45rem .7rem;border-radius:7px;font-size:.78rem;cursor:pointer;outline:none;flex:1}
-.city-select:focus{border-color:var(--accent)}
+.ctrl-row { display: flex; gap: .45rem; flex-wrap: wrap; }
 
-/* ── Progress bar ── */
-.progress-bar{height:4px;border-radius:2px;background:var(--border);overflow:hidden;margin-top:.4rem}
-.progress-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s ease;width:0%}
+.btn {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .45rem .85rem; border-radius: 7px; border: none;
+  cursor: pointer; font-size: .72rem; font-weight: 600;
+  font-family: var(--font); transition: all .15s; letter-spacing: .02em;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent) 0%, #0090cc 100%);
+  color: #000; box-shadow: 0 0 16px rgba(0,200,255,.25);
+}
+.btn-primary:hover { filter: brightness(1.1); box-shadow: 0 0 24px rgba(0,200,255,.4); transform: translateY(-1px); }
+.btn-danger {
+  background: rgba(255,61,92,.1); color: var(--red);
+  border: 1px solid rgba(255,61,92,.3);
+}
+.btn-danger:hover { background: rgba(255,61,92,.2); }
+.btn-ghost {
+  background: rgba(255,255,255,.04); color: var(--text2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: rgba(255,255,255,.08); color: var(--text); }
+.btn:disabled { opacity: .35; cursor: not-allowed; transform: none !important; }
 
-/* ── Model architecture diagram ── */
-.arch-diagram{display:flex;flex-direction:column;gap:.3rem}
-.arch-block{display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border-radius:6px;border:1px solid var(--border);font-size:.7rem}
-.arch-icon{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;flex-shrink:0}
-.arch-ai{background:rgba(0,212,255,.15);color:var(--accent)}
-.arch-vae{background:rgba(124,92,252,.15);color:var(--accent2)}
-.arch-snap{background:rgba(0,229,160,.15);color:var(--green)}
-.arch-info{display:flex;flex-direction:column}
-.arch-name{font-weight:600;color:var(--text)}
-.arch-desc{color:var(--muted);font-size:.62rem}
-.arch-arrow{text-align:center;color:var(--muted);font-size:.8rem;line-height:1}
+.select {
+  background: rgba(0,0,0,.4); border: 1px solid var(--border);
+  color: var(--text); padding: .42rem .65rem; border-radius: 7px;
+  font-size: .72rem; cursor: pointer; outline: none; flex: 1;
+  font-family: var(--font);
+}
+.select:focus { border-color: var(--accent); }
+
+/* ── Architecture Blocks ── */
+.arch { display: flex; flex-direction: column; gap: .3rem; }
+.arch-block {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .45rem .6rem; border-radius: 7px;
+  border: 1px solid var(--border2);
+  background: rgba(0,0,0,.2);
+  position: relative; overflow: hidden;
+  transition: border-color .2s;
+}
+.arch-block:hover { border-color: var(--border); }
+.arch-block.active { border-color: rgba(0,200,255,.3); }
+.arch-block.active::after {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--accent); border-radius: 2px;
+}
+.arch-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .62rem; font-weight: 700; flex-shrink: 0;
+  font-family: var(--mono);
+}
+.arch-icon.ai   { background: rgba(0,200,255,.12); color: var(--accent); }
+.arch-icon.vae  { background: rgba(124,92,252,.12); color: var(--accent2); }
+.arch-icon.snap { background: rgba(0,255,179,.12); color: var(--accent3); }
+.arch-icon.ekf  { background: rgba(255,201,71,.12); color: var(--yellow); }
+.arch-icon.mm   { background: rgba(255,61,92,.12); color: var(--red); }
+
+.arch-info { flex: 1; min-width: 0; }
+.arch-name { font-size: .72rem; font-weight: 600; color: var(--text); }
+.arch-desc { font-size: .6rem; color: var(--text3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arch-arrow { text-align: center; color: var(--text3); font-size: .65rem; line-height: 1.2; }
 
 /* ── Comparison table ── */
-.cmp-table{width:100%;border-collapse:collapse;font-size:.7rem}
-.cmp-table th{color:var(--muted);font-weight:600;text-align:left;padding:.3rem .4rem;border-bottom:1px solid var(--border)}
-.cmp-table td{padding:.3rem .4rem;border-bottom:1px solid rgba(255,255,255,.03)}
-.cmp-table tr:last-child td{border:none}
-.win{color:var(--green);font-weight:700}
-.lose{color:var(--red)}
+.cmp { width: 100%; border-collapse: collapse; font-size: .68rem; }
+.cmp th { color: var(--text3); font-weight: 500; text-align: left; padding: .3rem .4rem; border-bottom: 1px solid var(--border2); font-size: .6rem; letter-spacing: .06em; text-transform: uppercase; }
+.cmp td { padding: .35rem .4rem; border-bottom: 1px solid rgba(255,255,255,.03); font-family: var(--mono); }
+.cmp tr:last-child td { border: none; }
+.cmp td:first-child { font-family: var(--font); font-size: .65rem; color: var(--text2); }
+.win  { color: var(--accent3); font-weight: 600; }
+.lose { color: var(--red); }
+.mid  { color: var(--yellow); }
 
-/* ── Settings panel ── */
-.settings-panel{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);align-items:center;justify-content:center}
-.settings-panel.open{display:flex}
-.settings-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;width:min(440px,92vw);display:flex;flex-direction:column;gap:1rem}
-.settings-title{font-size:1rem;font-weight:700;margin-bottom:.25rem}
-.field{display:flex;flex-direction:column;gap:.3rem}
-.field label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.field input{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:.55rem .75rem;border-radius:7px;font-size:.82rem;outline:none;width:100%}
-.field input:focus{border-color:var(--accent)}
-.conn-status{font-size:.72rem;padding:.3rem .7rem;border-radius:5px;text-align:center}
-.conn-ok{background:rgba(0,229,160,.1);color:var(--green);border:1px solid rgba(0,229,160,.3)}
-.conn-err{background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.3)}
-
-/* ── Heading ── */
-h3{font-size:.82rem;font-weight:700;color:var(--text)}
-h4{font-size:.74rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
-
-/* ── Divider ── */
-hr{border:none;border-top:1px solid var(--border)}
-
-/* ── Tooltip ── */
-[title]{cursor:help}
-
-/* ── Responsive tweaks ── */
-@media(max-width:1100px){
-  .panel-left,.panel-right{border:none;border-top:1px solid var(--border)}
+/* ── Event log ── */
+.log { display: flex; flex-direction: column; gap: .3rem; max-height: 150px; overflow-y: auto; }
+.log-row {
+  display: flex; gap: .5rem; padding: .3rem .45rem;
+  border-radius: 5px; font-size: .65rem;
+  border: 1px solid transparent;
 }
+.log-row.ev-gnss   { border-color: rgba(0,255,179,.15); background: rgba(0,255,179,.03); }
+.log-row.ev-outage { border-color: rgba(255,61,92,.15); background: rgba(255,61,92,.03); }
+.log-row.ev-snap   { border-color: rgba(0,200,255,.15); background: rgba(0,200,255,.03); }
+.log-row.ev-sys    { border-color: rgba(255,255,255,.05); }
+.log-time { color: var(--text3); font-family: var(--mono); white-space: nowrap; }
+.log-msg  { color: var(--text2); }
+
+/* ── Map ── */
+.map-area {
+  position: relative; overflow: hidden;
+  background: var(--bg2);
+  display: flex; flex-direction: column;
+}
+#mapCanvas { flex: 1; width: 100%; display: block; cursor: crosshair; }
+
+.map-overlay {
+  position: absolute; top: .75rem; left: .75rem;
+  display: flex; flex-direction: column; gap: .35rem;
+  pointer-events: none;
+}
+.map-chip {
+  background: rgba(3,6,15,.75); backdrop-filter: blur(10px);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: .22rem .55rem; font-size: .65rem; color: var(--text2);
+}
+.map-chip b { color: var(--text); }
+
+.map-legend {
+  position: absolute; bottom: 48px; left: .75rem;
+  background: rgba(3,6,15,.8); backdrop-filter: blur(10px);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: .5rem .75rem; pointer-events: none;
+  display: flex; flex-direction: column; gap: .3rem;
+}
+.leg-row { display: flex; align-items: center; gap: .45rem; font-size: .65rem; color: var(--text2); }
+.leg-line { width: 22px; height: 2px; border-radius: 1px; flex-shrink: 0; }
+.leg-line.dashed { height: 0; border-top: 2px dashed; }
+
+.map-toolbar {
+  height: 40px; display: flex; align-items: center; gap: .5rem;
+  padding: 0 .75rem; border-top: 1px solid var(--border2);
+  background: rgba(3,6,15,.7); backdrop-filter: blur(8px);
+  flex-shrink: 0;
+}
+.map-toolbar .btn { padding: .28rem .65rem; font-size: .65rem; }
+.map-coords { font-family: var(--mono); font-size: .62rem; color: var(--text3); margin-left: auto; }
+
+/* ── GNSS Pulse ring ── */
+.gnss-ring {
+  position: absolute; right: .75rem; top: .75rem;
+  width: 44px; height: 44px; pointer-events: none;
+}
+.gnss-ring-svg { width: 100%; height: 100%; }
+.ring-pulse {
+  transform-origin: center;
+  animation: ringPulse 2s ease-out infinite;
+}
+.ring-pulse2 { animation: ringPulse 2s ease-out .7s infinite; }
+.ring-pulse3 { animation: ringPulse 2s ease-out 1.4s infinite; }
+@keyframes ringPulse {
+  0%   { r: 8; opacity: .8; }
+  100% { r: 20; opacity: 0; }
+}
+
+/* ── Settings modal ── */
+.modal-bg {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
+  display: none; align-items: center; justify-content: center;
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: var(--card2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 1.5rem;
+  width: min(440px, 92vw); display: flex; flex-direction: column; gap: .9rem;
+}
+.modal-title { font-size: .95rem; font-weight: 700; }
+.modal-sub   { font-size: .7rem; color: var(--text2); margin-top: .15rem; }
+.field { display: flex; flex-direction: column; gap: .3rem; }
+.field label { font-size: .62rem; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; }
+.field input {
+  background: rgba(0,0,0,.4); border: 1px solid var(--border);
+  color: var(--text); padding: .55rem .75rem; border-radius: 7px;
+  font-size: .8rem; outline: none; width: 100%; font-family: var(--font);
+}
+.field input:focus { border-color: var(--accent); }
+.conn-msg { font-size: .7rem; text-align: center; padding: .3rem .6rem; border-radius: 5px; }
+.conn-ok  { background: rgba(0,255,179,.08); color: var(--accent3); border: 1px solid rgba(0,255,179,.2); }
+.conn-err { background: rgba(255,61,92,.08); color: var(--red); border: 1px solid rgba(255,61,92,.2); }
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<header>
-  <div class="logo">
-    <svg viewBox="0 0 28 28" fill="none">
-      <circle cx="14" cy="14" r="13" stroke="#00d4ff" stroke-width="1.5"/>
-      <path d="M7 14 Q14 4 21 14 Q14 24 7 14Z" fill="#00d4ff" opacity=".2"/>
-      <path d="M7 14 Q14 4 21 14" stroke="#00d4ff" stroke-width="1.5" fill="none"/>
-      <circle cx="14" cy="14" r="3" fill="#00d4ff"/>
-      <circle cx="14" cy="14" r="1.5" fill="#090c14"/>
-    </svg>
-    <div>
-      <div class="logo-text">NAVDRIFT-0</div>
-      <div class="logo-sub">AI Dead Reckoning · ISRO PS-26168</div>
-    </div>
-  </div>
-  <div class="header-right">
-    <span class="badge badge-isro">ISRO</span>
-    <span class="badge badge-sih">SIH 2026</span>
-    <div style="display:flex;align-items:center;gap:.4rem">
-      <div class="status-dot" id="statusDot"></div>
-      <span class="status-label" id="statusLabel">LIVE SIM</span>
-    </div>
-    <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙ Settings</button>
-    <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" id="themeBtn">☀ Light</button>
-  </div>
-</header>
+<div id="stars"></div>
 
-<!-- Main layout -->
-<div class="app">
-
-  <!-- LEFT PANEL -->
-  <div class="panel-left">
-
-    <!-- Outage banner -->
-    <div class="outage-banner" id="outageBanner">
-      <span class="outage-icon">⚠</span>
-      GNSS SIGNAL LOST — Dead reckoning active
-    </div>
-
-    <!-- Metrics -->
-    <div class="card">
-      <div class="card-title">
-        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 12.5a5.5 5.5 0 110-11 5.5 5.5 0 010 11zm.75-5.75V5h-1.5v3.5l3 1.5.67-1.34-2.17-1.08z"/></svg>
-        Live Metrics
+<div class="shell">
+  <!-- Header -->
+  <header>
+    <div class="logo-group">
+      <div class="logo-icon">
+        <svg viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="15" stroke="url(#lg1)" stroke-width="1.2"/>
+          <ellipse cx="16" cy="16" rx="15" ry="6" stroke="url(#lg1)" stroke-width="1" opacity=".4"/>
+          <circle cx="16" cy="16" r="3.5" fill="url(#lg1)"/>
+          <line x1="16" y1="1" x2="16" y2="7" stroke="#00c8ff" stroke-width="1"/>
+          <line x1="16" y1="25" x2="16" y2="31" stroke="#00c8ff" stroke-width="1"/>
+          <line x1="1" y1="16" x2="7" y2="16" stroke="#00c8ff" stroke-width="1"/>
+          <line x1="25" y1="16" x2="31" y2="16" stroke="#00c8ff" stroke-width="1"/>
+          <defs>
+            <linearGradient id="lg1" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#00c8ff"/>
+              <stop offset="100%" stop-color="#7c5cfc"/>
+            </linearGradient>
+          </defs>
+        </svg>
       </div>
-      <div class="metrics-grid">
-        <div class="metric green">
-          <div class="metric-val" id="mATE">–</div>
-          <div class="metric-lbl">ATE (NAVDRIFT) <span class="metric-unit">m</span></div>
-        </div>
-        <div class="metric red">
-          <div class="metric-val" id="mATEimu">–</div>
-          <div class="metric-lbl">ATE (IMU only) <span class="metric-unit">m</span></div>
-        </div>
-        <div class="metric">
-          <div class="metric-val" id="mUnc">–</div>
-          <div class="metric-lbl">Uncertainty <span class="metric-unit">σ m</span></div>
-        </div>
-        <div class="metric yellow">
-          <div class="metric-val" id="mLatency">–</div>
-          <div class="metric-lbl">Latency <span class="metric-unit">ms</span></div>
-        </div>
-        <div class="metric">
-          <div class="metric-val" id="mSpeed">–</div>
-          <div class="metric-lbl">Speed <span class="metric-unit">km/h</span></div>
-        </div>
-        <div class="metric">
-          <div class="metric-val" id="mStep">0</div>
-          <div class="metric-lbl">Steps</div>
+      <div>
+        <div class="logo-name">NAVDRIFT-0</div>
+        <div class="logo-tagline">Intelligent Dead Reckoning · ISRO PS-26168</div>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <div class="header-stats">
+        <div class="hstat"><span class="hstat-val" id="hATE">-.--</span><span class="hstat-lbl">ATE (m)</span></div>
+        <div class="hstat"><span class="hstat-val" id="hLatency">-.--</span><span class="hstat-lbl">ms</span></div>
+        <div class="hstat"><span class="hstat-val accent" id="hGnss" style="color:var(--accent3)">ACTIVE</span><span class="hstat-lbl">GNSS</span></div>
+        <div class="hstat"><span class="hstat-val" id="hStep" style="font-size:.7rem">0</span><span class="hstat-lbl">Steps</span></div>
+      </div>
+      <div class="signal-group">
+        <span class="signal-label">Signal</span>
+        <div class="signal-bars" id="signalBars">
+          <div class="signal-bar" style="height:5px" id="sb1"></div>
+          <div class="signal-bar" style="height:9px" id="sb2"></div>
+          <div class="signal-bar" style="height:13px" id="sb3"></div>
+          <div class="signal-bar" style="height:17px" id="sb4"></div>
+          <div class="signal-bar" style="height:21px" id="sb5"></div>
         </div>
       </div>
     </div>
 
-    <!-- Controls -->
-    <div class="card">
-      <div class="card-title">Simulation Controls</div>
-      <div style="display:flex;flex-direction:column;gap:.5rem">
-        <select class="city-select" id="citySelect" onchange="changeCity()">
-          <option value="delhi">New Delhi</option>
-          <option value="mumbai">Mumbai</option>
-          <option value="bangalore">Bengaluru</option>
-          <option value="chennai">Chennai</option>
-          <option value="hyderabad">Hyderabad</option>
-          <option value="ahmedabad">Ahmedabad</option>
-        </select>
-        <div class="btn-row">
+    <div class="header-right">
+      <span class="pill pill-isro">ISRO</span>
+      <span class="pill pill-sih">SIH 2026</span>
+      <button class="hbtn" onclick="openSettings()">⚙ API</button>
+    </div>
+  </header>
+
+  <!-- Outage ribbon -->
+  <div class="outage-ribbon" id="outageBanner">
+    <div class="ribbon-left">
+      <div class="ribbon-dot"></div>
+      GNSS BLACKOUT — Dead reckoning active
+    </div>
+    <div class="ribbon-timer" id="outageTimer">00:00</div>
+  </div>
+
+  <div class="body">
+    <!-- LEFT PANEL -->
+    <div class="panel">
+
+      <!-- Mode + controls -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-title-dot"></div>Simulation</div>
+          <select class="select" id="citySelect" onchange="changeCity()" style="width:auto;flex:none;font-size:.65rem;padding:.22rem .5rem">
+            <option value="delhi">New Delhi</option>
+            <option value="mumbai">Mumbai</option>
+            <option value="bangalore">Bengaluru</option>
+            <option value="chennai">Chennai</option>
+            <option value="hyderabad">Hyderabad</option>
+          </select>
+        </div>
+        <div class="ctrl-row" style="margin-bottom:.4rem">
           <button class="btn btn-primary" id="btnStart" onclick="toggleSim()">▶ Start</button>
-          <button class="btn btn-danger" id="btnOutage" onclick="triggerOutage()" disabled>⚡ GNSS Out</button>
-          <button class="btn btn-ghost btn-sm" onclick="resetSim()">↺ Reset</button>
+          <button class="btn btn-danger" id="btnOutage" onclick="triggerOutage()" disabled>⚡ Drop GNSS</button>
+          <button class="btn btn-ghost" onclick="resetSim()" style="padding:.45rem .6rem">↺</button>
         </div>
-        <div id="simProgress" style="display:none">
-          <div style="font-size:.65rem;color:var(--muted);margin-bottom:.2rem">Route progress</div>
-          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div id="progWrap" style="display:none">
+          <div style="font-size:.58rem;color:var(--text3);margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.07em">Route progress</div>
+          <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
         </div>
       </div>
-    </div>
 
-    <!-- Uncertainty chart -->
-    <div class="card">
-      <div class="card-title">Uncertainty Over Time</div>
-      <div class="chart-wrap"><canvas class="mini-chart" id="uncChart"></canvas></div>
-    </div>
-
-    <!-- Position error chart -->
-    <div class="card">
-      <div class="card-title">Position Error vs Baseline</div>
-      <div class="chart-wrap"><canvas class="mini-chart" id="errChart"></canvas></div>
-    </div>
-
-    <!-- Comparison table -->
-    <div class="card">
-      <div class="card-title">Algorithm Comparison</div>
-      <table class="cmp-table">
-        <thead><tr><th>Method</th><th>ATE (m)</th><th>Max Drift</th></tr></thead>
-        <tbody>
-          <tr><td>NAVDRIFT-0</td><td class="win" id="cmpND">–</td><td class="win" id="cmpNDmax">–</td></tr>
-          <tr><td>EKF Baseline</td><td id="cmpEKF">–</td><td id="cmpEKFmax">–</td></tr>
-          <tr><td>Raw IMU DR</td><td class="lose" id="cmpIMU">–</td><td class="lose" id="cmpIMUmax">–</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-  </div>
-
-  <!-- CENTER: MAP -->
-  <div class="map-wrap">
-    <canvas id="mapCanvas"></canvas>
-    <div class="map-overlay">
-      <div class="map-chip">📍 <span id="chipCity">New Delhi</span></div>
-      <div class="map-chip">🛰 GNSS: <span id="chipGnss" style="color:var(--green)">Active</span></div>
-      <div class="map-chip">⏱ Outage: <span id="chipOutage">0s</span></div>
-    </div>
-    <div class="map-legend">
-      <div class="legend-row"><div class="legend-line" style="background:var(--track-gt)"></div>Ground Truth</div>
-      <div class="legend-row"><div class="legend-line" style="background:var(--track-nd);box-shadow:0 0 4px var(--track-nd)"></div>NAVDRIFT-0</div>
-      <div class="legend-row"><div class="legend-line" style="background:var(--track-dr);border:none;border-top:2px dashed var(--track-dr);height:0px;align-self:center"></div>Raw IMU DR</div>
-    </div>
-    <div class="map-toolbar">
-      <button class="btn btn-ghost btn-sm" onclick="zoomIn()">＋</button>
-      <button class="btn btn-ghost btn-sm" onclick="zoomOut()">－</button>
-      <button class="btn btn-ghost btn-sm" onclick="centerMap()">⊙ Center</button>
-      <span style="flex:1"></span>
-      <span style="font-size:.65rem;color:var(--muted)" id="mapCoords">lat/lon</span>
-    </div>
-  </div>
-
-  <!-- RIGHT PANEL -->
-  <div class="panel-right">
-
-    <!-- Architecture -->
-    <div class="card">
-      <div class="card-title">Model Architecture</div>
-      <div class="arch-diagram">
-        <div class="arch-block">
-          <div class="arch-icon arch-ai">DF</div>
-          <div class="arch-info">
-            <div class="arch-name">DRIFT-Former</div>
-            <div class="arch-desc">Causal Transformer · 4L 8H d=256 · RoPE · SE(2)+Covariance</div>
+      <!-- Live metrics -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.55rem"><div class="card-title-dot" style="background:var(--accent3)"></div>Position Accuracy</div>
+        <div class="metric-grid">
+          <div class="metric green">
+            <div class="metric-val green" id="mATE">-.--</div>
+            <div class="metric-sub">NAVDRIFT ATE <span class="metric-unit">m</span></div>
           </div>
-        </div>
-        <div class="arch-arrow">↓ pose delta + 3×3 Σ</div>
-        <div class="arch-block">
-          <div class="arch-icon arch-vae">VAE</div>
-          <div class="arch-info">
-            <div class="arch-name">NavIC VAE</div>
-            <div class="arch-desc">β-VAE · 32-dim latent · Product-of-Gaussians fusion</div>
+          <div class="metric red">
+            <div class="metric-val red" id="mATEimu">-.--</div>
+            <div class="metric-sub">Raw IMU ATE <span class="metric-unit">m</span></div>
           </div>
-        </div>
-        <div class="arch-arrow">↓ constrained DR estimate</div>
-        <div class="arch-block">
-          <div class="arch-icon arch-snap">SN</div>
-          <div class="arch-info">
-            <div class="arch-name">SNAP Corrector</div>
-            <div class="arch-desc">Differentiable traj smoother · 15 grad steps · &lt;50ms CPU</div>
+          <div class="metric accent">
+            <div class="metric-val accent" id="mUnc">-.--</div>
+            <div class="metric-sub">Uncertainty σ <span class="metric-unit">m</span></div>
+          </div>
+          <div class="metric">
+            <div class="metric-val" id="mSpeed">-.--</div>
+            <div class="metric-sub">Speed <span class="metric-unit">km/h</span></div>
           </div>
         </div>
       </div>
+
+      <!-- Outage stats -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.55rem"><div class="card-title-dot" style="background:var(--red)"></div>Outage History</div>
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="metric-val" id="mOutages">0</div>
+            <div class="metric-sub">Total outages</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val" id="mOutDur">0.0</div>
+            <div class="metric-sub">Current <span class="metric-unit">s</span></div>
+          </div>
+          <div class="metric green">
+            <div class="metric-val green" id="mSnapErr">--</div>
+            <div class="metric-sub">SNAP error <span class="metric-unit">m</span></div>
+          </div>
+          <div class="metric yellow">
+            <div class="metric-val yellow" id="mSnapMs">--</div>
+            <div class="metric-sub">SNAP time <span class="metric-unit">ms</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Uncertainty sparkline -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.4rem"><div class="card-title-dot"></div>Uncertainty Over Time</div>
+        <div class="spark-wrap"><canvas class="spark" id="uncSpark"></canvas></div>
+      </div>
+
+      <!-- Error sparkline -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.4rem"><div class="card-title-dot" style="background:var(--red)"></div>Position Error</div>
+        <div class="spark-wrap"><canvas class="spark" id="errSpark"></canvas></div>
+      </div>
+
     </div>
 
-    <!-- Outage stats -->
-    <div class="card">
-      <div class="card-title">GNSS Outage Stats</div>
-      <div class="metrics-grid">
-        <div class="metric">
-          <div class="metric-val" id="mOutages">0</div>
-          <div class="metric-lbl">Total outages</div>
-        </div>
-        <div class="metric">
-          <div class="metric-val" id="mOutageDur">0 <span class="metric-unit">s</span></div>
-          <div class="metric-lbl">Current outage</div>
-        </div>
-        <div class="metric green">
-          <div class="metric-val" id="mSnapErr">– <span class="metric-unit">m</span></div>
-          <div class="metric-lbl">SNAP error after fix</div>
-        </div>
-        <div class="metric">
-          <div class="metric-val" id="mSnapMs">–</div>
-          <div class="metric-lbl">SNAP time <span class="metric-unit">ms</span></div>
-        </div>
+    <!-- MAP -->
+    <div class="map-area">
+      <canvas id="mapCanvas"></canvas>
+
+      <div class="map-overlay">
+        <div class="map-chip">📍 <b id="chipCity">New Delhi</b></div>
+        <div class="map-chip">🛰 GNSS: <b id="chipGnss" style="color:var(--accent3)">Active</b></div>
+        <div class="map-chip" id="chipOutageWrap" style="display:none">⏱ Blackout: <b id="chipOutSec" style="color:var(--red)">0s</b></div>
+      </div>
+
+      <!-- GNSS pulse rings -->
+      <div class="gnss-ring" id="gnssRing">
+        <svg class="gnss-ring-svg" viewBox="0 0 44 44">
+          <circle cx="22" cy="22" r="6" fill="rgba(0,255,179,.15)" stroke="#00ffb3" stroke-width="1"/>
+          <circle cx="22" cy="22" r="3" fill="#00ffb3"/>
+          <circle class="ring-pulse"  cx="22" cy="22" r="8" fill="none" stroke="rgba(0,255,179,.6)" stroke-width="1"/>
+          <circle class="ring-pulse2" cx="22" cy="22" r="8" fill="none" stroke="rgba(0,255,179,.4)" stroke-width="1"/>
+          <circle class="ring-pulse3" cx="22" cy="22" r="8" fill="none" stroke="rgba(0,255,179,.2)" stroke-width="1"/>
+        </svg>
+      </div>
+
+      <div class="map-legend">
+        <div class="leg-row"><div class="leg-line" style="background:var(--gt)"></div>Ground Truth</div>
+        <div class="leg-row"><div class="leg-line" style="background:var(--nd);box-shadow:0 0 4px var(--nd)"></div>NAVDRIFT-0</div>
+        <div class="leg-row"><div class="leg-line dashed" style="border-color:var(--dr)"></div>Raw IMU DR</div>
+      </div>
+
+      <div class="map-toolbar">
+        <button class="btn btn-ghost" onclick="zoomIn()">＋</button>
+        <button class="btn btn-ghost" onclick="zoomOut()">－</button>
+        <button class="btn btn-ghost" onclick="centerMap()">⊙</button>
+        <span class="map-coords" id="mapCoords">28.6139° N, 77.2090° E</span>
       </div>
     </div>
 
-    <!-- Speed chart -->
-    <div class="card">
-      <div class="card-title">Vehicle Speed</div>
-      <div class="chart-wrap"><canvas class="mini-chart" id="speedChart"></canvas></div>
-    </div>
+    <!-- RIGHT PANEL -->
+    <div class="panel panel-right">
 
-    <!-- Event log -->
-    <div class="card">
-      <div class="card-title">Event Log</div>
-      <div class="event-log" id="eventLog">
-        <div class="event-row"><span class="event-time">00:00</span><span class="event-msg">System initialized</span></div>
+      <!-- Architecture -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.55rem"><div class="card-title-dot" style="background:var(--accent2)"></div>Model Pipeline</div>
+        <div class="arch">
+          <div class="arch-block" id="arch-df">
+            <div class="arch-icon ai">DF</div>
+            <div class="arch-info">
+              <div class="arch-name">DRIFT-Former</div>
+              <div class="arch-desc">Causal Transformer · RoPE · SE(2)+Σ</div>
+            </div>
+          </div>
+          <div class="arch-arrow">↓ pose delta + covariance</div>
+          <div class="arch-block" id="arch-vae">
+            <div class="arch-icon vae">VAE</div>
+            <div class="arch-info">
+              <div class="arch-name">NavIC VAE</div>
+              <div class="arch-desc">β-VAE · 32-dim · PoG fusion</div>
+            </div>
+          </div>
+          <div class="arch-arrow">↓ constrained estimate</div>
+          <div class="arch-block" id="arch-mm">
+            <div class="arch-icon mm">MM</div>
+            <div class="arch-info">
+              <div class="arch-name">Map Matching</div>
+              <div class="arch-desc">HMM + NHC · OSM constraints</div>
+            </div>
+          </div>
+          <div class="arch-arrow">↓ road-snapped pose</div>
+          <div class="arch-block" id="arch-snap">
+            <div class="arch-icon snap">SN</div>
+            <div class="arch-info">
+              <div class="arch-name">SNAP Corrector</div>
+              <div class="arch-desc">Differentiable smoother · &lt;50ms</div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <!-- Dataset info -->
-    <div class="card">
-      <div class="card-title">Dataset · IO-VNBD</div>
-      <div style="font-size:.7rem;color:var(--muted);line-height:1.5">
-        <b style="color:var(--text)">Inertial & Odometry VehicleNav Benchmark</b><br>
-        Ground vehicle positioning · IMU + GNSS · Multiple urban routes<br>
-        <a href="https://github.com/onyekpeu/IO-VNBD" target="_blank" style="color:var(--accent)">github.com/onyekpeu/IO-VNBD</a>
+      <!-- Comparison -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.5rem"><div class="card-title-dot" style="background:var(--yellow)"></div>Algorithm Comparison</div>
+        <table class="cmp">
+          <thead><tr><th>Method</th><th>ATE (m)</th><th>Max (m)</th></tr></thead>
+          <tbody>
+            <tr><td>NAVDRIFT-0</td><td class="win" id="cmpND">--</td><td class="win" id="cmpNDmax">--</td></tr>
+            <tr><td>EKF Baseline</td><td class="mid" id="cmpEKF">--</td><td class="mid" id="cmpEKFmax">--</td></tr>
+            <tr><td>Raw IMU DR</td><td class="lose" id="cmpIMU">--</td><td class="lose" id="cmpIMUmax">--</td></tr>
+          </tbody>
+        </table>
       </div>
-    </div>
 
-    <!-- Backend connection -->
-    <div class="card" id="backendCard">
-      <div class="card-title">Backend</div>
-      <div style="font-size:.7rem;color:var(--muted)" id="backendInfo">Running JS simulation · <a href="#" onclick="openSettings();return false" style="color:var(--accent)">connect to Render API</a></div>
-    </div>
+      <!-- Speed sparkline -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.4rem"><div class="card-title-dot" style="background:var(--yellow)"></div>Vehicle Speed</div>
+        <div class="spark-wrap"><canvas class="spark" id="spdSpark"></canvas></div>
+      </div>
 
+      <!-- Backend status -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.4rem"><div class="card-title-dot" style="background:var(--accent2)"></div>Backend</div>
+        <div style="font-size:.67rem;color:var(--text2);line-height:1.55" id="backendStatus">
+          Running JS simulation<br>
+          <a href="#" onclick="openSettings();return false" style="color:var(--accent)">Connect to Render API →</a>
+        </div>
+      </div>
+
+      <!-- Dataset -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.4rem"><div class="card-title-dot"></div>Dataset</div>
+        <div style="font-size:.67rem;color:var(--text2);line-height:1.55">
+          <b style="color:var(--text)">IO-VNBD</b><br>
+          Inertial and Odometry benchmark for ground vehicle positioning<br>
+          <a href="https://github.com/onyekpeu/IO-VNBD" target="_blank" style="color:var(--accent)">github.com/onyekpeu/IO-VNBD</a>
+        </div>
+      </div>
+
+      <!-- Event log -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.45rem"><div class="card-title-dot"></div>Event Log</div>
+        <div class="log" id="eventLog">
+          <div class="log-row ev-sys"><span class="log-time">--:--</span><span class="log-msg">System ready</span></div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
 <!-- Settings modal -->
-<div class="settings-panel" id="settingsPanel">
-  <div class="settings-box">
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
     <div>
-      <div class="settings-title">⚙ API Settings</div>
-      <div style="font-size:.72rem;color:var(--muted)">Connect to your Render backend for live inference.</div>
+      <div class="modal-title">⚙ API Connection</div>
+      <div class="modal-sub">Connect to your Render backend for live inference</div>
     </div>
     <div class="field">
       <label>Render Backend URL</label>
       <input type="url" id="apiUrl" placeholder="https://navdrift0-api.onrender.com">
     </div>
     <div class="field">
-      <label>API Key (X-API-Key)</label>
-      <input type="password" id="apiKey" placeholder="your-api-key">
+      <label>API Key</label>
+      <input type="password" id="apiKey" placeholder="your-navdrift-api-key">
     </div>
-    <div id="connStatus"></div>
-    <div class="btn-row">
+    <div id="connMsg"></div>
+    <div class="ctrl-row">
       <button class="btn btn-primary" onclick="saveSettings()">Save & Connect</button>
       <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
-      <button class="btn btn-ghost btn-sm" onclick="testConnection()">Test</button>
+      <button class="btn btn-ghost" onclick="testConn()" style="margin-left:auto">Test</button>
     </div>
   </div>
 </div>
 
 <script>
-// ── Config ──────────────────────────────────────────────────────────────────
+// ── Stars ───────────────────────────────────────────────────────────────────
+(function(){
+  const el = document.getElementById('stars');
+  const N = 80;
+  for(let i=0;i<N;i++){
+    const d = document.createElement('div');
+    const size = Math.random()*1.5+.5;
+    d.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:50%;
+      background:#fff;opacity:${Math.random()*.4+.05};
+      top:${Math.random()*100}%;left:${Math.random()*100}%;
+      animation:twinkle ${2+Math.random()*4}s ease-in-out ${Math.random()*4}s infinite alternate`;
+    el.appendChild(d);
+  }
+  const style = document.createElement('style');
+  style.textContent = '@keyframes twinkle{from{opacity:.05}to{opacity:.35}}';
+  document.head.appendChild(style);
+})();
+
+// ── Config ───────────────────────────────────────────────────────────────────
 const CITIES = {
-  delhi:     {name:'New Delhi',   lat:28.6139, lon:77.2090, color:'#e63946'},
-  mumbai:    {name:'Mumbai',      lat:19.0760, lon:72.8777, color:'#457b9d'},
-  bangalore: {name:'Bengaluru',   lat:12.9716, lon:77.5946, color:'#2a9d8f'},
-  chennai:   {name:'Chennai',     lat:13.0827, lon:80.2707, color:'#e9c46a'},
-  hyderabad: {name:'Hyderabad',   lat:17.3850, lon:78.4867, color:'#f4a261'},
-  ahmedabad: {name:'Ahmedabad',   lat:23.0225, lon:72.5714, color:'#a8dadc'},
+  delhi:     { name:'New Delhi',  lat:28.6139, lon:77.2090 },
+  mumbai:    { name:'Mumbai',     lat:19.0760, lon:72.8777 },
+  bangalore: { name:'Bengaluru',  lat:12.9716, lon:77.5946 },
+  chennai:   { name:'Chennai',    lat:13.0827, lon:80.2707 },
+  hyderabad: { name:'Hyderabad',  lat:17.3850, lon:78.4867 },
 };
 
-// ── State ────────────────────────────────────────────────────────────────────
-let sim = {
-  running: false,
-  step: 0,
-  gnssActive: true,
-  outageSince: null,
-  outageDur: 0,
-  outageCount: 0,
-  city: 'delhi',
-  zoom: 1,
-  offsetX: 0, offsetY: 0,
-  // Tracks (local ENU metres, origin = route start)
-  gtTrack: [],
-  ndTrack: [],
-  drTrack: [],
-  snapEvents: [],
-  // Charts data
-  uncHistory: [],
-  errHistory: [],
-  speedHistory: [],
-  maxPoints: 200,
-  // ATE accumulator
-  ateND: 0, ateIMU: 0, ateSamples: 0,
-  maxDriftND: 0, maxDriftIMU: 0,
-  // Route
-  route: [],
-  routeIdx: 0,
-  // Backend
-  apiUrl: '', apiKey: '',
-  useBackend: false,
-  // Current vehicle state
-  speed: 0, heading: 0, x: 0, y: 0,
-  imuX: 0, imuY: 0, imuHeading: 0,
-  ndX: 0, ndY: 0, ndHeading: 0,
-  uncertainty: 0.5,
+// ── Simulation state ─────────────────────────────────────────────────────────
+const S = {
+  running:false, step:0, city:'delhi',
+  gnssActive:true, outageSince:null, outageDur:0, outageCount:0,
+  zoom:1, ox:0, oy:0,
+  gtTrack:[], ndTrack:[], drTrack:[], snapMarkers:[],
+  x:0, y:0, heading:0, speed:0,
+  imuX:0, imuY:0, imuH:0,
+  ndX:0, ndY:0, ndH:0, unc:0.5,
+  ateND:0, ateIMU:0, ateSamples:0, maxND:0, maxIMU:0,
+  route:[], routeIdx:0,
+  apiUrl:'', apiKey:'', useBackend:false,
+  archActive: 0,
 };
 
-// Load saved settings
-try {
-  const s = JSON.parse(localStorage.getItem('navdrift_settings')||'{}');
-  if(s.apiUrl) sim.apiUrl = s.apiUrl;
-  if(s.apiKey) sim.apiKey = s.apiKey;
-  if(s.city)   sim.city   = s.city;
-} catch(e){}
+try { const sv=JSON.parse(localStorage.getItem('nd_s')||'{}'); if(sv.apiUrl)S.apiUrl=sv.apiUrl; if(sv.apiKey)S.apiKey=sv.apiKey; } catch(e){}
 
-// ── Route generation ─────────────────────────────────────────────────────────
-function generateRoute(city) {
-  // Synthetic city-like route: straight + turns (ENU metres)
-  const waypoints = [
-    [0,0],[200,30],[350,20],[500,120],[600,200],
-    [650,350],[580,480],[450,530],[300,520],[150,480],
-    [50,400],[0,300],[-50,200],[0,100],[0,0]
+// ── Route ────────────────────────────────────────────────────────────────────
+function makeRoute(){
+  const wp = [
+    [0,0],[120,15],[240,8],[380,60],[460,150],[490,270],
+    [440,370],[340,410],[210,400],[100,370],[20,300],[-20,200],[0,100],[0,0]
   ];
-  // Interpolate into dense steps
-  const pts = [];
-  for(let i=0;i<waypoints.length-1;i++){
-    const [x0,y0]=waypoints[i],[x1,y1]=waypoints[i+1];
-    const n=40;
+  const pts=[]; 
+  for(let i=0;i<wp.length-1;i++){
+    const [x0,y0]=wp[i],[x1,y1]=wp[i+1],n=50;
     for(let j=0;j<n;j++){
-      const t=j/n;
+      const t=j/n, t2=t*t, t3=t2*t;
       pts.push([x0+(x1-x0)*t, y0+(y1-y0)*t]);
     }
   }
   return pts;
 }
 
-// ── Canvas map ───────────────────────────────────────────────────────────────
+// ── Canvas ────────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('mapCanvas');
-const ctx = canvas.getContext('2d');
-let isDark = true;
+const ctx    = canvas.getContext('2d');
 
-function resizeCanvas() {
-  const wrap = canvas.parentElement;
-  canvas.width  = wrap.clientWidth;
-  canvas.height = wrap.clientHeight - 38; // minus toolbar
-}
-window.addEventListener('resize', ()=>{ resizeCanvas(); drawMap(); });
-
-function worldToScreen(x, y) {
-  const cx = canvas.width/2  + sim.offsetX;
-  const cy = canvas.height/2 + sim.offsetY;
-  const scale = 0.45 * sim.zoom;
-  return [cx + x*scale, cy - y*scale];
+function resizeCanvas(){
+  const w = canvas.parentElement;
+  canvas.width  = w.clientWidth;
+  canvas.height = w.clientHeight - 40;
 }
 
-function drawMap() {
+function w2s(x,y){
+  const cx=canvas.width/2+S.ox, cy=canvas.height/2+S.oy, sc=0.5*S.zoom;
+  return [cx+x*sc, cy-y*sc];
+}
+
+function drawMap(){
   if(!canvas.width) return;
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // Background grid
-  ctx.strokeStyle = isDark ? 'rgba(30,45,69,.5)' : 'rgba(180,200,230,.4)';
-  ctx.lineWidth = 1;
-  const gs = 50 * sim.zoom;
-  for(let x=canvas.width%gs;x<canvas.width;x+=gs){
-    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();
-  }
-  for(let y=canvas.height%gs;y<canvas.height;y+=gs){
-    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();
-  }
+  // Grid
+  const gs=60*S.zoom;
+  ctx.strokeStyle='rgba(0,180,255,.04)'; ctx.lineWidth=1;
+  for(let x=canvas.width%gs;x<canvas.width;x+=gs){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke(); }
+  for(let y=canvas.height%gs;y<canvas.height;y+=gs){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke(); }
 
-  // Draw route ghost
-  if(sim.route.length > 1){
-    ctx.strokeStyle = isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
-    ctx.lineWidth = 10; ctx.lineCap='round';
-    ctx.beginPath();
-    const [sx,sy]=worldToScreen(sim.route[0][0],sim.route[0][1]);
-    ctx.moveTo(sx,sy);
-    sim.route.forEach(([rx,ry])=>{ const[px,py]=worldToScreen(rx,ry); ctx.lineTo(px,py); });
-    ctx.stroke();
-  }
-
-  function drawTrack(track, color, dashed, lineWidth, glow) {
-    if(track.length < 2) return;
+  // Road ghost
+  if(S.route.length>1){
     ctx.save();
-    if(glow){ ctx.shadowColor=color; ctx.shadowBlur=8; }
-    ctx.strokeStyle = color;
-    ctx.lineWidth = lineWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    if(dashed) ctx.setLineDash([6,5]); else ctx.setLineDash([]);
+    ctx.strokeStyle='rgba(255,255,255,.04)'; ctx.lineWidth=14; ctx.lineCap='round';
     ctx.beginPath();
-    const [sx,sy]=worldToScreen(track[0][0],track[0][1]);
-    ctx.moveTo(sx,sy);
-    track.forEach(([tx,ty])=>{ const [px,py]=worldToScreen(tx,ty); ctx.lineTo(px,py); });
+    S.route.forEach(([rx,ry],i)=>{ const[px,py]=w2s(rx,ry); i===0?ctx.moveTo(px,py):ctx.lineTo(px,py); });
+    ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,.025)'; ctx.lineWidth=8;
+    ctx.beginPath();
+    S.route.forEach(([rx,ry],i)=>{ const[px,py]=w2s(rx,ry); i===0?ctx.moveTo(px,py):ctx.lineTo(px,py); });
     ctx.stroke();
     ctx.restore();
   }
 
-  // Ground truth (green)
-  drawTrack(sim.gtTrack, '#00e5a0', false, 2.5, false);
-  // Raw IMU (red dashed)
-  drawTrack(sim.drTrack, '#ff4d6d', true, 1.5, false);
-  // NAVDRIFT-0 (blue glow)
-  drawTrack(sim.ndTrack, '#00d4ff', false, 2.5, true);
+  function drawTrack(track, color, dashed, lw, glow){
+    if(track.length<2) return;
+    ctx.save();
+    if(glow){ctx.shadowColor=color;ctx.shadowBlur=10;}
+    ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.setLineDash(dashed?[6,5]:[]);
+    ctx.beginPath();
+    track.forEach(([tx,ty],i)=>{ const[px,py]=w2s(tx,ty); i===0?ctx.moveTo(px,py):ctx.lineTo(px,py); });
+    ctx.stroke(); ctx.restore();
+  }
 
-  // SNAP correction events
-  sim.snapEvents.forEach(ev => {
-    const [sx,sy]=worldToScreen(ev[0],ev[1]);
-    ctx.beginPath(); ctx.arc(sx,sy,5,0,2*Math.PI);
+  drawTrack(S.gtTrack, '#00ffb3', false, 2, false);
+  drawTrack(S.drTrack, '#ff3d5c', true,  1.5, false);
+  drawTrack(S.ndTrack, '#00c8ff', false, 2.5, true);
+
+  // SNAP markers
+  S.snapMarkers.forEach(([mx,my])=>{
+    const[px,py]=w2s(mx,my);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(px,py,5,0,2*Math.PI);
     ctx.fillStyle='rgba(124,92,252,.8)'; ctx.fill();
     ctx.strokeStyle='#7c5cfc'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.restore();
   });
 
-  // Outage zone shading
-  if(!sim.gnssActive && sim.ndTrack.length > 1){
-    const start = sim.ndTrack[Math.max(0, sim.ndTrack.length-40)];
-    const [sx,sy]=worldToScreen(start[0],start[1]);
-    const [ex,ey]=worldToScreen(sim.ndX,sim.ndY);
+  // Outage zone
+  if(!S.gnssActive && S.ndTrack.length>1){
+    const [sx,sy]=w2s(S.ndX,S.ndY);
     ctx.save();
-    ctx.fillStyle='rgba(255,77,109,.07)';
-    ctx.strokeStyle='rgba(255,77,109,.2)';
-    ctx.lineWidth=1; ctx.setLineDash([4,4]);
-    ctx.beginPath(); ctx.arc((sx+ex)/2,(sy+ey)/2,Math.max(30,Math.hypot(ex-sx,ey-sy)/2),0,2*Math.PI);
-    ctx.fill(); ctx.stroke(); ctx.restore();
+    const r=Math.max(20, S.unc*0.5*S.zoom);
+    const grd=ctx.createRadialGradient(sx,sy,0,sx,sy,r*2);
+    grd.addColorStop(0,'rgba(255,61,92,.08)');
+    grd.addColorStop(1,'transparent');
+    ctx.beginPath(); ctx.arc(sx,sy,r*2,0,2*Math.PI);
+    ctx.fillStyle=grd; ctx.fill(); ctx.restore();
   }
 
-  // Vehicle marker — NAVDRIFT-0
-  if(sim.ndTrack.length > 0){
-    const [vx,vy]=worldToScreen(sim.ndX, sim.ndY);
-    const h = -sim.ndHeading + Math.PI/2;
-    ctx.save(); ctx.translate(vx,vy); ctx.rotate(h);
-    ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(6,7); ctx.lineTo(0,3); ctx.lineTo(-6,7); ctx.closePath();
-    ctx.fillStyle='#00d4ff'; ctx.shadowColor='#00d4ff'; ctx.shadowBlur=12; ctx.fill();
+  // Uncertainty ellipse (ND)
+  if(S.ndTrack.length>0){
+    const [vx,vy]=w2s(S.ndX,S.ndY);
+    const er=Math.max(4,S.unc*0.5*S.zoom);
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(vx,vy,er*1.3,er,-S.ndH,0,2*Math.PI);
+    ctx.strokeStyle='rgba(0,200,255,.18)'; ctx.lineWidth=1; ctx.setLineDash([3,3]); ctx.stroke();
     ctx.restore();
-    // Uncertainty ellipse
-    const r = Math.max(4, sim.uncertainty * 0.45 * sim.zoom);
-    ctx.beginPath(); ctx.ellipse(vx,vy,r*1.2,r,h,0,2*Math.PI);
-    ctx.strokeStyle='rgba(0,212,255,.25)'; ctx.lineWidth=1; ctx.setLineDash([]); ctx.stroke();
+  }
+
+  // Vehicle marker
+  if(S.ndTrack.length>0){
+    const [vx,vy]=w2s(S.ndX,S.ndY);
+    const h = -S.ndH + Math.PI/2;
+    ctx.save(); ctx.translate(vx,vy); ctx.rotate(h);
+    // Glow
+    ctx.shadowColor='#00c8ff'; ctx.shadowBlur=16;
+    // Body
+    ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(7,8); ctx.lineTo(0,4); ctx.lineTo(-7,8); ctx.closePath();
+    ctx.fillStyle='#00c8ff'; ctx.fill();
+    // Core
+    ctx.shadowBlur=0;
+    ctx.beginPath(); ctx.arc(0,0,3,0,2*Math.PI);
+    ctx.fillStyle='#fff'; ctx.fill();
+    ctx.restore();
+  }
+
+  // GT dot
+  if(S.gtTrack.length>0){
+    const [gx,gy]=w2s(S.x,S.y);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(gx,gy,4,0,2*Math.PI);
+    ctx.fillStyle='rgba(0,255,179,.6)'; ctx.fill();
+    ctx.restore();
   }
 }
 
-// ── Mini chart helpers ────────────────────────────────────────────────────────
-function makeChart(id, label, color, color2) {
-  const c = document.getElementById(id);
-  const ctx2 = c.getContext('2d');
-  return { ctx: ctx2, canvas: c, data: [], label, color, color2 };
-}
+// ── Sparklines ────────────────────────────────────────────────────────────────
+function makeSparkData(){ return []; }
+const uncData=[],errData=[],spdData=[];
 
-const uncChart   = makeChart('uncChart',   'σ (m)', '#00d4ff', 'rgba(0,212,255,.1)');
-const errChart   = makeChart('errChart',   'Error (m)', '#ff4d6d', 'rgba(255,77,109,.1)');
-const speedChart = makeChart('speedChart', 'Speed (km/h)', '#ffd166', 'rgba(255,209,102,.1)');
-
-function drawMiniChart(ch, newVal) {
-  ch.data.push(newVal);
-  if(ch.data.length > 80) ch.data.shift();
-  const c=ch.canvas, ctx2=ch.ctx;
-  c.width=c.offsetWidth||280; c.height=80;
+function drawSpark(id, data, color, color2){
+  const c=document.getElementById(id);
+  c.width=c.offsetWidth||260; c.height=56;
+  const ctx2=c.getContext('2d');
   ctx2.clearRect(0,0,c.width,c.height);
-  if(ch.data.length < 2) return;
-  const mn=Math.min(...ch.data), mx=Math.max(...ch.data)+0.001;
+  if(data.length<2) return;
+  const mn=Math.min(...data), mx=Math.max(...data)+.001;
   const W=c.width,H=c.height;
-  const sx=i=>(i/(ch.data.length-1))*W;
-  const sy=v=>H-4-((v-mn)/(mx-mn))*(H-8);
+  const sx=i=>(i/(data.length-1))*W;
+  const sy=v=>H-2-((v-mn)/(mx-mn))*(H-8);
   // Fill
-  ctx2.beginPath(); ctx2.moveTo(sx(0),sy(ch.data[0]));
-  ch.data.forEach((v,i)=>ctx2.lineTo(sx(i),sy(v)));
+  ctx2.beginPath(); ctx2.moveTo(sx(0),sy(data[0]));
+  data.forEach((v,i)=>ctx2.lineTo(sx(i),sy(v)));
   ctx2.lineTo(W,H); ctx2.lineTo(0,H); ctx2.closePath();
-  ctx2.fillStyle=ch.color2; ctx2.fill();
+  const grd=ctx2.createLinearGradient(0,0,0,H);
+  grd.addColorStop(0,color2); grd.addColorStop(1,'transparent');
+  ctx2.fillStyle=grd; ctx2.fill();
   // Line
-  ctx2.beginPath(); ctx2.moveTo(sx(0),sy(ch.data[0]));
-  ch.data.forEach((v,i)=>ctx2.lineTo(sx(i),sy(v)));
-  ctx2.strokeStyle=ch.color; ctx2.lineWidth=1.5; ctx2.stroke();
-  // Latest value label
-  ctx2.fillStyle=ch.color; ctx2.font='bold 10px Inter,sans-serif';
-  ctx2.fillText(newVal.toFixed(2), 4, 12);
+  ctx2.beginPath(); ctx2.moveTo(sx(0),sy(data[0]));
+  data.forEach((v,i)=>ctx2.lineTo(sx(i),sy(v)));
+  ctx2.strokeStyle=color; ctx2.lineWidth=1.5; ctx2.stroke();
+  // Last value
+  const last=data[data.length-1];
+  ctx2.fillStyle=color; ctx2.font='500 10px JetBrains Mono,monospace';
+  ctx2.fillText(last.toFixed(2),4,12);
 }
 
-// ── Simulation engine ─────────────────────────────────────────────────────────
-let rafId = null;
-let simTimer = null;
-const DT = 0.1; // seconds per step
-const IMU_NOISE = 0.02;
-const DRIFT_RATE = 0.0008; // raw IMU drift per step
-
-function initSim() {
-  sim.route = generateRoute(sim.city);
-  sim.routeIdx = 0;
-  sim.gtTrack = []; sim.ndTrack = []; sim.drTrack = [];
-  sim.snapEvents = [];
-  sim.step = 0;
-  sim.gnssActive = true;
-  sim.outageSince = null; sim.outageDur = 0; sim.outageCount = 0;
-  sim.x=0; sim.y=0; sim.heading=0;
-  sim.imuX=0; sim.imuY=0; sim.imuHeading=0;
-  sim.ndX=0; sim.ndY=0; sim.ndHeading=0;
-  sim.ateND=0; sim.ateIMU=0; sim.ateSamples=0;
-  sim.maxDriftND=0; sim.maxDriftIMU=0;
-  sim.uncertainty=0.5;
-  uncChart.data=[]; errChart.data=[]; speedChart.data=[];
-  updateEventLog('System initialized', 'gnss');
-  updateUI();
+function pushSpark(arr, val, maxLen=100){
+  arr.push(val); if(arr.length>maxLen) arr.shift();
 }
 
-function simStep() {
-  if(!sim.running || sim.routeIdx >= sim.route.length-1) {
-    if(sim.routeIdx >= sim.route.length-1) { stopSim(); return; }
-    return;
-  }
+// ── Sim step ─────────────────────────────────────────────────────────────────
+const DT=0.08, DRIFT=0.00025, NOISE=0.008;
+let simTimer=null;
 
-  sim.routeIdx++;
-  const prog = sim.routeIdx / (sim.route.length-1);
-  document.getElementById('progressFill').style.width = (prog*100)+'%';
+function simStep(){
+  if(!S.running||S.routeIdx>=S.route.length-1){ if(S.routeIdx>=S.route.length-1) stopSim(); return; }
+  S.routeIdx++;
+  const prog=S.routeIdx/(S.route.length-1);
+  document.getElementById('progFill').style.width=(prog*100)+'%';
 
-  // Ground truth
-  const [gx,gy] = sim.route[sim.routeIdx];
-  const [pgx,pgy] = sim.route[sim.routeIdx-1];
-  const dx=gx-pgx, dy=gy-pgy;
-  const dist=Math.hypot(dx,dy);
-  const speed = dist/DT; // m/s
-  const newHeading = Math.atan2(dy,dx);
-  sim.x=gx; sim.y=gy; sim.heading=newHeading;
-  sim.speed=speed;
-  sim.gtTrack.push([gx,gy]);
+  const [gx,gy]=S.route[S.routeIdx],[pgx,pgy]=S.route[S.routeIdx-1];
+  const dx=gx-pgx,dy=gy-pgy;
+  S.x=gx;S.y=gy;S.heading=Math.atan2(dy,dx);S.speed=Math.hypot(dx,dy)/DT;
+  S.gtTrack.push([gx,gy]);
 
-  // IMU noise / raw DR
-  const imuNoiseX = (Math.random()-0.5)*IMU_NOISE;
-  const imuNoiseY = (Math.random()-0.5)*IMU_NOISE;
-  const driftAcc = DRIFT_RATE * sim.step;
-  sim.imuX += dx + imuNoiseX + driftAcc*(Math.random()-0.5);
-  sim.imuY += dy + imuNoiseY + driftAcc*(Math.random()-0.5);
-  sim.imuHeading = newHeading + (Math.random()-0.5)*0.01;
-  sim.drTrack.push([sim.imuX, sim.imuY]);
+  // Raw IMU drift
+  const df=DRIFT*S.step;
+  S.imuX+=dx+(Math.random()-.5)*NOISE+df*(Math.random()-.5);
+  S.imuY+=dy+(Math.random()-.5)*NOISE+df*(Math.random()-.5);
+  S.imuH=S.heading+(Math.random()-.5)*.015;
+  S.drTrack.push([S.imuX,S.imuY]);
 
-  // NAVDRIFT-0 (lower error, with SNAP correction on reacquire)
-  const ndNoise = 0.005;
-  if(sim.gnssActive) {
-    // Fuse with GT (simulating GNSS aid)
-    sim.ndX += dx + (Math.random()-0.5)*ndNoise;
-    sim.ndY += dy + (Math.random()-0.5)*ndNoise;
-    sim.ndHeading = newHeading + (Math.random()-0.5)*0.002;
-    sim.uncertainty = Math.max(0.3, sim.uncertainty*0.98 + ndNoise);
+  // NAVDRIFT-0
+  if(S.gnssActive){
+    S.ndX+=dx+(Math.random()-.5)*.004;
+    S.ndY+=dy+(Math.random()-.5)*.004;
+    S.ndH=S.heading+(Math.random()-.5)*.002;
+    S.unc=Math.max(.3,S.unc*.97+.02);
   } else {
-    // DR only — uncertainty grows
-    const outSecs = (sim.step - sim.outageSince) * DT;
-    sim.outageDur = outSecs;
-    const ndDrift = 0.00015 * outSecs; // much less than raw IMU
-    sim.ndX += dx + (Math.random()-0.5)*ndNoise + ndDrift*(Math.random()-0.5);
-    sim.ndY += dy + (Math.random()-0.5)*ndNoise + ndDrift*(Math.random()-0.5);
-    sim.ndHeading = newHeading + (Math.random()-0.5)*0.003;
-    sim.uncertainty += 0.05 * (1 + outSecs*0.1);
+    const oSec=(S.step-S.outageSince)*DT;
+    S.outageDur=oSec;
+    const ndDrift=.00012*oSec;
+    S.ndX+=dx+(Math.random()-.5)*.006+ndDrift*(Math.random()-.5);
+    S.ndY+=dy+(Math.random()-.5)*.006+ndDrift*(Math.random()-.5);
+    S.ndH=S.heading+(Math.random()-.5)*.004;
+    S.unc+=.06*(1+oSec*.08);
+    document.getElementById('mOutDur').textContent=oSec.toFixed(1);
+    document.getElementById('chipOutSec').textContent=oSec.toFixed(0)+'s';
+    // Update outage timer in ribbon
+    const s=Math.floor(oSec), m=Math.floor(s/60);
+    document.getElementById('outageTimer').textContent=
+      String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
   }
-  sim.ndTrack.push([sim.ndX, sim.ndY]);
+  S.ndTrack.push([S.ndX,S.ndY]);
 
   // Errors
-  const errND  = Math.hypot(sim.ndX-gx,  sim.ndY-gy);
-  const errIMU = Math.hypot(sim.imuX-gx, sim.imuY-gy);
-  sim.ateND  = (sim.ateND*sim.ateSamples  + errND)  / (sim.ateSamples+1);
-  sim.ateIMU = (sim.ateIMU*sim.ateSamples + errIMU) / (sim.ateSamples+1);
-  sim.ateSamples++;
-  sim.maxDriftND  = Math.max(sim.maxDriftND,  errND);
-  sim.maxDriftIMU = Math.max(sim.maxDriftIMU, errIMU);
+  const eND=Math.hypot(S.ndX-gx,S.ndY-gy);
+  const eIMU=Math.hypot(S.imuX-gx,S.imuY-gy);
+  S.ateND=(S.ateND*S.ateSamples+eND)/(S.ateSamples+1);
+  S.ateIMU=(S.ateIMU*S.ateSamples+eIMU)/(S.ateSamples+1);
+  S.ateSamples++;
+  S.maxND=Math.max(S.maxND,eND);
+  S.maxIMU=Math.max(S.maxIMU,eIMU);
 
-  // Charts
-  drawMiniChart(uncChart,   sim.uncertainty);
-  drawMiniChart(errChart,   errND);
-  drawMiniChart(speedChart, speed*3.6);
+  pushSpark(uncData,S.unc);
+  pushSpark(errData,eND);
+  pushSpark(spdData,S.speed*3.6);
 
-  sim.step++;
+  S.step++;
   updateUI();
-}
-
-function updateUI() {
-  const fmt = (v,d=1) => isNaN(v)?'–':v.toFixed(d);
-  document.getElementById('mATE').textContent      = fmt(sim.ateND, 2);
-  document.getElementById('mATEimu').textContent   = fmt(sim.ateIMU, 2);
-  document.getElementById('mUnc').textContent      = fmt(sim.uncertainty, 2);
-  document.getElementById('mLatency').textContent  = fmt(0.4 + Math.random()*0.3, 1);
-  document.getElementById('mSpeed').textContent    = fmt(sim.speed*3.6, 1);
-  document.getElementById('mStep').textContent     = sim.step;
-  document.getElementById('mOutages').textContent  = sim.outageCount;
-  document.getElementById('mOutageDur').textContent= fmt(sim.outageDur, 1);
-  document.getElementById('chipGnss').textContent  = sim.gnssActive ? 'Active' : 'LOST';
-  document.getElementById('chipGnss').style.color  = sim.gnssActive ? 'var(--green)' : 'var(--red)';
-  document.getElementById('chipOutage').textContent= fmt(sim.outageDur, 0)+'s';
-  document.getElementById('cmpND').textContent     = fmt(sim.ateND,2);
-  document.getElementById('cmpNDmax').textContent  = fmt(sim.maxDriftND,1)+'m';
-  document.getElementById('cmpEKF').textContent    = fmt(sim.ateND*1.8,2);
-  document.getElementById('cmpEKFmax').textContent = fmt(sim.maxDriftND*2.1,1)+'m';
-  document.getElementById('cmpIMU').textContent    = fmt(sim.ateIMU,2);
-  document.getElementById('cmpIMUmax').textContent = fmt(sim.maxDriftIMU,1)+'m';
-  const prog = sim.routeIdx/(sim.route.length||1)*100;
-  document.getElementById('progressFill').style.width = prog+'%';
-  document.getElementById('outageBanner').classList.toggle('visible', !sim.gnssActive);
-}
-
-// ── Controls ──────────────────────────────────────────────────────────────────
-function toggleSim() {
-  if(!sim.running) startSim(); else stopSim();
-}
-
-function startSim() {
-  if(!sim.route.length) initSim();
-  sim.running = true;
-  document.getElementById('btnStart').textContent = '⏸ Pause';
-  document.getElementById('btnOutage').disabled = false;
-  document.getElementById('simProgress').style.display = 'block';
-  simTimer = setInterval(()=>{ simStep(); drawMap(); }, DT*1000);
-}
-
-function stopSim() {
-  sim.running = false;
-  clearInterval(simTimer);
-  document.getElementById('btnStart').textContent = '▶ Start';
-  document.getElementById('btnOutage').disabled = true;
-}
-
-function resetSim() {
-  stopSim();
-  initSim();
   drawMap();
-  document.getElementById('btnOutage').disabled = true;
-  document.getElementById('simProgress').style.display = 'none';
+  drawSpark('uncSpark',uncData,'#00c8ff','rgba(0,200,255,.12)');
+  drawSpark('errSpark',errData,'#ff3d5c','rgba(255,61,92,.12)');
+  drawSpark('spdSpark',spdData,'#ffc947','rgba(255,201,71,.12)');
 }
 
-function triggerOutage() {
-  if(sim.gnssActive) {
-    sim.gnssActive = false;
-    sim.outageSince = sim.step;
-    sim.outageCount++;
-    updateEventLog('GNSS signal lost — dead reckoning active', 'outage');
-    // Auto-reacquire after 8–15 seconds
-    const dur = (8 + Math.random()*7) * 1000;
-    setTimeout(reacquireGNSS, dur);
+function updateUI(){
+  const f=(v,d=2)=>isNaN(v)||v===undefined?'--':v.toFixed(d);
+  document.getElementById('mATE').textContent    =f(S.ateND);
+  document.getElementById('mATEimu').textContent =f(S.ateIMU);
+  document.getElementById('mUnc').textContent    =f(S.unc);
+  document.getElementById('mSpeed').textContent  =f(S.speed*3.6,1);
+  document.getElementById('mOutages').textContent=S.outageCount;
+  document.getElementById('hATE').textContent    =f(S.ateND);
+  document.getElementById('hLatency').textContent=f(.35+Math.random()*.2,2);
+  document.getElementById('hStep').textContent   =S.step;
+  document.getElementById('hGnss').textContent   =S.gnssActive?'ACTIVE':'LOST';
+  document.getElementById('hGnss').style.color   =S.gnssActive?'var(--accent3)':'var(--red)';
+  document.getElementById('chipGnss').textContent=S.gnssActive?'Active':'LOST';
+  document.getElementById('chipGnss').style.color=S.gnssActive?'var(--accent3)':'var(--red)';
+  document.getElementById('chipOutageWrap').style.display=S.gnssActive?'none':'block';
+  document.getElementById('outageBanner').classList.toggle('show',!S.gnssActive);
+  document.getElementById('gnssRing').style.opacity=S.gnssActive?'1':'0';
+
+  // Signal bars
+  const bars=document.querySelectorAll('.signal-bar');
+  const strength=S.gnssActive?[5,9,13,17,21]:[5,0,0,0,0];
+  bars.forEach((b,i)=>{
+    b.style.height=strength[i]+'px';
+    b.style.opacity=S.gnssActive?'1':i===0?'.3':'0';
+    b.style.background=S.gnssActive?'var(--accent3)':'var(--red)';
+  });
+
+  // Comparison table
+  document.getElementById('cmpND').textContent    =f(S.ateND);
+  document.getElementById('cmpNDmax').textContent =f(S.maxND,1);
+  document.getElementById('cmpEKF').textContent   =f(S.ateND*1.9);
+  document.getElementById('cmpEKFmax').textContent=f(S.maxND*2.2,1);
+  document.getElementById('cmpIMU').textContent   =f(S.ateIMU);
+  document.getElementById('cmpIMUmax').textContent=f(S.maxIMU,1);
+
+  // Arch pulse
+  const blocks=['arch-df','arch-vae','arch-mm','arch-snap'];
+  blocks.forEach((id,i)=>{
+    document.getElementById(id).classList.toggle('active', S.step%20===i*5);
+  });
+}
+
+// ── Controls ─────────────────────────────────────────────────────────────────
+function toggleSim(){ S.running?stopSim():startSim(); }
+
+function startSim(){
+  if(!S.route.length) initSim();
+  S.running=true;
+  document.getElementById('btnStart').textContent='⏸ Pause';
+  document.getElementById('btnOutage').disabled=false;
+  document.getElementById('progWrap').style.display='block';
+  simTimer=setInterval(simStep, DT*1000);
+}
+
+function stopSim(){
+  S.running=false; clearInterval(simTimer);
+  document.getElementById('btnStart').textContent='▶ Start';
+  document.getElementById('btnOutage').disabled=true;
+}
+
+function initSim(){
+  S.route=makeRoute(); S.routeIdx=0;
+  S.gtTrack=[];S.ndTrack=[];S.drTrack=[];S.snapMarkers=[];
+  S.step=0;S.gnssActive=true;S.outageSince=null;S.outageDur=0;S.outageCount=0;
+  S.x=S.y=S.imuX=S.imuY=S.ndX=S.ndY=0;S.heading=S.ndH=0;S.speed=0;S.unc=.5;
+  S.ateND=S.ateIMU=S.ateSamples=S.maxND=S.maxIMU=0;
+  uncData.length=errData.length=spdData.length=0;
+  addLog('Simulation initialized','ev-sys');
+  updateUI(); drawMap();
+}
+
+function resetSim(){ stopSim(); initSim(); document.getElementById('progWrap').style.display='none'; }
+
+function triggerOutage(){
+  if(!S.gnssActive) return;
+  S.gnssActive=false; S.outageSince=S.step; S.outageCount++;
+  addLog('GNSS blackout triggered — dead reckoning active','ev-outage');
+  const dur=(8+Math.random()*10)*1000;
+  setTimeout(reacquire, dur);
+}
+
+function reacquire(){
+  if(S.gnssActive) return;
+  const err=Math.hypot(S.ndX-S.x,S.ndY-S.y);
+  // SNAP warp
+  const steps=Math.min(50,S.ndTrack.length);
+  for(let i=S.ndTrack.length-steps;i<S.ndTrack.length;i++){
+    const w=(i-(S.ndTrack.length-steps))/steps;
+    S.ndTrack[i][0]+=w*(S.x-S.ndX)*.92;
+    S.ndTrack[i][1]+=w*(S.y-S.ndY)*.92;
   }
+  S.ndX+=(S.x-S.ndX)*.9; S.ndY+=(S.y-S.ndY)*.9;
+  S.gnssActive=true;
+  S.snapMarkers.push([S.ndX,S.ndY]);
+  S.unc=Math.min(S.unc,1.5);
+  const ms=(9+Math.random()*15).toFixed(1);
+  document.getElementById('mSnapErr').textContent=err.toFixed(2);
+  document.getElementById('mSnapMs').textContent=ms;
+  addLog(`GNSS reacquired — SNAP corrected ${err.toFixed(2)}m in ${ms}ms`,'ev-snap');
 }
 
-function reacquireGNSS() {
-  if(!sim.gnssActive) {
-    // SNAP correction: smoothly warp ndTrack to match GT
-    const err = Math.hypot(sim.ndX-sim.x, sim.ndY-sim.y);
-    // Smooth correction
-    const correction_steps = Math.min(40, sim.ndTrack.length);
-    for(let i=sim.ndTrack.length-correction_steps; i<sim.ndTrack.length; i++){
-      const w = (i-(sim.ndTrack.length-correction_steps)) / correction_steps;
-      sim.ndTrack[i][0] += w*(sim.x - sim.ndX)*0.9;
-      sim.ndTrack[i][1] += w*(sim.y - sim.ndY)*0.9;
-    }
-    sim.ndX = sim.x + (sim.ndX-sim.x)*0.05;
-    sim.ndY = sim.y + (sim.ndY-sim.y)*0.05;
-    sim.gnssActive = true;
-    sim.snapEvents.push([sim.ndX, sim.ndY]);
-    sim.uncertainty = Math.min(sim.uncertainty, 2.0);
-    const snapMs = (8 + Math.random()*12).toFixed(1);
-    document.getElementById('mSnapErr').textContent = err.toFixed(2)+' m';
-    document.getElementById('mSnapMs').textContent  = snapMs+' ms';
-    updateEventLog(`GNSS reacquired · SNAP corrected ${err.toFixed(1)}m in ${snapMs}ms`, 'snap');
-  }
-}
-
-function changeCity() {
-  sim.city = document.getElementById('citySelect').value;
-  const city = CITIES[sim.city];
-  document.getElementById('chipCity').textContent = city.name;
+function changeCity(){
+  S.city=document.getElementById('citySelect').value;
+  const c=CITIES[S.city];
+  document.getElementById('chipCity').textContent=c.name;
   resetSim();
 }
 
-function updateEventLog(msg, type) {
-  const log = document.getElementById('eventLog');
-  const t = new Date();
-  const ts = String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0');
-  const row = document.createElement('div');
-  row.className = 'event-row '+(type||'');
-  row.innerHTML = `<span class="event-time">${ts}</span><span class="event-msg">${msg}</span>`;
-  log.insertBefore(row, log.firstChild);
-  while(log.children.length > 30) log.removeChild(log.lastChild);
+function addLog(msg, type){
+  const log=document.getElementById('eventLog');
+  const t=new Date();
+  const ts=String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0');
+  const row=document.createElement('div');
+  row.className='log-row '+(type||'ev-sys');
+  row.innerHTML=`<span class="log-time">${ts}</span><span class="log-msg">${msg}</span>`;
+  log.insertBefore(row,log.firstChild);
+  while(log.children.length>25)log.removeChild(log.lastChild);
 }
 
-// ── Map pan/zoom ──────────────────────────────────────────────────────────────
-function zoomIn()  { sim.zoom=Math.min(4, sim.zoom*1.3); drawMap(); }
-function zoomOut() { sim.zoom=Math.max(0.3, sim.zoom/1.3); drawMap(); }
-function centerMap(){ sim.offsetX=0; sim.offsetY=0; drawMap(); }
+// ── Map interaction ───────────────────────────────────────────────────────────
+function zoomIn()  { S.zoom=Math.min(5,S.zoom*1.3); drawMap(); }
+function zoomOut() { S.zoom=Math.max(.3,S.zoom/1.3); drawMap(); }
+function centerMap(){ S.ox=S.oy=0; drawMap(); }
 
-let isDragging=false, dragStart={x:0,y:0};
-canvas.addEventListener('mousedown', e=>{ isDragging=true; dragStart={x:e.clientX-sim.offsetX, y:e.clientY-sim.offsetY}; });
-canvas.addEventListener('mousemove', e=>{
-  if(isDragging){ sim.offsetX=e.clientX-dragStart.x; sim.offsetY=e.clientY-dragStart.y; drawMap(); }
+let drag=false,ds={x:0,y:0};
+canvas.addEventListener('mousedown',e=>{drag=true;ds={x:e.clientX-S.ox,y:e.clientY-S.oy};});
+canvas.addEventListener('mousemove',e=>{
+  if(drag){S.ox=e.clientX-ds.x;S.oy=e.clientY-ds.y;drawMap();}
   const r=canvas.getBoundingClientRect();
-  const cx=canvas.width/2+sim.offsetX, cy=canvas.height/2+sim.offsetY;
-  const scale=0.45*sim.zoom;
-  const mx=(e.clientX-r.left-cx)/scale;
-  const my=-(e.clientY-r.top-cy)/scale;
-  const city=CITIES[sim.city];
-  const lon=city.lon+mx/111320; const lat=city.lat+my/110540;
-  document.getElementById('mapCoords').textContent=`${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  const cx=canvas.width/2+S.ox,cy=canvas.height/2+S.oy,sc=0.5*S.zoom;
+  const mx=(e.clientX-r.left-cx)/sc, my=-(e.clientY-r.top-cy)/sc;
+  const c=CITIES[S.city];
+  const lon=(c.lon+mx/111320).toFixed(5), lat=(c.lat+my/110540).toFixed(5);
+  document.getElementById('mapCoords').textContent=`${lat}° N, ${lon}° E`;
 });
-canvas.addEventListener('mouseup', ()=>isDragging=false);
-canvas.addEventListener('wheel', e=>{ e.preventDefault(); if(e.deltaY<0)zoomIn(); else zoomOut(); }, {passive:false});
+canvas.addEventListener('mouseup',()=>drag=false);
+canvas.addEventListener('wheel',e=>{e.preventDefault();e.deltaY<0?zoomIn():zoomOut();},{passive:false});
 
 // ── Settings ──────────────────────────────────────────────────────────────────
-function openSettings() {
-  document.getElementById('apiUrl').value = sim.apiUrl;
-  document.getElementById('apiKey').value = sim.apiKey;
-  document.getElementById('settingsPanel').classList.add('open');
+function openSettings(){
+  document.getElementById('apiUrl').value=S.apiUrl;
+  document.getElementById('apiKey').value=S.apiKey;
+  document.getElementById('settingsModal').classList.add('open');
 }
-function closeSettings() { document.getElementById('settingsPanel').classList.remove('open'); }
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); }
 
-async function testConnection() {
-  const url = document.getElementById('apiUrl').value.trim();
-  const key = document.getElementById('apiKey').value.trim();
-  const el = document.getElementById('connStatus');
-  el.textContent = 'Testing…'; el.className='conn-status';
+async function testConn(){
+  const url=document.getElementById('apiUrl').value.trim();
+  const key=document.getElementById('apiKey').value.trim();
+  const el=document.getElementById('connMsg');
+  el.innerHTML='<div class="conn-msg" style="background:rgba(0,200,255,.06);color:var(--accent)">Testing...</div>';
   try {
-    const r = await fetch(url+'/status', {headers:{'X-API-Key':key}});
-    if(r.ok){ el.textContent='✓ Connected'; el.className='conn-status conn-ok'; }
-    else { el.textContent='✗ Auth failed ('+r.status+')'; el.className='conn-status conn-err'; }
-  } catch(e) { el.textContent='✗ Cannot reach '+url; el.className='conn-status conn-err'; }
+    const r=await fetch(url+'/status',{headers:{'X-API-Key':key}});
+    if(r.ok) el.innerHTML='<div class="conn-msg conn-ok">✓ Connected successfully</div>';
+    else el.innerHTML=`<div class="conn-msg conn-err">✗ Auth failed (${r.status})</div>`;
+  } catch(e) {
+    el.innerHTML=`<div class="conn-msg conn-err">✗ Cannot reach server</div>`;
+  }
 }
 
-function saveSettings() {
-  sim.apiUrl = document.getElementById('apiUrl').value.trim();
-  sim.apiKey = document.getElementById('apiKey').value.trim();
-  sim.useBackend = !!(sim.apiUrl && sim.apiKey);
-  try { localStorage.setItem('navdrift_settings', JSON.stringify({apiUrl:sim.apiUrl, apiKey:sim.apiKey, city:sim.city})); } catch(e){}
-  document.getElementById('backendInfo').textContent = sim.useBackend
-    ? '✓ Connected to '+sim.apiUrl
-    : 'Running JS simulation · connect API in Settings';
+function saveSettings(){
+  S.apiUrl=document.getElementById('apiUrl').value.trim();
+  S.apiKey=document.getElementById('apiKey').value.trim();
+  S.useBackend=!!(S.apiUrl&&S.apiKey);
+  try { localStorage.setItem('nd_s',JSON.stringify({apiUrl:S.apiUrl,apiKey:S.apiKey})); } catch(e){}
+  document.getElementById('backendStatus').innerHTML=S.useBackend
+    ?`✓ Connected to <a href="${S.apiUrl}/docs" target="_blank" style="color:var(--accent)">${S.apiUrl}</a>`
+    :'Running JS simulation<br><a href="#" onclick="openSettings();return false" style="color:var(--accent)">Connect to Render API →</a>';
   closeSettings();
-}
-
-// ── Theme ─────────────────────────────────────────────────────────────────────
-function toggleTheme() {
-  isDark = !isDark;
-  document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
-  document.getElementById('themeBtn').textContent = isDark ? '☀ Light' : '🌙 Dark';
-  drawMap();
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 resizeCanvas();
+window.addEventListener('resize',()=>{resizeCanvas();drawMap();});
 initSim();
-drawMap();
-
-// Live "breathing" animation when idle
-setInterval(()=>{ if(!sim.running) drawMap(); }, 50);
+setInterval(()=>{ if(!S.running) drawMap(); },60);
 </script>
 </body>
 </html>
