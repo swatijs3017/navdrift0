@@ -569,9 +569,23 @@ function randn(){
 }
 
 /* ── MAP SETUP ── */
+const ESRI_DARK_STYLE = {
+  version:8,
+  sources:{
+    'esri-dark':{
+      type:'raster',
+      tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
+      tileSize:256,
+      attribution:'© Esri, HERE, DeLorme, MapmyIndia, © OpenStreetMap contributors'
+    }
+  },
+  layers:[{id:'esri-dark-bg',type:'raster',source:'esri-dark',minzoom:0,maxzoom:22}],
+  glyphs:'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+  sprite:'https://demotiles.maplibre.org/sprite/sprite'
+};
 const map = new maplibregl.Map({
   container:'map',
-  style:'https://tiles.openfreemap.org/styles/dark',
+  style:ESRI_DARK_STYLE,
   center:[77.22,28.59],
   zoom:14,
   attributionControl:false,
