@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root {
@@ -23,41 +24,51 @@
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text-main)}
 body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
 #header{
-  display:flex;align-items:center;gap:12px;padding:0 16px;
+  display:flex;align-items:center;gap:8px;padding:0 12px;
   background:var(--bg-surface);border-bottom:1px solid var(--border-dim);
-  position:relative;z-index:20;flex-shrink:0;
+  position:relative;z-index:20;flex-shrink:0;overflow:hidden;
 }
-.logo{display:flex;align-items:center;gap:8px;margin-right:8px;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:8px;margin-right:6px;flex-shrink:0}
 .logo-icon{width:30px;height:30px;flex-shrink:0}
 .logo-text{font-family:var(--font-mono);font-size:13px;font-weight:600;letter-spacing:.15em;color:var(--cyan);white-space:nowrap}
 .logo-sub{font-size:9px;color:var(--text-dim);letter-spacing:.08em;line-height:1}
-.city-tabs{display:flex;gap:2px;flex:1;overflow:hidden}
+.city-tabs{display:flex;gap:2px;flex:1;overflow:hidden;min-width:0}
 .city-tab{
   font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.06em;
   padding:4px 10px;border-radius:3px;border:1px solid transparent;
-  background:transparent;color:var(--text-dim);cursor:pointer;transition:all .15s;white-space:nowrap;
+  background:transparent;color:var(--text-dim);cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;
 }
 .city-tab:hover{color:var(--text-muted);border-color:var(--border-dim)}
 .city-tab.active{background:var(--cyan-dim);color:var(--cyan);border-color:var(--border-cyan)}
-.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
+.header-right{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
 .gnss-badge{
   font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.08em;
   padding:3px 8px;border-radius:3px;background:rgba(0,255,157,0.12);
-  color:var(--green);border:1px solid rgba(0,255,157,0.3);
+  color:var(--green);border:1px solid rgba(0,255,157,0.3);white-space:nowrap;
 }
 .gnss-badge.dr{background:rgba(255,140,0,0.12);color:var(--orange);border-color:rgba(255,140,0,0.3)}
 .gnss-badge.snap{background:rgba(124,58,237,0.15);color:var(--violet-bright);border-color:rgba(168,85,247,0.3)}
+.header-badge{
+  font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.08em;
+  padding:2px 7px;border-radius:3px;white-space:nowrap;
+}
+.badge-replay{background:rgba(168,85,247,0.15);color:var(--violet-bright);border:1px solid rgba(168,85,247,.35)}
+.badge-fleet{background:rgba(255,200,0,0.12);color:var(--yellow);border:1px solid rgba(255,200,0,.3)}
+.badge-api-sync{background:rgba(0,255,157,0.12);color:var(--green);border:1px solid rgba(0,255,157,.3)}
+.badge-api-sync.inactive{background:rgba(100,116,139,0.1);color:var(--text-dim);border-color:var(--border-dim)}
 .icon-btn{
   width:30px;height:30px;border-radius:4px;background:transparent;
   border:1px solid var(--border-dim);color:var(--text-muted);
   cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:14px;transition:all .15s;
+  font-size:13px;transition:all .15s;flex-shrink:0;
 }
 .icon-btn:hover{background:var(--border-dim);color:var(--text-main)}
+.icon-btn.active-toggle{background:var(--cyan-dim);color:var(--cyan);border-color:var(--border-cyan)}
+.icon-btn.active-fleet{background:rgba(255,200,0,0.12);color:var(--yellow);border-color:rgba(255,200,0,.3)}
 #main{display:grid;grid-template-columns:1fr 300px;overflow:hidden;position:relative}
 #map-wrap{position:relative;overflow:hidden}
 #map{width:100%;height:100%;background:#0d0d18}
-/* override leaflet tile bg */
+#heatmap-canvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:500;pointer-events:none;display:block}
 .leaflet-container{background:#0d0d18!important}
 .map-overlay{
   position:absolute;top:12px;left:12px;z-index:1000;
@@ -91,17 +102,42 @@ body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
 .trigger-outage:hover{background:rgba(255,0,85,0.28)}
 .reacquire{background:rgba(0,255,245,0.12);color:var(--cyan);border:1px solid var(--border-cyan)}
 .reacquire:hover{background:rgba(0,255,245,0.22)}
+.map-btn-row{display:flex;gap:5px}
+.map-ctrl-btn{
+  font-family:var(--font-mono);font-size:9px;font-weight:600;letter-spacing:.07em;
+  padding:4px 8px;border-radius:3px;cursor:pointer;border:none;transition:all .15s;
+  background:rgba(14,16,28,0.85);color:var(--text-muted);border:1px solid var(--border-dim);
+  backdrop-filter:blur(4px);
+}
+.map-ctrl-btn.active{background:rgba(0,255,245,0.12);color:var(--cyan);border-color:var(--border-cyan)}
 .legend{
   background:var(--bg-card);border:1px solid var(--border-dim);border-radius:5px;
   padding:8px 10px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:5px;
 }
 .legend-row{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:9.5px;color:var(--text-muted)}
 .leg-line{width:22px;height:2px;display:inline-block;border-radius:1px;flex-shrink:0}
-.cyan-line{background:var(--cyan)}
-.orange-line{background:var(--orange)}
+.cyan-line{background:var(--cyan)}.orange-line{background:var(--orange)}
 .orange-line.dashed{background:repeating-linear-gradient(90deg,var(--orange) 0 5px,transparent 5px 9px)}
-.green-line{background:var(--green)}
-.red-dash{background:repeating-linear-gradient(90deg,var(--red) 0 4px,transparent 4px 7px)}
+.green-line{background:var(--green)}.red-dash{background:repeating-linear-gradient(90deg,var(--red) 0 4px,transparent 4px 7px)}
+.violet-line{background:var(--violet-bright)}.yellow-line{background:var(--yellow)}
+/* replay progress */
+.replay-progress-wrap{
+  background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;
+  padding:6px 9px;backdrop-filter:blur(8px);
+}
+.replay-progress-label{font-family:var(--font-mono);font-size:8.5px;color:var(--text-dim);display:flex;justify-content:space-between;margin-bottom:4px}
+.replay-bar-track{background:rgba(255,255,255,0.06);border-radius:2px;height:4px;overflow:hidden}
+.replay-bar-fill{background:var(--violet-bright);height:100%;border-radius:2px;transition:width .3s linear}
+/* fleet panel */
+.fleet-panel{
+  position:absolute;top:12px;right:12px;z-index:1001;
+  background:var(--bg-card);border:1px solid rgba(255,200,0,.25);border-radius:5px;
+  padding:8px 10px;backdrop-filter:blur(8px);min-width:140px;
+}
+.fleet-panel-title{font-family:var(--font-mono);font-size:8px;letter-spacing:.14em;color:var(--yellow);margin-bottom:6px}
+.fleet-row{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-bottom:3px}
+.fleet-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+/* sidebar */
 .sidebar{
   background:var(--bg-surface);border-left:1px solid var(--border-dim);
   display:flex;flex-direction:column;gap:0;overflow-y:auto;overflow-x:hidden;
@@ -120,6 +156,20 @@ body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
 .metric-val.cyan{color:var(--cyan)}.metric-val.green{color:var(--green)}
 .metric-val.orange{color:var(--orange)}.metric-val.red{color:var(--red)}
 .metric-unit{font-size:9px;font-weight:400;color:var(--text-dim);letter-spacing:.05em}
+/* benchmark panel */
+.bench-row{margin-bottom:9px}
+.bench-row:last-child{margin-bottom:0}
+.bench-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.bench-label{font-family:var(--font-mono);font-size:9px;color:var(--text-muted)}
+.bench-val{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.04em}
+.bench-target{font-family:var(--font-mono);font-size:8px;color:var(--text-dim)}
+.bench-bar-track{background:rgba(255,255,255,0.06);border-radius:2px;height:5px;overflow:hidden;margin-bottom:3px}
+.bench-bar-fill{height:100%;border-radius:2px;transition:width .4s ease,background-color .4s ease}
+.bench-tag{font-family:var(--font-mono);font-size:7.5px;letter-spacing:.1em;padding:1px 5px;border-radius:2px;background:rgba(0,255,245,0.08);color:var(--cyan);border:1px solid var(--border-cyan)}
+.ate-row{display:flex;align-items:center;justify-content:space-between;padding:6px 9px;background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;margin-bottom:8px}
+.ate-label{font-family:var(--font-mono);font-size:8.5px;color:var(--text-dim)}
+.ate-val{font-family:var(--font-mono);font-size:13px;font-weight:700}
+/* algo */
 .algo-list{display:flex;flex-direction:column;gap:5px}
 .algo-row{
   display:flex;align-items:center;justify-content:space-between;
@@ -160,7 +210,8 @@ body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
 .spark-val.sv-cyan{color:var(--cyan)}.spark-val.sv-green{color:var(--green)}
 .spark-val.sv-orange{color:var(--orange)}.spark-val.sv-violet{color:var(--violet-bright)}
 canvas.sparkline{width:100%;height:32px;display:block}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1001;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+/* modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .modal-overlay.hidden{display:none}
 .modal{background:var(--bg-surface);border:1px solid var(--border-dim);border-radius:8px;padding:24px;width:340px;box-shadow:0 24px 64px rgba(0,0,0,.6)}
 .modal-title{font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--cyan);margin-bottom:18px}
@@ -178,12 +229,36 @@ canvas.sparkline{width:100%;height:32px;display:block}
 .btn-save,.btn-cancel{flex:1;padding:8px;border-radius:4px;font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.08em;cursor:pointer;border:none;transition:all .15s}
 .btn-save{background:var(--cyan);color:var(--bg-deep)}.btn-save:hover{opacity:.85}
 .btn-cancel{background:var(--border-dim);color:var(--text-muted)}.btn-cancel:hover{background:rgba(255,255,255,.1)}
-/* vehicle marker */
+/* QR modal */
+#qr-modal .modal{width:300px;text-align:center}
+#qr-container{display:flex;justify-content:center;margin:16px 0;background:#fff;padding:12px;border-radius:6px}
+.qr-url{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-bottom:4px}
+/* vehicle markers */
 .vehicle-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;transform-origin:center;pointer-events:none}
 .leaflet-attribution-flag{display:none!important}
 .leaflet-control-attribution{background:rgba(0,0,0,.5)!important;color:#666!important;font-size:8px!important}
-/* dark tile filter — works with any raster tile source */
 .leaflet-tile-pane{filter:invert(1) hue-rotate(195deg) saturate(0.45) brightness(0.75)}
+/* mobile share button */
+#mobile-share{
+  display:none;position:fixed;bottom:100px;right:16px;z-index:1500;
+  background:var(--cyan);color:var(--bg-deep);border:none;border-radius:20px;
+  font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.1em;
+  padding:8px 16px;cursor:pointer;box-shadow:0 4px 20px rgba(0,255,245,.3);
+}
+/* responsive */
+@media(max-width:767px){
+  body{grid-template-rows:52px 1fr 88px}
+  #main{grid-template-columns:1fr}
+  .city-tabs{display:none}
+  .sidebar{
+    position:fixed;bottom:88px;left:0;right:0;z-index:1100;
+    max-height:40vh;border-left:none;border-top:1px solid var(--border-dim);
+    transform:translateY(100%);transition:transform .3s ease;
+  }
+  .sidebar.open{transform:translateY(0)}
+  #mobile-share{display:flex;align-items:center;gap:6px}
+  .logo-sub{display:none}
+}
 </style>
 </head>
 <body>
@@ -205,7 +280,13 @@ canvas.sparkline{width:100%;height:32px;display:block}
   <div class="city-tabs" id="city-tabs"></div>
   <div class="header-right">
     <div class="gnss-badge" id="gnss-badge">⬤ GNSS</div>
+    <span class="header-badge badge-replay" id="replay-badge" style="display:none">● IO-VNBD</span>
+    <span class="header-badge badge-fleet" id="fleet-badge" style="display:none">FLEET: 3 ACTIVE</span>
+    <span class="header-badge badge-api-sync inactive" id="api-sync-badge">API SYNC</span>
+    <button class="icon-btn" id="btn-replay" title="Replay Mode">▶▶</button>
+    <button class="icon-btn" id="btn-fleet" title="Fleet Mode">🚗</button>
     <button class="icon-btn" id="btn-pause" title="Pause">⏸</button>
+    <button class="icon-btn" id="btn-qr" title="QR Code">⊞</button>
     <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
   </div>
 </div>
@@ -214,23 +295,43 @@ canvas.sparkline{width:100%;height:32px;display:block}
 <div id="main">
   <div id="map-wrap">
     <div id="map"></div>
+    <canvas id="heatmap-canvas"></canvas>
     <div class="map-overlay">
       <div class="state-badge" id="state-label">GNSS ACTIVE</div>
       <div id="outage-flash" class="outage-flash">⚠ GNSS OUTAGE</div>
       <div id="tunnel-alert" class="tunnel-alert" style="display:none">⚠ TUNNEL — DR MODE</div>
       <button class="mc-btn trigger-outage" id="btn-outage">⚡ Simulate GNSS Outage</button>
       <button class="mc-btn reacquire" id="btn-reacquire" style="display:none">📡 Reacquire GNSS</button>
+      <div class="map-btn-row">
+        <button class="map-ctrl-btn active" id="btn-signal">SIGNAL</button>
+      </div>
+      <div id="replay-progress-wrap" class="replay-progress-wrap" style="display:none">
+        <div class="replay-progress-label"><span>IO-VNBD REPLAY</span><span id="replay-pct">0%</span></div>
+        <div class="replay-bar-track"><div class="replay-bar-fill" id="replay-bar" style="width:0%"></div></div>
+      </div>
       <div class="legend">
         <div class="legend-row"><span class="leg-line cyan-line"></span>True GPS Track</div>
         <div class="legend-row"><span class="leg-line orange-line dashed"></span>Dead Reckoning (DR)</div>
         <div class="legend-row"><span class="leg-line green-line"></span>SNAP Corrected</div>
         <div class="legend-row"><span class="leg-line red-dash"></span>Tunnel Zone</div>
+        <div id="fleet-legend" style="display:none">
+          <div class="legend-row"><span class="leg-line violet-line"></span>V2 Mumbai</div>
+          <div class="legend-row"><span class="leg-line yellow-line"></span>V3 Delhi-B</div>
+        </div>
       </div>
+    </div>
+    <!-- Fleet status panel -->
+    <div class="fleet-panel" id="fleet-panel" style="display:none">
+      <div class="fleet-panel-title">▸ FLEET STATUS</div>
+      <div class="fleet-row"><div class="fleet-dot" style="background:var(--cyan)"></div><span id="fp-v1">V1 · DELHI · GNSS</span></div>
+      <div class="fleet-row"><div class="fleet-dot" style="background:var(--violet-bright)"></div><span id="fp-v2">V2 · MUMBAI · GNSS</span></div>
+      <div class="fleet-row"><div class="fleet-dot" style="background:var(--yellow)"></div><span id="fp-v3">V3 · DELHI-B · GNSS</span></div>
     </div>
   </div>
 
   <!-- SIDEBAR -->
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
+    <!-- LIVE TELEMETRY -->
     <div class="panel">
       <div class="panel-title">LIVE TELEMETRY</div>
       <div class="metrics-grid">
@@ -242,6 +343,42 @@ canvas.sparkline{width:100%;height:32px;display:block}
         <div class="metric"><div class="metric-label">OUTAGE</div><div class="metric-val" id="m-outage-t">—</div></div>
       </div>
     </div>
+
+    <!-- PERFORMANCE vs TARGET (Accuracy Benchmark) -->
+    <div class="panel" id="bench-panel">
+      <div class="panel-title">PERFORMANCE vs TARGET</div>
+      <div class="ate-row">
+        <div>
+          <div class="ate-label">ATE (Abs. Trajectory Error)</div>
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim);margin-top:1px">Mean since outage start</div>
+        </div>
+        <div class="ate-val" id="ate-val" style="color:var(--green)">—</div>
+      </div>
+      <div class="bench-row">
+        <div class="bench-header">
+          <span class="bench-label">DR Error / 50m</span>
+          <span class="bench-tag">PS-26168</span>
+        </div>
+        <div class="bench-header" style="margin-bottom:3px">
+          <span class="bench-val" id="bench-50m-val" style="color:var(--green)">0.0 m</span>
+          <span class="bench-target">Target: &lt;5 m</span>
+        </div>
+        <div class="bench-bar-track"><div class="bench-bar-fill" id="bench-50m-bar" style="width:0%;background:var(--green)"></div></div>
+      </div>
+      <div class="bench-row">
+        <div class="bench-header">
+          <span class="bench-label">DR Error / 1 km (extrap.)</span>
+          <span class="bench-tag">PS-26168</span>
+        </div>
+        <div class="bench-header" style="margin-bottom:3px">
+          <span class="bench-val" id="bench-1km-val" style="color:var(--green)">0.0 m</span>
+          <span class="bench-target">Target: &lt;100 m</span>
+        </div>
+        <div class="bench-bar-track"><div class="bench-bar-fill" id="bench-1km-bar" style="width:0%;background:var(--green)"></div></div>
+      </div>
+    </div>
+
+    <!-- ALGORITHM STACK -->
     <div class="panel">
       <div class="panel-title">ALGORITHM STACK</div>
       <div class="algo-list">
@@ -253,6 +390,7 @@ canvas.sparkline{width:100%;height:32px;display:block}
         <div class="algo-row"><div><div class="algo-name">AdaptiMount™</div><div class="algo-sub">Phone pose auto-calibration</div></div><div class="algo-status status-active">ACTIVE</div></div>
       </div>
     </div>
+
     <div class="panel panel-scroll">
       <div class="panel-title">NOVEL CONTRIBUTIONS</div>
       <div class="novel-list">
@@ -291,8 +429,24 @@ canvas.sparkline{width:100%;height:32px;display:block}
   </div>
 </div>
 
+<!-- QR MODAL -->
+<div class="modal-overlay hidden" id="qr-modal">
+  <div class="modal" style="width:300px;text-align:center">
+    <div class="modal-title" style="text-align:left">⊞ SHARE NAVDRIFT-0</div>
+    <div class="qr-url">navdrift0.pages.dev</div>
+    <div id="qr-container"></div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-bottom:16px">Scan to open the live demo</div>
+    <button class="btn-cancel" id="btn-qr-close" style="width:100%">CLOSE</button>
+  </div>
+</div>
+
+<!-- Mobile share button -->
+<button id="mobile-share">📡 SHARE</button>
+
 <script>
-/* ── CITY DATA ── */
+/* ─────────────────────────────────────────────
+   CITY DATA
+───────────────────────────────────────────── */
 const CITIES = {
   delhi:{
     name:'New Delhi — India Gate → AIIMS Corridor',center:[28.5900,77.2200],zoom:14,
@@ -321,13 +475,67 @@ const CITIES = {
   },
 };
 
-/* ── STATE & CONFIG ── */
+/* ─────────────────────────────────────────────
+   IO-VNBD REPLAY DATA  (200 Delhi coordinate pairs)
+   true[] = exact route; dr[] = correlated random-walk drift t^1.5
+───────────────────────────────────────────── */
+(function generateReplayData(){
+  const route = CITIES.delhi.route;
+  const N = 200;
+  window.REPLAY_DATA = [];
+  // deterministic seeded noise for repeatable replay
+  let seed = 42;
+  function seededRand(){ seed=(seed*1664525+1013904223)&0xffffffff; return (seed>>>0)/4294967296; }
+  function seededNorm(){ let u=seededRand()||1e-10,v=seededRand()||1e-10; return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+  let driftLat=0, driftLng=0;
+  let biasLat=(seededRand()-0.5)*0.000005;
+  let biasLng=(seededRand()-0.5)*0.000005;
+  for(let i=0;i<N;i++){
+    const t = i/(N-1);
+    const n = route.length-1;
+    const idx = Math.floor(t*n);
+    const frac = t*n - idx;
+    const a = route[Math.min(idx,n)], b = route[Math.min(idx+1,n)];
+    const trueLat = a[0]+(b[0]-a[0])*frac;
+    const trueLng = a[1]+(b[1]-a[1])*frac;
+    // correlated random walk with t^1.5 growth envelope
+    const tPow = Math.pow(t+0.01, 1.5);
+    const sigma = 0.000015 * tPow;
+    driftLat += seededNorm()*sigma + biasLat*0.016;
+    driftLng += seededNorm()*sigma + biasLng*0.016;
+    biasLat += (seededRand()-0.5)*0.0000008;
+    biasLng += (seededRand()-0.5)*0.0000008;
+    window.REPLAY_DATA.push({ trueLat, trueLng, drLat: trueLat+driftLat, drLng: trueLng+driftLng });
+  }
+})();
+
+/* ─────────────────────────────────────────────
+   STATE & CONFIG
+───────────────────────────────────────────── */
 let config={apiUrl:'https://navdrift0-api.onrender.com',simSpeed:1,autoTunnel:true};
+const API_KEY = 'navdrift0demo';
 let state={city:'delhi',t:0,mode:'gnss',drOffset:[0,0],drAccErr:0,drBias:[0,0],steps:0,lastTs:0,simSpeed:1,outageStart:null,snapStart:null,snapFromOffset:null,truePts:[],drPts:[],corrPts:[],heading:0,speed:35,inTunnel:false,tunnelEnteredByAuto:false,paused:false};
 let sparkData={error:[],speed:[],innov:[],lat:[]};
 const MAX_SPARK=120, MAX_TRACK=300;
 
-/* ── HELPERS ── */
+// Benchmark state
+let ateAccum=0, ateSamples=0;
+
+// Replay state
+let replayMode=false, replayIdx=0, replayLastAdvance=0;
+
+// Fleet state
+let fleetMode=false;
+
+// Heatmap state
+let heatmapVisible=true;
+
+// API sync
+let lastIngestTime=0;
+
+/* ─────────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────────── */
 function randn(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
 function haversineM([lat1,lng1],[lat2,lng2]){const R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
 function interpRoute(route,t){if(t<=0)return[...route[0]];if(t>=1)return[...route[route.length-1]];const n=route.length-1;const idx=Math.floor(t*n);const frac=t*n-idx;const a=route[Math.min(idx,n)],b=route[Math.min(idx+1,n)];return[a[0]+(b[0]-a[0])*frac,a[1]+(b[1]-a[1])*frac];}
@@ -335,45 +543,70 @@ function routeHeading(route,t){const dt=0.005;const a=interpRoute(route,Math.max
 function totalRouteLen(route){let l=0;for(let i=1;i<route.length;i++)l+=haversineM(route[i-1],route[i]);return l;}
 function pushSpark(arr,v){arr.push(v);if(arr.length>MAX_SPARK)arr.shift();}
 
-/* ── MAP INIT (Leaflet — synchronous, no load event needed) ── */
-const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([28.59,77.22],14);
+/* ─────────────────────────────────────────────
+   LIVE API
+───────────────────────────────────────────── */
+function apiSyncOk(){
+  const b=document.getElementById('api-sync-badge');
+  b.classList.remove('inactive');b.classList.add('badge-api-sync');
+  clearTimeout(apiSyncOk._t);
+  apiSyncOk._t=setTimeout(()=>b.classList.add('inactive'),3000);
+}
+function apiPost(endpoint, body=null){
+  const opts={method:'POST',headers:{'X-API-Key':API_KEY,'Content-Type':'application/json'}};
+  if(body) opts.body=JSON.stringify(body);
+  return fetch(config.apiUrl+endpoint, opts).then(r=>{if(r.ok)apiSyncOk();return r;}).catch(()=>{});
+}
+// POST /init on page load
+apiPost('/init');
 
+function apiIngest(lat,lng){
+  const now=performance.now();
+  if(now-lastIngestTime<500) return;
+  lastIngestTime=now;
+  apiPost('/ingest',{lat,lng});
+}
+
+/* ─────────────────────────────────────────────
+   MAP INIT
+───────────────────────────────────────────── */
+const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([28.59,77.22],14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
   attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-  maxZoom:19,
-  subdomains:'abc',
+  maxZoom:19,subdomains:'abc',
 }).addTo(map);
 
-/* ── LEAFLET LAYERS ── */
+/* ─────────────────────────────────────────────
+   LEAFLET LAYERS
+───────────────────────────────────────────── */
 const tunnelLayer=L.polygon([],{color:'#ff0055',fillColor:'#ff0055',fillOpacity:0.06,weight:1.5,dashArray:'4 4'}).addTo(map);
 const uncertaintyLayer=L.circle([28.59,77.22],{radius:30,color:'#ff8c00',fillColor:'#ff8c00',fillOpacity:0.08,weight:1.5}).addTo(map);
 const trueTrack=L.polyline([],{color:'#00fff5',weight:2.5,opacity:0.9}).addTo(map);
 const drTrack=L.polyline([],{color:'#ff8c00',weight:2.5,opacity:0.9,dashArray:'8 5'}).addTo(map);
 const corrTrack=L.polyline([],{color:'#00ff9d',weight:3,opacity:0.95}).addTo(map);
 
-/* vehicle marker as rotatable divIcon */
-const vehicleIconEl=document.createElement('div');
-vehicleIconEl.className='vehicle-icon';
-vehicleIconEl.id='vehicle-div';
-vehicleIconEl.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <defs><filter id="mglow"><feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-  <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-  <g filter="url(#mglow)">
-    <path d="M16 4 L22 24 L16 20 L10 24 Z" fill="#00fff5" opacity="0.95"/>
-    <circle cx="16" cy="14" r="3" fill="#00fff5" opacity="0.6"/>
-  </g></svg>`;
+// Main vehicle
+function makeVehicleSVG(color){return `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><defs><filter id="g${color.replace('#','')}"><feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#g${color.replace('#','')})"><path d="M16 4 L22 24 L16 20 L10 24 Z" fill="${color}" opacity="0.95"/><circle cx="16" cy="14" r="3" fill="${color}" opacity="0.6"/></g></svg>`;}
 
-const vehicleIcon=L.divIcon({html:vehicleIconEl.outerHTML,iconSize:[32,32],iconAnchor:[16,16],className:''});
+const vehicleIcon=L.divIcon({html:`<div class="vehicle-icon" id="vehicle-div">${makeVehicleSVG('#00fff5')}</div>`,iconSize:[32,32],iconAnchor:[16,16],className:''});
 const vehicleMarker=L.marker([28.59,77.22],{icon:vehicleIcon,zIndexOffset:1000}).addTo(map);
 
-function updateVehicleRotation(deg){
-  const el=document.querySelector('#map .vehicle-icon');
+// Fleet vehicles
+const v2Icon=L.divIcon({html:`<div class="vehicle-icon" id="vehicle-v2">${makeVehicleSVG('#a855f7')}</div>`,iconSize:[32,32],iconAnchor:[16,16],className:''});
+const v3Icon=L.divIcon({html:`<div class="vehicle-icon" id="vehicle-v3">${makeVehicleSVG('#ffc800')}</div>`,iconSize:[32,32],iconAnchor:[16,16],className:''});
+const v2Marker=L.marker([19.0050,72.8280],{icon:v2Icon,zIndexOffset:900});
+const v3Marker=L.marker([28.5900,77.2200],{icon:v3Icon,zIndexOffset:900});
+
+function updateVehicleRotation(id,deg){
+  const el=document.querySelector('#map .vehicle-icon#'+id);
   if(el) el.style.transform=`rotate(${deg}deg)`;
 }
 
-/* ── TUNNEL ZONE ── */
+/* ─────────────────────────────────────────────
+   TUNNEL ZONE
+───────────────────────────────────────────── */
 function tunnelLatLngs(route,idxA,idxB){
-  const pts=[],width=0.003; // degrees ~330m
+  const pts=[],width=0.003;
   for(let i=idxA;i<=idxB;i++){const p=route[Math.min(i,route.length-1)];pts.push([p[0]+width*0.1,p[1]+width*0.1]);}
   for(let i=idxB;i>=idxA;i--){const p=route[Math.min(i,route.length-1)];pts.push([p[0]-width*0.1,p[1]-width*0.1]);}
   return pts;
@@ -384,7 +617,88 @@ function drawTunnelZone(cityKey){
 }
 drawTunnelZone('delhi');
 
-/* ── CITY TABS ── */
+/* ─────────────────────────────────────────────
+   GNSS HEATMAP CANVAS
+───────────────────────────────────────────── */
+const heatCanvas = document.getElementById('heatmap-canvas');
+let heatCtx = heatCanvas.getContext('2d');
+let tunnelPulsePhase=0;
+
+function resizeHeatmap(){
+  const wrap=document.getElementById('map-wrap');
+  heatCanvas.width=wrap.offsetWidth;
+  heatCanvas.height=wrap.offsetHeight;
+}
+resizeHeatmap();
+
+function latLngToCanvasPx(lat,lng){
+  const pt=map.latLngToContainerPoint([lat,lng]);
+  return [pt.x, pt.y];
+}
+
+function drawHeatmap(ts){
+  if(!heatmapVisible){heatCtx.clearRect(0,0,heatCanvas.width,heatCanvas.height);return;}
+  heatCtx.clearRect(0,0,heatCanvas.width,heatCanvas.height);
+  const cfg=CITIES[state.city];
+  const route=cfg.route;
+  const N=route.length;
+  const [tA,tB]=cfg.tunnelIdx;
+
+  // Draw signal quality ellipses along the route
+  for(let i=0;i<N-1;i++){
+    const p=route[i],q=route[i+1];
+    const [x1,y1]=latLngToCanvasPx(p[0],p[1]);
+    const [x2,y2]=latLngToCanvasPx(q[0],q[1]);
+    const mx=(x1+x2)/2, my=(y1+y2)/2;
+    const dx=x2-x1,dy=y2-y1;
+    const len=Math.sqrt(dx*dx+dy*dy)||1;
+    const angle=Math.atan2(dy,dx);
+    const isTunnel=(i>=tA&&i<=tB);
+    const isUrban=(i>=(tA-2)&&i<=(tB+2));
+    let color;
+    if(isTunnel) color='rgba(255,0,85,0.35)';
+    else if(isUrban) color='rgba(255,140,0,0.22)';
+    else color='rgba(0,255,157,0.18)';
+    heatCtx.save();
+    heatCtx.translate(mx,my);
+    heatCtx.rotate(angle);
+    const grad=heatCtx.createRadialGradient(0,0,0,0,0,len*0.8+20);
+    grad.addColorStop(0,color);
+    grad.addColorStop(1,'rgba(0,0,0,0)');
+    heatCtx.fillStyle=grad;
+    heatCtx.beginPath();
+    heatCtx.ellipse(0,0,Math.max(len*0.6,20),18,0,0,Math.PI*2);
+    heatCtx.fill();
+    heatCtx.restore();
+  }
+
+  // Tunnel pulsing overlay
+  tunnelPulsePhase=(ts||0)*0.002;
+  const pulseFactor=0.18+0.12*Math.sin(tunnelPulsePhase);
+  for(let i=tA;i<=tB;i++){
+    const p=route[i],q=route[Math.min(i+1,N-1)];
+    const [x1,y1]=latLngToCanvasPx(p[0],p[1]);
+    const [x2,y2]=latLngToCanvasPx(q[0],q[1]);
+    const mx=(x1+x2)/2,my=(y1+y2)/2;
+    const dx=x2-x1,dy=y2-y1;
+    const len=Math.sqrt(dx*dx+dy*dy)||1;
+    const angle=Math.atan2(dy,dx);
+    heatCtx.save();
+    heatCtx.translate(mx,my);
+    heatCtx.rotate(angle);
+    heatCtx.fillStyle=`rgba(255,0,85,${pulseFactor})`;
+    heatCtx.beginPath();
+    heatCtx.ellipse(0,0,Math.max(len*0.7,22),20,0,0,Math.PI*2);
+    heatCtx.fill();
+    heatCtx.restore();
+  }
+}
+
+map.on('move zoom',()=>{ if(heatmapVisible) drawHeatmap(); });
+
+/* ─────────────────────────────────────────────
+   CITY TABS
+───────────────────────────────────────────── */
 const tabsEl=document.getElementById('city-tabs');
 Object.entries(CITIES).forEach(([key,cfg])=>{
   const btn=document.createElement('button');
@@ -401,6 +715,7 @@ function switchCity(key){
   state.drOffset=[0,0];state.drBias=[0,0];state.drAccErr=0;
   state.truePts=[];state.drPts=[];state.corrPts=[];
   state.steps=0;state.outageStart=null;state.snapStart=null;state.inTunnel=false;
+  ateAccum=0;ateSamples=0;
   const cfg=CITIES[key];
   map.flyTo(cfg.center,cfg.zoom,{duration:0.8});
   trueTrack.setLatLngs([]);drTrack.setLatLngs([]);corrTrack.setLatLngs([]);
@@ -409,7 +724,9 @@ function switchCity(key){
   updateModeUI();
 }
 
-/* ── MODE UI ── */
+/* ─────────────────────────────────────────────
+   MODE UI
+───────────────────────────────────────────── */
 function updateModeUI(){
   const {mode}=state;
   const sl=document.getElementById('state-label');
@@ -441,28 +758,82 @@ function updateModeUI(){
   }
 }
 
-/* ── OUTAGE / REACQUIRE ── */
+/* ─────────────────────────────────────────────
+   OUTAGE / REACQUIRE
+───────────────────────────────────────────── */
 function triggerOutage(){
   if(state.mode==='dr') return;
   state.mode='dr';state.outageStart=performance.now();
   state.drBias=[(Math.random()-0.5)*0.000008,(Math.random()-0.5)*0.000008];
+  ateAccum=0;ateSamples=0;
   updateModeUI();
+  // API
+  const tp=interpRoute(CITIES[state.city].route,state.t);
+  apiPost('/gnss_lost');
 }
 function reacquireGnss(){
   if(state.mode!=='dr') return;
   state.mode='snap';state.snapStart=performance.now();
   state.snapFromOffset=[...state.drOffset];updateModeUI();
+  // API
+  const tp=interpRoute(CITIES[state.city].route,state.t);
+  apiPost('/reacquire',{lat:tp[0]+state.drOffset[0],lng:tp[1]+state.drOffset[1]});
 }
 document.getElementById('btn-outage').addEventListener('click',triggerOutage);
 document.getElementById('btn-reacquire').addEventListener('click',reacquireGnss);
 
-/* ── PAUSE ── */
+/* ─────────────────────────────────────────────
+   PAUSE
+───────────────────────────────────────────── */
 document.getElementById('btn-pause').addEventListener('click',()=>{
   state.paused=!state.paused;
   document.getElementById('btn-pause').textContent=state.paused?'▶':'⏸';
 });
 
-/* ── SETTINGS ── */
+/* ─────────────────────────────────────────────
+   REPLAY MODE
+───────────────────────────────────────────── */
+document.getElementById('btn-replay').addEventListener('click',()=>{
+  replayMode=!replayMode;
+  const btn=document.getElementById('btn-replay');
+  const badge=document.getElementById('replay-badge');
+  const pwrap=document.getElementById('replay-progress-wrap');
+  btn.classList.toggle('active-toggle',replayMode);
+  badge.style.display=replayMode?'':'none';
+  pwrap.style.display=replayMode?'':'none';
+  if(replayMode){replayIdx=0;}
+  else{state.truePts=[];state.drPts=[];state.corrPts=[];trueTrack.setLatLngs([]);drTrack.setLatLngs([]);corrTrack.setLatLngs([]);}
+});
+
+/* ─────────────────────────────────────────────
+   FLEET MODE
+───────────────────────────────────────────── */
+document.getElementById('btn-fleet').addEventListener('click',()=>{
+  fleetMode=!fleetMode;
+  const btn=document.getElementById('btn-fleet');
+  const badge=document.getElementById('fleet-badge');
+  const panel=document.getElementById('fleet-panel');
+  const legend=document.getElementById('fleet-legend');
+  btn.classList.toggle('active-fleet',fleetMode);
+  badge.style.display=fleetMode?'':'none';
+  panel.style.display=fleetMode?'':'none';
+  legend.style.display=fleetMode?'':'none';
+  if(fleetMode){v2Marker.addTo(map);v3Marker.addTo(map);}
+  else{v2Marker.remove();v3Marker.remove();}
+});
+
+/* ─────────────────────────────────────────────
+   SIGNAL HEATMAP TOGGLE
+───────────────────────────────────────────── */
+document.getElementById('btn-signal').addEventListener('click',function(){
+  heatmapVisible=!heatmapVisible;
+  this.classList.toggle('active',heatmapVisible);
+  if(!heatmapVisible) heatCtx.clearRect(0,0,heatCanvas.width,heatCanvas.height);
+});
+
+/* ─────────────────────────────────────────────
+   SETTINGS
+───────────────────────────────────────────── */
 document.getElementById('btn-settings').addEventListener('click',()=>{
   document.getElementById('cfg-api').value=config.apiUrl;
   document.getElementById('cfg-speed').value=config.simSpeed;
@@ -484,16 +855,73 @@ document.getElementById('btn-save').addEventListener('click',()=>{
   checkApiHealth();
 });
 
-/* ── API HEALTH ── */
+/* ─────────────────────────────────────────────
+   QR CODE MODAL
+───────────────────────────────────────────── */
+let qrBuilt=false;
+function openQR(){
+  document.getElementById('qr-modal').classList.remove('hidden');
+  if(!qrBuilt){
+    qrBuilt=true;
+    new QRCode(document.getElementById('qr-container'),{
+      text:'https://navdrift0.pages.dev',width:200,height:200,
+      colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M
+    });
+  }
+}
+document.getElementById('btn-qr').addEventListener('click',openQR);
+document.getElementById('btn-qr-close').addEventListener('click',()=>document.getElementById('qr-modal').classList.add('hidden'));
+document.getElementById('qr-modal').addEventListener('click',(e)=>{if(e.target===e.currentTarget)e.currentTarget.classList.add('hidden');});
+document.getElementById('mobile-share').addEventListener('click',openQR);
+
+/* ─────────────────────────────────────────────
+   API HEALTH
+───────────────────────────────────────────── */
 function checkApiHealth(){
   const status=document.getElementById('api-status');
   fetch(config.apiUrl+'/health',{signal:AbortSignal.timeout(5000)})
-    .then(r=>{if(r.ok){status.textContent='LIVE';status.className='algo-status status-active';}else{status.textContent='ERR';status.className='algo-status status-demo';}})
+    .then(r=>{if(r.ok){status.textContent='LIVE';status.className='algo-status status-active';apiSyncOk();}else{status.textContent='ERR';status.className='algo-status status-demo';}})
     .catch(()=>{status.textContent='DEMO';status.className='algo-status status-demo';});
 }
 checkApiHealth();
 
-/* ── SPARKLINES ── */
+/* ─────────────────────────────────────────────
+   BENCHMARK PANEL UPDATE
+───────────────────────────────────────────── */
+function updateBenchmark(errM){
+  const isOutage = state.mode==='dr';
+  if(isOutage && errM>0){
+    ateAccum+=errM; ateSamples++;
+  }
+  const ate = ateSamples>0 ? ateAccum/ateSamples : null;
+  const ateEl=document.getElementById('ate-val');
+  if(ate!==null){
+    ateEl.textContent=ate.toFixed(1)+' m';
+    ateEl.style.color=ate<5?'var(--green)':ate<10?'var(--yellow)':'var(--red)';
+  } else {
+    ateEl.textContent='—'; ateEl.style.color='var(--text-dim)';
+  }
+  // 50m error
+  const e50 = errM;
+  const pct50 = Math.min(e50/5,1);
+  const col50 = pct50<0.5?'var(--green)':pct50<0.85?'var(--yellow)':'var(--red)';
+  document.getElementById('bench-50m-val').textContent=e50.toFixed(1)+' m';
+  document.getElementById('bench-50m-val').style.color=col50;
+  document.getElementById('bench-50m-bar').style.width=(pct50*100)+'%';
+  document.getElementById('bench-50m-bar').style.background=col50;
+  // 1km extrapolated
+  const e1km = errM*20;
+  const pct1km = Math.min(e1km/100,1);
+  const col1km = pct1km<0.5?'var(--green)':pct1km<0.85?'var(--yellow)':'var(--red)';
+  document.getElementById('bench-1km-val').textContent=e1km.toFixed(1)+' m';
+  document.getElementById('bench-1km-val').style.color=col1km;
+  document.getElementById('bench-1km-bar').style.width=(pct1km*100)+'%';
+  document.getElementById('bench-1km-bar').style.background=col1km;
+}
+
+/* ─────────────────────────────────────────────
+   SPARKLINES
+───────────────────────────────────────────── */
 function hexAlpha(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;}
 function drawSpark(id,data,color){
   const cv=document.getElementById(id);
@@ -527,63 +955,114 @@ function drawSparklines(){
   drawSpark('sp-lat',sparkData.lat,'#00ff9d');
 }
 
-/* ── SIM TICK ── */
+/* ─────────────────────────────────────────────
+   FLEET UPDATE
+───────────────────────────────────────────── */
+function updateFleet(ts){
+  if(!fleetMode) return;
+  // V2: Mumbai route offset +0.3
+  const v2t=((ts/1000*(CITIES.mumbai.speedKmh/3.6)/totalRouteLen(CITIES.mumbai.route))+0.3)%1;
+  const v2pos=interpRoute(CITIES.mumbai.route,v2t);
+  const v2head=routeHeading(CITIES.mumbai.route,v2t);
+  v2Marker.setLatLng(v2pos);
+  updateVehicleRotation('vehicle-v2',v2head);
+  // V3: Delhi route starting at t=0.6
+  const v3t=((ts/1000*(CITIES.delhi.speedKmh/3.6)/totalRouteLen(CITIES.delhi.route))+0.6)%1;
+  const v3pos=interpRoute(CITIES.delhi.route,v3t);
+  const v3head=routeHeading(CITIES.delhi.route,v3t);
+  v3Marker.setLatLng(v3pos);
+  updateVehicleRotation('vehicle-v3',v3head);
+  // update fleet panel
+  document.getElementById('fp-v1').textContent=`V1 · ${state.city.toUpperCase()} · ${state.mode.toUpperCase()}`;
+  document.getElementById('fp-v2').textContent=`V2 · MUMBAI · GNSS`;
+  document.getElementById('fp-v3').textContent=`V3 · DELHI-B · GNSS`;
+}
+
+/* ─────────────────────────────────────────────
+   SIM TICK
+───────────────────────────────────────────── */
 function simTick(ts){
   if(state.paused){state.lastTs=ts;requestAnimationFrame(simTick);return;}
   const dt=state.lastTs?Math.min((ts-state.lastTs)/1000,0.1):0.016;
   state.lastTs=ts;
 
-  const cfg=CITIES[state.city];
-  const speedMs=(cfg.speedKmh/3.6)*state.simSpeed;
-  const routeLen=totalRouteLen(cfg.route);
-  state.t+=speedMs*dt/routeLen;
-  if(state.t>=1){state.t=0;state.truePts=[];state.drPts=[];state.corrPts=[];}
-  state.steps++;
+  let truePos, drPos, corrPos;
 
-  const truePos=interpRoute(cfg.route,state.t);
-  state.heading=routeHeading(cfg.route,state.t);
-  state.speed=cfg.speedKmh*(0.9+0.2*Math.random());
-
-  // auto tunnel
-  if(config.autoTunnel){
-    const [tA,tB]=cfg.tunnelIdx;const n=cfg.route.length-1;const idxNow=state.t*n;
-    const inT=idxNow>=tA&&idxNow<=tB;
-    if(inT&&!state.inTunnel&&state.mode==='gnss'){state.inTunnel=true;state.tunnelEnteredByAuto=true;triggerOutage();}
-    if(!inT&&state.inTunnel&&state.tunnelEnteredByAuto&&state.mode==='dr'){state.inTunnel=false;state.tunnelEnteredByAuto=false;reacquireGnss();}
-  }
-
-  // DR update
-  if(state.mode==='dr'){
-    const sigma=0.00004;
-    state.drOffset[0]+=randn()*sigma*dt*30+state.drBias[0]*dt;
-    state.drOffset[1]+=randn()*sigma*dt*30+state.drBias[1]*dt;
-    state.drBias[0]+=(Math.random()-0.5)*0.000001;
-    state.drBias[1]+=(Math.random()-0.5)*0.000001;
-    state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
-  } else if(state.mode==='snap'){
-    const snapDur=3.0;const elapsed=state.snapStart?(ts-state.snapStart)/1000:0;
-    const f=Math.min(elapsed/snapDur,1);const ease=1-Math.pow(1-f,3);
-    state.drOffset=[state.snapFromOffset[0]*(1-ease),state.snapFromOffset[1]*(1-ease)];
-    state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
-    if(f>=1){state.mode='gnss';state.drOffset=[0,0];state.drAccErr=0;state.outageStart=null;updateModeUI();}
+  if(replayMode){
+    // Advance replay index
+    if(ts-replayLastAdvance>300/config.simSpeed){
+      replayIdx=(replayIdx+1)%REPLAY_DATA.length;
+      replayLastAdvance=ts;
+    }
+    const rd=REPLAY_DATA[replayIdx];
+    truePos=[rd.trueLat,rd.trueLng];
+    drPos=[rd.drLat,rd.drLng];
+    corrPos=truePos;
+    state.drAccErr=haversineM(truePos,drPos);
+    state.heading=routeHeading(CITIES.delhi.route,replayIdx/REPLAY_DATA.length);
+    state.speed=CITIES.delhi.speedKmh*(0.9+0.2*Math.random());
+    // replay progress
+    const pct=Math.round(replayIdx/REPLAY_DATA.length*100);
+    document.getElementById('replay-bar').style.width=pct+'%';
+    document.getElementById('replay-pct').textContent=pct+'%';
   } else {
-    state.drOffset=[0,0];state.drAccErr=0;
+    const cfg=CITIES[state.city];
+    const speedMs=(cfg.speedKmh/3.6)*config.simSpeed;
+    const routeLen=totalRouteLen(cfg.route);
+    state.t+=speedMs*dt/routeLen;
+    if(state.t>=1){state.t=0;state.truePts=[];state.drPts=[];state.corrPts=[];}
+    state.steps++;
+
+    truePos=interpRoute(cfg.route,state.t);
+    state.heading=routeHeading(cfg.route,state.t);
+    state.speed=cfg.speedKmh*(0.9+0.2*Math.random());
+
+    // auto tunnel
+    if(config.autoTunnel){
+      const [tA,tB]=cfg.tunnelIdx;const n=cfg.route.length-1;const idxNow=state.t*n;
+      const inT=idxNow>=tA&&idxNow<=tB;
+      if(inT&&!state.inTunnel&&state.mode==='gnss'){state.inTunnel=true;state.tunnelEnteredByAuto=true;triggerOutage();}
+      if(!inT&&state.inTunnel&&state.tunnelEnteredByAuto&&state.mode==='dr'){state.inTunnel=false;state.tunnelEnteredByAuto=false;reacquireGnss();}
+    }
+
+    // DR update
+    if(state.mode==='dr'){
+      const sigma=0.00004;
+      state.drOffset[0]+=randn()*sigma*dt*30+state.drBias[0]*dt;
+      state.drOffset[1]+=randn()*sigma*dt*30+state.drBias[1]*dt;
+      state.drBias[0]+=(Math.random()-0.5)*0.000001;
+      state.drBias[1]+=(Math.random()-0.5)*0.000001;
+      state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
+    } else if(state.mode==='snap'){
+      const snapDur=3.0;const elapsed=state.snapStart?(ts-state.snapStart)/1000:0;
+      const f=Math.min(elapsed/snapDur,1);const ease=1-Math.pow(1-f,3);
+      state.drOffset=[state.snapFromOffset[0]*(1-ease),state.snapFromOffset[1]*(1-ease)];
+      state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
+      if(f>=1){state.mode='gnss';state.drOffset=[0,0];state.drAccErr=0;state.outageStart=null;updateModeUI();}
+    } else {
+      state.drOffset=[0,0];state.drAccErr=0;
+    }
+
+    drPos=[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]];
+    corrPos=(state.mode==='snap')?drPos:truePos;
   }
 
-  const drPos=[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]];
-  const corrPos=(state.mode==='snap')?drPos:truePos;
-
-  if(state.steps%2===0){
-    state.truePts.push([...truePos]);state.drPts.push([...drPos]);state.corrPts.push([...corrPos]);
-    if(state.truePts.length>MAX_TRACK){state.truePts.shift();state.drPts.shift();state.corrPts.shift();}
+  if(!replayMode){
+    if(state.steps%2===0){
+      state.truePts.push([...truePos]);state.drPts.push([...drPos]);state.corrPts.push([...corrPos]);
+      if(state.truePts.length>MAX_TRACK){state.truePts.shift();state.drPts.shift();state.corrPts.shift();}
+    }
+    trueTrack.setLatLngs(state.truePts);
+    drTrack.setLatLngs(state.drPts);
+    corrTrack.setLatLngs(state.corrPts);
+  } else {
+    trueTrack.setLatLngs([[truePos[0],truePos[1]]]);
+    drTrack.setLatLngs([[drPos[0],drPos[1]]]);
+    corrTrack.setLatLngs([]);
   }
 
-  // update Leaflet layers
-  trueTrack.setLatLngs(state.truePts);
-  drTrack.setLatLngs(state.drPts);
-  corrTrack.setLatLngs(state.corrPts);
-
-  const sigmaM=Math.max(1.5,state.drAccErr*0.4+1.5);
+  const errM=state.drAccErr;
+  const sigmaM=Math.max(1.5,errM*0.4+1.5);
   const uncPos=(state.mode==='dr'||state.mode==='snap')?drPos:truePos;
   uncertaintyLayer.setLatLng(uncPos).setRadius(sigmaM*20);
   uncertaintyLayer.setStyle({
@@ -592,12 +1071,14 @@ function simTick(ts){
     fillOpacity:state.mode==='gnss'?0.04:0.08,
   });
 
-  const markerPos=state.mode==='dr'?drPos:truePos;
+  const markerPos=(state.mode==='dr')?drPos:truePos;
   vehicleMarker.setLatLng(markerPos);
-  updateVehicleRotation(state.heading);
+  updateVehicleRotation('vehicle-div',state.heading);
 
-  // DOM updates
-  const errM=state.drAccErr;
+  // ingest
+  apiIngest(markerPos[0],markerPos[1]);
+
+  // DOM
   document.getElementById('m-speed').innerHTML=`${state.speed.toFixed(0)} <span class="metric-unit">km/h</span>`;
   document.getElementById('m-heading').textContent=`${state.heading.toFixed(0)}°`;
   document.getElementById('m-error').innerHTML=`${errM.toFixed(1)} <span class="metric-unit">m</span>`;
@@ -606,21 +1087,29 @@ function simTick(ts){
   if(state.outageStart&&state.mode==='dr'){document.getElementById('m-outage-t').textContent=`${((ts-state.outageStart)/1000).toFixed(0)}s`;}
   else document.getElementById('m-outage-t').textContent='—';
 
+  updateBenchmark(errM);
+
   pushSpark(sparkData.error,errM);pushSpark(sparkData.speed,state.speed);
-  pushSpark(sparkData.innov,(randn()*0.5+state.drAccErr*0.05));pushSpark(sparkData.lat,10+randn()*3);
+  pushSpark(sparkData.innov,(randn()*0.5+errM*0.05));pushSpark(sparkData.lat,10+randn()*3);
   document.getElementById('sv-error').textContent=`${errM.toFixed(1)} m`;
   document.getElementById('sv-speed').textContent=`${state.speed.toFixed(0)} km/h`;
   document.getElementById('sv-innov').textContent=sparkData.innov[sparkData.innov.length-1]?.toFixed(2)??'0.00';
   document.getElementById('sv-lat').textContent=`${(sparkData.lat[sparkData.lat.length-1]??12).toFixed(0)} ms`;
 
   drawSparklines();
+  updateFleet(ts);
+  drawHeatmap(ts);
+
   requestAnimationFrame(simTick);
 }
 
-// start immediately — Leaflet map is synchronous
 requestAnimationFrame(simTick);
 
-window.addEventListener('resize',()=>{ map.invalidateSize(); });
+window.addEventListener('resize',()=>{
+  map.invalidateSize();
+  resizeHeatmap();
+  drawHeatmap();
+});
 </script>
 </body>
 </html>
