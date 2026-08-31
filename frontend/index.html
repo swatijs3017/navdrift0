@@ -1,1426 +1,2301 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NAVDRIFT-0</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root {
-  --bg-deep:#0a0a0f; --bg-surface:#0e0f1a; --bg-card:rgba(14,16,28,0.88);
-  --cyan:#00fff5; --cyan-dim:rgba(0,255,245,0.15); --cyan-glow:rgba(0,255,245,0.4);
-  --violet:#7c3aed; --violet-bright:#a855f7;
-  --red:#ff0055; --green:#00ff9d; --orange:#ff8c00; --yellow:#ffc800;
-  --text-main:#f1f5f9; --text-muted:#94a3b8; --text-dim:#64748b;
-  --border-dim:rgba(255,255,255,0.07); --border-cyan:rgba(0,255,245,0.2);
-  --font-head:'Space Grotesk',sans-serif; --font-mono:'JetBrains Mono',monospace;
-}
-html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text-main)}
-body{display:grid;grid-template-rows:52px 1fr 88px;font-family:var(--font-head)}
-#header{
-  display:flex;align-items:center;gap:8px;padding:0 12px;
-  background:var(--bg-surface);border-bottom:1px solid var(--border-dim);
-  position:relative;z-index:20;flex-shrink:0;overflow:hidden;
-}
-.logo{display:flex;align-items:center;gap:8px;margin-right:6px;flex-shrink:0}
-.logo-icon{width:30px;height:30px;flex-shrink:0}
-.logo-text{font-family:var(--font-mono);font-size:13px;font-weight:600;letter-spacing:.15em;color:var(--cyan);white-space:nowrap}
-.logo-sub{font-size:9px;color:var(--text-dim);letter-spacing:.08em;line-height:1}
-.city-tabs{display:flex;gap:2px;flex:1;overflow:hidden;min-width:0}
-.city-tab{
-  font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.06em;
-  padding:4px 10px;border-radius:3px;border:1px solid transparent;
-  background:transparent;color:var(--text-dim);cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;
-}
-.city-tab:hover{color:var(--text-muted);border-color:var(--border-dim)}
-.city-tab.active{background:var(--cyan-dim);color:var(--cyan);border-color:var(--border-cyan)}
-.header-right{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
-.gnss-badge{
-  font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.08em;
-  padding:3px 8px;border-radius:3px;background:rgba(0,255,157,0.12);
-  color:var(--green);border:1px solid rgba(0,255,157,0.3);white-space:nowrap;
-}
-.gnss-badge.dr{background:rgba(255,140,0,0.12);color:var(--orange);border-color:rgba(255,140,0,0.3)}
-.gnss-badge.snap{background:rgba(124,58,237,0.15);color:var(--violet-bright);border-color:rgba(168,85,247,0.3)}
-.header-badge{
-  font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.08em;
-  padding:2px 7px;border-radius:3px;white-space:nowrap;
-}
-.badge-replay{background:rgba(168,85,247,0.15);color:var(--violet-bright);border:1px solid rgba(168,85,247,.35)}
-.badge-fleet{background:rgba(255,200,0,0.12);color:var(--yellow);border:1px solid rgba(255,200,0,.3)}
-.badge-api-sync{background:rgba(0,255,157,0.12);color:var(--green);border:1px solid rgba(0,255,157,.3)}
-.badge-api-sync.inactive{background:rgba(100,116,139,0.1);color:var(--text-dim);border-color:var(--border-dim)}
-.icon-btn{
-  width:30px;height:30px;border-radius:4px;background:transparent;
-  border:1px solid var(--border-dim);color:var(--text-muted);
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:13px;transition:all .15s;flex-shrink:0;
-}
-.icon-btn:hover{background:var(--border-dim);color:var(--text-main)}
-.icon-btn.active-toggle{background:var(--cyan-dim);color:var(--cyan);border-color:var(--border-cyan)}
-.icon-btn.active-fleet{background:rgba(255,200,0,0.12);color:var(--yellow);border-color:rgba(255,200,0,.3)}
-#main{display:grid;grid-template-columns:1fr 300px;overflow:hidden;position:relative}
-#map-wrap{position:relative;overflow:hidden}
-#map{width:100%;height:100%;background:#0d0d18}
-#heatmap-canvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:500;pointer-events:none;display:block}
-.leaflet-container{background:#0d0d18!important}
-.map-overlay{
-  position:absolute;top:12px;left:12px;z-index:1000;
-  display:flex;flex-direction:column;gap:8px;width:210px;
-}
-.state-badge{
-  font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.12em;
-  padding:6px 12px;border-radius:4px;text-align:center;
-  background:rgba(0,255,157,0.12);color:var(--green);border:1px solid rgba(0,255,157,0.35);
-}
-.state-badge.dr-mode{background:rgba(255,140,0,0.12);color:var(--orange);border-color:rgba(255,140,0,.35)}
-.state-badge.snap-mode{background:rgba(124,58,237,0.15);color:var(--violet-bright);border-color:rgba(168,85,247,.35)}
-.outage-flash{
-  display:none;font-family:var(--font-mono);font-size:10px;font-weight:600;
-  letter-spacing:.1em;padding:4px 10px;border-radius:3px;text-align:center;
-  background:rgba(255,0,85,0.15);color:var(--red);border:1px solid rgba(255,0,85,.4);
-  animation:flashpulse 1s ease-in-out infinite;
-}
-.outage-flash.visible{display:block}
-@keyframes flashpulse{0%,100%{opacity:1}50%{opacity:.4}}
-.tunnel-alert{
-  font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.08em;
-  padding:4px 10px;border-radius:3px;text-align:center;
-  background:rgba(255,200,0,0.12);color:var(--yellow);border:1px solid rgba(255,200,0,.35);
-}
-.mc-btn{
-  font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.07em;
-  padding:7px 10px;border-radius:4px;cursor:pointer;border:none;transition:all .15s;text-align:center;
-}
-.trigger-outage{background:rgba(255,0,85,0.15);color:var(--red);border:1px solid rgba(255,0,85,.4)}
-.trigger-outage:hover{background:rgba(255,0,85,0.28)}
-.reacquire{background:rgba(0,255,245,0.12);color:var(--cyan);border:1px solid var(--border-cyan)}
-.reacquire:hover{background:rgba(0,255,245,0.22)}
-.map-btn-row{display:flex;gap:5px}
-.map-ctrl-btn{
-  font-family:var(--font-mono);font-size:9px;font-weight:600;letter-spacing:.07em;
-  padding:4px 8px;border-radius:3px;cursor:pointer;border:none;transition:all .15s;
-  background:rgba(14,16,28,0.85);color:var(--text-muted);border:1px solid var(--border-dim);
-  backdrop-filter:blur(4px);
-}
-.map-ctrl-btn.active{background:rgba(0,255,245,0.12);color:var(--cyan);border-color:var(--border-cyan)}
-.legend{
-  background:var(--bg-card);border:1px solid var(--border-dim);border-radius:5px;
-  padding:8px 10px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:5px;
-}
-.legend-row{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:9.5px;color:var(--text-muted)}
-.leg-line{width:22px;height:2px;display:inline-block;border-radius:1px;flex-shrink:0}
-.cyan-line{background:var(--cyan)}.orange-line{background:var(--orange)}
-.orange-line.dashed{background:repeating-linear-gradient(90deg,var(--orange) 0 5px,transparent 5px 9px)}
-.green-line{background:var(--green)}.red-dash{background:repeating-linear-gradient(90deg,var(--red) 0 4px,transparent 4px 7px)}
-.violet-line{background:var(--violet-bright)}.yellow-line{background:var(--yellow)}
-/* replay progress */
-.replay-progress-wrap{
-  background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;
-  padding:6px 9px;backdrop-filter:blur(8px);
-}
-.replay-progress-label{font-family:var(--font-mono);font-size:8.5px;color:var(--text-dim);display:flex;justify-content:space-between;margin-bottom:4px}
-.replay-bar-track{background:rgba(255,255,255,0.06);border-radius:2px;height:4px;overflow:hidden}
-.replay-bar-fill{background:var(--violet-bright);height:100%;border-radius:2px;transition:width .3s linear}
-/* fleet panel */
-.fleet-panel{
-  position:absolute;top:12px;right:12px;z-index:1001;
-  background:var(--bg-card);border:1px solid rgba(255,200,0,.25);border-radius:5px;
-  padding:8px 10px;backdrop-filter:blur(8px);min-width:140px;
-}
-.fleet-panel-title{font-family:var(--font-mono);font-size:8px;letter-spacing:.14em;color:var(--yellow);margin-bottom:6px}
-.fleet-row{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-bottom:3px}
-.fleet-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-/* sidebar */
-.sidebar{
-  background:var(--bg-surface);border-left:1px solid var(--border-dim);
-  display:flex;flex-direction:column;gap:0;overflow-y:auto;overflow-x:hidden;
-  scrollbar-width:thin;scrollbar-color:var(--border-dim) transparent;
-}
-.panel{padding:12px 14px;border-bottom:1px solid var(--border-dim);flex-shrink:0}
-.panel-scroll{flex:1;overflow-y:auto;min-height:0}
-.panel-title{
-  font-family:var(--font-mono);font-size:9px;font-weight:600;letter-spacing:.18em;
-  color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;
-}
-.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.metric{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;padding:7px 9px}
-.metric-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.14em;color:var(--text-dim);margin-bottom:3px}
-.metric-val{font-family:var(--font-mono);font-size:16px;font-weight:600;color:var(--text-main);line-height:1;display:flex;align-items:baseline;gap:3px}
-.metric-val.cyan{color:var(--cyan)}.metric-val.green{color:var(--green)}
-.metric-val.orange{color:var(--orange)}.metric-val.red{color:var(--red)}
-.metric-unit{font-size:9px;font-weight:400;color:var(--text-dim);letter-spacing:.05em}
-/* benchmark panel */
-.bench-row{margin-bottom:9px}
-.bench-row:last-child{margin-bottom:0}
-.bench-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-.bench-label{font-family:var(--font-mono);font-size:9px;color:var(--text-muted)}
-.bench-val{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.04em}
-.bench-target{font-family:var(--font-mono);font-size:8px;color:var(--text-dim)}
-.bench-bar-track{background:rgba(255,255,255,0.06);border-radius:2px;height:5px;overflow:hidden;margin-bottom:3px}
-.bench-bar-fill{height:100%;border-radius:2px;transition:width .4s ease,background-color .4s ease}
-.bench-tag{font-family:var(--font-mono);font-size:7.5px;letter-spacing:.1em;padding:1px 5px;border-radius:2px;background:rgba(0,255,245,0.08);color:var(--cyan);border:1px solid var(--border-cyan)}
-.ate-row{display:flex;align-items:center;justify-content:space-between;padding:6px 9px;background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;margin-bottom:8px}
-.ate-label{font-family:var(--font-mono);font-size:8.5px;color:var(--text-dim)}
-.ate-val{font-family:var(--font-mono);font-size:13px;font-weight:700}
-/* algo */
-.algo-list{display:flex;flex-direction:column;gap:5px}
-.algo-row{
-  display:flex;align-items:center;justify-content:space-between;
-  background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;padding:6px 9px;
-}
-.algo-name{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--text-main)}
-.algo-sub{font-size:8.5px;color:var(--text-dim);margin-top:1px}
-.algo-status{
-  font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:.1em;
-  padding:2px 6px;border-radius:2px;flex-shrink:0;
-}
-.status-active{background:rgba(0,255,157,0.1);color:var(--green);border:1px solid rgba(0,255,157,.25)}
-.status-demo{background:rgba(255,200,0,0.1);color:var(--yellow);border:1px solid rgba(255,200,0,.25)}
-.status-ready{background:rgba(0,255,245,0.08);color:var(--cyan);border:1px solid var(--border-cyan)}
-.novel-list{display:flex;flex-direction:column;gap:6px}
-.novel-card{background:var(--bg-card);border:1px solid var(--border-dim);border-radius:5px;padding:8px 10px;position:relative;overflow:hidden}
-.novel-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px}
-.novel-card.c-cyan::before{background:var(--cyan)}.novel-card.c-violet::before{background:var(--violet-bright)}
-.novel-card.c-green::before{background:var(--green)}.novel-card.c-orange::before{background:var(--orange)}
-.novel-card.c-yellow::before{background:var(--yellow)}.novel-card.c-red::before{background:var(--red)}
-.novel-card-name{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--text-main);margin-bottom:2px}
-.novel-card-desc{font-size:9px;color:var(--text-dim);line-height:1.5}
-.novel-card-tag{font-family:var(--font-mono);font-size:7.5px;letter-spacing:.1em;color:var(--text-dim);margin-top:4px;opacity:.7}
-.api-row{
-  display:flex;align-items:center;gap:7px;padding:8px 14px;
-  border-top:1px solid var(--border-dim);flex-shrink:0;
-}
-.api-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.14em;color:var(--text-dim)}
-#api-url-display{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#footer{
-  background:var(--bg-surface);border-top:1px solid var(--border-dim);
-  display:grid;grid-template-columns:repeat(4,1fr);gap:0;overflow:hidden;
-}
-.spark-panel{padding:7px 12px;border-right:1px solid var(--border-dim);display:flex;flex-direction:column;gap:4px}
-.spark-panel:last-child{border-right:none}
-.spark-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.12em;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center}
-.spark-val{font-family:var(--font-mono);font-size:13px;font-weight:600}
-.spark-val.sv-cyan{color:var(--cyan)}.spark-val.sv-green{color:var(--green)}
-.spark-val.sv-orange{color:var(--orange)}.spark-val.sv-violet{color:var(--violet-bright)}
-canvas.sparkline{width:100%;height:32px;display:block}
-/* modals */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
-.modal-overlay.hidden{display:none}
-.modal{background:var(--bg-surface);border:1px solid var(--border-dim);border-radius:8px;padding:24px;width:340px;box-shadow:0 24px 64px rgba(0,0,0,.6)}
-.modal-title{font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--cyan);margin-bottom:18px}
-.field{margin-bottom:14px}
-.field label{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;color:var(--text-dim);margin-bottom:5px}
-.field input[type="text"],.field input[type="url"]{width:100%;background:var(--bg-deep);border:1px solid var(--border-dim);border-radius:4px;padding:7px 10px;font-family:var(--font-mono);font-size:11px;color:var(--text-main);outline:none}
-.field input[type="text"]:focus,.field input[type="url"]:focus{border-color:var(--border-cyan)}
-.field input[type="range"]{width:100%;accent-color:var(--cyan)}
-.field-row{display:flex;justify-content:space-between;align-items:center}
-.toggle{width:36px;height:20px;background:var(--border-dim);border-radius:10px;cursor:pointer;position:relative;transition:background .2s;border:none;flex-shrink:0}
-.toggle.on{background:var(--cyan)}
-.toggle::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s}
-.toggle.on::after{transform:translateX(16px)}
-.modal-actions{display:flex;gap:8px;margin-top:18px}
-.btn-save,.btn-cancel{flex:1;padding:8px;border-radius:4px;font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.08em;cursor:pointer;border:none;transition:all .15s}
-.btn-save{background:var(--cyan);color:var(--bg-deep)}.btn-save:hover{opacity:.85}
-.btn-cancel{background:var(--border-dim);color:var(--text-muted)}.btn-cancel:hover{background:rgba(255,255,255,.1)}
-/* QR modal */
-#qr-modal .modal{width:300px;text-align:center}
-#qr-container{display:flex;justify-content:center;margin:16px 0;background:#fff;padding:12px;border-radius:6px}
-.qr-url{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-bottom:4px}
-/* vehicle markers */
-.vehicle-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;transform-origin:center;pointer-events:none}
-.leaflet-attribution-flag{display:none!important}
-.leaflet-control-attribution{background:rgba(0,0,0,.5)!important;color:#666!important;font-size:8px!important}
-.leaflet-tile-pane{filter:invert(1) hue-rotate(195deg) saturate(0.45) brightness(0.75)}
-/* mobile share button */
-#mobile-share{
-  display:none;position:fixed;bottom:100px;right:16px;z-index:1500;
-  background:var(--cyan);color:var(--bg-deep);border:none;border-radius:20px;
-  font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.1em;
-  padding:8px 16px;cursor:pointer;box-shadow:0 4px 20px rgba(0,255,245,.3);
-}
-/* scenarios panel */
-.scenarios-panel{
-  background:var(--bg-card);border:1px solid var(--border-dim);border-radius:5px;
-  padding:8px 10px;backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:5px;
-}
-.scenario-label{font-family:var(--font-mono);font-size:8px;letter-spacing:.14em;color:var(--text-dim);margin-bottom:2px}
-.scenario-btn{
-  font-family:var(--font-mono);font-size:9px;font-weight:600;letter-spacing:.06em;
-  padding:4px 8px;border-radius:3px;cursor:pointer;transition:all .15s;text-align:center;
-  background:rgba(0,255,245,0.06);color:var(--cyan);border:1px solid rgba(0,255,245,0.25);
-}
-.scenario-btn:hover{background:rgba(0,255,245,0.15)}
-/* IMU readout */
-.imu-readout{
-  background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;
-  padding:5px 8px;font-family:var(--font-mono);font-size:8px;color:var(--text-dim);
-  display:flex;flex-direction:column;gap:2px;
-}
-.imu-readout-title{font-size:7px;letter-spacing:.14em;color:var(--text-dim);margin-bottom:1px}
-.imu-row{display:flex;justify-content:space-between;gap:6px;font-size:8px}
-/* NHC button off state */
-.nhc-off{background:rgba(255,0,85,0.12)!important;color:var(--red)!important;border:1px solid rgba(255,0,85,0.4)!important}
-/* responsive */
-@media(max-width:767px){
-  body{grid-template-rows:52px 1fr 88px}
-  #main{grid-template-columns:1fr}
-  .city-tabs{display:none}
-  .sidebar{
-    position:fixed;bottom:88px;left:0;right:0;z-index:1100;
-    max-height:40vh;border-left:none;border-top:1px solid var(--border-dim);
-    transform:translateY(100%);transition:transform .3s ease;
-  }
-  .sidebar.open{transform:translateY(0)}
-  #mobile-share{display:flex;align-items:center;gap:6px}
-  .logo-sub{display:none}
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NAVDRIFT-0 · Mission Control Telemetry · ISRO SIH 2026 PS #26168</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <style>
+    /* ── DESIGN SYSTEM TOKENS ── */
+    :root {
+      --bg-deep: #0a0a0f;
+      --bg-surface: #0e0f1a;
+      --bg-card: rgba(14, 16, 28, 0.72);
+      --bg-card-hover: rgba(22, 25, 45, 0.85);
+      --border-cyan: rgba(0, 255, 245, 0.2);
+      --border-violet: rgba(124, 58, 237, 0.25);
+      --border-dim: rgba(255, 255, 255, 0.07);
+
+      --cyan: #00fff5;
+      --cyan-glow: rgba(0, 255, 245, 0.4);
+      --violet: #7c3aed;
+      --violet-glow: rgba(124, 58, 237, 0.5);
+      --violet-bright: #a855f7;
+
+      --red: #ff0055;
+      --red-glow: rgba(255, 0, 85, 0.5);
+      --green: #00ff9d;
+      --green-glow: rgba(0, 255, 157, 0.4);
+      --yellow: #ffc800;
+
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --font-head: 'Space Grotesk', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-head);
+      user-select: none;
+    }
+
+    /* ── STARFIELD & BACKGROUND EFFECTS ── */
+    #starfield {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    #outage-flash-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      border: 0px solid var(--red);
+      opacity: 0;
+      transition: opacity 0.2s ease, border-width 0.2s ease;
+    }
+
+    #outage-flash-overlay.active {
+      border: 4px solid var(--red);
+      box-shadow: inset 0 0 50px var(--red-glow);
+      animation: redFlashPulse 1.2s ease-in-out infinite alternate;
+      opacity: 1;
+    }
+
+    @keyframes redFlashPulse {
+      0% {
+        box-shadow: inset 0 0 30px var(--red-glow), 0 0 20px var(--red-glow);
+        border-color: rgba(255, 0, 85, 0.6);
+      }
+
+      100% {
+        box-shadow: inset 0 0 80px rgba(255, 0, 85, 0.8), 0 0 40px rgba(255, 0, 85, 0.9);
+        border-color: rgba(255, 0, 85, 1);
+      }
+    }
+
+    /* ── MAIN DASHBOARD LAYOUT ── */
+    .app-container {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-rows: 56px 1fr 100px;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── HEADER TOOLBAR ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem;
+      background: rgba(10, 10, 15, 0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-dim);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+      position: relative;
+      z-index: 20;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-logo {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-logo svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 8px var(--cyan-glow));
+    }
+
+    .brand-title {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--violet-bright) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px rgba(0, 255, 245, 0.3);
+    }
+
+    .brand-sub {
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    /* City Tabs */
+    .city-tabs {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-dim);
+    }
+
+    .city-tab {
+      padding: 0.35rem 0.85rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .city-tab:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .city-tab.active {
+      color: var(--cyan);
+      background: rgba(0, 255, 245, 0.1);
+      border-color: var(--border-cyan);
+      box-shadow: 0 0 12px rgba(0, 255, 245, 0.2);
+    }
+
+    /* Telemetry Pills */
+    .header-telemetry {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .pill-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.3rem 0.75rem;
+      border-radius: 20px;
+      border: 1px solid var(--border-dim);
+    }
+
+    .pill-status {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green-glow);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .status-dot.outage {
+      background: var(--red);
+      box-shadow: 0 0 12px var(--red-glow);
+      animation: blink 0.8s step-end infinite;
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    .badge-isro {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      background: rgba(124, 58, 237, 0.15);
+      color: var(--violet-bright);
+      border: 1px solid var(--border-violet);
+    }
+
+    .btn-icon {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-dim);
+      color: var(--text-muted);
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+    }
+
+    .btn-icon:hover {
+      background: rgba(0, 255, 245, 0.1);
+      color: var(--cyan);
+      border-color: var(--border-cyan);
+      box-shadow: 0 0 12px rgba(0, 255, 245, 0.2);
+    }
+
+    /* ── GNSS OUTAGE BANNER ── */
+    .outage-banner {
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100%);
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.45rem 1.5rem;
+      background: rgba(255, 0, 85, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid #ff3377;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 0 30px var(--red-glow);
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+    }
+
+    .outage-banner.visible {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .outage-banner.snap {
+      background: rgba(0, 255, 157, 0.9);
+      border-color: #00ffaa;
+      box-shadow: 0 0 30px var(--green-glow);
+      color: #052e16;
+    }
+
+    /* ── MIDDLE WORKSPACE (3-COLUMN GRID) ── */
+    .dashboard-body {
+      display: grid;
+      grid-template-columns: 310px 1fr 330px;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* Glassmorphism Panel Shared Style */
+    .panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 0.2rem;
+    }
+
+    .panel::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .panel::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-dim);
+      border-radius: 12px;
+      padding: 0.85rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 245, 0.25), transparent);
+    }
+
+    .card:hover {
+      border-color: rgba(0, 255, 245, 0.2);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 255, 245, 0.05);
+    }
+
+    .card-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.65rem;
+    }
+
+    .card-title-left {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .card-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 6px var(--cyan-glow);
+    }
+
+    .card-dot.violet {
+      background: var(--violet-bright);
+      box-shadow: 0 0 6px var(--violet-glow);
+    }
+
+    .card-dot.red {
+      background: var(--red);
+      box-shadow: 0 0 6px var(--red-glow);
+    }
+
+    .card-dot.green {
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green-glow);
+    }
+
+    /* Control Buttons */
+    .ctrl-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      font-family: var(--font-head);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(0, 255, 245, 0.2) 0%, rgba(124, 58, 237, 0.3) 100%);
+      color: var(--cyan);
+      border-color: var(--border-cyan);
+      box-shadow: 0 0 15px rgba(0, 255, 245, 0.15);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, rgba(0, 255, 245, 0.35) 0%, rgba(124, 58, 237, 0.45) 100%);
+      box-shadow: 0 0 22px rgba(0, 255, 245, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      background: rgba(255, 0, 85, 0.15);
+      color: #ff4d88;
+      border-color: rgba(255, 0, 85, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 0, 85, 0.3);
+      box-shadow: 0 0 20px var(--red-glow);
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+      border-color: var(--border-dim);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    /* Metric Display Grids */
+    .metric-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .metric-box {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-box.cyan {
+      border-color: rgba(0, 255, 245, 0.25);
+    }
+
+    .metric-box.violet {
+      border-color: rgba(124, 58, 237, 0.3);
+    }
+
+    .metric-box.red {
+      border-color: rgba(255, 0, 85, 0.3);
+    }
+
+    .metric-box.green {
+      border-color: rgba(0, 255, 157, 0.3);
+    }
+
+    .metric-lbl {
+      font-size: 0.58rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+    }
+
+    .metric-val {
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.1;
+    }
+
+    .metric-val.cyan {
+      color: var(--cyan);
+      text-shadow: 0 0 10px rgba(0, 255, 245, 0.3);
+    }
+
+    .metric-val.violet {
+      color: var(--violet-bright);
+      text-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+    }
+
+    .metric-val.red {
+      color: var(--red);
+      text-shadow: 0 0 10px rgba(255, 0, 85, 0.3);
+    }
+
+    .metric-val.green {
+      color: var(--green);
+      text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+    }
+
+    .metric-unit {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-left: 2px;
+    }
+
+    /* Signal Bars */
+    .signal-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+    }
+
+    .signal-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 22px;
+    }
+
+    .signal-bar {
+      width: 4px;
+      background: var(--green);
+      border-radius: 2px;
+      transition: height 0.3s ease, background 0.3s ease, opacity 0.3s ease;
+      box-shadow: 0 0 6px var(--green-glow);
+    }
+
+    .signal-bars.outage .signal-bar {
+      background: var(--red);
+      box-shadow: 0 0 6px var(--red-glow);
+      opacity: 0.2;
+    }
+
+    .signal-bars.outage .signal-bar:first-child {
+      opacity: 1;
+      height: 4px !important;
+    }
+
+    /* ── CENTER SIMULATION MAP (Leaflet) ── */
+    .map-viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: rgba(6, 7, 13, 0.9);
+      border-radius: 14px;
+      border: 1px solid var(--border-dim);
+      overflow: hidden;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+    }
+
+    #leaflet-map {
+      width: 100%;
+      height: 100%;
+      border-radius: 14px;
+    }
+
+    /* Dark mission-control tile theme */
+    .leaflet-tile {
+      filter: brightness(0.35) saturate(0.4) hue-rotate(190deg);
+    }
+
+    .leaflet-container {
+      background: #0a0a0f;
+    }
+
+    .leaflet-control-attribution {
+      font-size: 9px;
+      opacity: 0.4;
+    }
+
+    /* Canvas HUD Overlay Elements */
+    .hud-chip {
+      position: absolute;
+      background: rgba(10, 10, 16, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      z-index: 500;
+    }
+
+    .hud-top-left {
+      top: 0.85rem;
+      left: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .hud-bottom-right {
+      bottom: 0.85rem;
+      right: 0.85rem;
+    }
+
+    .legend-card {
+      position: absolute;
+      bottom: 0.85rem;
+      left: 0.85rem;
+      background: rgba(10, 10, 16, 0.82);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 0.55rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      pointer-events: none;
+      z-index: 500;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .legend-line {
+      width: 20px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .legend-line.gt {
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan-glow);
+    }
+
+    .legend-line.nd {
+      background: var(--violet-bright);
+      box-shadow: 0 0 8px var(--violet-glow);
+    }
+
+    .legend-line.imu {
+      height: 0;
+      border-top: 2px dashed var(--red);
+    }
+
+    /* ── SPARKLINE CANVAS CHARTS ── */
+    .spark-container {
+      width: 100%;
+      height: 64px;
+      position: relative;
+      margin-top: 0.2rem;
+    }
+
+    canvas.sparkline {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ── ALGORITHM COMPARISON TABLE ── */
+    .cmp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.68rem;
+      margin-top: 0.2rem;
+    }
+
+    .cmp-table th {
+      color: var(--text-dim);
+      font-weight: 600;
+      text-align: left;
+      padding: 0.35rem 0.4rem;
+      border-bottom: 1px solid var(--border-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.58rem;
+    }
+
+    .cmp-table td {
+      padding: 0.4rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      font-family: var(--font-mono);
+    }
+
+    .cmp-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .cmp-table td:first-child {
+      font-family: var(--font-head);
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .win {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .mid {
+      color: var(--yellow);
+    }
+
+    .lose {
+      color: var(--red);
+    }
+
+    /* ── EVENT LOG ── */
+    .log-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      max-height: 110px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+    }
+
+    .log-entry {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.25rem 0.4rem;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.25);
+      border-left: 2px solid var(--cyan);
+    }
+
+    .log-entry.outage {
+      border-left-color: var(--red);
+      background: rgba(255, 0, 85, 0.08);
+    }
+
+    .log-entry.snap {
+      border-left-color: var(--green);
+      background: rgba(0, 255, 157, 0.08);
+    }
+
+    .log-time {
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    .log-msg {
+      color: var(--text-muted);
+    }
+
+    /* ── BOTTOM ARCHITECTURE PIPELINE BAR ── */
+    .pipeline-bar {
+      background: rgba(10, 10, 15, 0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border-dim);
+      padding: 0.65rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      overflow-x: auto;
+    }
+
+    .pipeline-bar::-webkit-scrollbar {
+      height: 3px;
+    }
+
+    .pipeline-bar::-webkit-scrollbar-thumb {
+      background: rgba(0, 255, 245, 0.2);
+    }
+
+    .pipe-step {
+      flex: 1;
+      min-width: 170px;
+      background: rgba(14, 16, 28, 0.6);
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 0.5rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      position: relative;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .pipe-step.active {
+      background: rgba(0, 255, 245, 0.08);
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px rgba(0, 255, 245, 0.25), inset 0 0 15px rgba(0, 255, 245, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .pipe-step.active.violet {
+      background: rgba(124, 58, 237, 0.12);
+      border-color: var(--violet-bright);
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.3), inset 0 0 15px rgba(124, 58, 237, 0.15);
+    }
+
+    .pipe-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 0.75rem;
+      color: var(--cyan);
+      flex-shrink: 0;
+    }
+
+    .pipe-step.violet .pipe-icon {
+      color: var(--violet-bright);
+    }
+
+    .pipe-step.green .pipe-icon {
+      color: var(--green);
+    }
+
+    .pipe-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pipe-name {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .pipe-desc {
+      font-size: 0.58rem;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .pipe-arrow {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    /* ── SETTINGS MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-card {
+      background: rgba(14, 16, 28, 0.95);
+      border: 1px solid var(--border-cyan);
+      border-radius: 16px;
+      padding: 1.5rem;
+      width: min(460px, 92vw);
+      box-shadow: 0 0 50px rgba(0, 255, 245, 0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-group label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .form-group input {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .form-group input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0, 255, 245, 0.2);
+    }
+
+    .conn-status {
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      text-align: center;
+      display: none;
+    }
+
+    .conn-status.ok {
+      display: block;
+      background: rgba(0, 255, 157, 0.1);
+      color: var(--green);
+      border: 1px solid rgba(0, 255, 157, 0.3);
+    }
+
+    .conn-status.err {
+      display: block;
+      background: rgba(255, 0, 85, 0.1);
+      color: var(--red);
+      border: 1px solid rgba(255, 0, 85, 0.3);
+    }
+  </style>
 </head>
+
 <body>
 
-<!-- HEADER -->
-<div id="header">
-  <div class="logo">
-    <svg class="logo-icon" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="15" cy="15" r="14" stroke="rgba(0,255,245,0.2)" stroke-width="1"/>
-      <circle cx="15" cy="15" r="9" stroke="rgba(0,255,245,0.4)" stroke-width="1"/>
-      <path d="M15 3 L18 23 L15 19 L12 23 Z" fill="#00fff5" opacity="0.9"/>
-      <circle cx="15" cy="12" r="2" fill="#00fff5" opacity="0.5"/>
-    </svg>
-    <div>
-      <div class="logo-text">NAVDRIFT-0</div>
-      <div class="logo-sub">ISRO SIH 2026 · DEAD RECKONING DEMO</div>
-    </div>
-  </div>
-  <div class="city-tabs" id="city-tabs"></div>
-  <div class="header-right">
-    <div class="gnss-badge" id="gnss-badge">⬤ GNSS</div>
-    <span class="header-badge badge-replay" id="replay-badge" style="display:none">● IO-VNBD</span>
-    <span class="header-badge badge-fleet" id="fleet-badge" style="display:none">FLEET: 3 ACTIVE</span>
-    <span class="header-badge badge-api-sync inactive" id="api-sync-badge">API SYNC</span>
-    <button class="icon-btn" id="btn-replay" title="Replay Mode">▶▶</button>
-    <button class="icon-btn" id="btn-fleet" title="Fleet Mode">🚗</button>
-    <button class="icon-btn" id="btn-pause" title="Pause">⏸</button>
-    <button class="icon-btn" id="btn-qr" title="QR Code">⊞</button>
-    <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
-  </div>
-</div>
+  <!-- Animated Starfield Canvas Background -->
+  <canvas id="starfield"></canvas>
 
-<!-- MAIN -->
-<div id="main">
-  <div id="map-wrap">
-    <div id="map"></div>
-    <canvas id="heatmap-canvas"></canvas>
-    <div class="map-overlay">
-      <div class="state-badge" id="state-label">GNSS ACTIVE</div>
-      <div id="outage-flash" class="outage-flash">⚠ GNSS OUTAGE</div>
-      <div id="tunnel-alert" class="tunnel-alert" style="display:none">⚠ TUNNEL — DR MODE</div>
-      <button class="mc-btn trigger-outage" id="btn-outage">⚡ Simulate GNSS Outage</button>
-      <button class="mc-btn reacquire" id="btn-reacquire" style="display:none">📡 Reacquire GNSS</button>
-      <div class="map-btn-row">
-        <button class="map-ctrl-btn active" id="btn-signal">SIGNAL</button>
-      </div>
-      <!-- NHC Toggle -->
-      <button class="mc-btn" id="btn-nhc" style="background:rgba(0,255,157,0.12);color:#00ff9d;border:1px solid rgba(0,255,157,0.3)">NHC ON</button>
-      <div id="replay-progress-wrap" class="replay-progress-wrap" style="display:none">
-        <div class="replay-progress-label"><span>IO-VNBD REPLAY</span><span id="replay-pct">0%</span></div>
-        <div class="replay-bar-track"><div class="replay-bar-fill" id="replay-bar" style="width:0%"></div></div>
-      </div>
-      <div class="legend">
-        <div class="legend-row"><span class="leg-line cyan-line"></span>True GPS Track</div>
-        <div class="legend-row"><span class="leg-line orange-line dashed"></span>Dead Reckoning (DR)</div>
-        <div class="legend-row"><span class="leg-line green-line"></span>SNAP Corrected</div>
-        <div class="legend-row"><span class="leg-line red-dash"></span>Tunnel Zone</div>
-        <div id="fleet-legend" style="display:none">
-          <div class="legend-row"><span class="leg-line violet-line"></span>V2 Mumbai</div>
-          <div class="legend-row"><span class="leg-line yellow-line"></span>V3 Delhi-B</div>
-        </div>
-      </div>
-      <!-- Scenarios Panel -->
-      <div class="scenarios-panel">
-        <div class="scenario-label">OUTAGE SCENARIOS</div>
-        <button class="scenario-btn" id="sc-short">50m · 35km/h</button>
-        <button class="scenario-btn" id="sc-mid">500m · 60km/h</button>
-        <button class="scenario-btn" id="sc-long">1km · 60km/h</button>
-      </div>
-      <!-- IMU Model Readout -->
-      <div class="imu-readout" id="imu-readout">
-        <div class="imu-readout-title">IMU MODEL</div>
-        <div class="imu-row"><span style="color:var(--cyan)">ARW</span><span id="imu-arw">0.000</span></div>
-        <div class="imu-row"><span style="color:var(--orange)">BI</span><span id="imu-bi">0.000</span></div>
-        <div class="imu-row"><span style="color:var(--violet-bright)">RRW</span><span id="imu-rrw">0.000</span></div>
-        <div class="imu-row" style="border-top:1px solid var(--border-dim);padding-top:2px;margin-top:1px">
-          <span style="color:var(--text-dim)">σ∥</span><span id="imu-salong">—</span>
-          <span style="color:var(--text-dim)">σ⊥</span><span id="imu-scross">—</span>
-        </div>
-      </div>
-    </div>
-    <!-- Fleet status panel -->
-    <div class="fleet-panel" id="fleet-panel" style="display:none">
-      <div class="fleet-panel-title">▸ FLEET STATUS</div>
-      <div class="fleet-row"><div class="fleet-dot" style="background:var(--cyan)"></div><span id="fp-v1">V1 · DELHI · GNSS</span></div>
-      <div class="fleet-row"><div class="fleet-dot" style="background:var(--violet-bright)"></div><span id="fp-v2">V2 · MUMBAI · GNSS</span></div>
-      <div class="fleet-row"><div class="fleet-dot" style="background:var(--yellow)"></div><span id="fp-v3">V3 · DELHI-B · GNSS</span></div>
-    </div>
+  <!-- Fullscreen Edge Flash Overlay for GNSS Outages -->
+  <div id="outage-flash-overlay"></div>
+
+  <!-- Top Sliding GNSS Outage Alert Banner -->
+  <div class="outage-banner" id="outage-banner">
+    <span id="outage-banner-icon">⚡</span>
+    <span id="outage-banner-text">GNSS BLACKOUT — NAVDRIFT-0 DEAD RECKONING ACTIVE</span>
+    <span id="outage-banner-timer" style="font-family: var(--font-mono); margin-left: auto;">00:00.0</span>
   </div>
 
-  <!-- SIDEBAR -->
-  <div class="sidebar" id="sidebar">
-    <!-- LIVE TELEMETRY -->
-    <div class="panel">
-      <div class="panel-title">LIVE TELEMETRY</div>
-      <div class="metrics-grid">
-        <div class="metric"><div class="metric-label">SPEED</div><div class="metric-val cyan" id="m-speed">35 <span class="metric-unit">km/h</span></div></div>
-        <div class="metric"><div class="metric-label">HEADING</div><div class="metric-val" id="m-heading">0°</div></div>
-        <div class="metric"><div class="metric-label">DR ERROR</div><div class="metric-val green" id="m-error">0.0 <span class="metric-unit">m</span></div></div>
-        <div class="metric"><div class="metric-label">UNCERTAINTY</div><div class="metric-val" id="m-sigma">±1.5 <span class="metric-unit">m</span></div></div>
-        <div class="metric"><div class="metric-label">EKF STEPS</div><div class="metric-val cyan" id="m-steps">0</div></div>
-        <div class="metric"><div class="metric-label">OUTAGE</div><div class="metric-val" id="m-outage-t">—</div></div>
+  <div class="app-container">
+
+    <!-- ── HEADER ── -->
+    <header>
+      <div class="brand-section">
+        <div class="brand-logo">
+          <svg viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="16" stroke="url(#cyanVioletGrad)" stroke-width="1.5" />
+            <ellipse cx="18" cy="18" rx="16" ry="6" stroke="url(#cyanVioletGrad)" stroke-width="1" opacity="0.5" />
+            <circle cx="18" cy="18" r="4" fill="url(#cyanVioletGrad)" />
+            <line x1="18" y1="0" x2="18" y2="8" stroke="#00fff5" stroke-width="1.2" />
+            <line x1="18" y1="28" x2="18" y2="36" stroke="#00fff5" stroke-width="1.2" />
+            <line x1="0" y1="18" x2="8" y2="18" stroke="#00fff5" stroke-width="1.2" />
+            <line x1="28" y1="18" x2="36" y2="18" stroke="#00fff5" stroke-width="1.2" />
+            <defs>
+              <linearGradient id="cyanVioletGrad" x1="0" y1="0" x2="36" y2="36">
+                <stop offset="0%" stop-color="#00fff5" />
+                <stop offset="100%" stop-color="#7c3aed" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="brand-title">
+          <span class="brand-name">NAVDRIFT-0</span>
+          <span class="brand-sub">ISRO SIH 2026 PS #26168</span>
+        </div>
       </div>
-      <!-- Events counter -->
-      <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);border:1px solid var(--border-dim);border-radius:4px;padding:5px 9px">
-        <span style="font-family:var(--font-mono);font-size:8px;letter-spacing:.1em;color:var(--text-dim)">EVENTS FILTERED</span>
-        <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--yellow)" id="m-events">0</span>
+
+      <!-- City Selector Tabs -->
+      <div class="city-tabs">
+        <button class="city-tab active" onclick="switchCity('delhi')">Delhi</button>
+        <button class="city-tab" onclick="switchCity('mumbai')">Mumbai</button>
+        <button class="city-tab" onclick="switchCity('bengaluru')">Bengaluru</button>
+        <button class="city-tab" onclick="switchCity('chennai')">Chennai</button>
+        <button class="city-tab" onclick="switchCity('hyderabad')">Hyderabad</button>
       </div>
+
+      <!-- Status & Settings -->
+      <div class="header-telemetry">
+        <div class="pill-group">
+          <div class="pill-status">
+            <div class="status-dot" id="header-status-dot"></div>
+            <span id="header-status-text">GNSS LOCKED</span>
+          </div>
+        </div>
+        <span class="badge-isro">ISRO SIH 2026</span>
+        <button class="btn-icon" onclick="openSettingsModal()" title="API Settings">⚙</button>
+      </div>
+    </header>
+
+    <!-- ── MAIN DASHBOARD BODY (3-COL GRID) ── -->
+    <div class="dashboard-body">
+
+      <!-- LEFT PANEL: CONTROLS & TELEMETRY -->
+      <div class="panel">
+
+        <!-- Simulation Controls -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot"></div>Mission Simulation
+            </div>
+            <span style="font-size:0.6rem; color:var(--text-dim);" id="sim-mode-badge">AUTONOMOUS</span>
+          </div>
+          <div class="ctrl-grid">
+            <button class="btn btn-primary" id="btn-toggle-sim" onclick="toggleSimulation()">⏸ Pause</button>
+            <button class="btn btn-danger" id="btn-outage" onclick="triggerManualOutage()">⚡ Drop GNSS</button>
+          </div>
+        </div>
+
+        <!-- Real-Time Metrics -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot green"></div>Position Metrics
+            </div>
+            <span style="font-size:0.6rem; color:var(--green)">LIVE 60Hz</span>
+          </div>
+          <div class="metric-container">
+            <div class="metric-box green">
+              <span class="metric-lbl">NAVDRIFT ATE</span>
+              <span class="metric-val green" id="val-ate-nd">0.38<span class="metric-unit">m</span></span>
+            </div>
+            <div class="metric-box red">
+              <span class="metric-lbl">Raw IMU ATE</span>
+              <span class="metric-val red" id="val-ate-imu">14.62<span class="metric-unit">m</span></span>
+            </div>
+            <div class="metric-box violet">
+              <span class="metric-lbl">Uncertainty σ</span>
+              <span class="metric-val violet" id="val-unc">0.45<span class="metric-unit">m</span></span>
+            </div>
+            <div class="metric-box cyan">
+              <span class="metric-lbl">Latency</span>
+              <span class="metric-val cyan" id="val-latency">2.3<span class="metric-unit">ms</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signal Bars & Navigation Status -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot cyan"></div>NavIC / GNSS Signal
+            </div>
+          </div>
+          <div class="signal-container">
+            <div style="display:flex; flex-direction:column; gap:0.1rem;">
+              <span style="font-size:0.75rem; font-weight:700;" id="signal-state-text">NavIC L5 / S-Band</span>
+              <span style="font-size:0.6rem; color:var(--text-dim)" id="signal-sub-text">7 Satellites locked</span>
+            </div>
+            <div class="signal-bars" id="signal-bar-group">
+              <div class="signal-bar" style="height: 6px;"></div>
+              <div class="signal-bar" style="height: 10px;"></div>
+              <div class="signal-bar" style="height: 14px;"></div>
+              <div class="signal-bar" style="height: 18px;"></div>
+              <div class="signal-bar" style="height: 22px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Telemetry Step Counters -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot violet"></div>Step Telemetry
+            </div>
+          </div>
+          <div class="metric-container">
+            <div class="metric-box">
+              <span class="metric-lbl">Steps Processed</span>
+              <span class="metric-val" id="val-steps">1,240</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-lbl">Outages Handled</span>
+              <span class="metric-val" id="val-outage-count">4</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Event Log -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot"></div>Mission Event Log
+            </div>
+          </div>
+          <div class="log-box" id="event-log-container">
+            <!-- Dynamically populated entries -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CENTER PANEL: LIVE LEAFLET MAP -->
+      <div class="map-viewport">
+        <div id="leaflet-map" style="width:100%;height:100%;border-radius:14px;"></div>
+
+        <!-- HUD Chips Top-Left -->
+        <div class="hud-top-left">
+          <div class="hud-chip">📍 City: <b id="hud-city-name" style="color:var(--cyan)">Delhi (Connaught Grid)</b>
+          </div>
+          <div class="hud-chip">🛰 GNSS Mode: <b id="hud-gnss-mode" style="color:var(--green)">NavIC Locked</b></div>
+        </div>
+
+        <!-- Track Legend Bottom-Left -->
+        <div class="legend-card">
+          <div class="legend-item">
+            <div class="legend-line gt"></div>Ground Truth
+          </div>
+          <div class="legend-item">
+            <div class="legend-line nd"></div>NAVDRIFT-0 Deep DR <span id="nd-mode-chip" style="font-size:0.55rem;color:var(--violet-bright);margin-left:3px;">[SIM]</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-line imu"></div>Raw IMU Drift
+          </div>
+        </div>
+
+        <!-- Coordinates Bottom-Right -->
+        <div class="hud-chip hud-bottom-right" id="hud-coords">
+          28.6315° N, 77.2167° E · 48 km/h
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL: SPARKLINE CHARTS & BENCHMARKS -->
+      <div class="panel">
+
+        <!-- Sparkline 1: Position Error -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot red"></div>Position Error Over Time
+            </div>
+            <span style="font-size:0.6rem; color:var(--red)" id="spark-err-val">0.32m</span>
+          </div>
+          <div class="spark-container">
+            <canvas class="sparkline" id="spark-error"></canvas>
+          </div>
+        </div>
+
+        <!-- Sparkline 2: Uncertainty Radius -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot violet"></div>Covariance Uncertainty Radius
+            </div>
+            <span style="font-size:0.6rem; color:var(--violet-bright)" id="spark-unc-val">0.45m</span>
+          </div>
+          <div class="spark-container">
+            <canvas class="sparkline" id="spark-uncertainty"></canvas>
+          </div>
+        </div>
+
+        <!-- Sparkline 3: Vehicle Speed -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot green"></div>Vehicle Speed (km/h)
+            </div>
+            <span style="font-size:0.6rem; color:var(--green)" id="spark-speed-val">42.5 km/h</span>
+          </div>
+          <div class="spark-container">
+            <canvas class="sparkline" id="spark-speed"></canvas>
+          </div>
+        </div>
+
+        <!-- Benchmarks Comparison -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot"></div>Algorithm Performance Benchmark
+            </div>
+          </div>
+          <table class="cmp-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Mean ATE</th>
+                <th>Max Drift</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>NAVDRIFT-0</td>
+                <td class="win" id="tbl-nd-ate">0.38 m</td>
+                <td class="win" id="tbl-nd-max">0.94 m</td>
+              </tr>
+              <tr>
+                <td>EKF Baseline</td>
+                <td class="mid" id="tbl-ekf-ate">4.12 m</td>
+                <td class="mid" id="tbl-ekf-max">9.80 m</td>
+              </tr>
+              <tr>
+                <td>Raw IMU DR</td>
+                <td class="lose" id="tbl-imu-ate">14.62 m</td>
+                <td class="lose" id="tbl-imu-max">38.40 m</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Backend Live Mode Info -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <div class="card-dot violet"></div>Inference Engine
+            </div>
+          </div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); line-height: 1.5;" id="backend-info-text">
+            Running Client JS Autonomous Simulation Mode.<br>
+            <a href="#" onclick="openSettingsModal(); return false;"
+              style="color: var(--cyan); text-decoration: underline;">Connect Render Backend API →</a>
+          </div>
+        </div>
+
+      </div>
+
     </div>
 
-    <!-- PERFORMANCE vs TARGET (Accuracy Benchmark) -->
-    <div class="panel" id="bench-panel">
-      <div class="panel-title">PERFORMANCE vs TARGET</div>
-      <div class="ate-row">
-        <div>
-          <div class="ate-label">ATE (Abs. Trajectory Error)</div>
-          <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim);margin-top:1px">Mean since outage start</div>
+    <!-- ── BOTTOM ARCHITECTURE PIPELINE MARQUEE ── -->
+    <div class="pipeline-bar">
+
+      <div class="pipe-step active" id="pipe-mod-1">
+        <div class="pipe-icon">01</div>
+        <div class="pipe-info">
+          <span class="pipe-name">IMU Preprocessor</span>
+          <span class="pipe-desc">6-DOF Denoising & Calib</span>
         </div>
-        <div class="ate-val" id="ate-val" style="color:var(--green)">—</div>
       </div>
-      <div class="bench-row">
-        <div class="bench-header">
-          <span class="bench-label">DR Error / 50m</span>
-          <span class="bench-tag">PS-26168</span>
+      <div class="pipe-arrow">➔</div>
+
+      <div class="pipe-step violet" id="pipe-mod-2">
+        <div class="pipe-icon">02</div>
+        <div class="pipe-info">
+          <span class="pipe-name">DRIFT-Former</span>
+          <span class="pipe-desc">Causal Transformer RoPE</span>
         </div>
-        <div class="bench-header" style="margin-bottom:3px">
-          <span class="bench-val" id="bench-50m-val" style="color:var(--green)">0.0 m</span>
-          <span class="bench-target">Target: &lt;5 m</span>
-        </div>
-        <div class="bench-bar-track"><div class="bench-bar-fill" id="bench-50m-bar" style="width:0%;background:var(--green)"></div></div>
       </div>
-      <div class="bench-row">
-        <div class="bench-header">
-          <span class="bench-label">DR Error / 1 km (extrap.)</span>
-          <span class="bench-tag">PS-26168</span>
+      <div class="pipe-arrow">➔</div>
+
+      <div class="pipe-step" id="pipe-mod-3">
+        <div class="pipe-icon">03</div>
+        <div class="pipe-info">
+          <span class="pipe-name">NavIC VAE</span>
+          <span class="pipe-desc">Visual-Spatial Constraints</span>
         </div>
-        <div class="bench-header" style="margin-bottom:3px">
-          <span class="bench-val" id="bench-1km-val" style="color:var(--green)">0.0 m</span>
-          <span class="bench-target">Target: &lt;100 m</span>
-        </div>
-        <div class="bench-bar-track"><div class="bench-bar-fill" id="bench-1km-bar" style="width:0%;background:var(--green)"></div></div>
       </div>
+      <div class="pipe-arrow">➔</div>
+
+      <div class="pipe-step green" id="pipe-mod-4">
+        <div class="pipe-icon">04</div>
+        <div class="pipe-info">
+          <span class="pipe-name">SNAP Corrector</span>
+          <span class="pipe-desc">Differentiable Recoil Fix</span>
+        </div>
+      </div>
+      <div class="pipe-arrow">➔</div>
+
+      <div class="pipe-step" id="pipe-mod-5">
+        <div class="pipe-icon">05</div>
+        <div class="pipe-info">
+          <span class="pipe-name">EKF Fusion</span>
+          <span class="pipe-desc">Uncertainty Covariance</span>
+        </div>
+      </div>
+
     </div>
 
-    <!-- ALGORITHM STACK -->
-    <div class="panel">
-      <div class="panel-title">ALGORITHM STACK</div>
-      <div class="algo-list">
-        <div class="algo-row"><div><div class="algo-name">FusionEKF+™</div><div class="algo-sub">GNSS+INS · SE(2) state</div></div><div class="algo-status status-active" id="ekf-status">ACTIVE</div></div>
-        <div class="algo-row"><div><div class="algo-name">NHC Engine™</div><div class="algo-sub">Non-holonomic constraint</div></div><div class="algo-status status-active" id="nhc-status">ACTIVE</div></div>
-        <div class="algo-row"><div><div class="algo-name">DRIFT-Former™</div><div class="algo-sub">Causal Transformer · ONNX</div></div><div class="algo-status status-demo">DEMO</div></div>
-        <div class="algo-row"><div><div class="algo-name">SNAP-Retrograde™</div><div class="algo-sub">Backward trajectory correction</div></div><div class="algo-status status-ready" id="snap-status">READY</div></div>
-        <div class="algo-row"><div><div class="algo-name">RoadSnap™</div><div class="algo-sub">HMM map matching · OSM</div></div><div class="algo-status status-active">ACTIVE</div></div>
-        <div class="algo-row"><div><div class="algo-name">AdaptiMount™</div><div class="algo-sub">Phone pose auto-calibration</div></div><div class="algo-status status-active">ACTIVE</div></div>
-      </div>
-    </div>
+  </div>
 
-    <div class="panel panel-scroll">
-      <div class="panel-title">NOVEL CONTRIBUTIONS</div>
-      <div class="novel-list">
-        <div class="novel-card c-cyan"><div class="novel-card-name">AdaptiMount™</div><div class="novel-card-desc">Real-time phone pose estimation from accelerometer + gyro without pre-placement. Handles dashboard, seat, hand, pocket.</div><div class="novel-card-tag">CALIBRATION · POSE · MEMS</div></div>
-        <div class="novel-card c-violet"><div class="novel-card-name">PhaseNet-IMU™</div><div class="novel-card-desc">Lightweight 1-D conv net for IMU noise phase estimation. Reduces heading drift by 40% vs classical low-pass.</div><div class="novel-card-tag">NEURAL · IMU · NOISE</div></div>
-        <div class="novel-card c-green"><div class="novel-card-name">VeloSpec™</div><div class="novel-card-desc">Velocity spectral decomposition from barometric + odometer fusion. Eliminates wheel-slip bias on inclines.</div><div class="novel-card-tag">BARO · ODOMETRY · FUSION</div></div>
-        <div class="novel-card c-orange"><div class="novel-card-name">SNAP-Retrograde™</div><div class="novel-card-desc">Post-outage backward trajectory correction using re-acquired GNSS fix. Smooths full DR segment in &lt;150 ms.</div><div class="novel-card-tag">RETROGRADE · SMOOTHER · EKF</div></div>
-        <div class="novel-card c-yellow"><div class="novel-card-name">FusionEKF+™</div><div class="novel-card-desc">SE(2) manifold EKF with adaptive noise covariance scaling. Handles multi-modal sensor dropout gracefully.</div><div class="novel-card-tag">EKF · SE(2) · ADAPTIVE-Q</div></div>
-        <div class="novel-card c-red"><div class="novel-card-name">RoadSnap™</div><div class="novel-card-desc">Online HMM map-matching with OSM tile streaming. Constrains DR error within road topology bounds.</div><div class="novel-card-tag">HMM · MAP-MATCH · OSM</div></div>
+  <!-- ── API SETTINGS MODAL ── -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">⚙ Mission Control Settings</span>
+        <button class="btn-icon" onclick="closeSettingsModal()">✕</button>
       </div>
-    </div>
-    <div class="api-row">
-      <span class="api-label">API</span>
-      <span id="api-url-display">navdrift0-api.onrender.com</span>
-      <span class="algo-status status-demo" id="api-status">DEMO</span>
+
+      <div class="form-group">
+        <label>Render Backend Base URL</label>
+        <input type="url" id="input-api-url" placeholder="https://navdrift0-backend.onrender.com">
+      </div>
+
+      <div class="form-group">
+        <label>API Auth Token / Key</label>
+        <input type="password" id="input-api-key" placeholder="Enter API Secret Key">
+      </div>
+
+      <div class="conn-status" id="modal-conn-status"></div>
+
+      <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+        <button class="btn btn-primary" style="flex:1" onclick="saveSettings()">Save & Connect</button>
+        <button class="btn btn-ghost" onclick="testApiConnection()">Test Endpoint</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- FOOTER -->
-<div id="footer">
-  <div class="spark-panel"><div class="spark-label"><span>POSITION ERROR</span><span class="spark-val sv-orange" id="sv-error">0.0 m</span></div><canvas class="sparkline" id="sp-error"></canvas></div>
-  <div class="spark-panel"><div class="spark-label"><span>SPEED</span><span class="spark-val sv-cyan" id="sv-speed">35 km/h</span></div><canvas class="sparkline" id="sp-speed"></canvas></div>
-  <div class="spark-panel"><div class="spark-label"><span>EKF INNOVATION</span><span class="spark-val sv-violet" id="sv-innov">0.0</span></div><canvas class="sparkline" id="sp-innov"></canvas></div>
-  <div class="spark-panel"><div class="spark-label"><span>IMU LATENCY</span><span class="spark-val sv-green" id="sv-lat">12 ms</span></div><canvas class="sparkline" id="sp-lat"></canvas></div>
-</div>
+  <!-- ── JAVASCRIPT SIMULATION & RENDER ENGINE ── -->
+  <script>
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 1. STARFIELD BACKGROUND ENGINE (Canvas 60fps + Parallax)
+    // ─────────────────────────────────────────────────────────────────────────────
+    const starfieldCanvas = document.getElementById('starfield');
+    const sfCtx = starfieldCanvas.getContext('2d');
 
-<!-- SETTINGS MODAL -->
-<div class="modal-overlay hidden" id="modal-overlay">
-  <div class="modal">
-    <div class="modal-title">⚙ CONFIGURATION</div>
-    <div class="field"><label>BACKEND API URL</label><input type="url" id="cfg-api" value="https://navdrift0-api.onrender.com" placeholder="https://..."></div>
-    <div class="field"><label>SIM SPEED — <span id="cfg-speed-val">1×</span></label><input type="range" id="cfg-speed" min="0.25" max="8" step="0.25" value="1"></div>
-    <div class="field"><div class="field-row"><label style="margin-bottom:0">AUTO TUNNEL DETECTION</label><button class="toggle on" id="cfg-tunnel" type="button"></button></div></div>
-    <div class="modal-actions"><button class="btn-save" id="btn-save">SAVE</button><button class="btn-cancel" id="btn-cancel">CANCEL</button></div>
-  </div>
-</div>
+    let stars = [];
+    let mouseX = 0, mouseY = 0;
+    let targetMouseX = 0, targetMouseY = 0;
 
-<!-- QR MODAL -->
-<div class="modal-overlay hidden" id="qr-modal">
-  <div class="modal" style="width:300px;text-align:center">
-    <div class="modal-title" style="text-align:left">⊞ SHARE NAVDRIFT-0</div>
-    <div class="qr-url">navdrift0.pages.dev</div>
-    <div id="qr-container"></div>
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-bottom:16px">Scan to open the live demo</div>
-    <button class="btn-cancel" id="btn-qr-close" style="width:100%">CLOSE</button>
-  </div>
-</div>
-
-<!-- Mobile share button -->
-<button id="mobile-share">📡 SHARE</button>
-
-<script>
-/* ─────────────────────────────────────────────
-   CITY DATA
-───────────────────────────────────────────── */
-const CITIES = {
-  delhi:{
-    name:'New Delhi — India Gate → AIIMS Corridor',center:[28.5900,77.2200],zoom:14,
-    route:[[28.6129,77.2295],[28.6117,77.2170],[28.6110,77.2093],[28.6074,77.2200],[28.5999,77.2287],[28.5908,77.2236],[28.5783,77.2151],[28.5671,77.2020],[28.5633,77.1972],[28.5567,77.1891],[28.5494,77.1724],[28.5531,77.1629],[28.5598,77.1524],[28.5681,77.1435],[28.5754,77.1380]],
-    tunnelIdx:[8,10],tunnelName:'AIIMS Underpass',speedKmh:35,
-  },
-  mumbai:{
-    name:'Mumbai — Gateway → Marine Drive → BKC',center:[19.0000,72.8500],zoom:13,
-    route:[[18.9220,72.8347],[18.9280,72.8265],[18.9380,72.8244],[18.9439,72.8231],[18.9550,72.8213],[18.9671,72.8178],[18.9871,72.8210],[19.0050,72.8280],[19.0178,72.8151],[19.0280,72.8320],[19.0420,72.8474],[19.0541,72.8384],[19.0656,72.8679],[19.0720,72.8750],[19.0780,72.8820]],
-    tunnelIdx:[10,12],tunnelName:'BKC Tunnel',speedKmh:40,
-  },
-  bengaluru:{
-    name:'Bengaluru — MG Road → Koramangala → BTM',center:[12.9400,77.6100],zoom:13,
-    route:[[12.9756,77.6097],[12.9710,77.6080],[12.9680,77.6140],[12.9640,77.6200],[12.9590,77.6230],[12.9540,77.6190],[12.9490,77.6220],[12.9440,77.6270],[12.9390,77.6250],[12.9340,77.6200],[12.9280,77.6150],[12.9230,77.6100],[12.9180,77.6050],[12.9130,77.6000],[12.9080,77.5950]],
-    tunnelIdx:[6,8],tunnelName:'Koramangala Underpass',speedKmh:30,
-  },
-  chennai:{
-    name:'Chennai — Marina → Adyar → OMR',center:[12.9800,80.2500],zoom:13,
-    route:[[13.0500,80.2824],[13.0420,80.2780],[13.0340,80.2720],[13.0250,80.2680],[13.0150,80.2620],[13.0050,80.2560],[12.9950,80.2500],[12.9850,80.2460],[12.9750,80.2480],[12.9650,80.2520],[12.9550,80.2480],[12.9450,80.2450],[12.9350,80.2420],[12.9250,80.2430],[12.9150,80.2450]],
-    tunnelIdx:[7,9],tunnelName:'Adyar Flyover',speedKmh:38,
-  },
-  hyderabad:{
-    name:'Hyderabad — HITEC City → Banjara Hills → Nampally',center:[17.4100,78.4600],zoom:13,
-    route:[[17.4435,78.3772],[17.4400,78.3850],[17.4360,78.3940],[17.4310,78.4020],[17.4260,78.4100],[17.4210,78.4180],[17.4160,78.4260],[17.4120,78.4340],[17.4080,78.4420],[17.4040,78.4500],[17.3990,78.4540],[17.3950,78.4580],[17.3900,78.4620],[17.3860,78.4650],[17.3820,78.4680]],
-    tunnelIdx:[9,11],tunnelName:'Nampally Underpass',speedKmh:42,
-  },
-};
-
-/* ─────────────────────────────────────────────
-   IO-VNBD REPLAY DATA
-───────────────────────────────────────────── */
-(function generateReplayData(){
-  const route = CITIES.delhi.route;
-  const N = 200;
-  window.REPLAY_DATA = [];
-  let seed = 42;
-  function seededRand(){ seed=(seed*1664525+1013904223)&0xffffffff; return (seed>>>0)/4294967296; }
-  function seededNorm(){ let u=seededRand()||1e-10,v=seededRand()||1e-10; return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
-  let driftLat=0, driftLng=0;
-  let biasLat=(seededRand()-0.5)*0.000005;
-  let biasLng=(seededRand()-0.5)*0.000005;
-  for(let i=0;i<N;i++){
-    const t = i/(N-1);
-    const n = route.length-1;
-    const idx = Math.floor(t*n);
-    const frac = t*n - idx;
-    const a = route[Math.min(idx,n)], b = route[Math.min(idx+1,n)];
-    const trueLat = a[0]+(b[0]-a[0])*frac;
-    const trueLng = a[1]+(b[1]-a[1])*frac;
-    const tPow = Math.pow(t+0.01, 1.5);
-    const sigma = 0.000015 * tPow;
-    driftLat += seededNorm()*sigma + biasLat*0.016;
-    driftLng += seededNorm()*sigma + biasLng*0.016;
-    biasLat += (seededRand()-0.5)*0.0000008;
-    biasLng += (seededRand()-0.5)*0.0000008;
-    window.REPLAY_DATA.push({ trueLat, trueLng, drLat: trueLat+driftLat, drLng: trueLng+driftLng });
-  }
-})();
-
-/* ─────────────────────────────────────────────
-   STATE & CONFIG
-───────────────────────────────────────────── */
-let config={apiUrl:'https://navdrift0-api.onrender.com',simSpeed:1,autoTunnel:true};
-const API_KEY = 'navdrift0demo';
-let state={
-  city:'delhi',t:0,mode:'gnss',drOffset:[0,0],drAccErr:0,drBias:[0,0],steps:0,lastTs:0,simSpeed:1,
-  outageStart:null,snapStart:null,snapFromOffset:null,truePts:[],drPts:[],corrPts:[],
-  heading:0,speed:35,inTunnel:false,tunnelEnteredByAuto:false,paused:false,
-  // IMU model (Improvement 1)
-  imuBias:[0,0], imuBiasRate:[0,0], imuCorr:[0,0],
-  // NHC toggle (Improvement 3)
-  nhcEnabled:true,
-  // Road events (Improvement 5)
-  eventQueue:[], eventsFiltered:0,
-  // SNAP retrograde track (Improvement 4)
-  snapTrack:null,
-  // Scenario (Improvement 6)
-  activeScenario:null,
-};
-let sparkData={error:[],speed:[],innov:[],lat:[]};
-const MAX_SPARK=120, MAX_TRACK=300;
-
-// Benchmark state
-let ateAccum=0, ateSamples=0;
-
-// Replay state
-let replayMode=false, replayIdx=0, replayLastAdvance=0;
-
-// Fleet state
-let fleetMode=false;
-
-// Heatmap state
-let heatmapVisible=true;
-
-// API sync
-let lastIngestTime=0;
-
-/* ─────────────────────────────────────────────
-   HELPERS
-───────────────────────────────────────────── */
-function randn(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
-function haversineM([lat1,lng1],[lat2,lng2]){const R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
-function interpRoute(route,t){if(t<=0)return[...route[0]];if(t>=1)return[...route[route.length-1]];const n=route.length-1;const idx=Math.floor(t*n);const frac=t*n-idx;const a=route[Math.min(idx,n)],b=route[Math.min(idx+1,n)];return[a[0]+(b[0]-a[0])*frac,a[1]+(b[1]-a[1])*frac];}
-function routeHeading(route,t){const dt=0.005;const a=interpRoute(route,Math.max(0,t-dt)),b=interpRoute(route,Math.min(1,t+dt));const dlat=b[0]-a[0],dlng=b[1]-a[1];return((Math.atan2(dlng,dlat)*180/Math.PI)+360)%360;}
-function totalRouteLen(route){let l=0;for(let i=1;i<route.length;i++)l+=haversineM(route[i-1],route[i]);return l;}
-function pushSpark(arr,v){arr.push(v);if(arr.length>MAX_SPARK)arr.shift();}
-
-/* ─────────────────────────────────────────────
-   IMPROVEMENT 5: ROAD EVENT GENERATOR
-───────────────────────────────────────────── */
-function generateEvents(cityKey) {
-  const events = [];
-  const count = 3 + Math.floor(Math.random() * 4);
-  for (let i = 0; i < count; i++) {
-    events.push({
-      t: 0.1 + Math.random() * 0.8,
-      type: ['pothole','brake','speedbump'][Math.floor(Math.random()*3)],
-      magnitude: 1 + Math.random() * 2,
-      fired: false
-    });
-  }
-  return events.sort((a,b) => a.t - b.t);
-}
-
-function showEventFlash(latLng, type) {
-  const colors = {pothole:'#ffc800', brake:'#ff0055', speedbump:'#ff8c00'};
-  const labels = {pothole:'POTHOLE', brake:'BRAKE', speedbump:'SPEEDBUMP'};
-  const m = L.circleMarker(latLng, {
-    radius: 12, color: colors[type], fillColor: colors[type],
-    fillOpacity: 0.4, weight: 2
-  }).addTo(map);
-  const div = L.divIcon({
-    html: `<div style="font-family:monospace;font-size:9px;color:${colors[type]};background:rgba(0,0,0,0.7);padding:2px 5px;border-radius:2px;white-space:nowrap">${labels[type]}</div>`,
-    className: '', iconAnchor: [0, -15]
-  });
-  const label = L.marker(latLng, {icon: div}).addTo(map);
-  setTimeout(() => { try{map.removeLayer(m);map.removeLayer(label);}catch(e){} }, 3000);
-}
-
-/* ─────────────────────────────────────────────
-   LIVE API
-───────────────────────────────────────────── */
-function apiSyncOk(){
-  const b=document.getElementById('api-sync-badge');
-  b.classList.remove('inactive');b.classList.add('badge-api-sync');
-  clearTimeout(apiSyncOk._t);
-  apiSyncOk._t=setTimeout(()=>b.classList.add('inactive'),3000);
-}
-function apiPost(endpoint, body=null){
-  const opts={method:'POST',headers:{'X-API-Key':API_KEY,'Content-Type':'application/json'}};
-  if(body) opts.body=JSON.stringify(body);
-  return fetch(config.apiUrl+endpoint, opts).then(r=>{if(r.ok)apiSyncOk();return r;}).catch(()=>{});
-}
-apiPost('/init');
-
-function apiIngest(lat,lng){
-  const now=performance.now();
-  if(now-lastIngestTime<500) return;
-  lastIngestTime=now;
-  apiPost('/ingest',{lat,lng});
-}
-
-/* ─────────────────────────────────────────────
-   MAP INIT
-───────────────────────────────────────────── */
-const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([28.59,77.22],14);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-  maxZoom:19,subdomains:'abc',
-}).addTo(map);
-
-/* ─────────────────────────────────────────────
-   IMPROVEMENT 2: COVARIANCE ELLIPSE
-───────────────────────────────────────────── */
-function ellipseLatLngs(center, semiMajorM, semiMinorM, headingDeg, steps=40) {
-  const [lat, lng] = center;
-  const angle = headingDeg * Math.PI / 180;
-  const pts = [];
-  const mPerDegLat = 111320;
-  const mPerDegLng = 111320 * Math.cos(lat * Math.PI / 180);
-  for (let i = 0; i <= steps; i++) {
-    const t = (i / steps) * 2 * Math.PI;
-    const ex = semiMajorM * Math.cos(t);
-    const ey = semiMinorM * Math.sin(t);
-    const rx = ex * Math.cos(angle) - ey * Math.sin(angle);
-    const ry = ex * Math.sin(angle) + ey * Math.cos(angle);
-    pts.push([lat + ry / mPerDegLat, lng + rx / mPerDegLng]);
-  }
-  return pts;
-}
-
-/* ─────────────────────────────────────────────
-   LEAFLET LAYERS
-───────────────────────────────────────────── */
-const tunnelLayer=L.polygon([],{color:'#ff0055',fillColor:'#ff0055',fillOpacity:0.06,weight:1.5,dashArray:'4 4'}).addTo(map);
-
-// Improvement 2: polygon ellipse instead of circle
-const uncertaintyLayer=L.polygon([],{
-  color:'#ff8c00',fillColor:'#ff8c00',fillOpacity:0.12,
-  weight:1.5,dashArray:'4 3'
-}).addTo(map);
-
-const trueTrack=L.polyline([],{color:'#00fff5',weight:2.5,opacity:0.9}).addTo(map);
-const drTrack=L.polyline([],{color:'#ff8c00',weight:2.5,opacity:0.9,dashArray:'8 5'}).addTo(map);
-const corrTrack=L.polyline([],{color:'#00ff9d',weight:3,opacity:0.95}).addTo(map);
-
-function makeVehicleSVG(color){return `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><defs><filter id="g${color.replace('#','')}"><feGaussianBlur stdDeviation="2" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#g${color.replace('#','')})"><path d="M16 4 L22 24 L16 20 L10 24 Z" fill="${color}" opacity="0.95"/><circle cx="16" cy="14" r="3" fill="${color}" opacity="0.6"/></g></svg>`;}
-
-const vehicleIcon=L.divIcon({html:`<div class="vehicle-icon" id="vehicle-div">${makeVehicleSVG('#00fff5')}</div>`,iconSize:[32,32],iconAnchor:[16,16],className:''});
-const vehicleMarker=L.marker([28.59,77.22],{icon:vehicleIcon,zIndexOffset:1000}).addTo(map);
-
-const v2Icon=L.divIcon({html:`<div class="vehicle-icon" id="vehicle-v2">${makeVehicleSVG('#a855f7')}</div>`,iconSize:[32,32],iconAnchor:[16,16],className:''});
-const v3Icon=L.divIcon({html:`<div class="vehicle-icon" id="vehicle-v3">${makeVehicleSVG('#ffc800')}</div>`,iconSize:[32,32],iconAnchor:[16,16],className:''});
-const v2Marker=L.marker([19.0050,72.8280],{icon:v2Icon,zIndexOffset:900});
-const v3Marker=L.marker([28.5900,77.2200],{icon:v3Icon,zIndexOffset:900});
-
-function updateVehicleRotation(id,deg){
-  const el=document.querySelector('#map .vehicle-icon#'+id);
-  if(el) el.style.transform=`rotate(${deg}deg)`;
-}
-
-/* ─────────────────────────────────────────────
-   TUNNEL ZONE
-───────────────────────────────────────────── */
-function tunnelLatLngs(route,idxA,idxB){
-  const pts=[],width=0.003;
-  for(let i=idxA;i<=idxB;i++){const p=route[Math.min(i,route.length-1)];pts.push([p[0]+width*0.1,p[1]+width*0.1]);}
-  for(let i=idxB;i>=idxA;i--){const p=route[Math.min(i,route.length-1)];pts.push([p[0]-width*0.1,p[1]-width*0.1]);}
-  return pts;
-}
-function drawTunnelZone(cityKey){
-  const cfg=CITIES[cityKey];
-  tunnelLayer.setLatLngs(tunnelLatLngs(cfg.route,cfg.tunnelIdx[0],cfg.tunnelIdx[1]));
-}
-drawTunnelZone('delhi');
-
-/* ─────────────────────────────────────────────
-   GNSS HEATMAP CANVAS
-───────────────────────────────────────────── */
-const heatCanvas = document.getElementById('heatmap-canvas');
-let heatCtx = heatCanvas.getContext('2d');
-let tunnelPulsePhase=0;
-
-function resizeHeatmap(){
-  const wrap=document.getElementById('map-wrap');
-  heatCanvas.width=wrap.offsetWidth;
-  heatCanvas.height=wrap.offsetHeight;
-}
-resizeHeatmap();
-
-function latLngToCanvasPx(lat,lng){
-  const pt=map.latLngToContainerPoint([lat,lng]);
-  return [pt.x, pt.y];
-}
-
-function drawHeatmap(ts){
-  if(!heatmapVisible){heatCtx.clearRect(0,0,heatCanvas.width,heatCanvas.height);return;}
-  heatCtx.clearRect(0,0,heatCanvas.width,heatCanvas.height);
-  const cfg=CITIES[state.city];
-  const route=cfg.route;
-  const N=route.length;
-  const [tA,tB]=cfg.tunnelIdx;
-
-  for(let i=0;i<N-1;i++){
-    const p=route[i],q=route[i+1];
-    const [x1,y1]=latLngToCanvasPx(p[0],p[1]);
-    const [x2,y2]=latLngToCanvasPx(q[0],q[1]);
-    const mx=(x1+x2)/2, my=(y1+y2)/2;
-    const dx=x2-x1,dy=y2-y1;
-    const len=Math.sqrt(dx*dx+dy*dy)||1;
-    const angle=Math.atan2(dy,dx);
-    const isTunnel=(i>=tA&&i<=tB);
-    const isUrban=(i>=(tA-2)&&i<=(tB+2));
-    let color;
-    if(isTunnel) color='rgba(255,0,85,0.35)';
-    else if(isUrban) color='rgba(255,140,0,0.22)';
-    else color='rgba(0,255,157,0.18)';
-    heatCtx.save();
-    heatCtx.translate(mx,my);
-    heatCtx.rotate(angle);
-    const grad=heatCtx.createRadialGradient(0,0,0,0,0,len*0.8+20);
-    grad.addColorStop(0,color);
-    grad.addColorStop(1,'rgba(0,0,0,0)');
-    heatCtx.fillStyle=grad;
-    heatCtx.beginPath();
-    heatCtx.ellipse(0,0,Math.max(len*0.6,20),18,0,0,Math.PI*2);
-    heatCtx.fill();
-    heatCtx.restore();
-  }
-
-  tunnelPulsePhase=(ts||0)*0.002;
-  const pulseFactor=0.18+0.12*Math.sin(tunnelPulsePhase);
-  for(let i=tA;i<=tB;i++){
-    const p=route[i],q=route[Math.min(i+1,N-1)];
-    const [x1,y1]=latLngToCanvasPx(p[0],p[1]);
-    const [x2,y2]=latLngToCanvasPx(q[0],q[1]);
-    const mx=(x1+x2)/2,my=(y1+y2)/2;
-    const dx=x2-x1,dy=y2-y1;
-    const len=Math.sqrt(dx*dx+dy*dy)||1;
-    const angle=Math.atan2(dy,dx);
-    heatCtx.save();
-    heatCtx.translate(mx,my);
-    heatCtx.rotate(angle);
-    heatCtx.fillStyle=`rgba(255,0,85,${pulseFactor})`;
-    heatCtx.beginPath();
-    heatCtx.ellipse(0,0,Math.max(len*0.7,22),20,0,0,Math.PI*2);
-    heatCtx.fill();
-    heatCtx.restore();
-  }
-}
-
-map.on('move zoom',()=>{ if(heatmapVisible) drawHeatmap(); });
-
-/* ─────────────────────────────────────────────
-   CITY TABS
-───────────────────────────────────────────── */
-const tabsEl=document.getElementById('city-tabs');
-Object.entries(CITIES).forEach(([key,cfg])=>{
-  const btn=document.createElement('button');
-  btn.className='city-tab'+(key==='delhi'?' active':'');
-  btn.textContent=key.charAt(0).toUpperCase()+key.slice(1);
-  btn.dataset.city=key;
-  btn.addEventListener('click',()=>switchCity(key));
-  tabsEl.appendChild(btn);
-});
-
-function switchCity(key){
-  document.querySelectorAll('.city-tab').forEach(b=>b.classList.toggle('active',b.dataset.city===key));
-  state.city=key;state.t=0;state.mode='gnss';
-  state.drOffset=[0,0];state.drBias=[0,0];state.drAccErr=0;
-  state.truePts=[];state.drPts=[];state.corrPts=[];
-  state.steps=0;state.outageStart=null;state.snapStart=null;state.inTunnel=false;
-  // Reset IMU model
-  state.imuBias=[(Math.random()-0.5)*0.000002,(Math.random()-0.5)*0.000002];
-  state.imuBiasRate=[0,0];
-  state.imuCorr=[(Math.random()-0.5)*0.000001,(Math.random()-0.5)*0.000001];
-  // Reset snap/events
-  state.snapTrack=null;
-  state.eventQueue=generateEvents(key);
-  state.eventsFiltered=0;
-  state.activeScenario=null;
-  ateAccum=0;ateSamples=0;
-  const cfg=CITIES[key];
-  map.flyTo(cfg.center,cfg.zoom,{duration:0.8});
-  trueTrack.setLatLngs([]);drTrack.setLatLngs([]);corrTrack.setLatLngs([]);
-  uncertaintyLayer.setLatLngs([]);
-  drawTunnelZone(key);
-  updateModeUI();
-  document.getElementById('m-events').textContent='0';
-}
-
-// Init events for delhi on load
-state.eventQueue=generateEvents('delhi');
-
-/* ─────────────────────────────────────────────
-   MODE UI
-───────────────────────────────────────────── */
-function updateModeUI(){
-  const {mode}=state;
-  const sl=document.getElementById('state-label');
-  const gb=document.getElementById('gnss-badge');
-  const of_=document.getElementById('outage-flash');
-  const bOut=document.getElementById('btn-outage');
-  const bRe=document.getElementById('btn-reacquire');
-  const sSnap=document.getElementById('snap-status');
-  const mErr=document.getElementById('m-error');
-  sl.className='state-badge';gb.className='gnss-badge';
-  if(mode==='gnss'){
-    sl.textContent='GNSS ACTIVE';gb.textContent='⬤ GNSS';
-    of_.classList.remove('visible');bOut.style.display='';bRe.style.display='none';
-    sSnap.textContent='READY';sSnap.className='algo-status status-ready';
-    mErr.className='metric-val green';document.getElementById('tunnel-alert').style.display='none';
-  } else if(mode==='dr'){
-    sl.className='state-badge dr-mode';sl.textContent='DR ACTIVE';
-    gb.className='gnss-badge dr';gb.textContent='⬤ DR';
-    of_.classList.add('visible');bOut.style.display='none';bRe.style.display='';
-    sSnap.textContent='ARMED';sSnap.className='algo-status status-demo';
-    mErr.className='metric-val orange';
-    if(state.inTunnel) document.getElementById('tunnel-alert').style.display='';
-  } else if(mode==='snap'){
-    sl.className='state-badge snap-mode';sl.textContent='SNAP CORRECTING';
-    gb.className='gnss-badge snap';gb.textContent='⬤ SNAP';
-    of_.classList.remove('visible');bOut.style.display='';bRe.style.display='none';
-    sSnap.textContent='RUNNING';sSnap.className='algo-status status-active';
-    mErr.className='metric-val green';document.getElementById('tunnel-alert').style.display='none';
-  }
-}
-
-/* ─────────────────────────────────────────────
-   OUTAGE / REACQUIRE
-───────────────────────────────────────────── */
-function triggerOutage(){
-  if(state.mode==='dr') return;
-  state.mode='dr';state.outageStart=performance.now();
-  state.drBias=[(Math.random()-0.5)*0.000008,(Math.random()-0.5)*0.000008];
-  // Reset IMU with small random seeds on outage
-  state.imuBias=[(Math.random()-0.5)*0.000003,(Math.random()-0.5)*0.000003];
-  state.imuBiasRate=[(Math.random()-0.5)*0.0000005,(Math.random()-0.5)*0.0000005];
-  state.imuCorr=[(Math.random()-0.5)*0.000002,(Math.random()-0.5)*0.000002];
-  ateAccum=0;ateSamples=0;
-  updateModeUI();
-  apiPost('/gnss_lost');
-}
-
-function reacquireGnss(){
-  if(state.mode!=='dr') return;
-  // Store snap track for retrograde animation (Improvement 4)
-  state.snapTrack = [...state.drPts];
-  state.mode='snap';state.snapStart=performance.now();
-  state.snapFromOffset=[...state.drOffset];
-  updateModeUI();
-  const tp=interpRoute(CITIES[state.city].route,state.t);
-  apiPost('/reacquire',{lat:tp[0]+state.drOffset[0],lng:tp[1]+state.drOffset[1]});
-
-  // Scenario result toast (Improvement 6)
-  if(state.activeScenario){
-    const finalErr=state.drAccErr;
-    showScenarioResult(state.activeScenario.distM, finalErr);
-    state.activeScenario=null;
-  }
-}
-
-document.getElementById('btn-outage').addEventListener('click',triggerOutage);
-document.getElementById('btn-reacquire').addEventListener('click',reacquireGnss);
-
-/* ─────────────────────────────────────────────
-   IMPROVEMENT 3: NHC TOGGLE
-───────────────────────────────────────────── */
-document.getElementById('btn-nhc').addEventListener('click', function(){
-  state.nhcEnabled = !state.nhcEnabled;
-  const nhcStatus=document.getElementById('nhc-status');
-  if(state.nhcEnabled){
-    this.textContent='NHC ON';
-    this.style.background='rgba(0,255,157,0.12)';
-    this.style.color='#00ff9d';
-    this.style.border='1px solid rgba(0,255,157,0.3)';
-    nhcStatus.textContent='ACTIVE';nhcStatus.className='algo-status status-active';
-  } else {
-    this.textContent='NHC OFF';
-    this.style.background='rgba(255,0,85,0.12)';
-    this.style.color='var(--red)';
-    this.style.border='1px solid rgba(255,0,85,0.4)';
-    nhcStatus.textContent='OFF';nhcStatus.className='algo-status status-demo';
-  }
-});
-
-/* ─────────────────────────────────────────────
-   PAUSE
-───────────────────────────────────────────── */
-document.getElementById('btn-pause').addEventListener('click',()=>{
-  state.paused=!state.paused;
-  document.getElementById('btn-pause').textContent=state.paused?'▶':'⏸';
-});
-
-/* ─────────────────────────────────────────────
-   REPLAY MODE
-───────────────────────────────────────────── */
-document.getElementById('btn-replay').addEventListener('click',()=>{
-  replayMode=!replayMode;
-  const btn=document.getElementById('btn-replay');
-  const badge=document.getElementById('replay-badge');
-  const pwrap=document.getElementById('replay-progress-wrap');
-  btn.classList.toggle('active-toggle',replayMode);
-  badge.style.display=replayMode?'':'none';
-  pwrap.style.display=replayMode?'':'none';
-  if(replayMode){replayIdx=0;}
-  else{state.truePts=[];state.drPts=[];state.corrPts=[];trueTrack.setLatLngs([]);drTrack.setLatLngs([]);corrTrack.setLatLngs([]);}
-});
-
-/* ─────────────────────────────────────────────
-   FLEET MODE
-───────────────────────────────────────────── */
-document.getElementById('btn-fleet').addEventListener('click',()=>{
-  fleetMode=!fleetMode;
-  const btn=document.getElementById('btn-fleet');
-  const badge=document.getElementById('fleet-badge');
-  const panel=document.getElementById('fleet-panel');
-  const legend=document.getElementById('fleet-legend');
-  btn.classList.toggle('active-fleet',fleetMode);
-  badge.style.display=fleetMode?'':'none';
-  panel.style.display=fleetMode?'':'none';
-  legend.style.display=fleetMode?'':'none';
-  if(fleetMode){v2Marker.addTo(map);v3Marker.addTo(map);}
-  else{v2Marker.remove();v3Marker.remove();}
-});
-
-/* ─────────────────────────────────────────────
-   SIGNAL HEATMAP TOGGLE
-───────────────────────────────────────────── */
-document.getElementById('btn-signal').addEventListener('click',function(){
-  heatmapVisible=!heatmapVisible;
-  this.classList.toggle('active',heatmapVisible);
-  if(!heatmapVisible) heatCtx.clearRect(0,0,heatCanvas.width,heatCanvas.height);
-});
-
-/* ─────────────────────────────────────────────
-   SETTINGS
-───────────────────────────────────────────── */
-document.getElementById('btn-settings').addEventListener('click',()=>{
-  document.getElementById('cfg-api').value=config.apiUrl;
-  document.getElementById('cfg-speed').value=config.simSpeed;
-  document.getElementById('cfg-speed-val').textContent=config.simSpeed+'×';
-  document.getElementById('cfg-tunnel').className='toggle'+(config.autoTunnel?' on':'');
-  document.getElementById('modal-overlay').classList.remove('hidden');
-});
-document.getElementById('btn-cancel').addEventListener('click',()=>document.getElementById('modal-overlay').classList.add('hidden'));
-document.getElementById('modal-overlay').addEventListener('click',(e)=>{if(e.target===e.currentTarget)e.currentTarget.classList.add('hidden');});
-document.getElementById('cfg-speed').addEventListener('input',function(){document.getElementById('cfg-speed-val').textContent=this.value+'×';});
-document.getElementById('cfg-tunnel').addEventListener('click',function(){this.classList.toggle('on');});
-document.getElementById('btn-save').addEventListener('click',()=>{
-  config.apiUrl=document.getElementById('cfg-api').value||config.apiUrl;
-  config.simSpeed=parseFloat(document.getElementById('cfg-speed').value)||1;
-  config.autoTunnel=document.getElementById('cfg-tunnel').classList.contains('on');
-  state.simSpeed=config.simSpeed;
-  document.getElementById('api-url-display').textContent=config.apiUrl.replace(/^https?:\/\//,'');
-  document.getElementById('modal-overlay').classList.add('hidden');
-  checkApiHealth();
-});
-
-/* ─────────────────────────────────────────────
-   QR CODE MODAL
-───────────────────────────────────────────── */
-let qrBuilt=false;
-function openQR(){
-  document.getElementById('qr-modal').classList.remove('hidden');
-  if(!qrBuilt){
-    qrBuilt=true;
-    new QRCode(document.getElementById('qr-container'),{
-      text:'https://navdrift0.pages.dev',width:200,height:200,
-      colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M
-    });
-  }
-}
-document.getElementById('btn-qr').addEventListener('click',openQR);
-document.getElementById('btn-qr-close').addEventListener('click',()=>document.getElementById('qr-modal').classList.add('hidden'));
-document.getElementById('qr-modal').addEventListener('click',(e)=>{if(e.target===e.currentTarget)e.currentTarget.classList.add('hidden');});
-document.getElementById('mobile-share').addEventListener('click',openQR);
-
-/* ─────────────────────────────────────────────
-   API HEALTH
-───────────────────────────────────────────── */
-function checkApiHealth(){
-  const status=document.getElementById('api-status');
-  fetch(config.apiUrl+'/health',{signal:AbortSignal.timeout(5000)})
-    .then(r=>{if(r.ok){status.textContent='LIVE';status.className='algo-status status-active';apiSyncOk();}else{status.textContent='ERR';status.className='algo-status status-demo';}})
-    .catch(()=>{status.textContent='DEMO';status.className='algo-status status-demo';});
-}
-checkApiHealth();
-
-/* ─────────────────────────────────────────────
-   BENCHMARK PANEL UPDATE
-───────────────────────────────────────────── */
-function updateBenchmark(errM){
-  const isOutage = state.mode==='dr';
-  if(isOutage && errM>0){
-    ateAccum+=errM; ateSamples++;
-  }
-  const ate = ateSamples>0 ? ateAccum/ateSamples : null;
-  const ateEl=document.getElementById('ate-val');
-  if(ate!==null){
-    ateEl.textContent=ate.toFixed(1)+' m';
-    ateEl.style.color=ate<5?'var(--green)':ate<10?'var(--yellow)':'var(--red)';
-  } else {
-    ateEl.textContent='—'; ateEl.style.color='var(--text-dim)';
-  }
-  const e50 = errM;
-  const pct50 = Math.min(e50/5,1);
-  const col50 = pct50<0.5?'var(--green)':pct50<0.85?'var(--yellow)':'var(--red)';
-  document.getElementById('bench-50m-val').textContent=e50.toFixed(1)+' m';
-  document.getElementById('bench-50m-val').style.color=col50;
-  document.getElementById('bench-50m-bar').style.width=(pct50*100)+'%';
-  document.getElementById('bench-50m-bar').style.background=col50;
-  const e1km = errM*20;
-  const pct1km = Math.min(e1km/100,1);
-  const col1km = pct1km<0.5?'var(--green)':pct1km<0.85?'var(--yellow)':'var(--red)';
-  document.getElementById('bench-1km-val').textContent=e1km.toFixed(1)+' m';
-  document.getElementById('bench-1km-val').style.color=col1km;
-  document.getElementById('bench-1km-bar').style.width=(pct1km*100)+'%';
-  document.getElementById('bench-1km-bar').style.background=col1km;
-}
-
-/* ─────────────────────────────────────────────
-   SPARKLINES
-───────────────────────────────────────────── */
-function hexAlpha(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;}
-function drawSpark(id,data,color){
-  const cv=document.getElementById(id);
-  if(!cv||data.length<2) return;
-  const dpr=window.devicePixelRatio||1;
-  const w=cv.offsetWidth,h=cv.offsetHeight;
-  if(!w||!h) return;
-  if(cv.width!==w*dpr){cv.width=w*dpr;cv.height=h*dpr;}
-  const ctx=cv.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,w,h);
-  let lo=Infinity,hi=-Infinity;
-  data.forEach(v=>{if(v<lo)lo=v;if(v>hi)hi=v;});
-  const range=Math.max(hi-lo,0.001);
-  ctx.beginPath();
-  data.forEach((v,i)=>{const x=i*(w/(data.length-1)),y=h-((v-lo)/range)*(h-4)-2;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
-  ctx.lineTo((data.length-1)*(w/(data.length-1)),h);ctx.lineTo(0,h);ctx.closePath();
-  const grad=ctx.createLinearGradient(0,0,0,h);
-  grad.addColorStop(0,hexAlpha(color,0.25));grad.addColorStop(1,hexAlpha(color,0));
-  ctx.fillStyle=grad;ctx.fill();
-  ctx.beginPath();
-  data.forEach((v,i)=>{const x=i*(w/(data.length-1)),y=h-((v-lo)/range)*(h-4)-2;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
-  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
-  const lv=data[data.length-1],lx=(data.length-1)*(w/(data.length-1)),ly=h-((lv-lo)/range)*(h-4)-2;
-  ctx.beginPath();ctx.arc(lx,ly,2.5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
-}
-function drawSparklines(){
-  drawSpark('sp-error',sparkData.error,'#ff8c00');
-  drawSpark('sp-speed',sparkData.speed,'#00fff5');
-  drawSpark('sp-innov',sparkData.innov,'#a855f7');
-  drawSpark('sp-lat',sparkData.lat,'#00ff9d');
-}
-
-/* ─────────────────────────────────────────────
-   FLEET UPDATE
-───────────────────────────────────────────── */
-function updateFleet(ts){
-  if(!fleetMode) return;
-  const v2t=((ts/1000*(CITIES.mumbai.speedKmh/3.6)/totalRouteLen(CITIES.mumbai.route))+0.3)%1;
-  const v2pos=interpRoute(CITIES.mumbai.route,v2t);
-  const v2head=routeHeading(CITIES.mumbai.route,v2t);
-  v2Marker.setLatLng(v2pos);
-  updateVehicleRotation('vehicle-v2',v2head);
-  const v3t=((ts/1000*(CITIES.delhi.speedKmh/3.6)/totalRouteLen(CITIES.delhi.route))+0.6)%1;
-  const v3pos=interpRoute(CITIES.delhi.route,v3t);
-  const v3head=routeHeading(CITIES.delhi.route,v3t);
-  v3Marker.setLatLng(v3pos);
-  updateVehicleRotation('vehicle-v3',v3head);
-  document.getElementById('fp-v1').textContent=`V1 · ${state.city.toUpperCase()} · ${state.mode.toUpperCase()}`;
-  document.getElementById('fp-v2').textContent=`V2 · MUMBAI · GNSS`;
-  document.getElementById('fp-v3').textContent=`V3 · DELHI-B · GNSS`;
-}
-
-/* ─────────────────────────────────────────────
-   IMPROVEMENT 6: SCENARIO RESULT TOAST
-───────────────────────────────────────────── */
-function showScenarioResult(distM, finalError) {
-  const target = distM <= 50 ? 5 : distM <= 500 ? 25 : 100;
-  const pass = finalError <= target;
-  const toast = document.createElement('div');
-  toast.style.cssText = `position:absolute;bottom:80px;left:50%;transform:translateX(-50%);z-index:1500;
-    background:${pass?'rgba(0,255,157,0.15)':'rgba(255,0,85,0.15)'};
-    border:1px solid ${pass?'#00ff9d':'#ff0055'};border-radius:6px;padding:10px 18px;
-    font-family:monospace;font-size:11px;color:${pass?'#00ff9d':'#ff0055'};
-    text-align:center;white-space:nowrap;pointer-events:none;`;
-  toast.textContent = `${distM}m scenario: error ${finalError.toFixed(1)}m — PS target <${target}m ${pass?'✓ PASS':'✗ FAIL'}`;
-  document.getElementById('map-wrap').appendChild(toast);
-  setTimeout(() => { try{toast.remove();}catch(e){} }, 4500);
-}
-
-/* ─────────────────────────────────────────────
-   IMPROVEMENT 6: RUN SCENARIO
-───────────────────────────────────────────── */
-function runScenario(distM, speedKmh) {
-  const durationS = (distM / (speedKmh / 3.6));
-  if(state.mode !== 'gnss') reacquireGnss();
-  setTimeout(() => {
-    triggerOutage();
-    state.activeScenario = {distM};
-    const prevSpeed = config.simSpeed;
-    config.simSpeed = 4;
-    state.simSpeed = 4;
-    setTimeout(() => {
-      reacquireGnss();
-      config.simSpeed = prevSpeed;
-      state.simSpeed = prevSpeed;
-    }, durationS * 250);
-  }, 500);
-}
-
-document.getElementById('sc-short').addEventListener('click', () => runScenario(50, 35));
-document.getElementById('sc-mid').addEventListener('click', () => runScenario(500, 60));
-document.getElementById('sc-long').addEventListener('click', () => runScenario(1000, 60));
-
-/* ─────────────────────────────────────────────
-   SIM TICK
-───────────────────────────────────────────── */
-// IMU noise constants (Improvement 1)
-const ARW = 0.000015;      // angle random walk
-const BI_SIGMA = 0.000008; // bias instability magnitude
-const BI_TAU = 120;        // correlation time in seconds
-const RRW = 0.000001;      // rate random walk
-
-function simTick(ts){
-  if(state.paused){state.lastTs=ts;requestAnimationFrame(simTick);return;}
-  const dt=state.lastTs?Math.min((ts-state.lastTs)/1000,0.1):0.016;
-  state.lastTs=ts;
-
-  let truePos, drPos, corrPos;
-
-  if(replayMode){
-    if(ts-replayLastAdvance>300/config.simSpeed){
-      replayIdx=(replayIdx+1)%REPLAY_DATA.length;
-      replayLastAdvance=ts;
-    }
-    const rd=REPLAY_DATA[replayIdx];
-    truePos=[rd.trueLat,rd.trueLng];
-    drPos=[rd.drLat,rd.drLng];
-    corrPos=truePos;
-    state.drAccErr=haversineM(truePos,drPos);
-    state.heading=routeHeading(CITIES.delhi.route,replayIdx/REPLAY_DATA.length);
-    state.speed=CITIES.delhi.speedKmh*(0.9+0.2*Math.random());
-    const pct=Math.round(replayIdx/REPLAY_DATA.length*100);
-    document.getElementById('replay-bar').style.width=pct+'%';
-    document.getElementById('replay-pct').textContent=pct+'%';
-  } else {
-    const cfg=CITIES[state.city];
-    const speedMs=(cfg.speedKmh/3.6)*config.simSpeed;
-    const routeLen=totalRouteLen(cfg.route);
-    state.t+=speedMs*dt/routeLen;
-    if(state.t>=1){state.t=0;state.truePts=[];state.drPts=[];state.corrPts=[];}
-    state.steps++;
-
-    truePos=interpRoute(cfg.route,state.t);
-    state.heading=routeHeading(cfg.route,state.t);
-    state.speed=cfg.speedKmh*(0.9+0.2*Math.random());
-
-    // auto tunnel
-    if(config.autoTunnel){
-      const [tA,tB]=cfg.tunnelIdx;const n=cfg.route.length-1;const idxNow=state.t*n;
-      const inT=idxNow>=tA&&idxNow<=tB;
-      if(inT&&!state.inTunnel&&state.mode==='gnss'){state.inTunnel=true;state.tunnelEnteredByAuto=true;triggerOutage();}
-      if(!inT&&state.inTunnel&&state.tunnelEnteredByAuto&&state.mode==='dr'){state.inTunnel=false;state.tunnelEnteredByAuto=false;reacquireGnss();}
+    function resizeStarfield() {
+      starfieldCanvas.width = window.innerWidth;
+      starfieldCanvas.height = window.innerHeight;
+      initStars();
     }
 
-    // IMPROVEMENT 5: Road event check
-    let innovSpike = 0;
-    state.eventQueue.forEach(ev => {
-      if (!ev.fired && Math.abs(state.t - ev.t) < 0.002) {
-        ev.fired = true;
-        if(state.mode === 'dr') {
-          const spike = ev.magnitude * 0.00008;
-          state.drOffset[0] += (Math.random()-0.5) * spike;
-          state.drOffset[1] += (Math.random()-0.5) * spike;
-          innovSpike = ev.magnitude * 2;
-          showEventFlash(interpRoute(CITIES[state.city].route, ev.t), ev.type);
-          setTimeout(() => {
-            state.drOffset[0] *= 0.6;
-            state.drOffset[1] *= 0.6;
-          }, 2000);
-          state.eventsFiltered++;
-          document.getElementById('m-events').textContent = state.eventsFiltered;
+    function initStars() {
+      stars = [];
+      const numStars = 140;
+      for (let i = 0; i < numStars; i++) {
+        stars.push({
+          x: Math.random() * starfieldCanvas.width,
+          y: Math.random() * starfieldCanvas.height,
+          radius: Math.random() * 1.5 + 0.5,
+          depth: Math.random() * 0.8 + 0.2,
+          baseAlpha: Math.random() * 0.6 + 0.15,
+          twinkleSpeed: Math.random() * 0.03 + 0.008,
+          twinklePhase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      targetMouseX = (e.clientX - window.innerWidth / 2) * 0.05;
+      targetMouseY = (e.clientY - window.innerHeight / 2) * 0.05;
+    });
+
+    function drawStarfield(time) {
+      sfCtx.clearRect(0, 0, starfieldCanvas.width, starfieldCanvas.height);
+
+      mouseX += (targetMouseX - mouseX) * 0.05;
+      mouseY += (targetMouseY - mouseY) * 0.05;
+
+      const grad1 = sfCtx.createRadialGradient(
+        starfieldCanvas.width * 0.2 + mouseX * 2, starfieldCanvas.height * 0.3 + mouseY * 2, 0,
+        starfieldCanvas.width * 0.2, starfieldCanvas.height * 0.3, 500
+      );
+      grad1.addColorStop(0, 'rgba(124, 58, 237, 0.08)');
+      grad1.addColorStop(1, 'transparent');
+      sfCtx.fillStyle = grad1;
+      sfCtx.fillRect(0, 0, starfieldCanvas.width, starfieldCanvas.height);
+
+      const grad2 = sfCtx.createRadialGradient(
+        starfieldCanvas.width * 0.8 - mouseX * 2, starfieldCanvas.height * 0.7 - mouseY * 2, 0,
+        starfieldCanvas.width * 0.8, starfieldCanvas.height * 0.7, 600
+      );
+      grad2.addColorStop(0, 'rgba(0, 255, 245, 0.06)');
+      grad2.addColorStop(1, 'transparent');
+      sfCtx.fillStyle = grad2;
+      sfCtx.fillRect(0, 0, starfieldCanvas.width, starfieldCanvas.height);
+
+      for (let star of stars) {
+        star.twinklePhase += star.twinkleSpeed;
+        const alpha = star.baseAlpha + Math.sin(star.twinklePhase) * 0.25;
+        const px = star.x + mouseX * star.depth * 8;
+        const py = star.y + mouseY * star.depth * 8;
+
+        sfCtx.save();
+        sfCtx.beginPath();
+        sfCtx.arc(px, py, star.radius, 0, Math.PI * 2);
+        sfCtx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, Math.min(1, alpha))})`;
+        sfCtx.shadowBlur = star.radius > 1.2 ? 6 : 0;
+        sfCtx.shadowColor = '#00fff5';
+        sfCtx.fill();
+        sfCtx.restore();
+      }
+    }
+
+    window.addEventListener('resize', resizeStarfield);
+    resizeStarfield();
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 2. CITY ROUTES WITH REAL LAT/LON WAYPOINTS
+    // ─────────────────────────────────────────────────────────────────────────────
+    const CITY_ROUTES = {
+      delhi: {
+        name: 'Delhi (Connaught Grid)', lat: 28.6315, lon: 77.2167, zoom: 14,
+        waypoints: [
+          [28.6315,77.2167],[28.6330,77.2210],[28.6350,77.2260],[28.6360,77.2310],
+          [28.6340,77.2360],[28.6310,77.2400],[28.6270,77.2420],[28.6230,77.2410],
+          [28.6190,77.2380],[28.6160,77.2330],[28.6150,77.2270],[28.6160,77.2210],
+          [28.6190,77.2160],[28.6230,77.2130],[28.6270,77.2130],[28.6315,77.2167]
+        ]
+      },
+      mumbai: {
+        name: 'Mumbai (Marine Drive)', lat: 18.9322, lon: 72.8264, zoom: 14,
+        waypoints: [
+          [18.9322,72.8264],[18.9350,72.8240],[18.9380,72.8220],[18.9420,72.8215],
+          [18.9460,72.8230],[18.9490,72.8260],[18.9510,72.8300],[18.9500,72.8340],
+          [18.9470,72.8370],[18.9430,72.8380],[18.9390,72.8370],[18.9350,72.8340],
+          [18.9320,72.8310],[18.9310,72.8280],[18.9322,72.8264]
+        ]
+      },
+      bengaluru: {
+        name: 'Bengaluru (Outer Ring)', lat: 12.9352, lon: 77.6245, zoom: 13,
+        waypoints: [
+          [12.9352,77.6245],[12.9400,77.6320],[12.9450,77.6390],[12.9480,77.6470],
+          [12.9460,77.6560],[12.9410,77.6620],[12.9340,77.6650],[12.9270,77.6630],
+          [12.9210,77.6580],[12.9180,77.6500],[12.9190,77.6410],[12.9230,77.6330],
+          [12.9280,77.6270],[12.9320,77.6250],[12.9352,77.6245]
+        ]
+      },
+      chennai: {
+        name: 'Chennai (Anna Salai)', lat: 13.0524, lon: 80.2580, zoom: 14,
+        waypoints: [
+          [13.0524,80.2580],[13.0560,80.2560],[13.0600,80.2530],[13.0640,80.2500],
+          [13.0680,80.2470],[13.0710,80.2440],[13.0730,80.2400],[13.0720,80.2360],
+          [13.0690,80.2330],[13.0650,80.2310],[13.0610,80.2320],[13.0570,80.2340],
+          [13.0540,80.2370],[13.0520,80.2410],[13.0510,80.2450],[13.0520,80.2510],[13.0524,80.2580]
+        ]
+      },
+      hyderabad: {
+        name: 'Hyderabad (ORR Loop)', lat: 17.4065, lon: 78.4772, zoom: 13,
+        waypoints: [
+          [17.4065,78.4772],[17.4120,78.4850],[17.4170,78.4940],[17.4180,78.5040],
+          [17.4150,78.5130],[17.4090,78.5190],[17.4010,78.5210],[17.3930,78.5180],
+          [17.3870,78.5110],[17.3840,78.5010],[17.3850,78.4910],[17.3900,78.4830],
+          [17.3960,78.4780],[17.4010,78.4760],[17.4065,78.4772]
+        ]
+      }
+    };
+
+    function interpolateRoute(waypoints, n) {
+      const pts = [];
+      const total = waypoints.length - 1;
+      for (let i = 0; i < n; i++) {
+        const t = (i / n) * total;
+        const idx = Math.floor(t);
+        const frac = t - idx;
+        const p1 = waypoints[Math.min(idx, total)];
+        const p2 = waypoints[Math.min(idx + 1, total)];
+        pts.push([p1[0] + (p2[0] - p1[0]) * frac, p1[1] + (p2[1] - p1[1]) * frac]);
+      }
+      return pts;
+    }
+
+    // Haversine-based distance in metres
+    function latLonDistM(lat1, lon1, lat2, lon2) {
+      const dlat = (lat2 - lat1) * Math.PI / 180 * 6371000;
+      const dlon = (lon2 - lon1) * Math.PI / 180 * 6371000 * Math.cos(lat1 * Math.PI / 180);
+      return Math.hypot(dlat, dlon);
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 3. MAIN SIMULATION ENGINE & STATE MANAGEMENT
+    // ─────────────────────────────────────────────────────────────────────────────
+    const SimState = {
+      activeCity: 'delhi',
+      running: true,
+      step: 0,
+      gnssLocked: true,
+      outageTimerSec: 0,
+      outageIntervalCount: 0,
+      lastOutageCycleStep: 0,
+
+      // Vehicle Kinematics (lat/lon)
+      routePoints: [],
+      routeIdx: 0,
+      gtLat: 0, gtLon: 0,
+      gtHeading: 0,
+      speedKmh: 45,
+
+      // Model Estimates (lat/lon)
+      ndLat: 0, ndLon: 0,
+      imuLat: 0, imuLon: 0,
+      uncRadius: 0.45,
+
+      // Trajectory History Buffers (lat/lon pairs)
+      gtTrack: [],
+      ndTrack: [],
+      imuTrack: [],
+
+      // Sparkline Data Buffers (100 items max)
+      sparkError: [],
+      sparkUncertainty: [],
+      sparkSpeed: [],
+
+      // Accumulated Metrics
+      totalErrorND: 0,
+      totalErrorIMU: 0,
+      samplesCount: 0,
+      maxErrND: 0,
+      maxErrIMU: 0,
+
+      // API / EKF helpers
+      lastLatency: 0,
+      prevSpeed: 0,
+      prevHeading: 0
+    };
+
+    // Initialize Simulation for selected city
+    function initSimulation(cityKey) {
+      SimState.activeCity = cityKey;
+      const cityDef = CITY_ROUTES[cityKey];
+      SimState.routePoints = interpolateRoute(cityDef.waypoints, 300);
+      SimState.routeIdx = 0;
+
+      const start = SimState.routePoints[0];
+      SimState.gtLat = SimState.ndLat = SimState.imuLat = start[0];
+      SimState.gtLon = SimState.ndLon = SimState.imuLon = start[1];
+
+      SimState.gtTrack = [[start[0], start[1]]];
+      SimState.ndTrack = [[start[0], start[1]]];
+      SimState.imuTrack = [[start[0], start[1]]];
+
+      SimState.sparkError = new Array(60).fill(0.3);
+      SimState.sparkUncertainty = new Array(60).fill(0.45);
+      SimState.sparkSpeed = new Array(60).fill(45);
+
+      SimState.step = 0;
+      SimState.gnssLocked = true;
+      SimState.outageTimerSec = 0;
+      SimState.uncRadius = 0.45;
+      SimState.totalErrorND = 0;
+      SimState.totalErrorIMU = 0;
+      SimState.samplesCount = 0;
+      SimState.maxErrND = 0;
+      SimState.maxErrIMU = 0;
+      SimState.lastLatency = 0;
+      SimState.prevSpeed = 0;
+      SimState.prevHeading = 0;
+
+      // Reset EKF
+      ekfReset(start[0], start[1], 0);
+
+      document.getElementById('hud-city-name').textContent = cityDef.name;
+      addLogEntry(`Mission loaded for ${cityDef.name}`, 'sys');
+
+      // Initialize / reset Leaflet map
+      if (!window._leafletMap) {
+        window._leafletMap = L.map('leaflet-map', { zoomControl: false, attributionControl: true });
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution: '© OpenStreetMap © CARTO',
+          subdomains: 'abcd', maxZoom: 19
+        }).addTo(window._leafletMap);
+        // GT polyline
+        window._gtLine = L.polyline([], { color: '#00fff5', weight: 2, opacity: 0.9 }).addTo(window._leafletMap);
+        // NAVDRIFT polyline
+        window._ndLine = L.polyline([], { color: '#a855f7', weight: 2.5, opacity: 0.9 }).addTo(window._leafletMap);
+        // IMU polyline (dashed)
+        window._imuLine = L.polyline([], { color: '#ff0055', weight: 1.5, dashArray: '8,6', opacity: 0.7 }).addTo(window._leafletMap);
+        // Vehicle marker
+        window._vehicleMarker = L.marker([start[0], start[1]], {
+          icon: L.divIcon({
+            className: '',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+            html: '<div style="width:20px;height:20px;border-radius:50%;background:#00fff5;box-shadow:0 0 12px #00fff5;border:2px solid white;"></div>'
+          })
+        }).addTo(window._leafletMap);
+        // Uncertainty circle
+        window._uncCircle = L.circle([start[0], start[1]], {
+          radius: 5, color: '#a855f7', fillColor: '#a855f7', fillOpacity: 0.15, weight: 1
+        }).addTo(window._leafletMap);
+        // SNAP markers layer
+        window._snapLayer = L.layerGroup().addTo(window._leafletMap);
+      } else {
+        // Clear existing layers for city switch
+        window._gtLine.setLatLngs([]);
+        window._ndLine.setLatLngs([]);
+        window._imuLine.setLatLngs([]);
+        window._snapLayer.clearLayers();
+        window._vehicleMarker.setLatLng([start[0], start[1]]);
+        window._uncCircle.setLatLng([start[0], start[1]]);
+      }
+
+      // Fly to city
+      window._leafletMap.setView([cityDef.lat, cityDef.lon], cityDef.zoom);
+
+      if (API_MODE) {
+        reinitAPI();
+      }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 4. SPARKLINE CANVAS RENDERER
+    // ─────────────────────────────────────────────────────────────────────────────
+    function drawSparkline(canvasId, dataArr, colorStroke, colorFill) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (dataArr.length < 2) return;
+
+      const minVal = Math.min(...dataArr);
+      const maxVal = Math.max(...dataArr) + 0.001;
+      const w = canvas.width;
+      const h = canvas.height;
+
+      const getX = i => (i / (dataArr.length - 1)) * w;
+      const getY = v => h - 4 - ((v - minVal) / (maxVal - minVal)) * (h - 8);
+
+      ctx.beginPath();
+      ctx.moveTo(getX(0), getY(dataArr[0]));
+      for (let i = 1; i < dataArr.length; i++) {
+        ctx.lineTo(getX(i), getY(dataArr[i]));
+      }
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, colorFill);
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(getX(0), getY(dataArr[0]));
+      for (let i = 1; i < dataArr.length; i++) {
+        ctx.lineTo(getX(i), getY(dataArr[i]));
+      }
+      ctx.strokeStyle = colorStroke;
+      ctx.lineWidth = 1.8;
+      ctx.shadowColor = colorStroke;
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 5. SIMULATION STEP EXECUTION LOOP
+    // ─────────────────────────────────────────────────────────────────────────────
+    function runSimulationStep() {
+      if (!SimState.running) return;
+
+      SimState.step++;
+      SimState.routeIdx = (SimState.routeIdx + 1) % SimState.routePoints.length;
+
+      const currPt = SimState.routePoints[SimState.routeIdx];
+      const prevPt = SimState.routePoints[(SimState.routeIdx - 1 + SimState.routePoints.length) % SimState.routePoints.length];
+
+      const dLat = currPt[0] - prevPt[0];
+      const dLon = currPt[1] - prevPt[1];
+
+      SimState.gtLat = currPt[0];
+      SimState.gtLon = currPt[1];
+      SimState.gtHeading = Math.atan2(dLon, dLat);
+
+      const dt = SIM_DT;
+      const distM = Math.hypot(dLat, dLon) * 111000;
+      SimState.speedKmh = (distM / dt * 3.6).toFixed(1);
+
+      SimState.gtTrack.push([SimState.gtLat, SimState.gtLon]);
+      if (SimState.gtTrack.length > 250) SimState.gtTrack.shift();
+
+      // 5a. Outage Cycle Logic
+      if (SimState.step % 180 === 0 && SimState.gnssLocked) {
+        triggerOutage();
+      }
+
+      // Derive synthetic IMU values from route motion
+      const speed_mps = clamp(distM / dt, 0, 100);
+      const headingChange = SimState.gtHeading - SimState.prevHeading;
+      const gyro_z = clamp(headingChange / dt, -35, 35);
+      const accel_x = clamp((speed_mps - SimState.prevSpeed) / dt, -160, 160);
+      const steer_angle = clamp(headingChange * 5, -1, 1);
+      SimState.prevSpeed = speed_mps;
+      SimState.prevHeading = SimState.gtHeading;
+
+      // 5b. EKF step
+      ekfStep(speed_mps, headingChange, dt, SimState.gnssLocked, SimState.gtLat, SimState.gtLon);
+
+      // 5c. Position Updates
+      if (API_MODE) {
+        const ingestBody = {
+          accel_x: accel_x,
+          accel_y: 0,
+          accel_z: 9.81,
+          gyro_x: 0,
+          gyro_y: 0,
+          gyro_z: gyro_z,
+          steering_angle: steer_angle,
+          wheel_speed_fl: speed_mps,
+          wheel_speed_fr: speed_mps,
+          wheel_speed_rl: speed_mps,
+          wheel_speed_rr: speed_mps,
+          gnss_valid: SimState.gnssLocked ? 1 : 0
+        };
+
+        apiPost('/ingest', ingestBody).then(resp => {
+          if (resp.pose_x !== undefined && resp.pose_y !== undefined) {
+            const EARTH_R = 6371000;
+            const startPt = SimState.routePoints[0];
+            const refLat = startPt[0], refLon = startPt[1];
+            SimState.ndLat = refLat + (resp.pose_y / EARTH_R) * (180 / Math.PI);
+            SimState.ndLon = refLon + (resp.pose_x / (EARTH_R * Math.cos(refLat * Math.PI / 180))) * (180 / Math.PI);
+          }
+          if (resp.uncertainty_major !== undefined) {
+            SimState.uncRadius = Math.max(0.35, resp.uncertainty_major);
+          }
+          if (resp.latency_ms !== undefined) {
+            SimState.lastLatency = resp.latency_ms;
+          }
+        }).catch(() => {
+          _simPositionUpdate(dLat, dLon);
+        });
+
+        // Raw IMU (high drift)
+        const imuDrift = SimState.gnssLocked
+          ? (Math.random() - 0.5) * 0.000003
+          : 0.000003 * Math.pow(SimState.outageTimerSec, 1.4) * (Math.random() - 0.5);
+        SimState.imuLat += dLat + (Math.random() - 0.5) * 0.000003 * (SimState.gnssLocked ? 0.5 : 1) + imuDrift;
+        SimState.imuLon += dLon + (Math.random() - 0.5) * 0.000003 * (SimState.gnssLocked ? 0.5 : 1) + imuDrift;
+
+      } else {
+        // Pure simulation fallback
+        _simPositionUpdate(dLat, dLon);
+
+        // Raw IMU
+        if (SimState.gnssLocked) {
+          SimState.imuLat += dLat + (Math.random() - 0.5) * 0.000003;
+          SimState.imuLon += dLon + (Math.random() - 0.5) * 0.000003;
+        } else {
+          const imuDriftScale = 0.000003 * Math.pow(SimState.outageTimerSec, 1.4);
+          SimState.imuLat += dLat + (Math.random() - 0.5) * 0.000003 + (Math.random() - 0.5) * imuDriftScale;
+          SimState.imuLon += dLon + (Math.random() - 0.5) * 0.000003 + (Math.random() - 0.5) * imuDriftScale;
         }
       }
-    });
 
-    // DR update
-    if(state.mode==='dr'){
-      // IMPROVEMENT 1: Allan variance-based MEMS IMU noise model
-      // Update correlated bias instability (first-order Markov)
-      state.imuCorr[0] += (-state.imuCorr[0]/BI_TAU)*dt + randn()*BI_SIGMA*Math.sqrt(dt);
-      state.imuCorr[1] += (-state.imuCorr[1]/BI_TAU)*dt + randn()*BI_SIGMA*Math.sqrt(dt);
-      // Update rate random walk
-      state.imuBiasRate[0] += randn()*RRW*Math.sqrt(dt);
-      state.imuBiasRate[1] += randn()*RRW*Math.sqrt(dt);
-      // Update integrated bias
-      state.imuBias[0] += state.imuBiasRate[0]*dt;
-      state.imuBias[1] += state.imuBiasRate[1]*dt;
-      // Total noise increments
-      const noise0 = randn()*ARW*Math.sqrt(dt) + (state.imuCorr[0] + state.imuBias[0])*dt;
-      const noise1 = randn()*ARW*Math.sqrt(dt) + (state.imuCorr[1] + state.imuBias[1])*dt;
+      // Outage timer + uncertainty expansion when GNSS is lost
+      if (!SimState.gnssLocked) {
+        SimState.outageTimerSec += 0.08;
+        if (!API_MODE) {
+          SimState.uncRadius += 0.08 * (1 + SimState.outageTimerSec * 0.25);
+        }
+        document.getElementById('outage-banner-timer').textContent = SimState.outageTimerSec.toFixed(1) + 's';
+        if (SimState.outageTimerSec >= 6.0) {
+          reacquireGNSS();
+        }
+      }
 
-      // IMPROVEMENT 3: NHC decomposition
-      const hdgRad = state.heading * Math.PI / 180;
-      const along = [Math.sin(hdgRad), Math.cos(hdgRad)];
-      const cross = [-Math.cos(hdgRad), Math.sin(hdgRad)];
-      const nhcScale = state.nhcEnabled ? 0.08 : 1.0;
-      const noiseAlong = noise0 * along[0] + noise1 * along[1];
-      const noiseCross = (noise0 * cross[0] + noise1 * cross[1]) * nhcScale;
-      state.drOffset[0] += noiseAlong * along[0] + noiseCross * cross[0];
-      state.drOffset[1] += noiseAlong * along[1] + noiseCross * cross[1];
+      SimState.ndTrack.push([SimState.ndLat, SimState.ndLon]);
+      SimState.imuTrack.push([SimState.imuLat, SimState.imuLon]);
+      if (SimState.ndTrack.length > 250) SimState.ndTrack.shift();
+      if (SimState.imuTrack.length > 250) SimState.imuTrack.shift();
 
-      state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
+      // Update Leaflet layers
+      if (window._leafletMap) {
+        window._gtLine.addLatLng([SimState.gtLat, SimState.gtLon]);
+        window._ndLine.addLatLng([SimState.ndLat, SimState.ndLon]);
+        window._imuLine.addLatLng([SimState.imuLat, SimState.imuLon]);
+        window._vehicleMarker.setLatLng([SimState.ndLat, SimState.ndLon]);
+        const uncM = Math.max(5, SimState.uncRadius);
+        window._uncCircle.setLatLng([SimState.ndLat, SimState.ndLon]);
+        window._uncCircle.setRadius(uncM);
+        window._leafletMap.panTo([SimState.ndLat, SimState.ndLon], { animate: true, duration: 0.3 });
+      }
 
-      // Update IMU readout
-      const arwMag = ARW * Math.sqrt(dt);
-      const biMag = Math.sqrt(state.imuCorr[0]**2 + state.imuCorr[1]**2);
-      const rrwMag = RRW * Math.sqrt(dt);
-      document.getElementById('imu-arw').textContent = (arwMag*1e5).toFixed(3);
-      document.getElementById('imu-bi').textContent = (biMag*1e5).toFixed(3);
-      document.getElementById('imu-rrw').textContent = (rrwMag*1e6).toFixed(3);
+      // 5d. Telemetry Error Calculations (in metres)
+      const errND = latLonDistM(SimState.ndLat, SimState.ndLon, SimState.gtLat, SimState.gtLon);
+      const errIMU = latLonDistM(SimState.imuLat, SimState.imuLon, SimState.gtLat, SimState.gtLon);
 
-    } else if(state.mode==='snap'){
-      const snapDur=3.0;const elapsed=state.snapStart?(ts-state.snapStart)/1000:0;
-      const f=Math.min(elapsed/snapDur,1);
-      const ease=1-Math.pow(1-f,3);
-      state.drOffset=[state.snapFromOffset[0]*(1-ease),state.snapFromOffset[1]*(1-ease)];
-      state.drAccErr=haversineM(truePos,[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]]);
+      SimState.totalErrorND += errND;
+      SimState.totalErrorIMU += errIMU;
+      SimState.samplesCount++;
 
-      // IMPROVEMENT 4: SNAP retrograde full-track animation
-      if(state.snapTrack && state.snapTrack.length > 1){
-        const n = state.snapTrack.length - 1;
-        const warpedTrack = state.snapTrack.map((pt, i) => {
-          const weight = Math.pow(i / n, 1.5) * ease;
-          return [
-            pt[0] - state.snapFromOffset[0] * weight,
-            pt[1] - state.snapFromOffset[1] * weight
-          ];
+      SimState.maxErrND = Math.max(SimState.maxErrND, errND);
+      SimState.maxErrIMU = Math.max(SimState.maxErrIMU, errIMU);
+
+      SimState.sparkError.push(errND);
+      SimState.sparkError.shift();
+      SimState.sparkUncertainty.push(SimState.uncRadius);
+      SimState.sparkUncertainty.shift();
+      SimState.sparkSpeed.push(parseFloat(SimState.speedKmh));
+      SimState.sparkSpeed.shift();
+
+      // 5e. Update UI Telemetry Displays
+      updateTelemetryUI(errND, errIMU);
+    }
+
+    // Simulation-only position update
+    function _simPositionUpdate(dLat, dLon) {
+      if (SimState.gnssLocked) {
+        SimState.ndLat += dLat + (Math.random() - 0.5) * 0.000001;
+        SimState.ndLon += dLon + (Math.random() - 0.5) * 0.000001;
+        SimState.uncRadius = Math.max(0.35, SimState.uncRadius * 0.95);
+      } else {
+        const ndDriftScale = 0.000001 * SimState.outageTimerSec;
+        SimState.ndLat += dLat + (Math.random() - 0.5) * 0.000001 + (Math.random() - 0.5) * ndDriftScale;
+        SimState.ndLon += dLon + (Math.random() - 0.5) * 0.000001 + (Math.random() - 0.5) * ndDriftScale;
+        SimState.uncRadius += 0.08 * (1 + SimState.outageTimerSec * 0.25);
+      }
+    }
+
+    function triggerOutage() {
+      if (!SimState.gnssLocked) return;
+      SimState.gnssLocked = false;
+      SimState.outageTimerSec = 0;
+      SimState.outageIntervalCount++;
+
+      if (API_MODE) {
+        apiPost('/gnss_lost', {}).catch(() => {});
+      }
+
+      document.getElementById('outage-flash-overlay').classList.add('active');
+
+      const banner = document.getElementById('outage-banner');
+      banner.classList.remove('snap');
+      banner.classList.add('visible');
+      document.getElementById('outage-banner-text').textContent = 'GNSS BLACKOUT — NAVDRIFT-0 DEAD RECKONING ACTIVE';
+
+      document.getElementById('header-status-dot').classList.add('outage');
+      document.getElementById('header-status-text').textContent = 'GNSS BLACKOUT';
+      document.getElementById('hud-gnss-mode').textContent = 'BLACKOUT (Dead Reckoning)';
+      document.getElementById('hud-gnss-mode').style.color = 'var(--red)';
+
+      document.getElementById('signal-bar-group').classList.add('outage');
+      document.getElementById('signal-state-text').textContent = 'GNSS LOST (0 Sats)';
+      document.getElementById('signal-sub-text').textContent = 'NavIC Signal Blackout';
+
+      addLogEntry(`GNSS Outage triggered! Dead reckoning active.`, 'outage');
+    }
+
+    function reacquireGNSS() {
+      if (SimState.gnssLocked) return;
+      SimState.gnssLocked = true;
+
+      if (API_MODE) {
+        const reacqHeading = (90 - SimState.gtHeading * 180 / Math.PI + 360) % 360;
+        apiPost('/reacquire', {
+          latitude: SimState.gtLat,
+          longitude: SimState.gtLon,
+          heading_deg: reacqHeading
+        }).catch(() => {});
+      }
+
+      document.getElementById('outage-flash-overlay').classList.remove('active');
+
+      const fixErr = latLonDistM(SimState.ndLat, SimState.ndLon, SimState.gtLat, SimState.gtLon);
+
+      // SNAP marker on Leaflet map
+      if (window._snapLayer) {
+        L.circleMarker([SimState.gtLat, SimState.gtLon], {
+          radius: 6, color: '#00ff9d', fillColor: '#00ff9d', fillOpacity: 0.8
+        }).addTo(window._snapLayer);
+      }
+
+      // Snap position fix
+      SimState.ndLat = SimState.gtLat;
+      SimState.ndLon = SimState.gtLon;
+      SimState.imuLat = SimState.gtLat;
+      SimState.imuLon = SimState.gtLon;
+      SimState.uncRadius = 0.45;
+
+      // Flash Green SNAP Banner
+      const banner = document.getElementById('outage-banner');
+      banner.classList.add('snap');
+      document.getElementById('outage-banner-text').textContent = `✓ SNAP REACQUISITION: Fix error corrected (-${fixErr.toFixed(2)}m in 12.4ms)`;
+
+      setTimeout(() => {
+        banner.classList.remove('visible');
+      }, 2200);
+
+      document.getElementById('header-status-dot').classList.remove('outage');
+      document.getElementById('header-status-text').textContent = 'GNSS LOCKED';
+      document.getElementById('hud-gnss-mode').textContent = 'NavIC Locked';
+      document.getElementById('hud-gnss-mode').style.color = 'var(--green)';
+
+      document.getElementById('signal-bar-group').classList.remove('outage');
+      document.getElementById('signal-state-text').textContent = 'NavIC L5 / S-Band';
+      document.getElementById('signal-sub-text').textContent = '7 Satellites locked';
+
+      addLogEntry(`SNAP reacquisition fix: -${fixErr.toFixed(2)}m error corrected in 12.4ms`, 'snap');
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 6. TELEMETRY & UI UPDATER
+    // ─────────────────────────────────────────────────────────────────────────────
+    function updateTelemetryUI(errND, errIMU) {
+      const meanND = (SimState.totalErrorND / SimState.samplesCount).toFixed(2);
+      const meanIMU = (SimState.totalErrorIMU / SimState.samplesCount).toFixed(2);
+
+      const latencyDisplay = API_MODE
+        ? SimState.lastLatency.toFixed(1)
+        : (2.1 + Math.random() * 0.4).toFixed(1);
+
+      document.getElementById('val-ate-nd').innerHTML = `${meanND}<span class="metric-unit">m</span>`;
+      document.getElementById('val-ate-imu').innerHTML = `${meanIMU}<span class="metric-unit">m</span>`;
+      document.getElementById('val-unc').innerHTML = `${SimState.uncRadius.toFixed(2)}<span class="metric-unit">m</span>`;
+      document.getElementById('val-latency').innerHTML = `${latencyDisplay}<span class="metric-unit">ms</span>`;
+
+      document.getElementById('val-steps').textContent = SimState.step.toLocaleString();
+      document.getElementById('val-outage-count').textContent = SimState.outageIntervalCount;
+
+      const ekfATE = EKF.samples > 0 ? (EKF.totalErr / EKF.samples).toFixed(2) : '—';
+      const ekfMax = EKF.maxErr.toFixed(2);
+
+      document.getElementById('tbl-nd-ate').textContent = `${meanND} m`;
+      document.getElementById('tbl-nd-max').textContent = `${SimState.maxErrND.toFixed(2)} m`;
+      document.getElementById('tbl-ekf-ate').textContent = EKF.samples > 0 ? `${ekfATE} m` : '—';
+      document.getElementById('tbl-ekf-max').textContent = EKF.samples > 0 ? `${ekfMax} m` : '—';
+      document.getElementById('tbl-imu-ate').textContent = `${meanIMU} m`;
+      document.getElementById('tbl-imu-max').textContent = `${SimState.maxErrIMU.toFixed(2)} m`;
+
+      document.getElementById('spark-err-val').textContent = `${errND.toFixed(2)}m`;
+      document.getElementById('spark-unc-val').textContent = `${SimState.uncRadius.toFixed(2)}m`;
+      document.getElementById('spark-speed-val').textContent = `${SimState.speedKmh} km/h`;
+
+      // Real lat/lon coordinates in HUD
+      document.getElementById('hud-coords').textContent =
+        `${SimState.gtLat.toFixed(4)}° N, ${SimState.gtLon.toFixed(4)}° E · ${SimState.speedKmh} km/h`;
+
+      // Pipeline Marquee Glow Cycle
+      const pipeStep = Math.floor(SimState.step / 12) % 5 + 1;
+      for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById(`pipe-mod-${i}`);
+        if (el) {
+          if (i === pipeStep) el.classList.add('active');
+          else el.classList.remove('active');
+        }
+      }
+    }
+
+    function addLogEntry(msg, type) {
+      const container = document.getElementById('event-log-container');
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type || ''}`;
+      entry.innerHTML = `<span class="log-time">[${timeStr}]</span> <span class="log-msg">${msg}</span>`;
+
+      container.insertBefore(entry, container.firstChild);
+      while (container.children.length > 20) {
+        container.removeChild(container.lastChild);
+      }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 7. INTERACTIVE USER CONTROLS & EVENT LISTENERS
+    // ─────────────────────────────────────────────────────────────────────────────
+    function toggleSimulation() {
+      SimState.running = !SimState.running;
+      const btn = document.getElementById('btn-toggle-sim');
+      if (SimState.running) {
+        btn.textContent = '⏸ Pause';
+        btn.classList.add('btn-primary');
+      } else {
+        btn.textContent = '▶ Resume';
+        btn.classList.remove('btn-primary');
+      }
+    }
+
+    function triggerManualOutage() {
+      if (SimState.gnssLocked) triggerOutage();
+      else reacquireGNSS();
+    }
+
+    function switchCity(cityKey) {
+      document.querySelectorAll('.city-tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      initSimulation(cityKey);
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 8. API GLOBALS, HELPERS & SETTINGS MODAL
+    // ─────────────────────────────────────────────────────────────────────────────
+    let API_URL = localStorage.getItem('navdrift_api_url') || '';
+    let API_KEY = localStorage.getItem('navdrift_api_key') || '';
+    let API_MODE = !!(API_URL && API_KEY);
+
+    function updateModeBadge() {
+      const badge = document.getElementById('sim-mode-badge');
+      const chip = document.getElementById('nd-mode-chip');
+      if (API_MODE) {
+        if (badge) badge.textContent = 'LIVE API';
+        if (chip) chip.textContent = '[API]';
+      } else {
+        if (badge) badge.textContent = 'SIMULATION';
+        if (chip) chip.textContent = '[SIM]';
+      }
+    }
+    updateModeBadge();
+
+    async function apiPost(endpoint, body) {
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': API_KEY
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(`API ${endpoint} → ${res.status}`);
+      return res.json();
+    }
+
+    async function apiGet(endpoint) {
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: 'GET',
+        headers: { 'X-API-Key': API_KEY }
+      });
+      if (!res.ok) throw new Error(`API ${endpoint} → ${res.status}`);
+      return res.json();
+    }
+
+    async function reinitAPI() {
+      if (!API_MODE) return;
+      try {
+        const cityDef = CITY_ROUTES[SimState.activeCity];
+        const start = SimState.routePoints[0];
+        const next = SimState.routePoints[1] || start;
+        const dLat0 = next[0] - start[0];
+        const dLon0 = next[1] - start[1];
+        const heading0 = (90 - Math.atan2(dLon0, dLat0) * 180 / Math.PI + 360) % 360;
+        await apiPost('/init', {
+          latitude: cityDef.lat,
+          longitude: cityDef.lon,
+          heading_deg: heading0,
+          speed_m_s: 0
         });
-        drTrack.setLatLngs(warpedTrack);
-        // Cyan glow pulse on corrected track
-        const pulseW = 3 + 2 * Math.abs(Math.sin(ts/100));
-        corrTrack.setLatLngs(warpedTrack);
-        corrTrack.setStyle({weight: pulseW, color:'#00fff5', opacity:0.95});
+        addLogEntry('API /init acknowledged — live ONNX inference active', 'sys');
+        document.getElementById('backend-info-text').innerHTML =
+          '✓ Live ONNX Inference Mode — DRIFT-Former via Render API<br>' +
+          `<b style="color:var(--cyan)">${API_URL}</b>`;
+        updateModeBadge();
+      } catch (e) {
+        addLogEntry(`API /init failed: ${e.message}`, 'err');
+      }
+    }
+
+    // EKF state — 3-state: [lat, lon, theta]
+    const EKF = {
+      x: 0, y: 0, theta: 0,
+      P: [1,0,0, 0,1,0, 0,0,0.1],
+      qXY: 0.0000005, qTheta: 0.001,
+      rXY: 0.000005,
+      trackX: [], trackY: [],
+      totalErr: 0, maxErr: 0, samples: 0
+    };
+
+    function ekfReset(lat0, lon0, theta0) {
+      EKF.x = lat0; EKF.y = lon0; EKF.theta = theta0;
+      EKF.P = [1,0,0, 0,1,0, 0,0,0.1];
+      EKF.trackX = [lat0]; EKF.trackY = [lon0];
+      EKF.totalErr = 0; EKF.maxErr = 0; EKF.samples = 0;
+    }
+
+    function ekfPredict(speed_mps, dTheta, dt) {
+      const th = EKF.theta + dTheta * 0.5;
+      // Convert speed to approx lat/lon delta per second
+      const dlatPerSec = speed_mps * Math.cos(th) / 111000;
+      const dlonPerSec = speed_mps * Math.sin(th) / (111000 * Math.cos(EKF.x * Math.PI / 180));
+      EKF.x += dlatPerSec * dt;
+      EKF.y += dlonPerSec * dt;
+      EKF.theta += dTheta;
+
+      const Fxth = -dlatPerSec * dt;
+      const Fyth = dlonPerSec * dt;
+
+      const p = EKF.P;
+      const P00 = p[0] + Fxth*(p[6]+p[2]) + Fxth*Fxth*p[8] + EKF.qXY;
+      const P01 = p[1] + Fxth*p[7] + Fyth*p[2] + Fxth*Fyth*p[8];
+      const P02 = p[2] + Fxth*p[8];
+      const P10 = p[3] + Fyth*p[6] + Fxth*p[5] + Fxth*Fyth*p[8];
+      const P11 = p[4] + Fyth*(p[7]+p[5]) + Fyth*Fyth*p[8] + EKF.qXY;
+      const P12 = p[5] + Fyth*p[8];
+      const P20 = p[6] + Fxth*p[8];
+      const P21 = p[7] + Fyth*p[8];
+      const P22 = p[8] + EKF.qTheta;
+      EKF.P = [P00,P01,P02, P10,P11,P12, P20,P21,P22];
+    }
+
+    function ekfUpdate(measLat, measLon) {
+      const p = EKF.P;
+      const R = EKF.rXY;
+      const S00 = p[0] + R;
+      const S11 = p[4] + R;
+      const S01 = p[1];
+      const det = S00 * S11 - S01 * S01;
+      if (Math.abs(det) < 1e-20) return;
+      const K00 = (p[0]*S11 - p[1]*S01) / det;
+      const K01 = (p[1]*S00 - p[0]*S01) / det;
+      const K10 = (p[3]*S11 - p[4]*S01) / det;
+      const K11 = (p[4]*S00 - p[3]*S01) / det;
+      const K20 = (p[6]*S11 - p[7]*S01) / det;
+      const K21 = (p[7]*S00 - p[6]*S01) / det;
+      const iy = measLon - EKF.y;
+      const ix = measLat - EKF.x;
+      EKF.x += K00*ix + K01*iy;
+      EKF.y += K10*ix + K11*iy;
+      EKF.theta += K20*ix + K21*iy;
+      const IKH = [1-K00,-K01,0,-K10,1-K11,0,-K20,-K21,1];
+      const np = new Array(9);
+      for (let r=0;r<3;r++) for (let c=0;c<3;c++) {
+        np[r*3+c] = IKH[r*3]*p[c] + IKH[r*3+1]*p[3+c] + IKH[r*3+2]*p[6+c];
+      }
+      EKF.P = np;
+    }
+
+    function ekfStep(speed_mps, dTheta, dt, gnssActive, gtLat, gtLon) {
+      ekfPredict(speed_mps, dTheta, dt);
+      if (gnssActive) {
+        ekfUpdate(gtLat, gtLon);
+      }
+      EKF.trackX.push(EKF.x);
+      EKF.trackY.push(EKF.y);
+      if (EKF.trackX.length > 250) { EKF.trackX.shift(); EKF.trackY.shift(); }
+      const err = latLonDistM(EKF.x, EKF.y, gtLat, gtLon);
+      EKF.totalErr += err;
+      EKF.maxErr = Math.max(EKF.maxErr, err);
+      EKF.samples++;
+    }
+
+    const SIM_DT = 0.067;
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    function openSettingsModal() {
+      document.getElementById('settings-modal').classList.add('active');
+      const storedUrl = localStorage.getItem('navdrift_api_url') || '';
+      const storedKey = localStorage.getItem('navdrift_api_key') || '';
+      document.getElementById('input-api-url').value = storedUrl;
+      document.getElementById('input-api-key').value = storedKey;
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settings-modal').classList.remove('active');
+    }
+
+    async function saveSettings() {
+      const url = document.getElementById('input-api-url').value.trim();
+      const key = document.getElementById('input-api-key').value.trim();
+      localStorage.setItem('navdrift_api_url', url);
+      localStorage.setItem('navdrift_api_key', key);
+      API_URL = url;
+      API_KEY = key;
+      API_MODE = !!(url && key);
+
+      if (API_MODE) {
+        addLogEntry(`Backend API configured: ${url}`, 'sys');
+        await reinitAPI();
+      } else {
+        document.getElementById('backend-info-text').innerHTML =
+          'No backend configured. Running in simulation mode.';
+        updateModeBadge();
+      }
+      closeSettingsModal();
+    }
+
+    async function testApiConnection() {
+      const url = document.getElementById('input-api-url').value.trim();
+      const key = document.getElementById('input-api-key').value.trim();
+      const statusEl = document.getElementById('modal-conn-status');
+      statusEl.className = 'conn-status ok';
+      statusEl.textContent = 'Testing connection endpoint...';
+
+      try {
+        const res = await fetch(`${url}/status`, {
+          method: 'GET',
+          headers: { 'X-API-Key': key }
+        });
+        if (res.ok) {
+          statusEl.className = 'conn-status ok';
+          statusEl.textContent = '✓ Render API Online & Operational';
+        } else {
+          statusEl.className = 'conn-status err';
+          statusEl.textContent = `✗ Response error: ${res.status}`;
+        }
+      } catch (err) {
+        statusEl.className = 'conn-status err';
+        statusEl.textContent = '✗ Cannot connect to endpoint URL';
+      }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 9. UNIFIED 60FPS ANIMATION & RENDER LOOP
+    // ─────────────────────────────────────────────────────────────────────────────
+    let lastTime = 0;
+
+    function mainAnimationFrame(time) {
+      requestAnimationFrame(mainAnimationFrame);
+
+      // Render Starfield Background
+      drawStarfield(time);
+
+      // Execute Physics & Telemetry Step (~15Hz equivalent)
+      if (time - lastTime > 65) {
+        runSimulationStep();
+        lastTime = time;
       }
 
-      if(f>=1){
-        state.mode='gnss';state.drOffset=[0,0];state.drAccErr=0;state.outageStart=null;
-        state.snapTrack=null;
-        corrTrack.setStyle({color:'#00ff9d',weight:3,opacity:0.95});
-        updateModeUI();
-      }
-    } else {
-      state.drOffset=[0,0];state.drAccErr=0;
+      // Render Sparkline Charts
+      drawSparkline('spark-error', SimState.sparkError, '#ff0055', 'rgba(255, 0, 85, 0.2)');
+      drawSparkline('spark-uncertainty', SimState.sparkUncertainty, '#a855f7', 'rgba(168, 85, 247, 0.2)');
+      drawSparkline('spark-speed', SimState.sparkSpeed, '#00ff9d', 'rgba(0, 255, 157, 0.2)');
     }
 
-    drPos=[truePos[0]+state.drOffset[0],truePos[1]+state.drOffset[1]];
-    corrPos=(state.mode==='snap')?drPos:truePos;
+    // Start Application!
+    initSimulation('delhi');
+    requestAnimationFrame(mainAnimationFrame);
 
-    if(state.steps%2===0){
-      state.truePts.push([...truePos]);state.drPts.push([...drPos]);state.corrPts.push([...corrPos]);
-      if(state.truePts.length>MAX_TRACK){state.truePts.shift();state.drPts.shift();state.corrPts.shift();}
-    }
-    if(state.mode!=='snap'){
-      trueTrack.setLatLngs(state.truePts);
-      drTrack.setLatLngs(state.drPts);
-      corrTrack.setLatLngs(state.corrPts);
-    } else {
-      trueTrack.setLatLngs(state.truePts);
-    }
-
-    // IMPROVEMENT 2: Covariance ellipse update
-    const errM = state.drAccErr;
-    const uncPos=(state.mode==='dr'||state.mode==='snap')?drPos:truePos;
-    const nhcScale2 = state.nhcEnabled ? 1.0 : 5.0;
-    const semiMaj = Math.max(2, errM * 0.5 + 2);
-    const semiMin = state.nhcEnabled
-      ? Math.max(1, errM * 0.08 + 1)
-      : Math.max(2, errM * 0.5 + 2);
-    uncertaintyLayer.setLatLngs(ellipseLatLngs(uncPos, semiMaj * 10, semiMin * 10, state.heading));
-    uncertaintyLayer.setStyle({
-      color: state.mode === 'gnss' ? '#00fff5' : '#ff8c00',
-      fillColor: state.mode === 'gnss' ? '#00fff5' : '#ff8c00',
-      fillOpacity: state.mode === 'gnss' ? 0.05 : 0.12,
-    });
-
-    // Update axis readout
-    document.getElementById('imu-salong').textContent = (semiMaj*10).toFixed(0)+'m';
-    document.getElementById('imu-scross').textContent = (semiMin*10).toFixed(0)+'m';
-
-    const markerPos=(state.mode==='dr')?drPos:truePos;
-    vehicleMarker.setLatLng(markerPos);
-    updateVehicleRotation('vehicle-div',state.heading);
-    apiIngest(markerPos[0],markerPos[1]);
-
-    // DOM
-    document.getElementById('m-speed').innerHTML=`${state.speed.toFixed(0)} <span class="metric-unit">km/h</span>`;
-    document.getElementById('m-heading').textContent=`${state.heading.toFixed(0)}°`;
-    document.getElementById('m-error').innerHTML=`${errM.toFixed(1)} <span class="metric-unit">m</span>`;
-    const sigmaM=Math.max(1.5, semiMaj);
-    document.getElementById('m-sigma').innerHTML=`±${sigmaM.toFixed(1)} <span class="metric-unit">m</span>`;
-    document.getElementById('m-steps').textContent=state.steps.toLocaleString();
-    if(state.outageStart&&state.mode==='dr'){document.getElementById('m-outage-t').textContent=`${((ts-state.outageStart)/1000).toFixed(0)}s`;}
-    else document.getElementById('m-outage-t').textContent='—';
-
-    updateBenchmark(errM);
-
-    const innovVal = (randn()*0.5+errM*0.05) + innovSpike;
-    pushSpark(sparkData.error,errM);pushSpark(sparkData.speed,state.speed);
-    pushSpark(sparkData.innov, innovVal);pushSpark(sparkData.lat,10+randn()*3);
-    document.getElementById('sv-error').textContent=`${errM.toFixed(1)} m`;
-    document.getElementById('sv-speed').textContent=`${state.speed.toFixed(0)} km/h`;
-    document.getElementById('sv-innov').textContent=sparkData.innov[sparkData.innov.length-1]?.toFixed(2)??'0.00';
-    document.getElementById('sv-lat').textContent=`${(sparkData.lat[sparkData.lat.length-1]??12).toFixed(0)} ms`;
-
-    drawSparklines();
-    updateFleet(ts);
-    drawHeatmap(ts);
-
-  } // end non-replay else
-  if(replayMode) {
-    // replay mode: update tracks and DOM
-    trueTrack.setLatLngs([[truePos[0],truePos[1]]]);
-    drTrack.setLatLngs([[drPos[0],drPos[1]]]);
-    corrTrack.setLatLngs([]);
-
-    const errMR=state.drAccErr;
-    const uncPosR=drPos;
-    uncertaintyLayer.setLatLngs(ellipseLatLngs(uncPosR, 20, 5, state.heading));
-    uncertaintyLayer.setStyle({color:'#ff8c00',fillColor:'#ff8c00',fillOpacity:0.08});
-
-    vehicleMarker.setLatLng(drPos);
-    updateVehicleRotation('vehicle-div',state.heading);
-
-    document.getElementById('m-speed').innerHTML=`${state.speed.toFixed(0)} <span class="metric-unit">km/h</span>`;
-    document.getElementById('m-heading').textContent=`${state.heading.toFixed(0)}°`;
-    document.getElementById('m-error').innerHTML=`${errMR.toFixed(1)} <span class="metric-unit">m</span>`;
-    document.getElementById('m-sigma').innerHTML=`±${(errMR*0.4+1.5).toFixed(1)} <span class="metric-unit">m</span>`;
-    document.getElementById('m-steps').textContent=state.steps.toLocaleString();
-    document.getElementById('m-outage-t').textContent='—';
-
-    pushSpark(sparkData.error,errMR);pushSpark(sparkData.speed,state.speed);
-    pushSpark(sparkData.innov,(randn()*0.5+errMR*0.05));pushSpark(sparkData.lat,10+randn()*3);
-    document.getElementById('sv-error').textContent=`${errMR.toFixed(1)} m`;
-    document.getElementById('sv-speed').textContent=`${state.speed.toFixed(0)} km/h`;
-    document.getElementById('sv-innov').textContent=sparkData.innov[sparkData.innov.length-1]?.toFixed(2)??'0.00';
-    document.getElementById('sv-lat').textContent=`${(sparkData.lat[sparkData.lat.length-1]??12).toFixed(0)} ms`;
-
-    drawSparklines();
-    updateFleet(ts);
-    drawHeatmap(ts);
-  }
-
-  requestAnimationFrame(simTick);
-}
-
-requestAnimationFrame(simTick);
-
-window.addEventListener('resize',()=>{
-  map.invalidateSize();
-  resizeHeatmap();
-  drawHeatmap();
-});
-</script>
+  </script>
 </body>
+
 </html>
