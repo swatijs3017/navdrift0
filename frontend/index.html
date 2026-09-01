@@ -233,6 +233,59 @@
     .divider { height: 1px; background: var(--b1); margin: 10px 0; }
     .infobox { font-size: .59rem; font-family: var(--mono); color: var(--t3); line-height: 1.6; padding: 6px 8px; background: rgba(0,0,0,0.2); border-radius: 5px; border: 1px solid var(--b2); }
     .infobox b { color: var(--t2); }
+
+/* Scanline overlay — subtle CRT texture across whole app */
+.app::after { content:''; position:fixed; inset:0; z-index:1000; pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px); }
+
+/* Grid bg */
+body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:linear-gradient(rgba(0,255,245,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,245,0.03) 1px,transparent 1px);
+  background-size:40px 40px; }
+
+/* Phase badge */
+.phase-badge { display:flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px;
+  font-family:var(--mono); font-size:.62rem; font-weight:700; letter-spacing:.1em;
+  border:1px solid; transition:all .4s; }
+.phase-badge.nominal { background:rgba(0,255,157,0.1); color:var(--green); border-color:rgba(0,255,157,0.3); }
+.phase-badge.blackout { background:rgba(255,34,85,0.15); color:var(--red); border-color:rgba(255,34,85,0.4); animation:blink .6s step-end infinite; }
+.phase-badge.snap { background:rgba(0,255,245,0.1); color:var(--cyan); border-color:rgba(0,255,245,0.3); }
+.phase-badge.cal { background:rgba(251,191,36,0.1); color:var(--yellow); border-color:rgba(251,191,36,0.3); }
+.phase-dot { width:6px; height:6px; border-radius:50%; background:currentColor; box-shadow:0 0 6px currentColor; }
+
+/* MET clock */
+.met { font-family:var(--mono); font-size:.65rem; color:var(--t3); letter-spacing:.08em; }
+.met b { color:var(--cyan); }
+
+/* NavIC sky plot */
+.sky-wrap { position:relative; width:100%; padding-top:100%; }
+.sky-wrap canvas { position:absolute; inset:0; width:100%; height:100%; }
+
+/* Attention heatmap */
+.attn-strip { display:flex; gap:2px; height:18px; }
+.attn-cell { flex:1; border-radius:2px; transition:background .15s; }
+
+/* Timeline strip */
+.tl-wrap { display:flex; height:14px; border-radius:4px; overflow:hidden; gap:1px; background:rgba(0,0,0,0.4); border:1px solid var(--b1); }
+.tl-seg { height:100%; border-radius:2px; transition:width .3s; }
+
+/* Tunnel mode — applied to body when in tunnel */
+body.tunnel-mode { --cyan:#f59e0b; --cyan-d:rgba(245,158,11,0.12); --cyan-g:rgba(245,158,11,0.4); }
+body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rgba(245,158,11,0.15),transparent); }
+
+/* Covariance ellipse (Leaflet SVG path) */
+.cov-ellipse { fill:rgba(168,85,247,0.08); stroke:#a855f7; stroke-width:1.5; stroke-dasharray:5,4; }
+
+/* Benchmark race */
+.race-bar-wrap { display:flex; align-items:center; gap:6px; padding:4px 0; border-bottom:1px solid var(--b2); }
+.race-lbl { font-size:.56rem; font-family:var(--mono); color:var(--t2); width:60px; flex-shrink:0; }
+.race-track { flex:1; height:8px; border-radius:4px; background:rgba(255,255,255,0.05); overflow:hidden; position:relative; }
+.race-fill { height:100%; border-radius:4px; transition:width .8s ease; }
+.race-val { font-size:.6rem; font-family:var(--mono); width:44px; text-align:right; }
+
+/* Inference pulse */
+@keyframes inf-pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+.inf-layer { display:inline-block; width:7px; height:7px; border-radius:1px; margin:0 1px; animation:inf-pulse 1.2s ease-in-out infinite; }
   </style>
 </head>
 <body>
@@ -273,6 +326,8 @@
     </div>
 
     <div class="hdr-right">
+      <div class="phase-badge nominal" id="phase-badge"><span class="phase-dot"></span><span id="phase-txt">NOMINAL</span></div>
+      <div class="met">MET <b id="met-clock">00:00:00</b></div>
       <div class="pill"><div class="dot" id="hdr-dot"></div><span id="hdr-status">GNSS LOCKED</span></div>
       <span class="badge badge-mode" id="mode-badge">SIMULATION</span>
       <span class="badge badge-ps">PS #26168</span>
@@ -285,6 +340,13 @@
 
     <!-- LEFT PANEL -->
     <div class="panel">
+
+      <!-- NavIC Sky Plot -->
+      <div class="card">
+        <div class="ct"><div class="ct-l"><span class="cdot g"></span>NavIC Constellation</div><span id="navic-lock-badge" style="font-size:.52rem;font-weight:700;color:var(--green)">7 SAT LOCKED</span></div>
+        <div class="sky-wrap"><canvas id="sky-cv"></canvas></div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px" id="sat-snr-bars"></div>
+      </div>
 
       <!-- Controls -->
       <div class="card">
@@ -403,6 +465,18 @@
         </div>
       </div>
 
+      <!-- DR Event Timeline -->
+      <div class="card">
+        <div class="ct"><div class="ct-l"><span class="cdot y"></span>Event Timeline</div><span style="font-size:.52rem;color:var(--t3)" id="tl-steps">0 steps</span></div>
+        <div class="tl-wrap" id="tl-wrap"></div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <span style="font-size:.5rem;font-family:var(--mono);color:var(--green)">■ GNSS</span>
+          <span style="font-size:.5rem;font-family:var(--mono);color:var(--red)">■ Blackout</span>
+          <span style="font-size:.5rem;font-family:var(--mono);color:var(--yellow)">■ Tunnel</span>
+          <span style="font-size:.5rem;font-family:var(--mono);color:var(--cyan)">■ SNAP</span>
+        </div>
+      </div>
+
       <!-- Event Log -->
       <div class="card">
         <div class="ct"><div class="ct-l"><span class="cdot r"></span>Event Log</div></div>
@@ -448,6 +522,17 @@
         <div class="mrow"><span class="ml">Inference latency</span><span class="mv g" id="v-lat">—<span class="mu">ms</span></span></div>
         <div class="mrow"><span class="ml">Update rate</span><span class="mv g">10<span class="mu">Hz</span></span></div>
         <div class="mrow"><span class="ml">Steps / Outages</span><span class="mv" style="color:var(--t2);font-size:.7rem"><span id="v-steps">0</span> / <span id="v-outs" style="color:var(--red)">0</span></span></div>
+      </div>
+
+      <!-- Attention Heatmap -->
+      <div class="card">
+        <div class="ct"><div class="ct-l"><span class="cdot v"></span>DRIFTFormer Attention</div><span style="font-size:.52rem;color:var(--t3)">50-frame window</span></div>
+        <div class="attn-strip" id="attn-strip"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px">
+          <span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">t-50</span>
+          <span style="font-size:.5rem;font-family:var(--mono);color:var(--cyan)">peak: <span id="attn-peak">—</span></span>
+          <span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">t-0</span>
+        </div>
       </div>
 
       <!-- Signal -->
@@ -502,6 +587,26 @@
         <div style="display:flex;justify-content:space-between;margin-top:3px">
           <span style="font-size:.52rem;font-family:var(--mono);color:var(--t3)">9th channel · tunnel detect</span>
           <span style="font-size:.52rem;font-family:var(--mono)" id="sp-baro-tun">—</span>
+        </div>
+      </div>
+
+      <!-- Benchmark Race -->
+      <div class="card">
+        <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Algorithm Race</div><span style="font-size:.52rem;color:var(--t3)">lower=better</span></div>
+        <div class="race-bar-wrap">
+          <span class="race-lbl" style="color:var(--cyan)">NAVDRIFT</span>
+          <div class="race-track"><div class="race-fill" id="race-nd" style="background:var(--cyan);width:0%"></div></div>
+          <span class="race-val" style="color:var(--cyan)" id="race-ndv">—</span>
+        </div>
+        <div class="race-bar-wrap">
+          <span class="race-lbl" style="color:var(--violet)">EKF</span>
+          <div class="race-track"><div class="race-fill" id="race-ekf" style="background:var(--violet);width:0%"></div></div>
+          <span class="race-val" style="color:var(--violet)" id="race-ekfv">—</span>
+        </div>
+        <div class="race-bar-wrap" style="border:none">
+          <span class="race-lbl" style="color:var(--red)">RAW IMU</span>
+          <div class="race-track"><div class="race-fill" id="race-imu" style="background:var(--red);width:0%"></div></div>
+          <span class="race-val" style="color:var(--red)" id="race-imuv">—</span>
         </div>
       </div>
 
@@ -594,6 +699,10 @@
           <b>Model:</b> DRIFT-Former INT8 ONNX (14MB)<br>
           <b>Runtime:</b> ONNX Runtime 1.17 · CPU<br>
           <b>Mode:</b> Simulation (set API URL to go live)
+        </div>
+        <div style="margin-top:7px;padding:5px 6px;background:rgba(0,0,0,0.25);border-radius:5px;border:1px solid var(--b2)">
+          <div style="font-size:.5rem;font-family:var(--mono);color:var(--t3);margin-bottom:4px">TRANSFORMER LAYERS · 4×8-HEAD · d=128</div>
+          <div id="inf-layers" style="display:flex;align-items:flex-end;gap:2px;height:20px"></div>
         </div>
       </div>
 
@@ -1001,6 +1110,7 @@
     // Pipeline glow
     const ps=Math.floor(S.step/10)%6+1;
     for(let i=1;i<=6;i++){const el=document.getElementById('pm'+i);if(el)i===ps?el.classList.add('active'):el.classList.remove('active');}
+    updateRace(mn,mi);
   }catch(e){/* silent — never crash the animation loop */}}
 
   function $$(id){return document.getElementById(id);}
@@ -1270,8 +1380,274 @@
     navigator.serviceWorker.register('/sw.js').catch(()=>{});
   }
 
+  // ─── NAVIC SKY PLOT ───
+  const NAVIC_SATS = [
+    {prn:'NVS-01',az:45, el:72,snr:44},
+    {prn:'NVS-02',az:132,el:58,snr:41},
+    {prn:'NVS-03',az:218,el:63,snr:39},
+    {prn:'NVS-04',az:305,el:48,snr:37},
+    {prn:'NVS-05',az:88, el:81,snr:46},
+    {prn:'NVS-06',az:170,el:35,snr:32},
+    {prn:'NVS-07',az:255,el:52,snr:40},
+  ];
+  let satState=NAVIC_SATS.map(s=>({...s}));
+
+  function drawSkyPlot(){
+    const cv=document.getElementById('sky-cv'); if(!cv)return;
+    const sz=cv.parentElement.clientWidth; cv.width=sz; cv.height=sz;
+    const ctx=cv.getContext('2d'); ctx.clearRect(0,0,sz,sz);
+    const cx=sz/2,cy=sz/2,R=sz/2-8;
+    // Rings
+    [1,.67,.33].forEach((f,i)=>{
+      ctx.beginPath(); ctx.arc(cx,cy,R*f,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(0,255,245,${0.08+i*0.04})`; ctx.lineWidth=1; ctx.stroke();
+      if(i<2){ctx.fillStyle='rgba(0,255,245,0.25)'; ctx.font=`${sz*0.045}px JetBrains Mono`;
+        ctx.fillText(i===0?'30°':'60°',cx+4,cy-R*f+10);}
+    });
+    // Cardinal lines
+    ctx.strokeStyle='rgba(0,255,245,0.07)'; ctx.lineWidth=1;
+    [[cx,cy-R,cx,cy+R],[cx-R,cy,cx+R,cy]].forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();});
+    // Cardinal labels
+    ctx.fillStyle='rgba(0,255,245,0.4)'; ctx.font=`bold ${sz*0.05}px JetBrains Mono`;
+    ctx.textAlign='center';
+    ctx.fillText('N',cx,cy-R+14); ctx.fillText('S',cx,cy+R-4);
+    ctx.fillText('E',cx+R-4,cy+4); ctx.fillText('W',cx-R+4,cy+4);
+    // Satellites
+    satState.forEach((sat,i)=>{
+      const azRad=(sat.az-90)*Math.PI/180;
+      const r=R*(1-sat.el/90);
+      const sx=cx+r*Math.cos(azRad), sy=cy+r*Math.sin(azRad);
+      const locked=S.gnss&&sat.snr>30;
+      const col=locked?'#00ff9d':S.gnss?'#fbbf24':'#ff2255';
+      // Glow
+      const g=ctx.createRadialGradient(sx,sy,0,sx,sy,12);
+      g.addColorStop(0,col.replace(')',',0.5)').replace('rgb','rgba'));
+      g.addColorStop(1,'transparent');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(sx,sy,12,0,Math.PI*2); ctx.fill();
+      // Dot
+      ctx.beginPath(); ctx.arc(sx,sy,sz*0.035,0,Math.PI*2);
+      ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=8; ctx.fill(); ctx.shadowBlur=0;
+      // Label
+      ctx.fillStyle=col; ctx.font=`${sz*0.042}px JetBrains Mono`;
+      ctx.textAlign='center'; ctx.fillText(sat.prn.replace('NVS-','S'),sx,sy-sz*0.05);
+    });
+    // Center crosshair
+    ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2);
+    ctx.fillStyle='var(--cyan)'; ctx.shadowColor='var(--cyan)'; ctx.shadowBlur=10; ctx.fill(); ctx.shadowBlur=0;
+
+    // SNR bars
+    const snrCont=document.getElementById('sat-snr-bars'); if(!snrCont)return;
+    snrCont.innerHTML='';
+    satState.forEach(sat=>{
+      const locked=S.gnss&&sat.snr>30;
+      const col=locked?'var(--green)':S.gnss?'var(--yellow)':'var(--red)';
+      const pct=Math.max(0,Math.min(100,(sat.snr/50)*100));
+      snrCont.innerHTML+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+        <div style="width:100%;height:22px;background:rgba(0,0,0,0.3);border-radius:2px;display:flex;align-items:flex-end;overflow:hidden">
+          <div style="width:100%;height:${pct}%;background:${col};transition:height .5s"></div>
+        </div>
+        <span style="font-size:.44rem;font-family:var(--mono);color:${col}">${sat.prn.replace('NVS-','S')}</span>
+      </div>`;
+    });
+  }
+
+  function updateSatState(){
+    satState.forEach(s=>{
+      s.az=(s.az+0.3+Math.random()*.2)%360;
+      s.el=Math.max(20,Math.min(85,s.el+(Math.random()-.5)*0.3));
+      s.snr=S.gnss?Math.max(28,Math.min(50,s.snr+(Math.random()-.5)*1.5)):Math.max(0,s.snr-3);
+    });
+    const badge=document.getElementById('navic-lock-badge');
+    if(badge){
+      const locked=satState.filter(s=>s.snr>30).length;
+      badge.textContent=S.gnss?locked+' SAT LOCKED':'SIGNAL LOST';
+      badge.style.color=S.gnss?'var(--green)':'var(--red)';
+    }
+  }
+
+  // ─── ATTENTION HEATMAP ───
+  const ATTN_LEN=50;
+  let attnWeights=new Float32Array(ATTN_LEN).fill(0);
+
+  function initAttnStrip(){
+    const strip=document.getElementById('attn-strip'); if(!strip)return;
+    strip.innerHTML='';
+    for(let i=0;i<ATTN_LEN;i++){
+      const d=document.createElement('div'); d.className='attn-cell'; d.id='ac'+i;
+      strip.appendChild(d);
+    }
+  }
+
+  function updateAttn(){
+    // Simulate causal attention: recent frames get more weight; peaks near heading changes and tunnel entry
+    for(let i=0;i<ATTN_LEN;i++){
+      let w=Math.exp((i-ATTN_LEN+1)*0.06); // recency bias
+      if(S.inTunnel&&i>ATTN_LEN-6)w*=1.8;   // baro channel peaks in tunnel
+      if(!S.gnss&&i>ATTN_LEN-10)w*=2.2;     // IMU peaks during blackout
+      w+=Math.random()*0.08;
+      attnWeights[i]=w;
+    }
+    // Normalise
+    const mx=Math.max(...attnWeights); const mn=Math.min(...attnWeights);
+    const rng=mx-mn+.001;
+    let peakIdx=0;
+    attnWeights.forEach((v,i)=>{if(v>attnWeights[peakIdx])peakIdx=i;});
+    for(let i=0;i<ATTN_LEN;i++){
+      const t=(attnWeights[i]-mn)/rng;
+      const r=Math.round(t*0); const g=Math.round(t*255); const b=Math.round(t*245+(1-t)*168);
+      const a=0.15+t*0.85;
+      const el=document.getElementById('ac'+i);
+      if(el)el.style.background=`rgba(${r},${g},${b},${a})`;
+    }
+    const pkEl=document.getElementById('attn-peak');
+    if(pkEl)pkEl.textContent='t-'+(ATTN_LEN-1-peakIdx);
+  }
+
+  // ─── INFERENCE LAYER PULSES ───
+  function initInfLayers(){
+    const c=document.getElementById('inf-layers'); if(!c)return;
+    c.innerHTML='';
+    for(let i=0;i<16;i++){
+      const d=document.createElement('div'); d.className='inf-layer';
+      d.style.animationDelay=(i*0.075)+'s';
+      d.style.height=(8+Math.random()*12)+'px';
+      d.style.background=i<4?'rgba(168,85,247,0.7)':i<8?'rgba(0,255,245,0.7)':i<12?'rgba(0,255,157,0.7)':'rgba(251,191,36,0.7)';
+      c.appendChild(d);
+    }
+  }
+
+  // ─── MISSION PHASE ───
+  const MET_START=Date.now();
+  function updatePhase(){
+    // MET
+    const s=Math.floor((Date.now()-MET_START)/1000);
+    const hh=String(Math.floor(s/3600)).padStart(2,'0');
+    const mm=String(Math.floor((s%3600)/60)).padStart(2,'0');
+    const ss=String(s%60).padStart(2,'0');
+    const met=document.getElementById('met-clock'); if(met)met.textContent=hh+':'+mm+':'+ss;
+
+    const badge=document.getElementById('phase-badge');
+    const txt=document.getElementById('phase-txt');
+    if(!badge||!txt)return;
+    if(!S.gnss){badge.className='phase-badge blackout';txt.textContent='BLACKOUT';}
+    else if(S.snapN>0&&S.step%20<6){badge.className='phase-badge snap';txt.textContent='SNAP REACQ';}
+    else{badge.className='phase-badge nominal';txt.textContent='NOMINAL';}
+  }
+
+  // ─── TUNNEL MODE ───
+  function updateTunnelMode(){
+    if(S.inTunnel){document.body.classList.add('tunnel-mode');}
+    else{document.body.classList.remove('tunnel-mode');}
+  }
+
+  // ─── EVENT TIMELINE ───
+  const TL_MAX=120; // max segments
+  let tlSegs=[]; // {type:'gnss'|'blackout'|'tunnel'|'snap', len:1}
+
+  function updateTimeline(){
+    if(tlSegs.length===0||tlSegs[tlSegs.length-1].type!==currentTLType()){
+      tlSegs.push({type:currentTLType(),len:1});
+    } else {
+      tlSegs[tlSegs.length-1].len++;
+    }
+    // Trim to max
+    while(tlSegs.reduce((a,b)=>a+b.len,0)>TL_MAX){
+      tlSegs[0].len--;
+      if(tlSegs[0].len<=0)tlSegs.shift();
+    }
+    const wrap=document.getElementById('tl-wrap'); if(!wrap)return;
+    const total=tlSegs.reduce((a,b)=>a+b.len,0);
+    wrap.innerHTML='';
+    const colMap={gnss:'var(--green)',blackout:'var(--red)',tunnel:'var(--yellow)',snap:'var(--cyan)'};
+    tlSegs.forEach(seg=>{
+      const d=document.createElement('div'); d.className='tl-seg';
+      d.style.width=((seg.len/total)*100)+'%';
+      d.style.background=colMap[seg.type]||'var(--t3)';
+      d.style.opacity=seg.type==='snap'?'0.9':'0.7';
+      wrap.appendChild(d);
+    });
+    const stEl=document.getElementById('tl-steps'); if(stEl)stEl.textContent=S.step+' steps';
+  }
+
+  function currentTLType(){
+    if(S.inTunnel&&!S.gnss)return'blackout';
+    if(!S.gnss)return'blackout';
+    if(S.inTunnel)return'tunnel';
+    return'gnss';
+  }
+
+  // ─── BENCHMARK RACE ───
+  function updateRace(mn,mi){
+    const ekfATE=EKF.s>0?(EKF.te/EKF.s):0;
+    const worst=Math.max(0.5,parseFloat(mi)||1);
+    const ndPct=Math.min(95,(parseFloat(mn)||0)/worst*100);
+    const ekPct=Math.min(95,(ekfATE)/worst*100);
+    const imuPct=Math.min(100,(parseFloat(mi)||0)/worst*100);
+    const nd=document.getElementById('race-nd'); if(nd)nd.style.width=ndPct+'%';
+    const ek=document.getElementById('race-ekf'); if(ek)ek.style.width=ekPct+'%';
+    const im=document.getElementById('race-imu'); if(im)im.style.width=imuPct+'%';
+    const ndv=document.getElementById('race-ndv'); if(ndv)ndv.textContent=(parseFloat(mn)||0).toFixed(2)+'m';
+    const ekv=document.getElementById('race-ekfv'); if(ekv)ekv.textContent=ekfATE.toFixed(2)+'m';
+    const imv=document.getElementById('race-imuv'); if(imv)imv.textContent=(parseFloat(mi)||0).toFixed(2)+'m';
+  }
+
+  // ─── COVARIANCE ELLIPSE ───
+  // Draw proper 2D ellipse from EKF P matrix (eigendecomposition of top-left 2x2)
+  let _covEllipse=null;
+  function updateCovEllipse(){
+    if(!window._map)return;
+    // P top-left 2x2: [P[0],P[1];P[3],P[4]]
+    const a=EKF.P[0],b=EKF.P[1],d=EKF.P[4];
+    const tr=a+d, det=a*d-b*b;
+    const l1=tr/2+Math.sqrt(Math.max(0,(tr/2)*(tr/2)-det));
+    const l2=tr/2-Math.sqrt(Math.max(0,(tr/2)*(tr/2)-det));
+    const angle=b!==0?Math.atan2(l1-a,b)*180/Math.PI:0;
+    const s1=Math.sqrt(Math.max(0,l1))*111000*3; // scale for visibility (3-sigma)
+    const s2=Math.sqrt(Math.max(0,l2))*111000*3;
+    const pts=[];
+    for(let t=0;t<=360;t+=10){
+      const tr2=t*Math.PI/180;
+      const x=s1*Math.cos(tr2),y=s2*Math.sin(tr2);
+      const ar=angle*Math.PI/180;
+      const rx=x*Math.cos(ar)-y*Math.sin(ar), ry=x*Math.sin(ar)+y*Math.cos(ar);
+      const R=6371000;
+      const la=EKF.x+rx/R*(180/Math.PI);
+      const lo=EKF.y+ry/(R*Math.cos(EKF.x*Math.PI/180))*(180/Math.PI);
+      pts.push([la,lo]);
+    }
+    if(_covEllipse){window._map.removeLayer(_covEllipse);}
+    _covEllipse=L.polygon(pts,{className:'cov-ellipse',interactive:false}).addTo(window._map);
+  }
+
+  // ─── INIT NEW COMPONENTS ───
+  initAttnStrip();
+  initInfLayers();
+
+  // ─── HOOK INTO MAIN LOOP — run sky+attn+phase+timeline every step ───
+  // Add new render calls to the main rAF loop
+  // We do this by redefining loop:
+  function loopNew(t){
+    requestAnimationFrame(loopNew);
+    if(t-lt>65){
+      step();
+      updateSatState();
+      updateAttn();
+      updatePhase();
+      updateTunnelMode();
+      updateTimeline();
+      lt=t;
+    }
+    drawSpark('sp-err',S.spkErr,'#ff2255','rgba(255,34,85,0.2)');
+    drawSpark('sp-unc',S.spkUnc,'#a855f7','rgba(168,85,247,0.2)');
+    drawSpark('sp-spd',S.spkSpd,'#00ff9d','rgba(0,255,157,0.18)');
+    drawSpark('sp-baro',S.spkBaro,'#fbbf24','rgba(251,191,36,0.18)');
+    drawVib();
+    drawSkyPlot();
+    if(S.step%5===0)updateCovEllipse();
+  }
+
   init('delhi');
-  requestAnimationFrame(loop);
+  requestAnimationFrame(loopNew);
 </script>
 </body>
 </html>
