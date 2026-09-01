@@ -6,9 +6,12 @@ ISRO Smart India Hackathon 2026 · Problem Statement #26168
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
 [![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-1.17-green)](https://onnxruntime.ai)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-teal)](https://fastapi.tiangolo.com)
+[![Live API](https://img.shields.io/badge/API-Live%20on%20Render-brightgreen)](https://navdrift0-api.onrender.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 NAVDRIFT-0 is a transformer-based dead reckoning system that maintains accurate position estimates for ground vehicles during GNSS blackouts (tunnels, urban canyons, RF-denied environments). It fuses IMU, wheel odometry, barometric altitude, and NavIC pseudorange observables through a learned architecture, runs inference in under 20 ms on a standard CPU, and exposes a real-time WebSocket stream at 10 Hz.
+
+**Live demo:** [navdrift0.pages.dev](https://navdrift0.pages.dev) · **API:** [navdrift0-api.onrender.com/docs](https://navdrift0-api.onrender.com/docs)
 
 ---
 
@@ -23,161 +26,119 @@ NAVDRIFT-0 is a transformer-based dead reckoning system that maintains accurate 
 
 ---
 
-## New in v1.1
+## What's New in v1.2
+
+- **Live API connected** — Render backend is live; dashboard badge switches SIMULATION → LIVE API when connected with a valid API key
+- **Mobile PWA v2** — fully rebuilt mobile layout: full-screen map, compact bottom sheet, module chip row, auto-redirect from desktop on phones (`window.innerWidth < 900`)
+- **Env var fix** — backend now reads `API_KEY` or `NAVDRIFT_API_KEY` (whichever is set in Render dashboard)
+- **Desktop link** — mobile view includes "↗ Open desktop view" for tablets
+
+## What's New in v1.1
 
 - **WebSocket `/ws/stream`** — true 10 Hz push via asyncio dual-task producer/consumer; sensor queue with auto-reconnect
 - **HMM Map Matching** — Viterbi decoder with Gaussian emission (σ = 18 m) and exponential transition (λ = 4); soft-snap to MAP estimate
-- **Barometer (9th channel)** — simulated altitude input; tunnel entry/exit detection via sustained ΔAlt < −0.2 m for 5+ consecutive steps; uncertainty growth rate doubles inside tunnels
-- **INT4 Quantisation** — `MatMul4BitsQuantizer` with `block_size=32`; target < 5 ms on ARM NEON (down from 20 ms INT8)
-- **Android SDK** — `NavDriftService` foreground service, ONNX Runtime for Android, `LocationListener`-compatible API, `NavDriftClient` helper class
-- **Mobile PWA** — installable progressive web app with offline demo mode and touch-optimised controls
+- **Barometer (9th channel)** — tunnel entry/exit detection via sustained ΔAlt < −0.2 m for 5+ steps; uncertainty growth rate doubles inside tunnels
+- **INT4 Quantisation** — `MatMul4BitsQuantizer` with `block_size=32`; target < 5 ms on ARM NEON
+- **Android SDK** — `NavDriftService` foreground service, ONNX Runtime for Android, `LocationListener`-compatible API
+- **Mobile PWA** — installable progressive web app with offline demo mode
 
 ---
 
 ## Architecture
 
-NAVDRIFT-0 is composed of four learned modules and a runtime serving layer.
-
 ### 1. DRIFTFormer
 
-The core sequence model. A causal transformer encoder processes a sliding window of the last 50 sensor frames (100 ms at 10 Hz resolution, or 500 ms at 2 Hz pre-integration). Each frame is a 9-dimensional vector:
+The core sequence model. A causal transformer encoder processes a sliding window of the last 50 sensor frames. Each frame is a 9-dimensional vector:
 
 ```
 [ax, ay, az, gx, gy, gz, wheel_speed, yaw_rate, baro_alt]
 ```
 
-The model produces a 3-dimensional output `[Δx, Δy, Δheading]` per step. Architecture details:
+Output: `[Δx, Δy, Δheading]` per step. Details:
 
 - 4 transformer layers, 8 attention heads, d_model = 128
-- Sinusoidal positional encoding relative to window start
-- RoPE (rotary position embeddings) on the heading sub-space
-- LayerNorm pre-residual (Pre-LN) for training stability
-- Final linear projection with no activation (regression head)
-
-Training uses an MSE loss on absolute position accumulated over the window, with an auxiliary heading consistency loss (weight 0.1).
+- Sinusoidal + RoPE positional encoding
+- Pre-LN residual connections
+- MSE loss + auxiliary heading consistency loss (weight 0.1)
 
 ### 2. NavIC VAE
 
-A variational autoencoder that conditions DRIFTFormer's latent space on NavIC L5/S1 pseudorange observations when they are available. During a GNSS blackout the decoder receives a learned "blackout token" in place of the NavIC embedding, which keeps the latent distribution well-calibrated without requiring measurements.
+Conditions DRIFTFormer's latent space on NavIC L5/S1 pseudorange observations. During GNSS blackout, a learned "blackout token" maintains calibrated latent distribution.
 
 - Encoder: 2-layer MLP → μ, log σ² (dim 32)
-- KL weight annealed from 0 → 0.01 over first 50 k steps
-- Pseudorange residuals normalised to zero-mean unit variance per satellite
+- KL weight annealed from 0 → 0.01 over 50 k steps
 
 ### 3. SNAP Corrector
 
-A lightweight MLP trained to predict and subtract systematic drift from the DRIFTFormer output. SNAP (Systematic Navigation Artifact Predictor) sees vehicle speed, heading variance, and accumulated distance since last GNSS fix as additional features. It learns bias patterns caused by IMU temperature drift, wheel slip, and sensor misalignment.
+Lightweight MLP that predicts and subtracts systematic drift (IMU temperature drift, wheel slip, misalignment).
 
-- 3 hidden layers, 64 units each, GELU activation
-- Output: additive correction Δ[x, y, heading]
-- Applied after DRIFTFormer inference, before map matching
+- 3 hidden layers, 64 units, GELU activation
+- Applied after DRIFTFormer, before map matching
 
 ### 4. HMM Map Matching (v1.1)
 
-After the SNAP-corrected position estimate is produced, a hidden Markov model aligns the trajectory to a road network graph. The road graph is stored as a GeoJSON file and loaded into a KD-tree for nearest-node queries.
-
-**Emission model** — Gaussian centred on the raw estimate:
+Viterbi decoder aligns trajectory to road network graph (GeoJSON + KD-tree).
 
 ```
-P(obs | state) = N(obs; road_node_pos, σ²I),   σ = 18 m
+Emission:    P(obs|state) = N(obs; road_node_pos, σ²I),  σ = 18 m
+Transition:  P(s_t|s_{t-1}) ∝ exp(−λ · route_dist),     λ = 4
 ```
 
-**Transition model** — exponential decay on route distance between consecutive candidate nodes:
-
-```
-P(state_t | state_{t-1}) ∝ exp(−λ · route_dist),   λ = 4
-```
-
-**Viterbi decode** runs over a 20-step rolling window. The MAP state sequence is decoded every step; the current position is soft-snapped toward the MAP road node at a blend factor of 0.6 (tunable via `--hmm-snap`).
-
-Map matching is disabled automatically when position uncertainty (propagated covariance trace) exceeds 200 m², preventing incorrect snapping in open terrain.
+Runs on a 20-step rolling window. Disabled when uncertainty trace > 200 m².
 
 ---
 
-## Barometer Integration and Tunnel Detection (v1.1)
+## Barometer & Tunnel Detection (v1.1)
 
-The 9th input channel carries barometric altitude in metres above sea level, simulated during training from a noise model calibrated to BMP388 datasheet specs (±0.5 m RMS at 10 Hz).
-
-**Tunnel entry/exit detection** uses a simple state machine:
+State machine on the 9th input channel (BMP388 noise model, ±0.5 m RMS at 10 Hz):
 
 ```
-if ΔAlt < −0.2 m for 5 consecutive steps → TUNNEL_ENTRY
-if ΔAlt > +0.1 m for 5 consecutive steps → TUNNEL_EXIT
+ΔAlt < −0.2 m for 5 consecutive steps → TUNNEL_ENTRY  (Q scaled ×2)
+ΔAlt > +0.1 m for 5 consecutive steps → TUNNEL_EXIT
 ```
 
-In `TUNNEL` state the position uncertainty covariance growth rate is doubled (process noise Q scaled by 2.0). This causes the filter to be more conservative, widening confidence intervals and preventing overconfident map snapping on tunnel curves. The `tunnel_mode` flag is exposed in the WebSocket payload and the Android SDK callback.
+`tunnel_mode` is exposed in the WebSocket payload and the Android SDK callback.
 
 ---
 
 ## INT4 Quantisation (v1.1)
 
-For deployment on ARM-class hardware (Cortex-A55/A78, Snapdragon 8cx), the DRIFTFormer and SNAP Corrector weights are quantised to 4-bit integers using ONNX Runtime's `MatMul4BitsQuantizer`:
-
 ```python
 from onnxruntime.quantization import MatMul4BitsQuantizer
 
 quantizer = MatMul4BitsQuantizer(
-    model=onnx_model,
-    block_size=32,
-    is_symmetric=True,
-    accuracy_level=4,
+    model=onnx_model, block_size=32, is_symmetric=True, accuracy_level=4,
 )
 quantizer.process()
 ```
 
-Benchmark targets on Snapdragon 8cx Gen 3 (ARM NEON, 4 cores):
-
-| Precision | Latency | Model Size |
-|-----------|---------|------------|
+| Precision | Latency (Snapdragon 8cx) | Model Size |
+|-----------|--------------------------|------------|
 | FP32 | 48 ms | 22 MB |
 | INT8 | 20 ms | 6.2 MB |
 | INT4 | < 5 ms (target) | 3.4 MB |
 
-INT4 accuracy loss on the 1 km ATE benchmark: < 2 m (within ISRO tolerance).
-
----
-
-## ONNX Runtime Serving
-
-The trained PyTorch model is exported to ONNX via `torch.onnx.export` with opset 17, then optimised with `onnxruntime.transformers.optimizer` (attention fusion, layer norm fusion). The runtime session is created with:
-
-```python
-sess_options = ort.SessionOptions()
-sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-sess_options.intra_op_num_threads = 2
-session = ort.InferenceSession("navdrift.onnx", sess_options,
-                               providers=["CPUExecutionProvider"])
-```
-
-Warm-up runs (3 forward passes) are executed at startup to prime JIT caches.
+ATE degradation vs INT8: < 2 m (within ISRO tolerance).
 
 ---
 
 ## FastAPI Backend
 
-The HTTP/WebSocket backend is built with FastAPI and deployed to [Render](https://render.com).
+**Base URL:** `https://navdrift0-api.onrender.com`
 
-**Base URL (production):** `https://navdrift0-api.onrender.com`
-
-### REST Endpoints
+Authentication: `X-API-Key` header. Backend reads `API_KEY` or `NAVDRIFT_API_KEY` env var.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/health` | Liveness probe; returns `{"status": "ok", "model": "navdrift-v1.1"}` |
-| `POST` | `/predict` | Single-frame inference; body: `SensorFrame` JSON |
-| `GET` | `/metrics` | Prometheus-format latency and throughput counters |
+| `GET` | `/health` | Liveness probe |
+| `GET` | `/status` | Auth check + model info |
+| `POST` | `/predict` | Single-frame inference |
+| `POST` | `/predict/batch` | Batch inference |
+| `GET` | `/metrics` | Prometheus counters |
+| `WS` | `/ws/stream` | 10 Hz position stream |
+| `GET` | `/docs` | Swagger UI |
 
-### WebSocket `/ws/stream` (v1.1)
-
-True 10 Hz push stream using an asyncio dual-task pattern:
-
-**Producer task** — reads from an `asyncio.Queue` populated by the sensor ingestion loop (serial port, CAN bus, or replay file) and runs ONNX inference on each buffered frame.
-
-**Consumer task** — drains the output queue and pushes JSON messages to all connected WebSocket clients every 100 ms, regardless of how many frames arrived in that interval (the latest frame is always sent; intermediate frames are logged).
-
-**Auto-reconnect** — the JavaScript client (and Android SDK) implement exponential back-off reconnection (initial 1 s, max 30 s, jitter ±500 ms).
-
-**Payload schema:**
+### WebSocket Payload
 
 ```json
 {
@@ -197,37 +158,13 @@ True 10 Hz push stream using an asyncio dual-task pattern:
 
 ## Android SDK (v1.1)
 
-### Overview
-
-The Android SDK wraps ONNX Runtime for Android and exposes a `LocationListener`-compatible interface, making NAVDRIFT-0 a drop-in replacement for the Android platform location provider during GNSS outages.
-
-**Dependency (Maven Central — pending):**
-
-```gradle
-implementation 'io.github.navdrift:navdrift-android:1.1.0'
-```
-
-### NavDriftService
-
-A `ForegroundService` that:
-
-1. Binds to the device IMU and barometer via `SensorManager`
-2. Optionally connects to an external wheel-speed source over Bluetooth LE or USB serial
-3. Runs ONNX inference on a background `HandlerThread` (no UI-thread blocking)
-4. Broadcasts `Location` objects tagged with provider = `"navdrift"` at 10 Hz
-5. Displays a persistent notification with current accuracy and tunnel-mode indicator
-
 ```kotlin
+// Start the foreground service
 val intent = Intent(context, NavDriftService::class.java)
 intent.putExtra(NavDriftService.EXTRA_MODEL_PATH, "/data/user/0/.../navdrift.ort")
 startForegroundService(intent)
-```
 
-### NavDriftClient
-
-A helper class with a `LocationListener`-compatible callback:
-
-```kotlin
+// Receive location updates
 val client = NavDriftClient(context)
 client.requestLocationUpdates(object : NavDriftLocationListener {
     override fun onLocationChanged(location: Location) {
@@ -239,38 +176,28 @@ client.requestLocationUpdates(object : NavDriftLocationListener {
 })
 ```
 
-### ONNX Runtime Android
-
-The SDK uses `onnxruntime-android` (v1.17.3) with INT4 model weights for sub-5 ms inference. The `.ort` format (pre-optimised flatbuffer) is used instead of raw `.onnx` to eliminate startup optimisation overhead.
+Uses `onnxruntime-android` v1.17.3 with INT4 `.ort` weights for < 5 ms inference.
 
 ---
 
-## Mobile PWA (v1.1)
+## Mobile PWA (v1.2)
 
-NAVDRIFT-0 ships an installable Progressive Web App served from the FastAPI backend.
-
-- **Installable** — `manifest.json` with standalone display mode, landscape orientation, and SVG-based icons at 192 × 192 and 512 × 512
-- **Offline capable** — service worker (`sw.js`) implements cache-first for static assets and network-first (3 s timeout) for API calls; falls back to `{"demo_mode": true}` JSON when offline
-- **Touch controls** — swipe to pan the map, pinch to zoom, tap a trajectory point to inspect the sensor frame
-- **Live stream** — WebSocket `/ws/stream` reconnects automatically; trajectory is drawn on an HTML5 Canvas at 60 fps using `requestAnimationFrame`
-
-To install on Android Chrome: open `https://navdrift0-api.onrender.com` → browser menu → "Add to Home Screen".
+- **Auto-routing** — phones (`width < 900px`) land on `mobile.html`; "↗ Open desktop view" available
+- **Installable** — Android Chrome / iOS Safari → "Add to Home Screen"
+- **Offline** — service worker: cache-first static, network-first API (3 s timeout → `{"demo_mode": true}`)
+- **Layout** — full-screen map, city strip (Delhi / Mumbai / Bengaluru / Chennai / Hyderabad), module chips, 4-metric grid, baro+tunnel row, Pause + GNSS Toggle
+- **Live** — badge switches SIM → LIVE when API key configured
 
 ---
 
-## Dataset
+## Connecting the Live Dashboard
 
-Training and evaluation use the **IITB-DR** dataset (synthetic) generated with CARLA 0.9.15:
+1. Click ⚙️ in the top-right corner
+2. Enter `https://navdrift0-api.onrender.com` as Backend URL
+3. Enter your `NAVDRIFT_API_KEY`
+4. Click **Test & Connect**
 
-- 120 routes, total 847 km, mixed urban/highway/tunnel
-- IMU simulated at 100 Hz, pre-integrated to 10 Hz
-- Wheel odometry with 1% slip noise
-- Barometric altitude from SRTM DEM + BMP388 noise model
-- NavIC L5 pseudoranges for 7 satellites (masked to simulate blackouts)
-
-Ground truth: RTK-GPS at 10 Hz, post-processed with RTKLIB.
-
-Dataset download: [Google Drive (placeholder)](https://drive.google.com/placeholder) · [Hugging Face (placeholder)](https://huggingface.co/datasets/navdrift/iitb-dr)
+> **Tip:** Render free tier spins down after 15 min idle. Visit `/docs` first to wake it (~30 s), then connect.
 
 ---
 
@@ -281,12 +208,12 @@ Dataset download: [Google Drive (placeholder)](https://drive.google.com/placehol
 | Core model | PyTorch 2.3, ONNX opset 17 |
 | Runtime | ONNX Runtime 1.17 (CPU / ARM NEON) |
 | Quantisation | MatMul4BitsQuantizer (INT8 → INT4) |
-| Backend | FastAPI 0.111, Uvicorn, asyncio |
-| Map matching | NetworkX, Shapely, KD-tree (scipy) |
-| Deployment | Render (Docker), GitHub Actions CI |
+| Backend | FastAPI 0.111, Uvicorn, asyncio, slowapi |
+| Map matching | scipy KD-tree, Viterbi HMM |
+| Deployment | Render (free tier), Cloudflare Pages |
 | Android SDK | Kotlin, ONNX Runtime Android 1.17.3 |
-| PWA | Vanilla JS, HTML5 Canvas, service worker |
-| Dataset tooling | CARLA 0.9.15, RTKLIB, NumPy, Pandas |
+| Frontend | Vanilla JS, Leaflet.js, service worker |
+| Dataset | CARLA 0.9.15, RTKLIB, NumPy, Pandas |
 
 ---
 
@@ -294,30 +221,22 @@ Dataset download: [Google Drive (placeholder)](https://drive.google.com/placehol
 
 ```
 navdrift0/
-├── model/
-│   ├── driftformer.py        # Transformer architecture
-│   ├── navic_vae.py          # NavIC VAE
-│   ├── snap_corrector.py     # SNAP drift corrector
-│   └── export.py             # ONNX export + quantisation
-├── server/
-│   ├── main.py               # FastAPI app
-│   ├── ws_stream.py          # WebSocket dual-task producer/consumer
-│   └── hmm_matcher.py        # HMM map matching (Viterbi)
+├── api/
+│   └── app.py                # FastAPI — HTTP + WebSocket endpoints
+├── frontend/
+│   ├── index.html            # Desktop dashboard (auto-redirects mobile)
+│   ├── mobile.html           # Mobile PWA layout
+│   ├── manifest.json         # PWA manifest
+│   └── sw.js                 # Service worker
+├── inference/
+│   └── export_onnx.py        # ONNX export + INT4 quantisation
 ├── android/
-│   ├── NavDriftService.kt
-│   ├── NavDriftClient.kt
-│   └── build.gradle
-├── pwa/
-│   ├── index.html
-│   ├── manifest.json
-│   └── sw.js
-├── eval/
-│   ├── ate.py                # Absolute trajectory error
-│   └── benchmark.py          # Latency benchmark
-├── data/
-│   └── generate_iitb_dr.py   # CARLA dataset generator
-├── Dockerfile
-├── requirements.txt
+│   └── NavDriftService.kt    # Android foreground service
+├── checkpoints/
+│   ├── onnx/                 # drift_former_int8.onnx
+│   └── drift_former/         # norm_stats.npz
+├── start.sh                  # Render startup (model download + uvicorn)
+├── requirements-api.txt      # Production deps (no torch/gradio)
 └── README.md
 ```
 
@@ -326,30 +245,15 @@ navdrift0/
 ## Quick Start
 
 ```bash
-git clone https://github.com/navdrift/navdrift0
+git clone https://github.com/swatijs3017/navdrift0
 cd navdrift0
-pip install -r requirements.txt
+pip install -r requirements-api.txt
 
-# Export and quantise the model
-python model/export.py --checkpoint checkpoints/v1.1.pt --quant int4
+# Demo mode (no model needed)
+DEMO_MODE=true uvicorn api.app:app --host 0.0.0.0 --port 8000
 
-# Run the server locally
-uvicorn server.main:app --host 0.0.0.0 --port 8000
-
-# Connect via WebSocket
-wscat -c ws://localhost:8000/ws/stream
-```
-
----
-
-## Evaluation
-
-```bash
-# Absolute Trajectory Error over 1 km routes
-python eval/ate.py --data data/iitb_dr/test --model navdrift_int4.onnx
-
-# Latency benchmark (1000 iterations)
-python eval/benchmark.py --model navdrift_int4.onnx --threads 2
+# With real model
+HF_REPO_ID=your/repo API_KEY=yourkey bash start.sh
 ```
 
 ---
