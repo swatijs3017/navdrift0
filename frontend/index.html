@@ -837,7 +837,7 @@
   }
 
   // ─── UI UPDATE ───
-  function updateUI(eND,eIMU,spdKmh){
+  function updateUI(eND,eIMU,spdKmh){try{
     const mn=(S.totND/S.n).toFixed(2),mi=(S.totIMU/S.n).toFixed(2);
     const ekfATE=EKF.s>0?(EKF.te/EKF.s).toFixed(2):'—';
     const lat=API_MODE?S.lat.toFixed(1):(1.7+Math.random()*.5).toFixed(1);
@@ -896,7 +896,7 @@
     // Pipeline glow
     const ps=Math.floor(S.step/10)%6+1;
     for(let i=1;i<=6;i++){const el=document.getElementById('pm'+i);if(el)i===ps?el.classList.add('active'):el.classList.remove('active');}
-  }
+  }catch(e){/* silent — never crash the animation loop */}}
 
   function $$(id){return document.getElementById(id);}
   function $(id){return document.getElementById(id);}
