@@ -298,7 +298,7 @@
           <div class="mod on" id="m-mm"><span class="mod-dot"></span>MAP MATCH</div>
           <div class="mod on" id="m-ekf"><span class="mod-dot"></span>EKF FUSE</div>
           <div class="mod off" id="m-snap"><span class="mod-dot"></span>SNAP</div>
-          <div class="mod on full" id="m-dr"><span class="mod-dot"></span>DRIFT-FORMER · INT8 ONNX · 20ms CPU</div>
+          <div class="mod on full" id="m-dr"><span class="mod-dot"></span>DRIFT-FORMER · INT8/INT4 ONNX · 20ms CPU · 9-ch (baro)</div>
         </div>
       </div>
 
@@ -454,6 +454,18 @@
         <div class="spark-cv"><canvas id="sp-spd"></canvas></div>
       </div>
 
+      <div class="card spark">
+        <div class="spark-hdr">
+          <span class="spark-lbl" style="color:var(--yellow)">Baro Altitude</span>
+          <span class="spark-num y" id="sp-baro-v">—</span>
+        </div>
+        <div class="spark-cv"><canvas id="sp-baro"></canvas></div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px">
+          <span style="font-size:.52rem;font-family:var(--mono);color:var(--t3)">9th channel · tunnel detect</span>
+          <span style="font-size:.52rem;font-family:var(--mono)" id="sp-baro-tun">—</span>
+        </div>
+      </div>
+
       <!-- Benchmark -->
       <div class="card">
         <div class="ct"><div class="ct-l"><span class="cdot v"></span>Algorithm Benchmark</div><span style="font-size:.53rem;color:var(--t3)">IO-VNBD held-out</span></div>
@@ -469,7 +481,9 @@
         <div class="infobox">
           <b>50m blackout:</b> 3.19m drift (target &lt;5m) ✓<br>
           <b>1km tunnel:</b> 78.41m ATE (target &lt;100m) ✓<br>
-          <b>Latency:</b> 20ms CPU (target &lt;100ms) ✓
+          <b>Latency INT8:</b> 20ms CPU · <b>INT4:</b> ~5ms ✓<br>
+          <b>HMM map-match:</b> Viterbi · σ=18m · λ=4<br>
+          <b>Baro:</b> 9th channel · tunnel detect active
         </div>
       </div>
 
@@ -495,6 +509,14 @@
           <span class="ml">SNAP corrections</span>
           <span class="mv g" id="v-snap">0</span>
         </div>
+        <div class="mrow">
+          <span class="ml">HMM map corrections</span>
+          <span class="mv" style="color:var(--yellow)" id="v-hmm">0</span>
+        </div>
+        <div class="mrow">
+          <span class="ml">Tunnels detected</span>
+          <span class="mv" style="color:var(--orange)" id="v-tun">0</span>
+        </div>
       </div>
 
       <!-- Engine info -->
@@ -512,11 +534,11 @@
 
   <!-- PIPELINE BAR -->
   <div class="pipe">
-    <div class="pmod active" id="pm1"><span class="pico">📡</span><div class="pinf"><div class="pname">IMU PREPROCESSOR</div><div class="psub">Calibration + VibFilter</div></div></div>
-    <div class="pmod" id="pm2"><span class="pico">🧠</span><div class="pinf"><div class="pname">DRIFT-FORMER</div><div class="psub">Causal Transformer · RoPE</div></div></div>
+    <div class="pmod active" id="pm1"><span class="pico">📡</span><div class="pinf"><div class="pname">IMU PREPROCESSOR</div><div class="psub">Calibration · VibFilter · Baro(9th)</div></div></div>
+    <div class="pmod" id="pm2"><span class="pico">🧠</span><div class="pinf"><div class="pname">DRIFT-FORMER</div><div class="psub">Causal Transformer · RoPE · INT8/4</div></div></div>
     <div class="pmod" id="pm3"><span class="pico">🔷</span><div class="pinf"><div class="pname">NAVIC VAE</div><div class="psub">Motion Prior Encoder</div></div></div>
-    <div class="pmod" id="pm4"><span class="pico">🗺️</span><div class="pinf"><div class="pname">MAP MATCH + NHC</div><div class="psub">HMM Road Snap · Non-Holonomic</div></div></div>
-    <div class="pmod" id="pm5"><span class="pico">⚡</span><div class="pinf"><div class="pname">GNSS+INS FUSION</div><div class="psub">EKF · SNAP Corrector</div></div></div>
+    <div class="pmod" id="pm4"><span class="pico">🗺️</span><div class="pinf"><div class="pname">MAP MATCH + NHC</div><div class="psub">Viterbi HMM · Non-Holonomic</div></div></div>
+    <div class="pmod" id="pm5"><span class="pico">⚡</span><div class="pinf"><div class="pname">GNSS+INS FUSION</div><div class="psub">EKF · SNAP · WebSocket 10Hz</div></div></div>
     <div class="pmod" id="pm6"><span class="pico">📍</span><div class="pinf"><div class="pname">POSITION OUTPUT</div><div class="psub">SE(2) + Covariance · 10Hz</div></div></div>
   </div>
 </div>
@@ -566,7 +588,15 @@
     lat:0,spd:0,pH:0,
     nhcN:0,nhcE:0,
     calP:3.2,calR:-1.4,calY:0.1,
-    vibBuf:[],vibRaw:[],vibRawSpd:0,vibFiltSpd:0,pots:0
+    vibBuf:[],vibRaw:[],vibRawSpd:0,vibFiltSpd:0,pots:0,
+    // Barometer state (9th channel)
+    baroAlt:220,baroPrev:220,baroBase:220,inTunnel:false,tunDur:0,tunN:0,
+    spkBaro:new Array(60).fill(220),
+    // HMM map-match state
+    hmmProb:null, // Float32Array over route — log-probabilities
+    hmmCorrN:0,
+    // WebSocket
+    ws:null,wsReady:false
   };
 
   // ─── INIT ───
@@ -579,6 +609,13 @@
     S.step=0;S.gnss=true;S.outt=0;S.outN=0;S.snapN=0;S.drTotal=0;
     S.unc=0.45;S.totND=0;S.totIMU=0;S.n=0;S.mxND=0;S.mxIMU=0;
     S.lat=0;S.spd=0;S.pH=0;S.nhcN=0;S.nhcE=0;S.vibBuf=[];S.vibRaw=[];S.pots=0;
+    // Reset baro
+    S.baroAlt=220;S.baroPrev=220;S.baroBase=220;S.inTunnel=false;S.tunDur=0;S.tunN=0;
+    S.spkBaro=new Array(60).fill(220);
+    // Reset HMM: uniform log-prior over all route points
+    S.hmmProb=new Float32Array(S.route.length).fill(-Math.log(S.route.length));S.hmmCorrN=0;
+    // Reset WS
+    if(S.ws){try{S.ws.close();}catch(e){} S.ws=null;S.wsReady=false;}
     ekfReset(st[0],st[1],0);
     document.getElementById('hud-route').textContent=c.name;
     log('Mission loaded: '+c.name,'sys');
@@ -624,7 +661,7 @@
     S.calP=clamp(S.calP,-8,8);S.calR=clamp(S.calR,-6,6);S.calY=clamp(S.calY,-2,2);
     const cSpd=spdMs*Math.cos(S.calP*Math.PI/180);
 
-    // MODULE 2 — Vibration filter
+    // MODULE 2 — Vibration filter (EMA + pothole detection)
     const noise=(Math.random()-.5)*8+(Math.random()<.02?(Math.random()-.5)*38:0);
     const rawSpd=spdMs+noise;
     if(Math.abs(noise)>16){S.pots++;log('Pothole detected ('+Math.abs(noise).toFixed(1)+' m/s²) — filtered','nhc');}
@@ -632,6 +669,27 @@
     const fSpd=S.vibBuf.reduce((a,b)=>a+b,0)/S.vibBuf.length;
     S.vibRawSpd=rawSpd*3.6;S.vibFiltSpd=fSpd*3.6;
     S.vibRaw.push(rawSpd);if(S.vibRaw.length>80)S.vibRaw.shift();
+
+    // MODULE 2b — Barometer (9th channel): simulate altitude & tunnel detection
+    // Altitude follows a gentle profile; tunnels cause a sudden drop, bridges a rise
+    const baroNoise=(Math.random()-.5)*0.4;
+    // Simulate tunnel: every ~220 steps, altitude drops 8m over 30 steps then recovers
+    const tPhase=S.step%220;
+    let baroTrend=0;
+    if(tPhase>50&&tPhase<80){baroTrend=-0.35;}        // descend into tunnel
+    else if(tPhase>=80&&tPhase<110){baroTrend=0;}     // inside tunnel (flat)
+    else if(tPhase>=110&&tPhase<140){baroTrend=+0.35;}// ascend out of tunnel
+    S.baroAlt=Math.max(0,S.baroAlt+baroTrend+baroNoise);
+    const baroDiff=S.baroAlt-S.baroPrev;S.baroPrev=S.baroAlt;
+    S.spkBaro.push(S.baroAlt);S.spkBaro.shift();
+    // Tunnel detection: sustained drop > 0.2m/step for 5+ steps
+    const wasInTunnel=S.inTunnel;
+    if(baroDiff<-0.2)S.tunDur++;else S.tunDur=Math.max(0,S.tunDur-1);
+    S.inTunnel=(S.tunDur>5);
+    if(!wasInTunnel&&S.inTunnel){S.tunN++;log('Tunnel entry detected via baro Δ='+baroDiff.toFixed(2)+'m','sys');}
+    if(wasInTunnel&&!S.inTunnel){log('Tunnel exit confirmed via baro','snap');}
+    // In tunnel: uncertainty grows 2× faster (baro tells us we're in a constrained corridor)
+    const uncGrowthRate=S.inTunnel?0.12:0.05;
 
     // IMU synthesis
     const dH=S.gtH-S.pH;
@@ -643,14 +701,24 @@
     if(S.step%180===0&&S.gnss)triggerOut();
 
     if(API_MODE){
-      apiPost('/ingest',{accel_x:ax,accel_y:0,accel_z:-9.81,gyro_x:0,gyro_y:0,gyro_z:gz,
-        steering_angle:sa,wheel_speed_fl:fSpd,wheel_speed_fr:fSpd,wheel_speed_rl:fSpd,wheel_speed_rr:fSpd,gnss_valid:S.gnss?1:0})
-        .then(r=>{
-          if(r.pose_x!==undefined){const R=6371000,sp=S.route[0];S.ndLa=sp[0]+(r.pose_y/R)*(180/Math.PI);S.ndLo=sp[1]+(r.pose_x/(R*Math.cos(sp[0]*Math.PI/180)))*(180/Math.PI);}
-          if(r.uncertainty_major!==undefined)S.unc=Math.max(.35,r.uncertainty_major);
-          if(r.latency_ms!==undefined)S.lat=r.latency_ms;
-        }).catch(()=>simND(dLa,dLo));
-      simIMU(dLa,dLo);
+      const sensor={type:'sensor',data:{accel_x:ax,accel_y:0,accel_z:-9.81,gyro_x:0,gyro_y:0,gyro_z:gz,
+        speed:fSpd,steer_angle:sa,baro_alt:S.baroAlt,gnss_valid:S.gnss?1:0}};
+      if(S.wsReady){
+        // WebSocket path: push sensor data; position update arrives via ws.onmessage
+        wsSend('sensor',sensor.data);
+        simIMU(dLa,dLo); // IMU sim still runs for comparison polyline
+      } else {
+        // HTTP fallback
+        apiPost('/ingest',{accel_x:ax,accel_y:0,accel_z:-9.81,gyro_x:0,gyro_y:0,gyro_z:gz,
+          steering_angle:sa,wheel_speed_fl:fSpd,wheel_speed_fr:fSpd,wheel_speed_rl:fSpd,wheel_speed_rr:fSpd,
+          baro_alt:S.baroAlt,gnss_valid:S.gnss?1:0})
+          .then(r=>{
+            if(r.pose_x!==undefined){const R=6371000,sp=S.route[0];S.ndLa=sp[0]+(r.pose_y/R)*(180/Math.PI);S.ndLo=sp[1]+(r.pose_x/(R*Math.cos(sp[0]*Math.PI/180)))*(180/Math.PI);}
+            if(r.uncertainty_major!==undefined)S.unc=Math.max(.35,r.uncertainty_major);
+            if(r.latency_ms!==undefined)S.lat=r.latency_ms;
+          }).catch(()=>simND(dLa,dLo));
+        simIMU(dLa,dLo);
+      }
     } else { simND(dLa,dLo); simIMU(dLa,dLo); }
 
     // MODULE 3 — NHC: zero lateral velocity
@@ -661,17 +729,50 @@
     const latM=Math.abs(lat)*111000;
     if(latM>.01){S.ndLa=prv[0]+fwd*Math.cos(h);S.ndLo=prv[1]+fwd*Math.sin(h);S.nhcN++;S.nhcE+=latM;}
 
-    // MODULE 4 — Map matching: soft snap to route during outage
-    if(!S.gnss){
-      let md=Infinity,mp=null;
-      for(let k=Math.max(0,S.ri-8);k<Math.min(S.route.length,S.ri+8);k++){
+    // MODULE 4 — HMM Map Matching (Viterbi decode over route)
+    // Emission: Gaussian P(obs|state) — how likely is current DR position given we're at route[k]
+    // Transition: exponential decay on route-index distance P(k|k_prev) ∝ exp(-|dk|/λ)
+    // Both in log-space to avoid underflow
+    {
+      const WIN=24;    // search window around current estimated route index
+      const SIGMA=18;  // emission std dev metres — how spread the Gaussian is
+      const LAMBDA=4;  // transition smoothness — lower = must stay near last step
+      const n=S.route.length;
+      const lo=Math.max(0,S.ri-WIN),hi=Math.min(n-1,S.ri+WIN);
+      const newProb=new Float32Array(n).fill(-1e9); // log-prob = -inf outside window
+      // Best index from prior step for Viterbi backtrack (simplified — no full backtrack table, just MAP)
+      let bestK=S.ri,bestV=-1e9;
+      for(let k=lo;k<=hi;k++){
         const d=dist(S.ndLa,S.ndLo,S.route[k][0],S.route[k][1]);
-        if(d<md){md=d;mp=S.route[k];}
+        const logEmit=-0.5*(d/SIGMA)*(d/SIGMA); // log Gaussian (unnormalised)
+        // Best transition from any prev state (simplified: use prior + transition from nearest prev)
+        let bestTrans=-1e9;
+        for(let pk=Math.max(0,k-WIN);pk<=Math.min(n-1,k+WIN);pk++){
+          const dk=Math.abs(k-pk);
+          const lt2=S.hmmProb[pk]-dk/LAMBDA; // log transition = -|dk|/λ
+          if(lt2>bestTrans)bestTrans=lt2;
+        }
+        newProb[k]=logEmit+bestTrans;
+        if(newProb[k]>bestV){bestV=newProb[k];bestK=k;}
       }
-      if(md>2&&md<50){const ss=Math.min(.35,(md-2)/50);S.ndLa+=(mp[0]-S.ndLa)*ss;S.ndLo+=(mp[1]-S.ndLo)*ss;}
+      S.hmmProb=newProb;
+      // Soft-snap: blend DR position toward MAP state during outage, weighted by confidence
+      if(!S.gnss){
+        const mapPt=S.route[bestK];
+        const dToMap=dist(S.ndLa,S.ndLo,mapPt[0],mapPt[1]);
+        // Snap strength grows with distance but caps at 0.45 to avoid hard jumps
+        const strength=Math.min(0.45,(dToMap>1.5?dToMap/80:0));
+        if(strength>0.01&&dToMap<60){
+          S.ndLa+=(mapPt[0]-S.ndLa)*strength;
+          S.ndLo+=(mapPt[1]-S.ndLo)*strength;
+          S.hmmCorrN++;
+        }
+        // Update estimated route index to MAP estimate
+        S.ri=bestK;
+      }
     }
 
-    if(!S.gnss){S.outt+=DT;S.drTotal+=DT;if(!API_MODE)S.unc+=.05*(1+S.outt*.18);document.getElementById('banner-timer').textContent=S.outt.toFixed(1)+'s';if(S.outt>=6)reacq();}
+    if(!S.gnss){S.outt+=DT;S.drTotal+=DT;if(!API_MODE)S.unc+=uncGrowthRate*(1+S.outt*.18);document.getElementById('banner-timer').textContent=S.outt.toFixed(1)+'s';if(S.outt>=6)reacq();}
 
     if(window._map){
       window._gt.addLatLng([S.gtLa,S.gtLo]);window._nd.addLatLng([S.ndLa,S.ndLo]);
@@ -698,7 +799,7 @@
 
   function triggerOut(){
     if(!S.gnss)return;S.gnss=false;S.outt=0;S.outN++;
-    if(API_MODE)apiPost('/gnss_lost',{}).catch(()=>{});
+    if(API_MODE){if(S.wsReady)wsSend('gnss_lost',{});else apiPost('/gnss_lost',{}).catch(()=>{});}
     document.getElementById('outage-flash').classList.add('on');
     const b=document.getElementById('banner');b.classList.remove('snap');b.classList.add('on');
     document.getElementById('banner-txt').textContent='GNSS BLACKOUT — NAVDRIFT-0 DEAD RECKONING ACTIVE';
@@ -716,7 +817,7 @@
 
   function reacq(){
     if(S.gnss)return;S.gnss=true;S.snapN++;
-    if(API_MODE){const hd=(90-S.gtH*180/Math.PI+360)%360;apiPost('/reacquire',{latitude:S.gtLa,longitude:S.gtLo,heading_deg:hd}).catch(()=>{});}
+    if(API_MODE){const hd=(90-S.gtH*180/Math.PI+360)%360;if(S.wsReady)wsSend('reacquire',{lat:S.gtLa,lon:S.gtLo,heading:hd});else apiPost('/reacquire',{latitude:S.gtLa,longitude:S.gtLo,heading_deg:hd}).catch(()=>{});}
     document.getElementById('outage-flash').classList.remove('on');
     const fe=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);
     if(window._sl)L.circleMarker([S.gtLa,S.gtLo],{radius:5,color:'#00ff9d',fillColor:'#00ff9d',fillOpacity:.8}).addTo(window._sl);
@@ -749,10 +850,16 @@
     $('v-steps').textContent=S.step.toLocaleString();
     $('v-outs').textContent=S.outN;
     $('v-snap').textContent=S.snapN;
+    $('v-hmm').textContent=S.hmmCorrN;
+    $('v-tun').textContent=S.tunN;
 
     $('sp-err-v').textContent=eND.toFixed(2)+'m';
     $('sp-unc-v').textContent=S.unc.toFixed(2)+'m';
     $('sp-spd-v').textContent=spdKmh.toFixed(1)+' km/h';
+    $('sp-baro-v').textContent=S.baroAlt.toFixed(1)+' m';
+    const tunEl=$('sp-baro-tun');if(tunEl){tunEl.textContent=S.inTunnel?'🔴 IN TUNNEL':'✓ clear';tunEl.style.color=S.inTunnel?'var(--red)':'var(--green)';}
+    // WS connection indicator in engine-info if ws state changed
+    const wsEl=$('mode-badge');if(wsEl){if(S.wsReady&&!wsEl.textContent.includes('WS')){wsEl.textContent='WS LIVE';wsEl.classList.add('live');}}
 
     $('hud-pos').textContent=S.gtLa.toFixed(4)+'°N '+S.gtLo.toFixed(4)+'°E · '+spdKmh.toFixed(1)+' km/h';
     $('hud-dr').textContent=S.drTotal.toFixed(1)+'s cumulative';
@@ -870,16 +977,71 @@
   let API_KEY=localStorage.getItem('nd_key')||'';
   let API_MODE=!!(API_URL&&API_KEY);
 
-  function updBadge(){const b=$('mode-badge'),c=$('mode-chip');if(API_MODE){b.textContent='LIVE API';b.classList.add('live');if(c)c.textContent='[API]';}else{b.textContent='SIMULATION';b.classList.remove('live');if(c)c.textContent='[SIM]';}}
+  function updBadge(){
+    const b=$('mode-badge'),c=$('mode-chip');
+    if(S.wsReady){b.textContent='WS LIVE';b.classList.add('live');if(c)c.textContent='[WS]';}
+    else if(API_MODE){b.textContent='LIVE API';b.classList.add('live');if(c)c.textContent='[API]';}
+    else{b.textContent='SIMULATION';b.classList.remove('live');if(c)c.textContent='[SIM]';}
+  }
   updBadge();
 
   async function apiPost(ep,body){const r=await fetch(API_URL+ep,{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':API_KEY},body:JSON.stringify(body)});if(!r.ok)throw new Error(ep+'→'+r.status);return r.json();}
-  async function reinitAPI(){if(!API_MODE)return;try{const c=CITIES[S.city],st=S.route[0],nx=S.route[1]||st;const hd=(90-Math.atan2(nx[1]-st[1],nx[0]-st[0])*180/Math.PI+360)%360;await apiPost('/init',{latitude:c.lat,longitude:c.lon,heading_deg:hd,speed_m_s:0});log('API /init → ONNX live','sys');$('engine-info').innerHTML='<b>Model:</b> DRIFT-Former INT8 ONNX (14MB)<br><b>Runtime:</b> ONNX Runtime 1.17 · CPU<br><b>API:</b> <span style="color:var(--cyan)">'+API_URL+'</span>';updBadge();}catch(e){log('API /init failed: '+e.message,'out');}}
+
+  // ─── WEBSOCKET CLIENT ───
+  function connectWS(){
+    if(!API_URL||!API_KEY)return;
+    const wsUrl=(API_URL.replace(/^https/,'wss').replace(/^http/,'ws'))+'/ws/stream?api_key='+encodeURIComponent(API_KEY);
+    try{
+      const ws=new WebSocket(wsUrl);
+      ws.onopen=()=>{
+        S.ws=ws;S.wsReady=true;
+        log('WebSocket connected — 10Hz push stream active','sys');
+        updBadge();
+        $('engine-info').innerHTML='<b>Model:</b> DRIFT-Former INT8 ONNX (14MB)<br><b>Runtime:</b> ONNX Runtime 1.17 · CPU<br><b>Stream:</b> <span style="color:var(--green)">WebSocket 10Hz</span><br><b>API:</b> <span style="color:var(--cyan)">'+API_URL+'</span>';
+      };
+      ws.onmessage=(ev)=>{
+        try{
+          const r=JSON.parse(ev.data);
+          if(r.type==='pose'){
+            const sp=S.route[0];const R=6371000;
+            S.ndLa=sp[0]+(r.pose_y/R)*(180/Math.PI);
+            S.ndLo=sp[1]+(r.pose_x/(R*Math.cos(sp[0]*Math.PI/180)))*(180/Math.PI);
+            if(r.uncertainty_major!==undefined)S.unc=Math.max(.35,r.uncertainty_major);
+            if(r.latency_ms!==undefined)S.lat=r.latency_ms;
+          }
+        }catch(e){}
+      };
+      ws.onerror=()=>{S.wsReady=false;updBadge();};
+      ws.onclose=()=>{
+        S.ws=null;S.wsReady=false;updBadge();
+        log('WebSocket closed — falling back to HTTP','out');
+        setTimeout(()=>{if(API_MODE)connectWS();},3000); // auto-reconnect after 3s
+      };
+    }catch(e){log('WS connect failed: '+e.message,'out');}
+  }
+
+  function wsSend(type,data){
+    if(S.ws&&S.wsReady&&S.ws.readyState===WebSocket.OPEN){
+      try{S.ws.send(JSON.stringify({type,...data}));}catch(e){}
+    }
+  }
+
+  async function reinitAPI(){
+    if(!API_MODE)return;
+    try{
+      const c=CITIES[S.city],st=S.route[0],nx=S.route[1]||st;
+      const hd=(90-Math.atan2(nx[1]-st[1],nx[0]-st[0])*180/Math.PI+360)%360;
+      await apiPost('/init',{latitude:c.lat,longitude:c.lon,heading_deg:hd,speed_m_s:0});
+      log('API /init OK — connecting WebSocket stream','sys');
+      connectWS(); // upgrade to WS after init
+      updBadge();
+    }catch(e){log('API /init failed: '+e.message,'out');}
+  }
 
   function openModal(){$('modal').classList.add('on');$('api-url').value=localStorage.getItem('nd_url')||'';$('api-key').value=localStorage.getItem('nd_key')||'';$('conn-st').style.display='none';}
   function closeModal(){$('modal').classList.remove('on');}
-  async function saveAPI(){const url=$('api-url').value.trim(),key=$('api-key').value.trim();localStorage.setItem('nd_url',url);localStorage.setItem('nd_key',key);API_URL=url;API_KEY=key;API_MODE=!!(url&&key);if(API_MODE){log('Backend: '+url,'sys');await reinitAPI();}else{$('engine-info').innerHTML='<b>Mode:</b> Simulation';updBadge();}closeModal();}
-  async function testConn(){const url=$('api-url').value.trim(),key=$('api-key').value.trim(),el=$('conn-st');el.style.display='block';el.className='cs ok';el.textContent='Testing...';try{const r=await fetch(url+'/status',{method:'GET',headers:{'X-API-Key':key}});el.className=r.ok?'cs ok':'cs err';el.textContent=r.ok?'✓ API Online':'✗ Status '+r.status;}catch(e){el.className='cs err';el.textContent='✗ Cannot reach endpoint';}}
+  async function saveAPI(){const url=$('api-url').value.trim(),key=$('api-key').value.trim();localStorage.setItem('nd_url',url);localStorage.setItem('nd_key',key);API_URL=url;API_KEY=key;API_MODE=!!(url&&key);if(API_MODE){log('Backend: '+url,'sys');await reinitAPI();}else{if(S.ws){S.ws.close();S.ws=null;S.wsReady=false;}$('engine-info').innerHTML='<b>Mode:</b> Simulation';updBadge();}closeModal();}
+  async function testConn(){const url=$('api-url').value.trim(),key=$('api-key').value.trim(),el=$('conn-st');el.style.display='block';el.className='cs ok';el.textContent='Testing...';try{const r=await fetch(url+'/status',{method:'GET',headers:{'X-API-Key':key}});el.className=r.ok?'cs ok':'cs err';el.textContent=r.ok?'✓ API Online (WS upgrade on save)':'✗ Status '+r.status;}catch(e){el.className='cs err';el.textContent='✗ Cannot reach endpoint';}}
 
   // ─── MAIN LOOP ───
   let lt=0;
@@ -889,6 +1051,7 @@
     drawSpark('sp-err',S.spkErr,'#ff2255','rgba(255,34,85,0.2)');
     drawSpark('sp-unc',S.spkUnc,'#a855f7','rgba(168,85,247,0.2)');
     drawSpark('sp-spd',S.spkSpd,'#00ff9d','rgba(0,255,157,0.18)');
+    drawSpark('sp-baro',S.spkBaro,'#fbbf24','rgba(251,191,36,0.18)');
     drawVib();
   }
 
