@@ -750,8 +750,8 @@
     // Simulates a learned regressor that extracts forward acceleration pattern → speed
     const aiSpdBias=(Math.random()-.5)*0.8;           // small learned bias residual
     const aiSpdNoise=(Math.random()-.5)*1.6;          // random noise attenuated by learning
-    S.odoAI=Math.max(0,(fSpd+aiSpdBias+aiSpdNoise)*3.6);
-    S.odoWheel=Math.max(0,fSpd*3.6+(Math.random()-.5)*0.4);
+    S.odoAI=Math.max(0,spdKmh+aiSpdBias+aiSpdNoise);
+    S.odoWheel=Math.max(0,spdKmh+(Math.random()-.5)*0.4);
 
     // MODULE — MAG/AHRS: magnetometer heading + AHRS confidence
     const magDrift=(Math.random()-.5)*0.8;
