@@ -842,11 +842,11 @@
     const ekfATE=EKF.s>0?(EKF.te/EKF.s).toFixed(2):'—';
     const lat=API_MODE?S.lat.toFixed(1):(1.7+Math.random()*.5).toFixed(1);
 
-    $('v-nd').innerHTML=mn+'<span class="mu">m</span>';
-    $('v-imu').innerHTML=mi+'<span class="mu">m</span>';
-    $('v-ekf').innerHTML=EKF.s>0?ekfATE+'<span class="mu">m</span>':'—';
-    $('v-unc').innerHTML=S.unc.toFixed(2)+'<span class="mu">m</span>';
-    $('v-lat').innerHTML=lat+'<span class="mu">ms</span>';
+    const _nd=$('v-nd');if(_nd)_nd.innerHTML=mn+'<span class="mu">m</span>';
+    const _im=$('v-imu');if(_im)_im.innerHTML=mi+'<span class="mu">m</span>';
+    const _ek=$('v-ekf');if(_ek)_ek.innerHTML=EKF.s>0?ekfATE+'<span class="mu">m</span>':'—';
+    const _un=$('v-unc');if(_un)_un.innerHTML=S.unc.toFixed(2)+'<span class="mu">m</span>';
+    const _la=$('v-lat');if(_la)_la.innerHTML=lat+'<span class="mu">ms</span>';
     $('v-steps').textContent=S.step.toLocaleString();
     $('v-outs').textContent=S.outN;
     $('v-snap').textContent=S.snapN;
