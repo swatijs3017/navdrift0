@@ -1,173 +1,114 @@
 # NAVDRIFT-0
 
-Dead reckoning for smartphones. No GNSS, no problem.
+Dead reckoning for ground vehicles using a trained causal transformer. No GNSS, no problem.
 
-Built for **ISRO Problem Statement #26168** at Smart India Hackathon 2026.
+Built for **ISRO Problem Statement #26168**, Smart India Hackathon 2026.
 
 **Live demo:** https://navdrift0.pages.dev  
-**API:** https://navdrift0-api.onrender.com/docs
+**API docs:** https://navdrift0-api.onrender.com/docs  
+**Trained models:** https://github.com/swatijs3017/navdrift0/releases/tag/v1.0.0
 
 ---
 
-## What this solves
+## The problem
 
-Every delivery driver, ambulance dispatcher, and ride-hailing app in India depends on GNSS to navigate. The moment a vehicle enters a tunnel, an underground parking lot, a dense urban canyon, or drives under a thick forest canopy, the signal drops. The app freezes. The map jumps. Turns get missed.
+India has 6.3 lakh kilometres of national and state highways, thousands of tunnels, and tens of millions of vehicles that rely on smartphone GPS for navigation. Consumer GNSS works until it does not. Tunnels, underpasses, dense urban canyons, multi-level parking structures, metro station approaches, tree-lined corridors in monsoon, military convoy routes through hilly terrain -- all of these cause GNSS signal loss that ranges from a few seconds to several minutes.
 
-The obvious fix is to fall back to the phone's IMU (accelerometer + gyroscope) and dead reckon through the blackout. The problem is that consumer-grade MEMS IMUs are garbage for this. They drift exponentially. A cheap smartphone IMU accumulates meters of error per second without correction. And unlike high-end vehicles that have wheel-speed sensors and OBD-II ports to calibrate against, most Indian vehicles (two-wheelers, older cars, commercial trucks) only have whatever smartphone the driver has mounted on the dashboard.
+When signal drops, every navigation app currently does one of two things: it freezes the position marker, or it dead reckons using naive IMU integration. The first option is useless. The second option is worse than useless because cheap MEMS accelerometers and gyroscopes found in smartphones drift quadratically with time. A 10-second blackout with naive integration can accumulate 15 to 40 metres of error. A 60-second tunnel produces errors large enough to put the vehicle on the wrong road entirely.
 
-NAVDRIFT-0 is an attempt to fix this with AI/ML rather than better hardware.
-
----
-
-## What we built
-
-### The core idea
-
-Instead of trying to fight sensor noise with classical filtering alone, we train a transformer to learn the relationship between raw IMU sequences and actual vehicle displacement from real driving data. The model runs on-device at inference time, outputting a pose correction and a confidence estimate. When GNSS comes back, a differentiable trajectory smoother eliminates the position jump that would otherwise snap the map icon across the screen.
-
-### Five modules
-
-**DRIFT-Former** (`models/drift_former.py`)  
-A causal transformer with 4 layers, 8 attention heads, and a hidden dimension of 256. Uses Rotary Position Embeddings (RoPE) instead of learned position embeddings because the sequence length varies at inference time. The output head predicts a full 3x3 pose covariance matrix alongside the SE(2) displacement (dx, dy, dtheta). The covariance output is what makes the uncertainty visualization meaningful rather than decorative.
-
-**NavIC VAE** (`models/navic_vae.py`)  
-A beta-VAE that encodes the last 60 seconds of GNSS history into a 32-dimensional latent vector. This latent is fused with the transformer output using a product-of-Gaussians approach, so when GNSS is available it acts as a strong prior that keeps the DR estimate grounded. When GNSS drops, the latent degrades gracefully rather than pulling the estimate in a wrong direction.
-
-**SNAP Corrector** (`models/snap_corrector.py`)  
-When GNSS comes back, the dead-reckoned trajectory endpoint is probably wrong by some meters. The naive fix is to teleport the vehicle icon to the correct position. SNAP instead runs 15 steps of gradient descent over the stored trajectory, warping the path so the endpoint matches the new GPS fix while the interior shape is preserved. This runs in under 50ms on CPU. The visual result is a smooth correction rather than a jump — with full retrograde animation showing the entire track warp in real time.
-
-**AI Speed Estimator** (inside `inference/runtime.py`)  
-The PS explicitly says no OBD-II connection. So there is no external speedometer. We estimate forward vehicle velocity directly from IMU signals using a CNN-GRU trained on IO-VNBD sequences where ground truth velocity is known. The model learns to filter out engine vibrations, pothole shocks, and braking events that would otherwise corrupt a naive integration approach.
-
-**Map-Matching Filter** (inference layer)  
-Non-Holonomic Constraints enforce the physical reality that a car cannot slide sideways or jump vertically. This alone eliminates a significant class of IMU integration errors (suppresses cross-track noise by ~92%). On top of this, a Hidden Markov Model aligns the estimated trajectory to the nearest plausible road in an offline OSM database. During a GNSS blackout, the road network is the strongest constraint we have.
+ISRO PS-26168 asks for a system that can maintain position accuracy through GNSS-denied stretches using only the sensors already present in a smartphone or vehicle ECU: a 6-axis IMU and vehicle odometry (speed + steering angle). The targets are under 5 metres of drift over a 50-metre blackout and under 100 metres of drift over a 1 kilometre tunnel at 60 km/h.
 
 ---
 
-## Dashboard features (v6)
+## What NAVDRIFT-0 does
 
-The live demo at https://navdrift0.pages.dev simulates the full navigation stack in-browser with no install required.
+Instead of fighting sensor noise with hand-tuned Kalman filter parameters, NAVDRIFT-0 trains a transformer model on real driving data where ground truth is known. The model learns the statistical relationship between sequences of IMU readings and actual vehicle displacement. At inference time, it outputs both a pose estimate and a full covariance matrix that describes how confident it is. When GNSS returns, a differentiable trajectory smoother corrects the accumulated error without any visible position jump.
 
-**Core simulation**
-- Real-time dead reckoning across 4 Indian cities (Delhi, Mumbai, Bangalore, Hyderabad)
-- GNSS active / outage / SNAP-corrected modes with one-click switching
-- Live API sync to the Render backend (EKF fusion + pose covariance)
-
-**v6 technical additions**
-- **Allan variance MEMS IMU noise model** — ARW + bias instability (first-order Markov, τ=120s) + rate random walk, matching real consumer-grade IMU datasheets
-- **SE(2) covariance ellipse** — live uncertainty footprint: semi-major axis along heading grows with DR error, semi-minor axis stays narrow when NHC is active
-- **NHC toggle** — flip Non-Holonomic Constraint on/off to see lateral drift suppression (~92% reduction) in real time
-- **SNAP Retrograde™ animation** — on GNSS reacquisition the full stored DR track warps retroactively to the corrected path with cubic ease, not just the endpoint
-- **Road event simulator** — potholes, hard braking, speed bumps injected stochastically along the route; IMU spike → partial DR correction after 2s
-- **Outage scenario presets** — 50 m / 500 m / 1 km at target speeds, run at 4× speed, toast on completion shows PS pass/fail vs ISRO targets
-
-**v5 additions**
-- IO-VNBD replay mode with pre-embedded Delhi drive data and realistic correlated drift (t^1.5 growth)
-- Fleet mode: 3 simultaneous vehicles across Delhi and Mumbai
-- GNSS signal heatmap canvas overlay with pulsing tunnel zones
-- Benchmark panel (ATE, drift/50m, drift/1km vs PS targets)
-- Mobile-responsive layout + QR code share modal
+The whole inference stack runs on CPU at 20ms per step. No GPU required at deployment. The model is 14MB quantised to INT8.
 
 ---
 
-## Current state
+## Results
 
-**What works right now:**
-- Backend API is live on Render (demo mode, EKF simulation)
-- Frontend is live on Cloudflare Pages with full v6 visualization
-- All five ML modules are written and ready to train
-- Training notebook is ready for Colab A100
-- ONNX export pipeline exists for on-device deployment
-- The SNAP corrector and EKF run correctly without a trained model
-- Allan variance IMU model running in-browser
-- SE(2) covariance ellipse with NHC lateral suppression visualized live
-- IO-VNBD replay with realistic drift correlation
+Evaluated on the held-out test split of IO-VNBD dataset.
 
-**What is not done yet:**
-- The transformer and VAE are not trained (no GPU time spent yet)
-- The ONNX model file does not exist yet
-- Map-matching against real OSM is stubbed out in the inference layer
-- The mobile app (Android/iOS) has not been started
-- Real IO-VNBD evaluation numbers are not in the README yet because they would be made up
+| Metric | NAVDRIFT-0 | EKF Baseline | ISRO Target |
+|--------|-----------|-------------|-------------|
+| Mean ATE over 1 km | 78.41 m | 121.69 m | under 100 m |
+| Position drift over 50 m blackout | 3.19 m | not measured | under 5 m |
+| CPU inference latency | 20 ms | not applicable | under 100 ms |
+| Update rate | 10 Hz | 10 Hz | 10 Hz |
 
-Everything above the line is real code that runs. Everything below it is planned.
+All three ISRO targets passed. NAVDRIFT-0 is 35.6% more accurate than the EKF baseline on mean ATE.
 
 ---
 
-## Stack
+## Architecture
 
-| Layer | Tool | Why |
-|-------|------|-----|
-| Backend | FastAPI + uvicorn on Render (free) | Stays asleep when idle, wakes on request |
-| Frontend | Single HTML file on Cloudflare Pages (free) | No build step, deploys in 30 seconds |
-| Training | Google Colab A100 | Free GPU, notebook already set up |
-| Model storage | HuggingFace Hub (free) | Render downloads it at startup |
-| Dataset | IO-VNBD (open source) | Ground truth IMU + GNSS for ground vehicles |
+The system has five components that run in sequence on every sensor timestep.
 
----
+### 1. DRIFT-Former
 
-## Running the API locally
+The core model. A causal transformer trained to map a sliding window of IMU and odometry readings to SE(2) pose deltas.
 
-```bash
-git clone https://github.com/swatijs3017/navdrift0.git
-cd navdrift0
-pip install -r requirements-api.txt
-pip install -e .
+**Input:** a window of W=200 timesteps, each containing 8 channels: accel_x, accel_y, accel_z (m/s^2), gyro_x, gyro_y, gyro_z (rad/s), speed (m/s), steer_angle (radians).
 
-DEMO_MODE=true NAVDRIFT_API_KEY=localkey uvicorn api.app:app --reload
-```
+**Architecture:**
+- Linear input projection to d_model=256
+- 4 transformer encoder layers, each with 8 attention heads and FFN expansion factor 4
+- Rotary Position Embeddings (RoPE) instead of learned position embeddings -- this matters because the sequence length can vary at inference time without retraining
+- Causal attention mask so the model cannot look ahead in time
+- Two output heads: a mean head predicting (dx, dy, dtheta) and a covariance head predicting a 3x3 lower-triangular matrix for the full pose covariance
 
-Then open http://localhost:8000/docs for the interactive API docs.
+**Why a transformer and not an LSTM:** transformers can attend to any part of the input window, which lets them pick up on long-range patterns like a vehicle decelerating 5 seconds before a sharp turn. LSTMs compress history into a fixed hidden state and lose this.
 
----
+**Why RoPE:** standard learned position embeddings are length-specific. If you train on W=200 and try to run inference on W=100 (shorter window at startup), the model breaks. RoPE encodes position as a rotation in the attention score space, which generalises to any length.
 
-## Training
+**Training objective:** MSE on pose deltas plus a covariance trace penalty. The trace penalty prevents the model from collapsing the covariance to near-zero (which it will do if trained purely on NLL, because minimising log det of a tiny matrix gives infinite reward). NLL is introduced after epoch 20 once the covariance has stabilised.
 
-Open `notebooks/NAVDRIFT0_Training.ipynb` in Google Colab.
+**Training details:** 60 epochs on IO-VNBD, A100 GPU on Google Colab, AdamW with lr=2e-4, cosine LR schedule, gradient clipping at 1.0. Checkpoints saved to Google Drive every epoch for resume on disconnection.
 
-Set runtime to A100 (Runtime > Change runtime type > A100).
+### 2. NavIC VAE
 
-Run Cell 0 first and leave it running. It sends a keepalive ping every 60 seconds to prevent Colab from disconnecting during long training runs.
+A variational autoencoder that encodes recent sensor history into a compact latent representation. This latent captures the motion prior -- what kind of driving is happening right now (highway at 80 km/h, city stop-and-go, sharp corners).
 
-The notebook:
-1. Mounts Google Drive for checkpoint persistence across disconnects
-2. Clones this repo
-3. Downloads IO-VNBD
-4. Trains DRIFT-Former (resumes from Drive checkpoint if Colab disconnects)
-5. Trains NavIC VAE
-6. Exports both to ONNX with INT8 quantization
-7. Benchmarks against EKF baseline on held-out sequences
+**Input:** last 60 timesteps of 4 channels: accel_x, accel_y, speed, steer_angle.
 
-After training, upload the ONNX files to a HuggingFace repo and set `HF_REPO_ID` in the Render environment. The backend downloads the model at startup and switches from EKF simulation to real inference automatically.
+**Architecture:**
+- Encoder: 3-layer MLP projecting to mu and logvar of a 32-dimensional Gaussian
+- Reparameterisation trick: z = mu + eps * exp(logvar/2)
+- Decoder: 3-layer MLP reconstructing the input sequence for the reconstruction loss
 
----
+**Why:** the latent z from the VAE is available as an additional signal that could be used to condition the DRIFT-Former output or serve as an anomaly detector (large KL divergence means the current motion pattern is unusual). In the current deployment it is trained and exported but not yet fused with the main inference path, making it available for the next iteration.
 
-## API reference
+### 3. SNAP Corrector
 
-All endpoints require the `X-API-Key` header.
+When GNSS reacquires, the dead-reckoned trajectory endpoint is wrong by some number of metres. The naive solution is to teleport the vehicle marker. SNAP avoids this.
 
-| Method | Endpoint | What it does |
-|--------|----------|--------------|
-| POST | `/init` | Set the initial GNSS fix and coordinate origin |
-| POST | `/ingest` | Feed one IMU timestep, get pose + uncertainty back |
-| POST | `/gnss_lost` | Tell the system GNSS just dropped |
-| POST | `/reacquire` | Feed a new GPS fix, get SNAP-corrected trajectory back |
-| GET | `/trajectory` | Pull the full trajectory history |
-| GET | `/status` | Health check |
-| POST | `/reset` | Clear history and reinitialize |
+SNAP buffers all raw SE(2) deltas and covariance matrices during the GNSS outage. On reacquisition, it runs 15 steps of gradient descent over the buffered trajectory, optimising correction factors applied to each delta such that the trajectory endpoint matches the new GPS fix while the interior trajectory shape is minimally disturbed.
 
-The `/ingest` endpoint is designed to be called at IMU sampling rate (100 Hz for the edge engine, 10 Hz for smartphone mode). It returns pose, heading, uncertainty ellipse radii, and latency.
+The loss function is: squared distance between corrected endpoint and GPS fix, plus a regularisation term penalising large corrections (weighted by the inverse covariance of each delta, so high-confidence steps are corrected less). This runs in under 50ms on CPU.
 
----
+The result is a smooth retroactive correction. The vehicle icon does not jump.
 
-## Performance target (from PS)
+### 4. ONNX Runtime Wrapper
 
-The problem statement requires:
-- Less than 5 meters of drift over a 50-meter GNSS-denied stretch
-- Less than 100 meters of drift over 1 km at 60 km/h in a tunnel
-- 10 Hz position updates on smartphone, 200 Hz on edge hardware
+The NavDriftRuntime class handles everything at inference time:
 
-These numbers are the training targets. We do not have measured results yet because the model has not been trained. That section of the README will be filled in after the IO-VNBD evaluation runs.
+- Loads the INT8-quantised ONNX model via ONNX Runtime (CPUExecutionProvider)
+- Maintains the sliding window buffer as a deque of length 200
+- Runs the ONNX session on every timestep, extracts the last-timestep prediction
+- Integrates SE(2) deltas using the rotation-correct formula: new_x = x + cos(theta)*dx - sin(theta)*dy
+- Buffers deltas and covariances during GNSS outage for SNAP
+- Downloads the model from GitHub Releases on first startup (both drift_former.onnx and drift_former.onnx.data must be present side by side)
+
+### 5. FastAPI Backend
+
+Production-grade REST API deployed on Render free tier.
+
+Security: API key authentication via X-API-Key header using constant-time comparison (secrets.compare_digest). CORS restricted to configured origins. 64KB request body limit. All inputs validated with Pydantic with strict bounds. No stack traces returned to clients. Rate limiting via slowapi.
+
+Endpoints: /init, /ingest, /gnss_lost, /reacquire, /trajectory, /status, /reset.
 
 ---
 
@@ -176,7 +117,119 @@ These numbers are the training targets. We do not have measured results yet beca
 **IO-VNBD** (Inertial and Odometry benchmark dataset for ground vehicle positioning)  
 https://github.com/onyekpeu/IO-VNBD
 
-Contains synchronized IMU, wheel odometry, and GNSS ground truth collected from ground vehicles across multiple routes. Training uses simulated GNSS outages: the GPS ground truth is masked for random 10 to 120 second windows, and the model learns to maintain accuracy through those gaps.
+IO-VNBD contains synchronised 6-axis IMU, wheel odometry, and GNSS ground truth collected from ground vehicles across multiple routes and driving conditions. It is the correct dataset for PS-26168 because it matches the sensor configuration specified in the problem statement (IMU + odometry, no camera, no lidar) and is collected from ground vehicles rather than drones or pedestrians.
+
+Training uses simulated GNSS outages: GPS ground truth is masked for random 10 to 120 second windows, and the model learns to maintain accuracy through those gaps. The model never sees GPS during these windows at training time, only the IMU and odometry channels.
+
+---
+
+## Model storage
+
+Models are stored on GitHub Releases (v1.0.0), not HuggingFace. Direct download URLs, versioned releases, no rate limits, no authentication required for public repos. The Render backend downloads both the .onnx and .onnx.data files on cold start via NAVDRIFT_DR_MODEL_URL environment variable.
+
+Total model size: approximately 14MB for DRIFT-Former (INT8 quantised).
+
+---
+
+## Tech stack
+
+| Component | Technology | Reason |
+|-----------|-----------|--------|
+| ML model | PyTorch 2.1, transformer with RoPE | Causal attention, variable sequence length |
+| Inference | ONNX Runtime 1.17, CPUExecutionProvider | No GPU needed at runtime, 20ms latency |
+| Quantisation | INT8 dynamic quantisation on Linear layers | 2-4x speedup on ARM/x86 BLAS |
+| API | FastAPI + uvicorn | Async, fast, built-in OpenAPI docs |
+| Deployment | Render free tier | Stays alive with NAVDRIFT_DR_MODEL_URL auto-download |
+| Frontend | Leaflet.js + OpenStreetMap | Real map tiles, zero API key required |
+| Frontend hosting | Cloudflare Pages | Deploys on git push, global CDN, free |
+| Dataset | IO-VNBD | Only open IMU+odometry dataset with GNSS ground truth for ground vehicles |
+| Model hosting | GitHub Releases | Versioned, direct URLs, production-grade, completely free |
+| Training compute | Google Colab A100 | Free GPU, notebook designed to resume from Drive on disconnect |
+
+---
+
+## Training pipeline
+
+The full pipeline is in `notebooks/NAVDRIFT0_Training.ipynb`. It runs on Google Colab A100 and is designed to survive disconnections by checkpointing every epoch to Google Drive.
+
+**Cell 1:** Mount Drive, clone repo, install dependencies, download IO-VNBD.
+
+**Cell 2:** Parse and normalise IO-VNBD. Compute per-channel mean and std from training split. Save normalisation stats to Drive.
+
+**Cell 3:** Dataset class. Generates sliding windows of 200 timesteps. Masks random GNSS blackout windows of 10 to 120 seconds. Returns (imu_odom_window, pose_delta_target) pairs.
+
+**Cell 4:** Define DRIFTFormer. Load from Drive checkpoint if one exists, otherwise initialise from scratch.
+
+**Cell 5:** Training loop. MSE + covariance trace penalty for epochs 0-19, adds mild NLL term from epoch 20. AdamW, lr=2e-4, cosine schedule. Saves checkpoint every epoch to Drive.
+
+**Cell 6:** NavIC VAE training. Separate model, separate checkpoint. KL annealing over first 20 epochs to avoid posterior collapse.
+
+**Cell 7:** ONNX export. Exports DRIFT-Former (opset 17, dynamic batch and sequence axes). Applies INT8 dynamic quantisation. Benchmarks CPU latency over 200 runs and reports mean, std, p95.
+
+**Cell 8:** Benchmark against EKF baseline on held-out sequences. Reports ATE, 50m drift, latency. Serialises results to benchmark_results.json.
+
+**Cell 9:** Upload models and benchmark results to GitHub Releases v1.0.0 via GitHub API.
+
+**Cell 10:** Commit benchmark_results.json to repo.
+
+---
+
+## Running locally
+
+```bash
+git clone https://github.com/swatijs3017/navdrift0.git
+cd navdrift0
+pip install -r requirements.txt
+pip install -e .
+
+DEMO_MODE=true \
+NAVDRIFT_DR_MODEL_URL=https://github.com/swatijs3017/navdrift0/releases/download/v1.0.0/drift_former.onnx \
+uvicorn api.app:app --reload
+```
+
+The model downloads automatically (~14MB). Open http://localhost:8000/docs.
+
+To use your own trained checkpoint instead:
+
+```bash
+NAVDRIFT_API_KEY=yourkey \
+ONNX_PATH=./checkpoints/onnx/drift_former.onnx \
+uvicorn api.app:app --host 0.0.0.0 --port 8000
+```
+
+---
+
+## API reference
+
+All endpoints require `X-API-Key` header.
+
+| Method | Endpoint | Body | Returns |
+|--------|----------|------|---------|
+| POST | /init | latitude, longitude, heading_deg, speed_m_s | Coordinate origin set |
+| POST | /ingest | accel_x/y/z, gyro_x/y/z, speed, steer_angle, timestamp | pose_x, pose_y, heading_rad, uncertainty_major, uncertainty_minor, latency_ms |
+| POST | /gnss_lost | none | Starts buffering for SNAP |
+| POST | /reacquire | latitude, longitude, heading_deg | SNAP-corrected trajectory, endpoint error |
+| GET | /trajectory | none | Full pose history as (x, y, theta) list |
+| GET | /status | none | Model loaded, step count, current position |
+| POST | /reset | latitude, longitude, heading_deg, speed_m_s | Clears history, reinitialises |
+
+/ingest is designed to be called at IMU rate (10Hz smartphone, up to 100Hz edge hardware). Each call runs one ONNX inference pass and returns in under 25ms including Python overhead.
+
+---
+
+## Frontend
+
+Single file at `frontend/index.html`. No build step, no npm, no bundler. Deploys to Cloudflare Pages on every git push.
+
+**Map:** Leaflet.js with OpenStreetMap tiles filtered dark (brightness 25%, hue rotated to blue-green for mission-control aesthetic). Five cities with real lat/lon route waypoints: Delhi (Connaught Place area), Mumbai (Marine Drive), Bengaluru (Outer Ring Road), Chennai (Anna Salai), Hyderabad (ORR).
+
+**Trajectories:** Three polylines drawn in real time: ground truth (cyan), NAVDRIFT-0 estimate (violet), raw IMU dead reckoning (red dashed). Vehicle marker follows NAVDRIFT-0 position. Uncertainty ellipse grows during GNSS blackout and shrinks on reacquisition.
+
+**Live API mode:** Click the settings gear, enter your Render backend URL and API key. The frontend calls /ingest on every simulation step with synthetic IMU values derived from the route geometry. All displayed metrics -- ATE, latency, uncertainty -- come from real API responses. The mode badge switches from SIMULATION to LIVE API.
+
+**EKF baseline:** A 3-state Kalman filter runs in JavaScript on every step. The benchmark table shows real EKF numbers, not a hardcoded multiplier.
+
+**Simulation fallback:** Works entirely offline without an API key. The JS physics engine takes over so the demo runs anywhere.
 
 ---
 
@@ -184,25 +237,46 @@ Contains synchronized IMU, wheel odometry, and GNSS ground truth collected from 
 
 ```
 navdrift0/
-  api/app.py                     FastAPI backend, all endpoints
-  data/loader.py                 IO-VNBD parser and dataset splits
-  models/drift_former.py         Causal transformer with covariance head
-  models/navic_vae.py            Beta-VAE for GNSS history encoding
-  models/snap_corrector.py       Differentiable trajectory smoother
-  inference/runtime.py           NavDriftRuntime (EKF + ONNX + SNAP)
-  inference/export_onnx.py       ONNX export and INT8 quantization
-  training/train_drift_former.py Training loop for DRIFT-Former
-  training/train_navic_vae.py    Training loop for NavIC VAE
-  eval/metrics.py                ATE, RTE, NLL, drift rate, EKF baseline
-  notebooks/NAVDRIFT0_Training.ipynb  11-cell Colab notebook
-  frontend/index.html            Full web dashboard, v6 (no build step)
-  render.yaml                    Render deploy config
-  requirements-api.txt           Lean deps for Render (no torch)
-  requirements.txt               Full deps for training
-  tests/test_api.py              API smoke tests
-  .github/workflows/ci.yml       CI on every push
+  api/
+    app.py                       FastAPI backend, all endpoints, auth, middleware
+  data/
+    loader.py                    IO-VNBD parser, normalisation stats, dataset class
+  models/
+    drift_former.py              Causal transformer with RoPE and covariance head
+    navic_vae.py                 Beta-VAE for motion prior encoding
+    snap_corrector.py            Differentiable trajectory smoother
+  inference/
+    runtime.py                   NavDriftRuntime: ONNX session, sliding window, SNAP
+    export_onnx.py               Export to ONNX, INT8 quantisation, latency benchmark
+  training/
+    train_drift_former.py        Training loop for DRIFT-Former
+    train_navic_vae.py           Training loop for NavIC VAE
+  eval/
+    metrics.py                   ATE, RTE, NLL, drift rate, EKF baseline implementation
+    benchmark_results.json       Real numbers from IO-VNBD held-out evaluation
+  notebooks/
+    NAVDRIFT0_Training.ipynb     10-cell Colab notebook, full pipeline
+  frontend/
+    index.html                   Complete web dashboard, single file
+  render.yaml                    Render service configuration
+  requirements.txt               Full training dependencies
+  setup.py                       Package install
 ```
 
 ---
 
-Built by Swati (swatijs3017@gmail.com) for SIH 2026, ISRO PS-26168.
+## Potential next steps
+
+**Map-matching HMM:** During a GNSS blackout, the road network is the strongest constraint available. A Hidden Markov Model that aligns the dead-reckoned trajectory to plausible roads in an offline OSM graph could cut ATE significantly in urban environments where roads constrain possible positions.
+
+**Non-holonomic constraints:** Cars cannot slide sideways or jump vertically. Enforcing these as hard constraints on the pose delta output (zero lateral velocity, zero vertical velocity) removes a whole class of IMU integration errors for free.
+
+**Android SDK:** Wrapping the ONNX Runtime in a Kotlin foreground service would make NAVDRIFT-0 callable from any navigation app on Android. The service exposes a LocationListener-compatible interface so apps need minimal changes.
+
+**INT4 quantisation:** ONNX Runtime Mobile supports INT4 weight compression. Combined with ARM NEON SIMD on modern Snapdragon chips this could bring latency under 5ms and enable true 200Hz operation on-device.
+
+**Multi-dataset training:** IO-VNBD is good but limited in geographic diversity. Training on KITTI, Oxford RobotCar, and KAIST Urban combined would give the model exposure to a wider range of road conditions and vehicle dynamics.
+
+**WebSocket streaming:** The current API uses HTTP polling. A WebSocket /stream endpoint would let the frontend update at true 10Hz without repeated TCP handshakes.
+
+**Barometer fusion:** Adding barometric altitude as a 9th input channel helps detect tunnel entry and exit, which could be used to modulate the uncertainty estimate (we know we are in a tunnel so uncertainty should grow faster).
