@@ -741,51 +741,51 @@
     const ekfATE=EKF.s>0?(EKF.te/EKF.s).toFixed(2):'—';
     const lat=API_MODE?S.lat.toFixed(1):(1.7+Math.random()*.5).toFixed(1);
 
-    $('#v-nd').innerHTML=mn+'<span class="mu">m</span>';
-    $('#v-imu').innerHTML=mi+'<span class="mu">m</span>';
-    $('#v-ekf').innerHTML=EKF.s>0?ekfATE+'<span class="mu">m</span>':'—';
-    $('#v-unc').innerHTML=S.unc.toFixed(2)+'<span class="mu">m</span>';
-    $('#v-lat').innerHTML=lat+'<span class="mu">ms</span>';
-    $('#v-steps').textContent=S.step.toLocaleString();
-    $('#v-outs').textContent=S.outN;
-    $('#v-snap').textContent=S.snapN;
+    $('v-nd').innerHTML=mn+'<span class="mu">m</span>';
+    $('v-imu').innerHTML=mi+'<span class="mu">m</span>';
+    $('v-ekf').innerHTML=EKF.s>0?ekfATE+'<span class="mu">m</span>':'—';
+    $('v-unc').innerHTML=S.unc.toFixed(2)+'<span class="mu">m</span>';
+    $('v-lat').innerHTML=lat+'<span class="mu">ms</span>';
+    $('v-steps').textContent=S.step.toLocaleString();
+    $('v-outs').textContent=S.outN;
+    $('v-snap').textContent=S.snapN;
 
-    $('#sp-err-v').textContent=eND.toFixed(2)+'m';
-    $('#sp-unc-v').textContent=S.unc.toFixed(2)+'m';
-    $('#sp-spd-v').textContent=spdKmh.toFixed(1)+' km/h';
+    $('sp-err-v').textContent=eND.toFixed(2)+'m';
+    $('sp-unc-v').textContent=S.unc.toFixed(2)+'m';
+    $('sp-spd-v').textContent=spdKmh.toFixed(1)+' km/h';
 
-    $('#hud-pos').textContent=S.gtLa.toFixed(4)+'°N '+S.gtLo.toFixed(4)+'°E · '+spdKmh.toFixed(1)+' km/h';
-    $('#hud-dr').textContent=S.drTotal.toFixed(1)+'s cumulative';
+    $('hud-pos').textContent=S.gtLa.toFixed(4)+'°N '+S.gtLo.toFixed(4)+'°E · '+spdKmh.toFixed(1)+' km/h';
+    $('hud-dr').textContent=S.drTotal.toFixed(1)+'s cumulative';
 
-    $('#tb-nd').textContent=mn+' m';$('#tb-ndx').textContent=S.mxND.toFixed(2)+' m';
-    $('#tb-ekf').textContent=EKF.s>0?ekfATE+' m':'—';$('#tb-ekfx').textContent=EKF.s>0?EKF.me.toFixed(2)+' m':'—';
-    $('#tb-imu').textContent=mi+' m';$('#tb-imux').textContent=S.mxIMU.toFixed(2)+' m';
+    $('tb-nd').textContent=mn+' m';$('tb-ndx').textContent=S.mxND.toFixed(2)+' m';
+    $('tb-ekf').textContent=EKF.s>0?ekfATE+' m':'—';$('tb-ekfx').textContent=EKF.s>0?EKF.me.toFixed(2)+' m':'—';
+    $('tb-imu').textContent=mi+' m';$('tb-imux').textContent=S.mxIMU.toFixed(2)+' m';
 
     // Calibration
     const pp=Math.min(100,Math.abs(S.calP)/8*100);const rp=Math.min(100,Math.abs(S.calR)/6*100);const yp=Math.min(100,Math.abs(S.calY)/2*100);
-    $('#cal-p').style.width=pp+'%';$('#cal-r').style.width=rp+'%';$('#cal-y').style.width=(50+yp/2)+'%';
-    $('#cal-pv').textContent=(S.calP>0?'+':'')+S.calP.toFixed(1)+'°';
-    $('#cal-rv').textContent=(S.calR>0?'+':'')+S.calR.toFixed(1)+'°';
-    $('#cal-yv').textContent=(S.calY>0?'+':'')+S.calY.toFixed(1)+'°';
+    $('cal-p').style.width=pp+'%';$('cal-r').style.width=rp+'%';$('cal-y').style.width=(50+yp/2)+'%';
+    $('cal-pv').textContent=(S.calP>0?'+':'')+S.calP.toFixed(1)+'°';
+    $('cal-rv').textContent=(S.calR>0?'+':'')+S.calR.toFixed(1)+'°';
+    $('cal-yv').textContent=(S.calY>0?'+':'')+S.calY.toFixed(1)+'°';
 
     // Vibration
-    $('#vib-raw').textContent=Math.abs(S.vibRawSpd).toFixed(1)+' km/h';
-    $('#vib-filt').textContent=Math.abs(S.vibFiltSpd).toFixed(1)+' km/h';
-    $('#vib-pots').textContent=S.pots;
+    $('vib-raw').textContent=Math.abs(S.vibRawSpd).toFixed(1)+' km/h';
+    $('vib-filt').textContent=Math.abs(S.vibFiltSpd).toFixed(1)+' km/h';
+    $('vib-pots').textContent=S.pots;
 
     // NHC
     const nhcAvg=S.nhcN>0?S.nhcE/S.nhcN:0;
     const nhcPct=Math.min(100,nhcAvg*18);
-    $('#nhc-lb').style.width=nhcPct+'%';$('#nhc-vb').style.width=(nhcPct*.55)+'%';
-    $('#nhc-lv').textContent=nhcAvg.toFixed(2);$('#nhc-vv').textContent=(nhcAvg*.3).toFixed(2);
-    $('#nhc-cnt').textContent=S.nhcN;$('#nhc-err').textContent=S.nhcE.toFixed(2)+' m';
+    $('nhc-lb').style.width=nhcPct+'%';$('nhc-vb').style.width=(nhcPct*.55)+'%';
+    $('nhc-lv').textContent=nhcAvg.toFixed(2);$('nhc-vv').textContent=(nhcAvg*.3).toFixed(2);
+    $('nhc-cnt').textContent=S.nhcN;$('nhc-err').textContent=S.nhcE.toFixed(2)+' m';
 
     // Fusion bars
     const worst=Math.max(.1,parseFloat(mi));
     const ndF=Math.max(5,100-parseFloat(mn)/worst*100);
     const ekF=EKF.s>0?Math.max(5,100-parseFloat(ekfATE)/worst*100):50;
-    $('#fb-nd').style.width=ndF+'%';$('#fb-ekf').style.width=ekF+'%';$('#fb-imu').style.width='6%';
-    $('#fb-ndv').textContent=ndF.toFixed(0)+'%';$('#fb-ekfv').textContent=ekF.toFixed(0)+'%';
+    $('fb-nd').style.width=ndF+'%';$('fb-ekf').style.width=ekF+'%';$('fb-imu').style.width='6%';
+    $('fb-ndv').textContent=ndF.toFixed(0)+'%';$('fb-ekfv').textContent=ekF.toFixed(0)+'%';
 
     // Pipeline glow
     const ps=Math.floor(S.step/10)%6+1;
