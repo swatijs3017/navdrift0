@@ -38,15 +38,7 @@ try:
     from pydantic import field_validator
 except ImportError:
     from pydantic import validator as field_validator
-try:
-    from slowapi import Limiter, _rate_limit_exceeded_handler
-    from slowapi.errors import RateLimitExceeded
-    from slowapi.util import get_remote_address
-    _SLOWAPI = True
-except ImportError:
-    _SLOWAPI = False
-    class RateLimitExceeded(Exception): pass
-    def get_remote_address(r): return "0.0.0.0"
+# slowapi removed — not compatible with Python 3.14 on Render
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -78,14 +70,11 @@ if not API_KEY and not DEMO_MODE:
 # ---------------------------------------------------------------------------
 # Rate limiter
 # ---------------------------------------------------------------------------
-if _SLOWAPI:
-    limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
-else:
-    class _NoopLimiter:
-        def limit(self, *a, **kw):
-            def decorator(f): return f
-            return decorator
-    limiter = _NoopLimiter()
+class _NoopLimiter:
+    def limit(self, *a, **kw):
+        def decorator(f): return f
+        return decorator
+limiter = _NoopLimiter()
 
 # ---------------------------------------------------------------------------
 # NavDrift runtime (real or demo)
@@ -242,9 +231,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-if _SLOWAPI and limiter:
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# rate limiting removed (slowapi not compatible with Python 3.14)
 
 app.add_middleware(
     CORSMiddleware,
