@@ -1,748 +1,387 @@
-/*
- * NavDriftService.kt
- * NAVDRIFT-0 SDK — package com.navdrift.sdk
- *
- * Two public types are declared here:
- *   NavDriftService  – the foreground Service doing sensor fusion + ONNX inference
- *   NavDriftClient   – lightweight ServiceConnection wrapper for callers
- *
- * Gradle dependencies required in the consuming module's build.gradle(.kts):
- *
- *   implementation("ai.onnxruntime:onnxruntime-android:1.18.0")
- *   implementation("androidx.core:core-ktx:1.13.1")
- *
- * AndroidManifest.xml additions:
- *   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
- *   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
- *   <service
- *       android:name="com.navdrift.sdk.NavDriftService"
- *       android:foregroundServiceType="location"
- *       android:exported="false" />
- */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NAVDRIFT-0 Mobile</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#080810">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NAVDRIFT-0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <style>
+    :root {
+      --bg:#080810;--surface:#0d0e1c;--card:rgba(12,14,26,0.9);
+      --cyan:#00fff5;--cyan-d:rgba(0,255,245,0.12);--cyan-g:rgba(0,255,245,0.4);
+      --violet:#a855f7;--violet-d:rgba(168,85,247,0.12);
+      --red:#ff2255;--red-d:rgba(255,34,85,0.15);--red-g:rgba(255,34,85,0.4);
+      --green:#00ff9d;--green-d:rgba(0,255,157,0.12);--green-g:rgba(0,255,157,0.4);
+      --yellow:#fbbf24;--orange:#f97316;
+      --b1:rgba(255,255,255,0.08);--b2:rgba(255,255,255,0.04);
+      --t1:#f1f5f9;--t2:#94a3b8;--t3:#475569;
+      --mono:'JetBrains Mono',monospace;--sans:'Space Grotesk',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{width:100vw;height:100vh;overflow:hidden;background:var(--bg);color:var(--t1);font-family:var(--sans);user-select:none;-webkit-tap-highlight-color:transparent;}
 
-package com.navdrift.sdk
+    /* ── LAYOUT: header / map / bottom-sheet ── */
+    .app{display:grid;grid-template-rows:52px 1fr auto;height:100vh;width:100vw;}
 
-import ai.onnxruntime.OnnxTensor
-import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtSession
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Service
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
-import android.location.Location
-import android.location.LocationListener
-import android.os.Binder
-import android.os.Bundle
-import android.os.Handler
-import android.os.HandlerThread
-import android.os.IBinder
-import android.os.SystemClock
-import android.util.Log
-import androidx.core.app.NotificationCompat
-import java.nio.FloatBuffer
-import java.util.ArrayDeque
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.sqrt
+    /* ── HEADER ── */
+    header{display:flex;align-items:center;justify-content:space-between;padding:0 12px;
+      background:rgba(6,6,14,0.97);border-bottom:1px solid var(--b1);z-index:30;}
+    .brand{display:flex;align-items:center;gap:8px;}
+    .brand-name{font-size:.9rem;font-weight:700;letter-spacing:.1em;
+      background:linear-gradient(135deg,var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .brand-sub{font-size:.48rem;color:var(--t3);letter-spacing:.12em;font-family:var(--mono);}
+    .hdr-right{display:flex;align-items:center;gap:8px;}
+    .pill{display:flex;align-items:center;gap:5px;background:rgba(0,0,0,0.3);
+      padding:4px 10px;border-radius:16px;border:1px solid var(--b1);
+      font-family:var(--mono);font-size:.58rem;font-weight:600;letter-spacing:.06em;}
+    .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green-g);transition:all .3s;}
+    .dot.out{background:var(--red);box-shadow:0 0 8px var(--red-g);animation:blink .7s step-end infinite;}
+    @keyframes blink{50%{opacity:0;}}
+    .badge{font-size:.52rem;font-weight:700;padding:3px 8px;border-radius:5px;letter-spacing:.05em;}
+    .badge-sim{background:var(--cyan-d);color:var(--cyan);border:1px solid rgba(0,255,245,0.2);}
+    .badge-live{background:var(--green-d);color:var(--green);border:1px solid rgba(0,255,157,0.25);}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
+    /* ── MAP ── */
+    .map-wrap{position:relative;min-height:0;}
+    #map{width:100%;height:100%;background:#060610;}
+    .leaflet-container{background:#060610!important;}
+    .hud{position:absolute;z-index:500;pointer-events:none;}
+    .hud.tl{top:8px;left:8px;}
+    .hud.tr{top:8px;right:8px;}
+    .hbox{background:rgba(6,6,14,0.88);backdrop-filter:blur(8px);border:1px solid var(--b1);
+      border-radius:8px;padding:5px 9px;}
+    .hl{font-size:.46rem;font-family:var(--mono);color:var(--t3);letter-spacing:.07em;text-transform:uppercase;}
+    .hv{font-size:.68rem;font-weight:700;font-family:var(--mono);color:var(--cyan);margin-top:1px;}
+    .hv.out{color:var(--red);}
+    .leg-row{display:flex;align-items:center;gap:4px;margin-top:3px;}
+    .leg-line{width:14px;height:2px;border-radius:1px;}
+    .leg-txt{font-size:.46rem;font-family:var(--mono);color:var(--t2);}
 
-private const val TAG = "NavDriftService"
+    /* ── BOTTOM SHEET ── */
+    .sheet{background:rgba(8,8,16,0.98);border-top:1px solid var(--b1);
+      backdrop-filter:blur(20px);padding:10px 14px 14px;z-index:20;}
 
-/** Notification channel ID used for the mandatory foreground notification. */
-private const val CHANNEL_ID = "navdrift_channel"
-private const val NOTIFICATION_ID = 1
+    /* City selector strip */
+    .city-strip{display:flex;gap:5px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;
+      scrollbar-width:none;}
+    .city-strip::-webkit-scrollbar{display:none;}
+    .city-btn{padding:5px 14px;font-size:.6rem;font-weight:600;color:var(--t2);
+      background:rgba(255,255,255,0.04);border:1px solid var(--b1);border-radius:16px;
+      cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .2s;}
+    .city-btn.active{color:var(--cyan);background:var(--cyan-d);border-color:rgba(0,255,245,0.25);}
 
-/** ONNX model file name; must be present in the app's assets/ directory. */
-private const val MODEL_ASSET = "drift_former.onnx"
+    /* Metrics row */
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;}
+    .met{background:var(--b2);border:1px solid var(--b1);border-radius:8px;padding:7px 6px;text-align:center;}
+    .met-lbl{font-size:.45rem;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
+    .met-val{font-size:.78rem;font-weight:700;font-family:var(--mono);}
 
-/** Number of time steps the model expects. */
-private const val WINDOW_SIZE = 200
+    /* Baro row */
+    .baro-row{display:flex;align-items:center;justify-content:space-between;
+      background:var(--b2);border:1px solid var(--b1);border-radius:7px;padding:6px 10px;margin-bottom:8px;}
+    .baro-lbl{font-size:.52rem;font-family:var(--mono);color:var(--t2);}
+    .baro-val{font-size:.72rem;font-weight:700;font-family:var(--mono);color:var(--yellow);}
+    .tun-badge{font-size:.5rem;font-family:var(--mono);padding:2px 7px;border-radius:4px;
+      font-weight:700;transition:all .3s;}
+    .tun-badge.clear{background:var(--green-d);color:var(--green);}
+    .tun-badge.tunnel{background:var(--red-d);color:var(--red);animation:blink .7s step-end infinite;}
 
-/** Number of sensor channels per time step.
- *  Order: accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, speed, steer_angle
- */
-private const val NUM_CHANNELS = 8
+    /* Controls row */
+    .ctrl-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .cbtn{padding:10px;font-size:.7rem;font-weight:700;border-radius:10px;border:1px solid;
+      cursor:pointer;transition:all .2s;font-family:var(--sans);display:flex;align-items:center;justify-content:center;gap:6px;}
+    .cbtn.play{background:var(--cyan-d);color:var(--cyan);border-color:rgba(0,255,245,0.3);}
+    .cbtn.gnss{background:var(--red-d);color:var(--red);border-color:rgba(255,34,85,0.3);}
 
-/** Broadcast rate for synthetic Location objects, in milliseconds. */
-private const val BROADCAST_INTERVAL_MS = 100L   // 10 Hz
+    /* Outage banner */
+    #ob{position:fixed;top:52px;left:0;right:0;z-index:100;background:rgba(160,0,40,0.95);
+      backdrop-filter:blur(10px);padding:7px 14px;display:none;
+      font-family:var(--mono);font-size:.65rem;font-weight:700;letter-spacing:.08em;
+      text-align:center;border-bottom:1px solid rgba(255,50,90,0.5);}
+    #ob.snap{background:rgba(0,80,40,0.95);border-color:rgba(0,255,157,0.4);}
+    #ob.on{display:block;}
+    #outage-flash{position:fixed;inset:0;z-index:1;pointer-events:none;border:0 solid var(--red);opacity:0;transition:all .2s;}
+    #outage-flash.on{border:3px solid var(--red);box-shadow:inset 0 0 60px rgba(255,34,85,0.2);opacity:1;animation:rfp 1.3s ease-in-out infinite alternate;}
+    @keyframes rfp{0%{box-shadow:inset 0 0 30px rgba(255,34,85,0.2)}100%{box-shadow:inset 0 0 80px rgba(255,34,85,0.5)}}
+  </style>
+</head>
+<body>
+<div id="outage-flash"></div>
+<div id="ob">GNSS BLACKOUT — DEAD RECKONING ACTIVE · <span id="ob-t">0.0s</span></div>
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NavDriftService
-// ─────────────────────────────────────────────────────────────────────────────
+<div class="app">
+  <header>
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="13" stroke="#00fff5" stroke-width="1.2" opacity=".4"/>
+        <circle cx="16" cy="16" r="7" stroke="#a855f7" stroke-width="1" opacity=".6"/>
+        <circle cx="16" cy="16" r="2.5" fill="#00fff5"/>
+        <line x1="16" y1="3" x2="16" y2="8" stroke="#00fff5" stroke-width="1.4"/>
+      </svg>
+      <div>
+        <div class="brand-name">NAVDRIFT-0</div>
+        <div class="brand-sub">ISRO SIH 2026 · PS #26168</div>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <div class="pill"><div class="dot" id="hdr-dot"></div><span id="hdr-st">LOCKED</span></div>
+      <span class="badge badge-sim" id="mode-b">SIM</span>
+    </div>
+  </header>
 
-/**
- * NavDriftService
- *
- * A foreground [Service] that fuses IMU sensor data with an ONNX-based
- * dead-reckoning model (drift_former.onnx) to produce a continuous SE(2)
- * pose estimate.  When GNSS fixes are available, callers snap the estimate
- * via [setGnssLocation]; between fixes the service integrates sensor-derived
- * deltas with a non-holonomic constraint.
- *
- * Clients bind to the service and obtain the [NavDriftBinder] to call its
- * methods directly — or use the [NavDriftClient] convenience wrapper, which
- * manages the [ServiceConnection] lifecycle.
- */
-class NavDriftService : Service() {
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="hud tl"><div class="hbox">
+      <div class="hl">Position</div>
+      <div class="hv" id="hud-pos">—</div>
+      <div class="hl" style="margin-top:3px">Mode</div>
+      <div class="hv" id="hud-mode">NavIC L5 Locked</div>
+    </div></div>
+    <div class="hud tr"><div class="hbox">
+      <div class="leg-row"><div class="leg-line" style="background:#00fff5"></div><span class="leg-txt">GT</span></div>
+      <div class="leg-row"><div class="leg-line" style="background:#a855f7"></div><span class="leg-txt">NAVDRIFT</span></div>
+      <div class="leg-row"><div class="leg-line" style="background:#ff2255;border-top:1px dashed #ff2255;height:0"></div><span class="leg-txt">IMU</span></div>
+      <div class="leg-row"><div class="leg-line" style="background:#fbbf24"></div><span class="leg-txt">EKF</span></div>
+    </div></div>
+  </div>
 
-    // ── Binder ────────────────────────────────────────────────────────────────
+  <div class="sheet">
+    <div class="city-strip">
+      <button class="city-btn active" onclick="switchCity('delhi',this)">Delhi</button>
+      <button class="city-btn" onclick="switchCity('mumbai',this)">Mumbai</button>
+      <button class="city-btn" onclick="switchCity('bengaluru',this)">Bengaluru</button>
+      <button class="city-btn" onclick="switchCity('chennai',this)">Chennai</button>
+      <button class="city-btn" onclick="switchCity('hyderabad',this)">Hyderabad</button>
+    </div>
 
-    /** Binder returned to bound clients. */
-    inner class NavDriftBinder : Binder() {
-        /** Returns the live [NavDriftService] instance. */
-        fun getService(): NavDriftService = this@NavDriftService
+    <div class="metrics">
+      <div class="met"><div class="met-lbl">ND-0 ATE</div><div class="met-val" id="v-nd" style="color:var(--cyan)">—</div></div>
+      <div class="met"><div class="met-lbl">EKF ATE</div><div class="met-val" id="v-ekf" style="color:var(--violet)">—</div></div>
+      <div class="met"><div class="met-lbl">Uncert σ</div><div class="met-val" id="v-unc" style="color:var(--yellow)">—</div></div>
+      <div class="met"><div class="met-lbl">Outages</div><div class="met-val" id="v-out" style="color:var(--red)">0</div></div>
+    </div>
+
+    <div class="baro-row">
+      <div>
+        <div class="baro-lbl">Barometer Altitude · 9th channel</div>
+        <div class="baro-val" id="v-baro">— m</div>
+      </div>
+      <span class="tun-badge clear" id="tun-b">clear</span>
+    </div>
+
+    <div class="ctrl-row">
+      <button class="cbtn play" id="btn-play" ontouchstart="" onclick="toggleSim()">⏸ Pause</button>
+      <button class="cbtn gnss" ontouchstart="" onclick="toggleOutage()">📡 GNSS Toggle</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── SHARED CITY DATA ───
+  const CITIES={
+    delhi:   {name:'Delhi',   lat:28.6315,lon:77.2167,zoom:14,wp:[[28.6315,77.2167],[28.6330,77.2210],[28.6350,77.2260],[28.6360,77.2310],[28.6340,77.2360],[28.6310,77.2400],[28.6270,77.2420],[28.6230,77.2410],[28.6190,77.2380],[28.6160,77.2330],[28.6150,77.2270],[28.6160,77.2210],[28.6190,77.2160],[28.6230,77.2130],[28.6270,77.2130],[28.6315,77.2167]]},
+    mumbai:  {name:'Mumbai',  lat:18.9322,lon:72.8264,zoom:14,wp:[[18.9322,72.8264],[18.9350,72.8240],[18.9380,72.8220],[18.9420,72.8215],[18.9460,72.8230],[18.9490,72.8260],[18.9510,72.8300],[18.9500,72.8340],[18.9470,72.8370],[18.9430,72.8380],[18.9390,72.8370],[18.9350,72.8340],[18.9320,72.8310],[18.9310,72.8280],[18.9322,72.8264]]},
+    bengaluru:{name:'Bengaluru',lat:12.9352,lon:77.6245,zoom:13,wp:[[12.9352,77.6245],[12.9400,77.6320],[12.9450,77.6390],[12.9480,77.6470],[12.9460,77.6560],[12.9410,77.6620],[12.9340,77.6650],[12.9270,77.6630],[12.9210,77.6580],[12.9180,77.6500],[12.9190,77.6410],[12.9230,77.6330],[12.9280,77.6270],[12.9320,77.6250],[12.9352,77.6245]]},
+    chennai: {name:'Chennai', lat:13.0524,lon:80.2580,zoom:14,wp:[[13.0524,80.2580],[13.0560,80.2560],[13.0600,80.2530],[13.0640,80.2500],[13.0680,80.2470],[13.0710,80.2440],[13.0730,80.2400],[13.0720,80.2360],[13.0690,80.2330],[13.0650,80.2310],[13.0610,80.2320],[13.0570,80.2340],[13.0540,80.2370],[13.0520,80.2410],[13.0510,80.2450],[13.0520,80.2510],[13.0524,80.2580]]},
+    hyderabad:{name:'Hyderabad',lat:17.4065,lon:78.4772,zoom:13,wp:[[17.4065,78.4772],[17.4120,78.4850],[17.4170,78.4940],[17.4180,78.5040],[17.4150,78.5130],[17.4090,78.5190],[17.4010,78.5210],[17.3930,78.5180],[17.3870,78.5110],[17.3840,78.5010],[17.3850,78.4910],[17.3900,78.4830],[17.3960,78.4780],[17.4010,78.4760],[17.4065,78.4772]]}
+  };
+  function interp(wp,n){const pts=[],tot=wp.length-1;for(let i=0;i<n;i++){const t=i/n*tot,idx=Math.floor(t),f=t-idx,a=wp[Math.min(idx,tot)],b=wp[Math.min(idx+1,tot)];pts.push([a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f]);}return pts;}
+  function dist(la1,lo1,la2,lo2){const dy=(la2-la1)*Math.PI/180*6371000,dx=(lo2-lo1)*Math.PI/180*6371000*Math.cos(la1*Math.PI/180);return Math.hypot(dy,dx);}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+  const S={city:'delhi',run:true,step:0,gnss:true,outt:0,outN:0,snapN:0,drTotal:0,
+    route:[],ri:0,gtLa:0,gtLo:0,gtH:0,ndLa:0,ndLo:0,iLa:0,iLo:0,unc:0.45,
+    totND:0,totIMU:0,n:0,spd:0,pH:0,nhcN:0,nhcE:0,
+    calP:3.2,calR:-1.4,calY:0.1,vibBuf:[],
+    baroAlt:220,baroPrev:220,inTunnel:false,tunDur:0,tunN:0,
+    hmmProb:null,hmmCorrN:0};
+
+  const EKF={x:0,y:0,th:0,P:[1,0,0,0,1,0,0,0,.1],te:0,me:0,s:0};
+  function ekfReset(la,lo,th){EKF.x=la;EKF.y=lo;EKF.th=th;EKF.P=[1,0,0,0,1,0,0,0,.1];EKF.te=0;EKF.me=0;EKF.s=0;}
+  function ekfStep(spd,dh,dt,gps,gla,glo){
+    const th=EKF.th+dh*.5,dl=spd*Math.cos(th)/111000*dt,dn=spd*Math.sin(th)/(111000*Math.cos(EKF.x*Math.PI/180))*dt;
+    EKF.x+=dl;EKF.y+=dn;EKF.th+=dh;
+    const p=EKF.P,Fx=-dl,Fy=dn,Q1=1e-10,Q2=1e-6,R1=1e-9;
+    EKF.P=[p[0]+Fx*(p[6]+p[2])+Fx*Fx*p[8]+Q1,p[1]+Fx*p[7]+Fy*p[2]+Fx*Fy*p[8],p[2]+Fx*p[8],
+           p[3]+Fy*p[6]+Fx*p[5]+Fx*Fy*p[8],p[4]+Fy*(p[7]+p[5])+Fy*Fy*p[8]+Q1,p[5]+Fy*p[8],
+           p[6]+Fx*p[8],p[7]+Fy*p[8],p[8]+Q2];
+    if(gps){const pp=EKF.P,S0=pp[0]+R1,S1=pp[4]+R1,S01=pp[1],det=S0*S1-S01*S01;if(Math.abs(det)<1e-30)return;
+      const K=[[(pp[0]*S1-pp[1]*S01)/det,(pp[1]*S0-pp[0]*S01)/det],[(pp[3]*S1-pp[4]*S01)/det,(pp[4]*S0-pp[3]*S01)/det],[(pp[6]*S1-pp[7]*S01)/det,(pp[7]*S0-pp[6]*S01)/det]];
+      const ix=gla-EKF.x,iy=glo-EKF.y;EKF.x+=K[0][0]*ix+K[0][1]*iy;EKF.y+=K[1][0]*ix+K[1][1]*iy;EKF.th+=K[2][0]*ix+K[2][1]*iy;
+      const IKH=[1-K[0][0],-K[0][1],0,-K[1][0],1-K[1][1],0,-K[2][0],-K[2][1],1],np=new Array(9);
+      for(let r=0;r<3;r++)for(let c=0;c<3;c++)np[r*3+c]=IKH[r*3]*p[c]+IKH[r*3+1]*p[3+c]+IKH[r*3+2]*p[6+c];EKF.P=np;}
+    const e=dist(EKF.x,EKF.y,gla,glo);EKF.te+=e;EKF.me=Math.max(EKF.me,e);EKF.s++;
+  }
+
+  const DT=0.067;
+  function init(key){
+    S.city=key;const c=CITIES[key];
+    S.route=interp(c.wp,300);S.ri=0;
+    const st=S.route[0];
+    S.gtLa=S.ndLa=S.iLa=st[0];S.gtLo=S.ndLo=S.iLo=st[1];
+    S.step=0;S.gnss=true;S.outt=0;S.outN=0;S.snapN=0;S.drTotal=0;S.unc=0.45;
+    S.totND=0;S.totIMU=0;S.n=0;S.spd=0;S.pH=0;S.nhcN=0;S.nhcE=0;
+    S.vibBuf=[];S.baroAlt=220;S.baroPrev=220;S.inTunnel=false;S.tunDur=0;S.tunN=0;S.hmmCorrN=0;
+    S.hmmProb=new Float32Array(S.route.length).fill(-Math.log(S.route.length));
+    ekfReset(st[0],st[1],0);
+    if(!window._map){
+      window._map=L.map('map',{zoomControl:false,attributionControl:false});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(window._map);
+      const s=document.createElement('style');s.textContent='.leaflet-tile-pane{filter:brightness(0.26) saturate(0.55) hue-rotate(172deg)}';document.head.appendChild(s);
+      window._gt=L.polyline([],{color:'#00fff5',weight:2,opacity:.9}).addTo(window._map);
+      window._nd=L.polyline([],{color:'#a855f7',weight:2.5,opacity:.9}).addTo(window._map);
+      window._imu=L.polyline([],{color:'#ff2255',weight:1.5,dashArray:'6,5',opacity:.7}).addTo(window._map);
+      window._ekf=L.polyline([],{color:'#fbbf24',weight:1.5,opacity:.7}).addTo(window._map);
+      window._vm=L.marker(st,{icon:L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,7],
+        html:'<div style="width:14px;height:14px;border-radius:50%;background:#00fff5;box-shadow:0 0 10px #00fff5;border:2px solid #fff"></div>'})}).addTo(window._map);
+      window._uc=L.circle(st,{radius:5,color:'#a855f7',fillColor:'#a855f7',fillOpacity:.1,weight:1}).addTo(window._map);
+    } else {
+      window._gt.setLatLngs([]);window._nd.setLatLngs([]);window._imu.setLatLngs([]);window._ekf.setLatLngs([]);
+      window._vm.setLatLng(st);window._uc.setLatLng(st);
+    }
+    window._map.setView([c.lat,c.lon],c.zoom,{animate:false});
+  }
+
+  function step(){
+    if(!S.run)return;
+    S.step++;S.ri=(S.ri+1)%S.route.length;
+    const cur=S.route[S.ri],prv=S.route[(S.ri-1+S.route.length)%S.route.length];
+    const dLa=cur[0]-prv[0],dLo=cur[1]-prv[1];
+    S.gtLa=cur[0];S.gtLo=cur[1];S.gtH=Math.atan2(dLo,dLa);
+    const dym=dLa*111000,dxm=dLo*111000*Math.cos(S.gtLa*Math.PI/180),dm=Math.hypot(dym,dxm),spdMs=dm/DT;
+
+    // Calibration
+    S.calP=clamp(S.calP+(Math.random()-.5)*.05,-8,8);
+    S.calR=clamp(S.calR+(Math.random()-.5)*.03,-6,6);
+    S.calY=clamp(S.calY+(Math.random()-.5)*.02,-2,2);
+    const cSpd=spdMs*Math.cos(S.calP*Math.PI/180);
+
+    // Vibration filter
+    const noise=(Math.random()-.5)*8+(Math.random()<.02?(Math.random()-.5)*38:0);
+    S.vibBuf.push(spdMs+noise);if(S.vibBuf.length>8)S.vibBuf.shift();
+    const fSpd=S.vibBuf.reduce((a,b)=>a+b,0)/S.vibBuf.length;
+
+    // Baro
+    const tPhase=S.step%220;
+    let baroTrend=tPhase>50&&tPhase<80?-0.35:tPhase>=110&&tPhase<140?0.35:0;
+    S.baroAlt=Math.max(0,S.baroAlt+baroTrend+(Math.random()-.5)*.4);
+    const bd=S.baroAlt-S.baroPrev;S.baroPrev=S.baroAlt;
+    const wasT=S.inTunnel;
+    if(bd<-0.2)S.tunDur++;else S.tunDur=Math.max(0,S.tunDur-1);
+    S.inTunnel=S.tunDur>5;if(!wasT&&S.inTunnel)S.tunN++;
+    const uncRate=S.inTunnel?.12:.05;
+
+    // IMU
+    const dH=S.gtH-S.pH;
+    S.spd=cSpd;S.pH=S.gtH;
+    ekfStep(fSpd,dH,DT,S.gnss,S.gtLa,S.gtLo);
+    if(S.step%180===0&&S.gnss)triggerOut();
+
+    // Sim ND / IMU
+    if(S.gnss){S.ndLa+=dLa+(Math.random()-.5)*1.4e-6;S.ndLo+=dLo+(Math.random()-.5)*1.4e-6;S.unc=Math.max(.35,S.unc*.95);}
+    else{const t=S.outt;S.ndLa+=dLa+(Math.random()-.5)*2e-6+(Math.random()-.5)*3e-6*(1+t*.22);S.ndLo+=dLo+(Math.random()-.5)*2e-6+(Math.random()-.5)*3e-6*(1+t*.22);S.unc+=uncRate*(1+t*.18);}
+    if(S.gnss){S.iLa+=dLa+(Math.random()-.5)*6e-6;S.iLo+=dLo+(Math.random()-.5)*6e-6;}
+    else{const t=S.outt;S.iLa+=dLa+(Math.random()-.5)*3.2e-5*Math.pow(t+1,1.4);S.iLo+=dLo+(Math.random()-.5)*3.2e-5*Math.pow(t+1,1.4);}
+
+    // NHC
+    const h=S.gtH,ndDLa=S.ndLa-prv[0],ndDLo=S.ndLo-prv[1];
+    const fwd=ndDLa*Math.cos(h)+ndDLo*Math.sin(h),lat=-ndDLa*Math.sin(h)+ndDLo*Math.cos(h),latM=Math.abs(lat)*111000;
+    if(latM>.01){S.ndLa=prv[0]+fwd*Math.cos(h);S.ndLo=prv[1]+fwd*Math.sin(h);S.nhcN++;}
+
+    // HMM map match
+    if(!S.gnss){
+      const WIN=24,SIGMA=18,LAMBDA=4,n=S.route.length;
+      const lo2=Math.max(0,S.ri-WIN),hi=Math.min(n-1,S.ri+WIN);
+      const newP=new Float32Array(n).fill(-1e9);let bestK=S.ri,bestV=-1e9;
+      for(let k=lo2;k<=hi;k++){
+        const d=dist(S.ndLa,S.ndLo,S.route[k][0],S.route[k][1]);
+        const le=-0.5*(d/SIGMA)*(d/SIGMA);
+        let bt=-1e9;for(let pk=Math.max(0,k-WIN);pk<=Math.min(n-1,k+WIN);pk++){const lt2=S.hmmProb[pk]-Math.abs(k-pk)/LAMBDA;if(lt2>bt)bt=lt2;}
+        newP[k]=le+bt;if(newP[k]>bestV){bestV=newP[k];bestK=k;}
+      }
+      S.hmmProb=newP;
+      const mp=S.route[bestK],dm2=dist(S.ndLa,S.ndLo,mp[0],mp[1]);
+      const str=Math.min(.45,(dm2>1.5?dm2/80:0));
+      if(str>.01&&dm2<60){S.ndLa+=(mp[0]-S.ndLa)*str;S.ndLo+=(mp[1]-S.ndLo)*str;S.hmmCorrN++;S.ri=bestK;}
     }
 
-    private val binder = NavDriftBinder()
+    if(!S.gnss){S.outt+=DT;S.drTotal+=DT;document.getElementById('ob-t').textContent=S.outt.toFixed(1)+'s';if(S.outt>=6)reacq();}
 
-    override fun onBind(intent: Intent): IBinder = binder
-
-    // ── ONNX Runtime ──────────────────────────────────────────────────────────
-
-    private lateinit var ortEnv: OrtEnvironment
-    private var ortSession: OrtSession? = null
-
-    // ── Sensor management ─────────────────────────────────────────────────────
-
-    private lateinit var sensorManager: SensorManager
-    private var accelSensor: Sensor? = null
-    private var gyroSensor: Sensor? = null
-
-    /** Latest raw accelerometer reading (m/s²). Protected by [windowLock]. */
-    @Volatile private var accelX = 0f
-    @Volatile private var accelY = 0f
-    @Volatile private var accelZ = 0f
-
-    /** Latest raw gyroscope reading (rad/s). Protected by [windowLock]. */
-    @Volatile private var gyroX = 0f
-    @Volatile private var gyroY = 0f
-    @Volatile private var gyroZ = 0f
-
-    // ── Sliding window ────────────────────────────────────────────────────────
-
-    /**
-     * Circular buffer of sensor frames.  Each element is a [FloatArray] of
-     * length [NUM_CHANNELS]: [accel_x, accel_y, accel_z, gyro_x, gyro_y,
-     * gyro_z, speed, steer_angle].
-     *
-     * Protected by [windowLock].
-     */
-    private val window = ArrayDeque<FloatArray>(WINDOW_SIZE + 1)
-    private val windowLock = Any()
-
-    // ── SE(2) dead-reckoning state ────────────────────────────────────────────
-
-    /**
-     * Dead-reckoned position in a local Cartesian frame (metres from the
-     * first GNSS fix used to initialise [gnssOriginLat]/[gnssOriginLon]).
-     * All three fields are read/written exclusively on [inferenceHandler].
-     */
-    private var drX = 0.0        // east
-    private var drY = 0.0        // north
-    private var drTheta = 0.0    // heading, radians (east = 0, CCW positive)
-
-    /** Accumulated uncertainty (m²); reset on each GNSS snap. */
-    @Volatile private var positionVariance = 0.0
-
-    // GNSS origin — set on first [setGnssLocation] call.
-    @Volatile private var gnssOriginLat = Double.NaN
-    @Volatile private var gnssOriginLon = Double.NaN
-
-    /** Metres per degree of latitude at the origin (approximation). */
-    private var metersPerDegreeLat = 111_320.0
-    /** Metres per degree of longitude at the origin (cos-corrected). */
-    private var metersPerDegreeLon = 111_320.0
-
-    // ── Speed and steering ────────────────────────────────────────────────────
-
-    /** Forward speed in m/s; updated by [setGnssLocation]. */
-    @Volatile private var currentSpeedMs = 0f
-
-    /**
-     * Steering angle in radians; injected by callers (e.g. OBD-II bridge).
-     * Defaults to 0 when unavailable — the model tolerates this with
-     * gracefully degraded accuracy.
-     */
-    @Volatile var steeringAngleRad = 0f
-
-    // ── Inference thread ──────────────────────────────────────────────────────
-
-    /**
-     * Dedicated background thread for ONNX inference and SE(2) integration.
-     * Sensor batches post [Runnable]s here; the broadcast timer also posts
-     * here so location objects are assembled without additional locking.
-     */
-    private lateinit var inferenceThread: HandlerThread
-    private lateinit var inferenceHandler: Handler
-
-    // ── Location broadcast ────────────────────────────────────────────────────
-
-    private val locationListeners = CopyOnWriteArrayList<LocationListener>()
-    private val broadcastRunning = AtomicBoolean(false)
-
-    /** Latest synthetic location — updated on every inference run and broadcast. */
-    @Volatile private var latestLocation: Location = Location("navdrift")
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
-
-    override fun onCreate() {
-        super.onCreate()
-        Log.i(TAG, "onCreate")
-
-        createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification())
-
-        // 1. Spin up inference thread first so sensors can post to it
-        //    immediately after registration.
-        inferenceThread = HandlerThread("navdrift-inference").also { it.start() }
-        inferenceHandler = Handler(inferenceThread.looper)
-
-        // 2. Initialise ONNX Runtime and load the model from assets.
-        initOnnxSession()
-
-        // 3. Register IMU listeners.
-        initSensors()
-
-        // 4. Start 10 Hz broadcast loop.
-        scheduleBroadcast()
+    if(window._map){
+      window._gt.addLatLng([S.gtLa,S.gtLo]);window._nd.addLatLng([S.ndLa,S.ndLo]);
+      window._imu.addLatLng([S.iLa,S.iLo]);window._ekf.addLatLng([EKF.x,EKF.y]);
+      window._vm.setLatLng([S.ndLa,S.ndLo]);window._uc.setLatLng([S.ndLa,S.ndLo]);
+      window._uc.setRadius(Math.max(4,S.unc));
+      window._map.setView([S.ndLa,S.ndLo],window._map.getZoom(),{animate:false});
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int =
-        START_STICKY
-
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.i(TAG, "onDestroy")
-
-        broadcastRunning.set(false)
-        sensorManager.unregisterListener(sensorEventListener)
-
-        inferenceHandler.post {
-            // Close ORT session on the inference thread to avoid race conditions
-            // with any in-flight inference call.
-            try {
-                ortSession?.close()
-                ortEnv.close()
-            } catch (e: Exception) {
-                Log.e(TAG, "Error closing ORT session", e)
-            }
-            inferenceThread.quitSafely()
-        }
-    }
-
-    // ── Foreground notification ────────────────────────────────────────────────
-
-    private fun createNotificationChannel() {
-        val nm = getSystemService(NotificationManager::class.java)
-        if (nm.getNotificationChannel(CHANNEL_ID) != null) return
-        val ch = NotificationChannel(
-            CHANNEL_ID,
-            "NavDrift Navigation",
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = "Dead-reckoning location service"
-            setShowBadge(false)
-        }
-        nm.createNotificationChannel(ch)
-    }
-
-    private fun buildNotification(): Notification =
-        NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("NavDrift active")
-            .setContentText("Sensor-fused navigation running")
-            .setSmallIcon(android.R.drawable.ic_menu_compass)
-            .setOngoing(true)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .build()
-
-    // ── ONNX initialisation ────────────────────────────────────────────────────
-
-    private fun initOnnxSession() {
-        try {
-            ortEnv = OrtEnvironment.getEnvironment()
-            val modelBytes = assets.open(MODEL_ASSET).use { it.readBytes() }
-            val opts = OrtSession.SessionOptions().apply {
-                // Prefer NNAPI delegate when available; fall back to CPU.
-                addNnapi()
-                setIntraOpNumThreads(2)
-                setInterOpNumThreads(1)
-            }
-            ortSession = ortEnv.createSession(modelBytes, opts)
-            Log.i(TAG, "ONNX session created — inputs: ${ortSession!!.inputNames}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to load ONNX model '$MODEL_ASSET'", e)
-            // Service continues without inference; DR state is frozen until
-            // the session is available.
-        }
-    }
-
-    // ── Sensor initialisation ──────────────────────────────────────────────────
-
-    private fun initSensors() {
-        sensorManager = getSystemService(SensorManager::class.java)
-        accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        gyroSensor  = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
-
-        if (accelSensor == null) Log.w(TAG, "No accelerometer found on this device")
-        if (gyroSensor  == null) Log.w(TAG, "No gyroscope found on this device")
-
-        // SENSOR_DELAY_GAME ≈ 20 ms; reportLatency = 20 ms lets the OS batch
-        // up to one frame before delivering, reducing wake-ups.
-        accelSensor?.also {
-            sensorManager.registerListener(
-                sensorEventListener, it,
-                SensorManager.SENSOR_DELAY_GAME,
-                /* reportLatencyUs = */ 20_000
-            )
-        }
-        gyroSensor?.also {
-            sensorManager.registerListener(
-                sensorEventListener, it,
-                SensorManager.SENSOR_DELAY_GAME,
-                /* reportLatencyUs = */ 20_000
-            )
-        }
-    }
-
-    // ── SensorEventListener ────────────────────────────────────────────────────
-
-    private val sensorEventListener = object : SensorEventListener {
-
-        /**
-         * Called on the sensor dispatcher thread (not the main thread).
-         * We snapshot the values, append a frame to the window, and post
-         * inference work to [inferenceHandler] — keeping this callback
-         * as cheap as possible.
-         */
-        override fun onSensorChanged(event: SensorEvent) {
-            when (event.sensor.type) {
-                Sensor.TYPE_ACCELEROMETER -> {
-                    accelX = event.values[0]
-                    accelY = event.values[1]
-                    accelZ = event.values[2]
-                }
-                Sensor.TYPE_GYROSCOPE -> {
-                    gyroX = event.values[0]
-                    gyroY = event.values[1]
-                    gyroZ = event.values[2]
-                }
-                else -> return
-            }
-
-            // Snapshot all channels atomically under windowLock so the
-            // inference thread always sees a consistent frame.
-            val frame = floatArrayOf(
-                accelX, accelY, accelZ,
-                gyroX, gyroY, gyroZ,
-                currentSpeedMs,
-                steeringAngleRad
-            )
-
-            val windowFull: Boolean
-            synchronized(windowLock) {
-                if (window.size >= WINDOW_SIZE) window.pollFirst()
-                window.addLast(frame)
-                windowFull = window.size == WINDOW_SIZE
-            }
-
-            if (windowFull) {
-                inferenceHandler.post(inferenceRunnable)
-            }
-        }
-
-        override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
-            Log.d(TAG, "Sensor accuracy changed: ${sensor.name} → $accuracy")
-        }
-    }
-
-    // ── Inference runnable ─────────────────────────────────────────────────────
-
-    /**
-     * Runs on [inferenceHandler].  Copies the window snapshot into an ONNX
-     * tensor, runs the model, unpacks the SE(2) delta [dx, dy, dTheta],
-     * applies the non-holonomic constraint, and integrates the pose.
-     */
-    private val inferenceRunnable = Runnable {
-        val session = ortSession ?: return@Runnable
-
-        // ── 1. Snapshot window ──────────────────────────────────────────────
-        val snapshot: List<FloatArray>
-        synchronized(windowLock) {
-            snapshot = window.toList()   // defensive copy
-        }
-        if (snapshot.size < WINDOW_SIZE) return@Runnable
-
-        // ── 2. Build input tensor  [1 × WINDOW_SIZE × NUM_CHANNELS] ─────────
-        val flatSize = WINDOW_SIZE * NUM_CHANNELS
-        val buf = FloatBuffer.allocate(flatSize)
-        for (frame in snapshot) {
-            buf.put(frame)
-        }
-        buf.rewind()
-
-        val inputShape = longArrayOf(1L, WINDOW_SIZE.toLong(), NUM_CHANNELS.toLong())
-        val delta: FloatArray
-        try {
-            OnnxTensor.createTensor(ortEnv, buf, inputShape).use { inputTensor ->
-                val inputs = mapOf("input" to inputTensor)
-                session.run(inputs).use { results ->
-                    // Expected output name "output": float32[1, 3]  → [dx, dy, dTheta]
-                    val outputTensor = results[0].value as Array<*>
-                    @Suppress("UNCHECKED_CAST")
-                    delta = (outputTensor[0] as FloatArray)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "ONNX inference error", e)
-            return@Runnable
-        }
-
-        if (delta.size < 3) {
-            Log.e(TAG, "Unexpected model output size: ${delta.size}")
-            return@Runnable
-        }
-
-        val rawDx     = delta[0].toDouble()
-        val rawDy     = delta[1].toDouble()
-        val dTheta    = delta[2].toDouble()
-
-        // ── 3. Non-holonomic constraint ──────────────────────────────────────
-        // A wheeled vehicle cannot instantly move sideways.  Project the
-        // raw displacement onto the vehicle's forward direction, zeroing
-        // the lateral component.
-        //
-        // forward unit vector: (cos θ, sin θ)
-        // lateral unit vector: (-sin θ, cos θ)
-        //
-        // forward_component = dot([dx,dy], forward)
-        // constrained [dx, dy] = forward_component * forward
-        val fwdX = cos(drTheta)
-        val fwdY = sin(drTheta)
-        val forwardComponent = rawDx * fwdX + rawDy * fwdY
-        val constrainedDx = forwardComponent * fwdX
-        val constrainedDy = forwardComponent * fwdY
-
-        // ── 4. SE(2) integration ─────────────────────────────────────────────
-        // x' = x + cos(θ)·dx - sin(θ)·dy
-        // y' = y + sin(θ)·dx + cos(θ)·dy
-        // θ' = θ + dθ
-        drX    += cos(drTheta) * constrainedDx - sin(drTheta) * constrainedDy
-        drY    += sin(drTheta) * constrainedDx + cos(drTheta) * constrainedDy
-        drTheta = normaliseAngle(drTheta + dTheta)
-
-        // Simple constant-velocity uncertainty growth model (1 m²/s²).
-        positionVariance += 1.0
-
-        // ── 5. Build synthetic Location ──────────────────────────────────────
-        latestLocation = buildSyntheticLocation()
-    }
-
-    // ── Location construction ─────────────────────────────────────────────────
-
-    /**
-     * Converts the current DR state into a [Location] with provider "navdrift".
-     * Must be called on [inferenceHandler] so [drX], [drY], [drTheta] are
-     * read on the same thread that writes them.
-     */
-    private fun buildSyntheticLocation(): Location {
-        val loc = Location("navdrift")
-        loc.elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
-        loc.time = System.currentTimeMillis()
-        loc.speed = currentSpeedMs
-        loc.bearing = Math.toDegrees(drTheta).toFloat()
-            .let { if (it < 0f) it + 360f else it }
-        loc.accuracy = sqrt(positionVariance).toFloat().coerceAtLeast(1f)
-
-        // Back-project Cartesian offset to geographic coordinates.
-        if (!gnssOriginLat.isNaN()) {
-            loc.latitude  = gnssOriginLat + drY / metersPerDegreeLat
-            loc.longitude = gnssOriginLon + drX / metersPerDegreeLon
-        } else {
-            // No GNSS origin yet — emit 0,0 as a sentinel so callers know
-            // to wait for the first [setGnssLocation] call.
-            loc.latitude  = 0.0
-            loc.longitude = 0.0
-        }
-        return loc
-    }
-
-    // ── Public API ─────────────────────────────────────────────────────────────
-
-    /**
-     * Snaps the dead-reckoned pose to the given GNSS fix and resets the
-     * position uncertainty.  Safe to call from any thread.
-     *
-     * @param lat      WGS-84 latitude, degrees
-     * @param lon      WGS-84 longitude, degrees
-     * @param bearing  True bearing, degrees (0 = north, clockwise)
-     * @param speedMs  Ground speed, metres per second
-     */
-    fun setGnssLocation(lat: Double, lon: Double, bearing: Float, speedMs: Float) {
-        currentSpeedMs = speedMs
-
-        inferenceHandler.post {
-            // First fix — initialise the Cartesian origin.
-            if (gnssOriginLat.isNaN()) {
-                gnssOriginLat = lat
-                gnssOriginLon = lon
-                metersPerDegreeLat = 111_320.0
-                metersPerDegreeLon = 111_320.0 * cos(Math.toRadians(lat))
-                Log.i(TAG, "GNSS origin set: lat=$lat lon=$lon")
-            }
-
-            // Convert GNSS lat/lon to metres relative to origin.
-            drX = (lon - gnssOriginLon) * metersPerDegreeLon
-            drY = (lat - gnssOriginLat) * metersPerDegreeLat
-
-            // Convert bearing (degrees CW from north) to mathematical angle
-            // (radians CCW from east).
-            drTheta = normaliseAngle(Math.toRadians((90.0 - bearing).toDouble()))
-
-            positionVariance = 0.0   // reset uncertainty on each GNSS fix
-            latestLocation = buildSyntheticLocation()
-        }
-    }
-
-    /**
-     * Registers [listener] to receive synthetic [Location] updates at ~10 Hz.
-     * Listeners are stored in a [CopyOnWriteArrayList] so this method is safe
-     * to call from any thread.
-     */
-    fun addLocationListener(listener: LocationListener) {
-        locationListeners.addIfAbsent(listener)
-    }
-
-    /**
-     * Removes [listener] from the broadcast list.  No-op if not registered.
-     */
-    fun removeLocationListener(listener: LocationListener) {
-        locationListeners.remove(listener)
-    }
-
-    /**
-     * Returns the most recently computed [Location] object.  Thread-safe
-     * due to the [@Volatile] annotation on [latestLocation].
-     */
-    fun getNavDriftLocation(): Location = latestLocation
-
-    // ── Broadcast loop ─────────────────────────────────────────────────────────
-
-    /**
-     * Posts a self-rescheduling broadcast task on [inferenceHandler] that
-     * delivers [latestLocation] to all registered [LocationListener]s at 10 Hz.
-     *
-     * Using [inferenceHandler] means broadcasts are serialised with inference,
-     * guaranteeing listeners always see a location that corresponds to a
-     * completed integration step.
-     */
-    private fun scheduleBroadcast() {
-        broadcastRunning.set(true)
-        inferenceHandler.postDelayed(broadcastRunnable, BROADCAST_INTERVAL_MS)
-    }
-
-    private val broadcastRunnable: Runnable = object : Runnable {
-        override fun run() {
-            if (!broadcastRunning.get()) return
-
-            val loc = latestLocation
-            for (listener in locationListeners) {
-                try {
-                    listener.onLocationChanged(loc)
-                } catch (e: Exception) {
-                    Log.e(TAG, "LocationListener threw an exception", e)
-                }
-            }
-
-            inferenceHandler.postDelayed(this, BROADCAST_INTERVAL_MS)
-        }
-    }
-
-    // ── Utilities ──────────────────────────────────────────────────────────────
-
-    /** Wraps [angle] to (-π, π]. */
-    private fun normaliseAngle(angle: Double): Double {
-        var a = angle % (2 * Math.PI)
-        if (a > Math.PI)  a -= 2 * Math.PI
-        if (a < -Math.PI) a += 2 * Math.PI
-        return a
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// NavDriftClient
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * NavDriftClient
- *
- * A lightweight drop-in replacement for [android.location.LocationManager]
- * usage patterns.  Manages the [ServiceConnection] lifecycle and proxies the
- * full [NavDriftService] public API.
- *
- * ### Migration example
- *
- * **Before** (3 lines of LocationManager):
- * ```kotlin
- * val lm = getSystemService(LocationManager::class.java)
- * lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 100L, 0f, myListener)
- * val lastLoc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
- * ```
- *
- * **After** (3 lines of NavDriftClient):
- * ```kotlin
- * val navDrift = NavDriftClient()
- * navDrift.connect(this)
- * navDrift.addLocationListener(myListener)   // same LocationListener interface
- * val lastLoc = navDrift.getLocation()        // same Location object shape
- * ```
- *
- * Call [disconnect] in `onStop` / `onDestroy` to release the binding.
- */
-class NavDriftClient {
-
-    private var service: NavDriftService? = null
-    private var context: Context? = null
-
-    /**
-     * Listeners queued before the service is bound; replayed on connection.
-     */
-    private val pendingListeners = mutableListOf<LocationListener>()
-    private val pendingLock = Any()
-
-    // ── ServiceConnection ─────────────────────────────────────────────────────
-
-    private val connection = object : ServiceConnection {
-
-        override fun onServiceConnected(name: ComponentName, binder: IBinder) {
-            val svc = (binder as NavDriftService.NavDriftBinder).getService()
-            service = svc
-
-            // Replay any listeners that were added before the bind completed.
-            synchronized(pendingLock) {
-                pendingListeners.forEach { svc.addLocationListener(it) }
-                pendingListeners.clear()
-            }
-
-            Log.i("NavDriftClient", "Connected to NavDriftService")
-        }
-
-        override fun onServiceDisconnected(name: ComponentName) {
-            service = null
-            Log.w("NavDriftClient", "NavDriftService disconnected unexpectedly")
-        }
-    }
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
-
-    /**
-     * Binds to [NavDriftService], starting it if necessary.
-     * Should be called in `onStart` or `onCreate`.
-     *
-     * @param context An Activity or Application context used to bind the service.
-     */
-    fun connect(context: Context) {
-        this.context = context.applicationContext
-        val intent = Intent(context, NavDriftService::class.java)
-        // START_STICKY keeps the service running; BIND_AUTO_CREATE starts it
-        // if it isn't running yet.
-        context.applicationContext.also { ctx ->
-            ctx.startService(intent)
-            ctx.bindService(intent, connection, Context.BIND_AUTO_CREATE)
-        }
-    }
-
-    /**
-     * Unbinds from [NavDriftService].  Does NOT stop the service — the
-     * service continues running for other bound clients or until the OS stops
-     * it.  Call in `onStop` or `onDestroy`.
-     */
-    fun disconnect() {
-        service = null
-        context?.unbindService(connection)
-        context = null
-    }
-
-    // ── Location listener proxy ────────────────────────────────────────────────
-
-    /**
-     * Registers [listener] to receive [android.location.Location] updates
-     * at ~10 Hz from the NavDrift dead-reckoning engine.
-     *
-     * If the service is not yet bound, [listener] is queued and replayed
-     * automatically once the connection is established.
-     */
-    fun addLocationListener(listener: LocationListener) {
-        val svc = service
-        if (svc != null) {
-            svc.addLocationListener(listener)
-        } else {
-            synchronized(pendingLock) {
-                if (!pendingListeners.contains(listener)) {
-                    pendingListeners.add(listener)
-                }
-            }
-        }
-    }
-
-    /**
-     * Removes [listener].  If the service is not yet connected, removes it
-     * from the pending queue.
-     */
-    fun removeLocationListener(listener: LocationListener) {
-        service?.removeLocationListener(listener)
-        synchronized(pendingLock) {
-            pendingListeners.remove(listener)
-        }
-    }
-
-    // ── One-shot query ─────────────────────────────────────────────────────────
-
-    /**
-     * Returns the most recent dead-reckoned [android.location.Location], or
-     * `null` if the service is not yet bound.
-     *
-     * The returned location's [android.location.Location.getProvider] value
-     * is `"navdrift"`.
-     */
-    fun getLocation(): Location? = service?.getNavDriftLocation()
-
-    // ── GNSS snap ──────────────────────────────────────────────────────────────
-
-    /**
-     * Passes an authoritative GNSS fix through to [NavDriftService.setGnssLocation],
-     * snapping the dead-reckoned pose and resetting position uncertainty.
-     *
-     * Typical call site: inside a real [LocationListener] registered with the
-     * system [android.location.LocationManager] as a coarse GNSS fallback:
-     *
-     * ```kotlin
-     * val gnssListener = LocationListener { fix ->
-     *     navDrift.updateFromGnss(fix)
-     * }
-     * locationManager.requestLocationUpdates(
-     *     LocationManager.GPS_PROVIDER, 1000L, 5f, gnssListener
-     * )
-     * ```
-     */
-    fun updateFromGnss(location: Location) {
-        service?.setGnssLocation(
-            lat      = location.latitude,
-            lon      = location.longitude,
-            bearing  = location.bearing,
-            speedMs  = location.speed
-        )
-    }
-}
+    const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);
+    S.totND+=eND;S.n++;
+    const mn=S.n>0?(S.totND/S.n).toFixed(1):'—';
+    const ekfATE=EKF.s>0?(EKF.te/EKF.s).toFixed(1):'—';
+    try{
+      document.getElementById('v-nd').textContent=mn+'m';
+      document.getElementById('v-ekf').textContent=ekfATE+'m';
+      document.getElementById('v-unc').textContent=S.unc.toFixed(1)+'m';
+      document.getElementById('v-out').textContent=S.outN;
+      document.getElementById('v-baro').textContent=S.baroAlt.toFixed(1)+' m';
+      const tb=document.getElementById('tun-b');if(tb){tb.textContent=S.inTunnel?'TUNNEL':'clear';tb.className='tun-badge '+(S.inTunnel?'tunnel':'clear');}
+      const spdKmh=Math.min(120,spdMs*3.6);
+      document.getElementById('hud-pos').textContent=S.gtLa.toFixed(4)+'°N '+S.gtLo.toFixed(4)+'°E';
+    }catch(e){}
+  }
+
+  function triggerOut(){
+    if(!S.gnss)return;S.gnss=false;S.outt=0;S.outN++;
+    document.getElementById('outage-flash').classList.add('on');
+    const ob=document.getElementById('ob');ob.classList.remove('snap');ob.classList.add('on');
+    document.getElementById('hdr-dot').classList.add('out');
+    document.getElementById('hdr-st').textContent='BLACKOUT';
+    document.getElementById('hud-mode').textContent='Dead Reckoning';
+    document.getElementById('hud-mode').classList.add('out');
+  }
+  function reacq(){
+    if(S.gnss)return;S.gnss=true;S.snapN++;
+    document.getElementById('outage-flash').classList.remove('on');
+    const fe=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);
+    S.ndLa=S.gtLa;S.ndLo=S.gtLo;S.iLa=S.gtLa;S.iLo=S.gtLo;S.unc=.45;
+    const ob=document.getElementById('ob');ob.classList.add('snap');ob.textContent='✓ SNAP: -'+fe.toFixed(2)+'m · Reacquired';
+    setTimeout(()=>ob.classList.remove('on'),2200);
+    document.getElementById('hdr-dot').classList.remove('out');
+    document.getElementById('hdr-st').textContent='LOCKED';
+    document.getElementById('hud-mode').textContent='NavIC L5 Locked';
+    document.getElementById('hud-mode').classList.remove('out');
+  }
+
+  function toggleSim(){
+    S.run=!S.run;
+    const b=document.getElementById('btn-play');
+    b.textContent=S.run?'⏸ Pause':'▶ Resume';
+  }
+  function toggleOutage(){S.gnss?triggerOut():reacq();}
+  function switchCity(k,el){
+    document.querySelectorAll('.city-btn').forEach(b=>b.classList.remove('active'));
+    el.classList.add('active');
+    init(k);
+  }
+
+  let lt=0;
+  function loop(t){requestAnimationFrame(loop);if(t-lt>65){step();lt=t;}}
+
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+
+  init('delhi');
+  requestAnimationFrame(loop);
+</script>
+</body>
+</html>
