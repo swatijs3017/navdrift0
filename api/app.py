@@ -52,7 +52,7 @@ logger = logging.getLogger("navdrift0")
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-API_KEY: str = os.environ.get("API_KEY", "")
+API_KEY: str = os.environ.get("API_KEY", "") or os.environ.get("NAVDRIFT_API_KEY", "")
 DEMO_MODE: bool = os.environ.get("DEMO_MODE", "false").strip().lower() == "true"
 CORS_ORIGINS: List[str] = [
     o.strip()
