@@ -850,16 +850,15 @@
     $('v-steps').textContent=S.step.toLocaleString();
     $('v-outs').textContent=S.outN;
     $('v-snap').textContent=S.snapN;
-    $('v-hmm').textContent=S.hmmCorrN;
-    $('v-tun').textContent=S.tunN;
+    const hmmEl=$('v-hmm');if(hmmEl)hmmEl.textContent=S.hmmCorrN;
+    const tunEl2=$('v-tun');if(tunEl2)tunEl2.textContent=S.tunN;
 
     $('sp-err-v').textContent=eND.toFixed(2)+'m';
     $('sp-unc-v').textContent=S.unc.toFixed(2)+'m';
     $('sp-spd-v').textContent=spdKmh.toFixed(1)+' km/h';
-    $('sp-baro-v').textContent=S.baroAlt.toFixed(1)+' m';
-    const tunEl=$('sp-baro-tun');if(tunEl){tunEl.textContent=S.inTunnel?'🔴 IN TUNNEL':'✓ clear';tunEl.style.color=S.inTunnel?'var(--red)':'var(--green)';}
-    // WS connection indicator in engine-info if ws state changed
-    const wsEl=$('mode-badge');if(wsEl){if(S.wsReady&&!wsEl.textContent.includes('WS')){wsEl.textContent='WS LIVE';wsEl.classList.add('live');}}
+    const baroV=$('sp-baro-v');if(baroV)baroV.textContent=S.baroAlt.toFixed(1)+' m';
+    const tunEl=$('sp-baro-tun');if(tunEl){tunEl.textContent=S.inTunnel?'IN TUNNEL':'clear';tunEl.style.color=S.inTunnel?'var(--red)':'var(--green)';}
+    const wsEl=$('mode-badge');if(wsEl&&S.wsReady&&!wsEl.textContent.includes('WS')){wsEl.textContent='WS LIVE';wsEl.classList.add('live');}
 
     $('hud-pos').textContent=S.gtLa.toFixed(4)+'°N '+S.gtLo.toFixed(4)+'°E · '+spdKmh.toFixed(1)+' km/h';
     $('hud-dr').textContent=S.drTotal.toFixed(1)+'s cumulative';
