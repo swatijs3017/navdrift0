@@ -439,6 +439,114 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
   /* Compliance status — ok/err chips */
   .cs.ok { background: rgba(42,107,82,0.12) !important; color: #4ec994 !important; border-color: rgba(42,107,82,0.3) !important; }
+
+  /* ═══════════════════════════════════════════════════
+     KAGE VISUAL LANGUAGE — inline override pass
+     · Red accent like Kage torii  · No neon anywhere
+     ═══════════════════════════════════════════════════ */
+
+  /* Override inline style="color:var(--cyan)" elements */
+  #met-clock              { color: var(--muted)    !important; }
+  #navic-lock-badge       { color: var(--muted)    !important; font-weight: 500 !important; }
+  .hv                     { color: var(--bone)     !important; }
+
+  /* Desaturate NavIC sky plot & SNR bars — no neon green canvas */
+  #sky-cv                 { filter: saturate(0.08) brightness(0.55) !important; }
+  #sat-snr-bars           { filter: saturate(0.1)  brightness(0.5)  !important; }
+
+  /* Card title — hide colored cdot, replace with red · via ::before */
+  .cdot { display: none !important; }
+  .ct-l::before {
+    content: '·';
+    color: #7a1a1a;
+    font-size: .85rem;
+    margin-right: 6px;
+    line-height: 1;
+    font-weight: 300;
+    opacity: .85;
+  }
+  .ct { letter-spacing: .13em !important; color: var(--muted) !important; }
+
+  /* Header right — flatten pills to bare text */
+  .phase-badge {
+    border: none !important; background: transparent !important;
+    padding: 0 4px !important; border-radius: 0 !important;
+    font-size: .6rem !important; letter-spacing: .12em !important;
+  }
+  .phase-badge.nominal  { color: var(--muted)    !important; }
+  .phase-badge.blackout { color: var(--red)       !important; background: transparent !important; }
+  .phase-dot { display: none !important; }
+
+  .pill {
+    border: none !important; background: transparent !important;
+    padding: 0 4px !important; gap: 5px !important;
+  }
+  .pill .dot { width: 5px !important; height: 5px !important; }
+
+  .badge-ps { display: none !important; }
+
+  /* Mode badge — very dim */
+  .badge-mode {
+    background: transparent !important;
+    border: none !important;
+    color: var(--muted) !important;
+    letter-spacing: .1em !important;
+    padding: 0 !important;
+  }
+
+  /* Panel tabs — more spaced, dim */
+  .ptab.active {
+    background: transparent !important;
+    border-color: transparent !important;
+    border-bottom: 1px solid rgba(122,26,26,0.6) !important;
+    color: var(--bone-dim) !important;
+    border-radius: 0 !important;
+  }
+  .ptab-bar {
+    background: transparent !important;
+    border-color: var(--line-soft) !important;
+    border-left: none !important; border-right: none !important; border-top: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+  .ptab { border-radius: 0 !important; padding: 5px 10px !important; }
+
+  /* Control buttons — muted style */
+  .btn.p { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .btn.d { background: rgba(180,30,30,0.08)   !important; color: rgba(224,35,28,0.7) !important; border-color: rgba(180,30,30,0.25) !important; }
+
+  /* Inline-styled buttons in controls card — flatten */
+  .btn[style*="violet"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  .btn[style*="yellow"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  .btn[style*="green"]  { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  .btn[style*="red"]    { background: rgba(180,30,30,0.08)   !important; color: rgba(224,35,28,0.65) !important; border-color: rgba(180,30,30,0.2) !important; }
+
+  /* Ground truth CSV label */
+  label[style*="violet"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+
+  /* Module chips — on=very dim green, off=muted */
+  .mod.on  { background: rgba(42,82,60,0.12) !important; color: rgba(78,201,148,0.7) !important; border-color: rgba(42,82,60,0.3) !important; }
+  .mod.off { color: rgba(120,131,124,0.5)    !important; }
+
+  /* HUD map overlays — keep position/speed but dim */
+  .hbox { background: rgba(5,7,10,0.75) !important; border-color: var(--line-soft) !important; backdrop-filter: none !important; }
+  .hl   { color: rgba(120,131,124,0.6) !important; }
+
+  /* Pipeline bottom — very dim */
+  .pmod:hover { background: rgba(223,231,224,0.025) !important; }
+  .pname { color: var(--muted) !important; }
+  .psub  { color: rgba(120,131,124,0.5) !important; }
+
+  /* Grain noise overlay — Kage atmospheric texture */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 9000; pointer-events: none;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.038;
+    mix-blend-mode: overlay;
+  }
   </style>
 </head>
 <body>
@@ -452,18 +560,18 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   transition:opacity .6s ease;
 ">
   <svg width="52" height="52" viewBox="0 0 32 32" fill="none" style="opacity:.9">
-    <circle cx="16" cy="16" r="14" stroke="#00fff5" stroke-width="1" opacity=".4"/>
-    <circle cx="16" cy="16" r="8" stroke="#a855f7" stroke-width=".8" opacity=".5"/>
-    <circle cx="16" cy="16" r="2.5" fill="#00fff5"/>
-    <line x1="16" y1="2" x2="16" y2="7" stroke="#00fff5" stroke-width="1.2"/>
-    <line x1="16" y1="25" x2="16" y2="30" stroke="#00fff5" stroke-width="1.2" opacity=".3"/>
-    <line x1="2" y1="16" x2="7" y2="16" stroke="#00fff5" stroke-width="1.2" opacity=".3"/>
-    <line x1="25" y1="16" x2="30" y2="16" stroke="#00fff5" stroke-width="1.2" opacity=".3"/>
+    <circle cx="16" cy="16" r="14" stroke="#8B1A1A" stroke-width="1" opacity=".7"/>
+    <circle cx="16" cy="16" r="8" stroke="rgba(223,231,224,0.15)" stroke-width=".8"/>
+    <circle cx="16" cy="16" r="2.5" fill="#8B1A1A" opacity=".9"/>
+    <line x1="16" y1="2" x2="16" y2="7" stroke="#8B1A1A" stroke-width="1.2" opacity=".8"/>
+    <line x1="16" y1="25" x2="16" y2="30" stroke="rgba(223,231,224,0.18)" stroke-width="1"/>
+    <line x1="2" y1="16" x2="7" y2="16" stroke="rgba(223,231,224,0.18)" stroke-width="1"/>
+    <line x1="25" y1="16" x2="30" y2="16" stroke="rgba(223,231,224,0.18)" stroke-width="1"/>
   </svg>
   <div style="font-size:1.1rem;font-weight:600;letter-spacing:.18em;color:var(--bone);font-family:'Onest',sans-serif">NAVDRIFT-0</div>
   <div id="boot-status" style="font-size:.6rem;color:var(--muted);letter-spacing:.14em;text-transform:uppercase">INITIALIZING · ISRO SIH 2026</div>
   <div style="width:220px;height:2px;background:var(--line-soft);border-radius:1px;overflow:hidden;margin-top:4px">
-    <div id="boot-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--violet));border-radius:1px;transition:width .3s ease"></div>
+    <div id="boot-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#6b1414,rgba(223,231,224,0.4));border-radius:1px;transition:width .3s ease"></div>
   </div>
   <div id="boot-pct" style="font-size:.55rem;color:var(--muted);letter-spacing:.1em">0%</div>
 </div>
@@ -489,13 +597,13 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     <div class="brand">
       <div class="brand-logo">
         <svg viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="16" r="14" stroke="#00fff5" stroke-width="1.2" opacity=".35"/>
-          <circle cx="16" cy="16" r="8" stroke="#a855f7" stroke-width="1" opacity=".55"/>
-          <circle cx="16" cy="16" r="2.5" fill="#00fff5"/>
-          <line x1="16" y1="2" x2="16" y2="7" stroke="#00fff5" stroke-width="1.4"/>
-          <line x1="16" y1="25" x2="16" y2="30" stroke="#00fff5" stroke-width="1.4" opacity=".3"/>
-          <line x1="2" y1="16" x2="7" y2="16" stroke="#00fff5" stroke-width="1.4" opacity=".3"/>
-          <line x1="25" y1="16" x2="30" y2="16" stroke="#00fff5" stroke-width="1.4" opacity=".3"/>
+          <circle cx="16" cy="16" r="14" stroke="#8B1A1A" stroke-width="1.2" opacity=".7"/>
+          <circle cx="16" cy="16" r="8" stroke="rgba(223,231,224,0.18)" stroke-width=".8"/>
+          <circle cx="16" cy="16" r="2.5" fill="#8B1A1A" opacity=".9"/>
+          <line x1="16" y1="2" x2="16" y2="7" stroke="#8B1A1A" stroke-width="1.4" opacity=".8"/>
+          <line x1="16" y1="25" x2="16" y2="30" stroke="rgba(223,231,224,0.2)" stroke-width="1"/>
+          <line x1="2" y1="16" x2="7" y2="16" stroke="rgba(223,231,224,0.2)" stroke-width="1"/>
+          <line x1="25" y1="16" x2="30" y2="16" stroke="rgba(223,231,224,0.2)" stroke-width="1"/>
         </svg>
       </div>
       <div>
