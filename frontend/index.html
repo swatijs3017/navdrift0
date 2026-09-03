@@ -2038,9 +2038,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const imv=document.getElementById('race-imuv'); if(imv)imv.textContent=(parseFloat(mi)||0).toFixed(2)+'m';
   }
 
-  // ─── COVARIANCE ELLIPSE ───
-  // Draw proper 2D ellipse from EKF P matrix (eigendecomposition of top-left 2x2)
-  let _covEllipse=null;
+  // ─── COVARIANCE ELLIPSE (Leaflet polygon fallback) ───
   function updateCovEllipse(){
     if(!window._map)return;
     // P top-left 2x2: [P[0],P[1];P[3],P[4]]
@@ -2062,8 +2060,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       const lo=EKF.y+ry/(R*Math.cos(EKF.x*Math.PI/180))*(180/Math.PI);
       pts.push([la,lo]);
     }
-    if(_covEllipse){window._map.removeLayer(_covEllipse);}
-    _covEllipse=L.polygon(pts,{className:'cov-ellipse',interactive:false}).addTo(window._map);
+    if(window._covPoly){window._map.removeLayer(window._covPoly);}
+    window._covPoly=L.polygon(pts,{className:'cov-ellipse',interactive:false}).addTo(window._map);
   }
 
   // ─── INIT NEW COMPONENTS ───
