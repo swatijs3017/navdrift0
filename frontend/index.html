@@ -1183,7 +1183,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
     if(!S.gnss){S.outt+=DT;S.drTotal+=DT;if(!API_MODE)S.unc+=uncGrowthRate*(1+S.outt*.18);document.getElementById('banner-timer').textContent=TDP.eta!=null?'ETA '+TDP.eta+'s':S.outt.toFixed(1)+'s';if(S.outt>=120)reacq();}
     // Track peak drift during blackout for ISRO compliance display
-    if(!S.gnss){const curDrift=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.blackoutPeakDrift=Math.max(S.blackoutPeakDrift,curDrift);}
+    if(!S.gnss){const curDrift=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.blackoutPeakDrift=Math.max(S.blackoutPeakDrift,curDrift);EKF.te+=curDrift;EKF.me=Math.max(EKF.me,curDrift);EKF.s++;}
 
     if(window._map){
       window._gt.addLatLng([S.gtLa,S.gtLo]);window._nd.addLatLng([S.ndLa,S.ndLo]);
