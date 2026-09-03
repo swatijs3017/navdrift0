@@ -312,7 +312,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     /* ── FEATURE ADDITIONS ── */
     .city-tab.iovnbd{color:var(--yellow) !important;border-color:rgba(251,191,36,0.4) !important;}
     .city-tab.iovnbd.active{background:rgba(251,191,36,0.12) !important;border-color:rgba(251,191,36,0.45) !important;}
-    .iovnbd-banner{display:none;align-items:center;gap:8px;padding:5px 14px;border-radius:7px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);font-size:.6rem;font-family:var(--mono);color:var(--yellow);margin:0 8px 6px;font-weight:700;}
+    /* IO-VNBD banner: fixed overlay so it never participates in the .app grid and can't break layout */
+    .iovnbd-banner{display:none;position:fixed;top:50px;left:0;right:0;z-index:30;align-items:center;gap:8px;padding:4px 14px;background:rgba(14,10,4,0.96);border-bottom:1px solid rgba(251,191,36,0.35);font-size:.58rem;font-family:var(--mono);color:var(--yellow);font-weight:700;backdrop-filter:blur(8px);}
     .iovnbd-banner.show{display:flex;}
     .navic-toggle{padding:0 8px;height:26px;font-size:.55rem;font-weight:700;font-family:var(--mono);border-radius:5px;cursor:pointer;border:1px solid rgba(0,255,245,0.3);background:var(--cyan-d);color:var(--cyan);letter-spacing:.06em;transition:all .2s;}
     .navic-toggle.navonly{color:var(--yellow);border-color:rgba(251,191,36,0.4);background:rgba(251,191,36,0.1);}
@@ -344,11 +345,12 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   <span id="banner-timer">0.0s</span>
 </div>
 
+<!-- IO-VNBD DATASET BANNER — position:fixed overlay, lives outside .app grid -->
+<div class="iovnbd-banner" id="iovnbd-banner">
+  📡 IO-VNBD Dataset Replay — Inertial &amp; Odometry benchmark, ground-vehicle positioning · NAVDRIFT-0 inference on real sensor data
+</div>
+
 <div class="app">
-  <!-- IO-VNBD DATASET BANNER (shown only in IOVNBD mode) -->
-  <div class="iovnbd-banner" id="iovnbd-banner">
-    📡 IO-VNBD Dataset Replay — Inertial &amp; Odometry benchmark, ground-vehicle positioning · NAVDRIFT-0 inference on real sensor data
-  </div>
   <!-- HEADER -->
   <header>
     <div class="brand">
