@@ -345,6 +345,100 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     .gt-label{font-size:.55rem;font-family:var(--mono);color:var(--t3);}
     /* Recording indicator */
     .rec-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 7px var(--red-g);animation:blink .7s step-end infinite;margin-right:4px;vertical-align:middle;}
+
+  /* ═══════════════════════════════════════════════════
+     KAGE DEEP — eliminate neon, all values → bone-dim
+     ═══════════════════════════════════════════════════ */
+
+  /* Kill all decorative glow box-shadows */
+  .dot, .cdot, .cdot.c, .cdot.v, .cdot.r, .cdot.g, .cdot.y,
+  .sig-bar, .phase-dot, .mod-dot, .rec-dot,
+  .phase-badge, .phase-badge.nominal, .phase-badge.snap,
+  .phase-badge.cal { box-shadow: none !important; }
+
+  /* Status dot colours — dimmer, no glow */
+  .dot { background: #2a6b52 !important; }
+  .dot.out { background: var(--red) !important; animation: blink .7s step-end infinite; }
+
+  /* Card indicator dots — tiny, muted, no bloom */
+  .cdot.c { background: rgba(0,255,245,0.45) !important; }
+  .cdot.g { background: rgba(0,255,157,0.45) !important; }
+  .cdot.v { background: rgba(168,85,247,0.45) !important; }
+  .cdot.r { background: rgba(224,35,28,0.45) !important; }
+  .cdot.y { background: rgba(251,191,36,0.45) !important; }
+
+  /* Signal bars — bone/muted, no glow */
+  .sig-bar { background: rgba(223,231,224,0.25) !important; box-shadow: none !important; }
+  .sig-bar.lost { background: var(--red) !important; }
+
+  /* Metric values — bone-white not cyan */
+  .mv.c { color: var(--bone) !important; }
+  .mv.g { color: #4ec994 !important; }   /* softer green */
+  .mv.v { color: #9b72d8 !important; }   /* softer violet */
+  .mv.r { color: var(--red) !important; }
+  .mv.y { color: var(--yellow) !important; }
+
+  /* HUD position/speed values */
+  .hv { color: var(--bone) !important; }
+  .hv.out { color: var(--red) !important; }
+
+  /* Pipeline bar — no cyan glow on active */
+  .pmod.active { background: rgba(223,231,224,0.035) !important; }
+  .pmod.active .pico { filter: none !important; opacity: 0.85; }
+  .pmod.active .pname { color: var(--bone-dim) !important; }
+
+  /* Sensor / calibration bars */
+  .sbar-fill { background: rgba(223,231,224,0.35) !important; }
+  .sbar-val  { color: var(--bone-dim) !important; }
+  .fbar-fill { opacity: 0.7; }
+
+  /* MET clock — no neon */
+  .met b { color: var(--bone-dim) !important; }
+
+  /* Modal — bone title not cyan */
+  .mtitle { color: var(--bone) !important; }
+  .cal-title { color: var(--bone-dim) !important; letter-spacing:.06em; }
+  .minp:focus { border-color: var(--line) !important; box-shadow: none !important; }
+  .cal-btn.primary { background: rgba(223,231,224,0.07) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+
+  /* NavIC toggle pill — muted */
+  .navic-toggle { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .navic-toggle.navonly { color: rgba(251,191,36,0.7) !important; border-color: rgba(251,191,36,0.25) !important; background: rgba(251,191,36,0.06) !important; }
+
+  /* Phase badges — no glow */
+  .phase-badge.nominal { background: rgba(42,107,82,0.15) !important; color: #4ec994 !important; border-color: rgba(42,107,82,0.4) !important; }
+  .phase-badge.snap    { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .phase-badge.cal     { background: rgba(251,191,36,0.08) !important; color: rgba(251,191,36,0.75) !important; border-color: rgba(251,191,36,0.2) !important; }
+
+  /* Sparkline numbers — bone not cyan */
+  .spark-num { color: var(--bone-dim) !important; }
+
+  /* Benchmark table — bone not neon */
+  table.bench tr.rnd td { color: var(--bone) !important; font-weight: 600; }
+
+  /* btn icon hover — no cyan flash */
+  .btn-icon:hover { background: rgba(223,231,224,0.06) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+
+  /* Badges — muted styling */
+  .badge-mode { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .badge-mode.live { background: rgba(42,107,82,0.12) !important; color: #4ec994 !important; border-color: rgba(42,107,82,0.3) !important; }
+
+  /* Drift delta widget */
+  .drift-delta { background: rgba(42,107,82,0.07) !important; border-color: rgba(42,107,82,0.2) !important; }
+  .drift-delta-val { color: #4ec994 !important; }
+  .drift-delta.bad .drift-delta-val { color: var(--red) !important; }
+
+  /* Card top-edge line — more visible */
+  .card::before { background: linear-gradient(90deg,transparent,rgba(223,231,224,0.06),transparent) !important; }
+
+  /* City tab — less punchy */
+  .city-tab.active { background: rgba(223,231,224,0.05) !important; color: var(--bone) !important; border-color: var(--line) !important; }
+
+  /* Brand logo — no cyan drop-shadow */
+  .brand-logo svg { filter: none !important; opacity: 0.75; }
+
+  /* Compliance status — ok/err chips */
+  .cs.ok { background: rgba(42,107,82,0.12) !important; color: #4ec994 !important; border-color: rgba(42,107,82,0.3) !important; }
   </style>
 </head>
 <body>
