@@ -1444,7 +1444,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     FED.globalATE=Math.max(68,aggr*0.95+FED.globalATE*0.05);
     FED.log.push(`Round ${FED.round}: GlobalATE=${FED.globalATE.toFixed(2)}m (${FED.vehicles}v)`);
     if(FED.log.length>20)FED.log.shift();
-    addLog(`[FED] Aggregation round ${FED.round} — GlobalATE ${FED.globalATE.toFixed(2)}m`,'#8B1A1A');
   }
 
   // ─── COVARIANCE ELLIPSE (Leaflet SVG overlay) ───
