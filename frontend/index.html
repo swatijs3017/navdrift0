@@ -1816,6 +1816,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const sz=cv.parentElement.clientWidth; cv.width=sz; cv.height=sz;
     const ctx=cv.getContext('2d'); ctx.clearRect(0,0,sz,sz);
     const cx=sz/2,cy=sz/2,R=sz/2-8;
+    if(R<=0)return; // guard: panel hidden or zero-size
 
     // ── Background disc ──
     const bgGrad=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
