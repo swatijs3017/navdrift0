@@ -7,9 +7,9 @@
   <title>NAVDRIFT-0 · Mission Control · ISRO SIH 2026 PS #26168</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Onest:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#05070a">
+  <meta name="theme-color" content="#080810">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,29 +18,19 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
     :root {
-      /* ── Kage palette ── */
-      --ink:   #05070a;
-      --ink-2: #080c10;
-      --bone:  #dfe7e0;
-      --bone-dim: #aab4ad;
-      --muted: #78837c;
-      --line:  rgba(223,231,224,0.10);
-      --line-soft: rgba(223,231,224,0.05);
-
-      /* map old vars → Kage */
-      --bg: var(--ink); --surface: var(--ink-2); --card: rgba(8,12,16,0.88);
-      --cyan: #00fff5; --cyan-d: rgba(0,255,245,0.10); --cyan-g: rgba(0,255,245,0.28);
-      --violet: #a855f7; --violet-d: rgba(168,85,247,0.10);
-      --red: #E0231C; --red-d: rgba(224,35,28,0.12); --red-g: rgba(224,35,28,0.35);
-      --green: #00ff9d; --green-d: rgba(0,255,157,0.10); --green-g: rgba(0,255,157,0.3);
+      --bg: #080810; --surface: #0d0e1c; --card: rgba(12,14,26,0.82);
+      --cyan: #00fff5; --cyan-d: rgba(0,255,245,0.15); --cyan-g: rgba(0,255,245,0.35);
+      --violet: #a855f7; --violet-d: rgba(168,85,247,0.15);
+      --red: #ff2255; --red-d: rgba(255,34,85,0.15); --red-g: rgba(255,34,85,0.4);
+      --green: #00ff9d; --green-d: rgba(0,255,157,0.15); --green-g: rgba(0,255,157,0.4);
       --yellow: #fbbf24; --orange: #f97316;
-      --b1: var(--line); --b2: var(--line-soft);
-      --t1: var(--bone); --t2: var(--bone-dim); --t3: var(--muted);
-      --mono: 'JetBrains Mono', monospace; --sans: 'Onest', sans-serif;
-      --r: 8px;
+      --b1: rgba(255,255,255,0.08); --b2: rgba(255,255,255,0.04);
+      --t1: #f1f5f9; --t2: #94a3b8; --t3: #475569;
+      --mono: 'JetBrains Mono', monospace; --sans: 'Space Grotesk', sans-serif;
+      --r: 10px;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: var(--sans); user-select: none; }
+    html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: var(--t1); font-family: var(--sans); user-select: none; }
 
     /* ── LAYOUT ── */
     .app { display: grid; grid-template-rows: 50px 1fr 76px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
@@ -52,23 +42,23 @@
     /* ── HEADER ── */
     header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 14px; background: rgba(5,7,10,0.97); backdrop-filter: blur(24px);
-      border-bottom: 1px solid var(--line); position: relative; z-index: 20;
+      padding: 0 14px; background: rgba(6,6,14,0.96); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--b1); position: relative; z-index: 20;
     }
     .brand { display: flex; align-items: center; gap: 10px; }
     .brand-logo { width: 30px; height: 30px; }
-    .brand-logo svg { width: 100%; height: 100%; filter: drop-shadow(0 0 4px rgba(0,255,245,0.22)); opacity:.85; }
-    .brand-name { font-size: 1rem; font-weight: 600; letter-spacing: .04em;
-      color: var(--bone); font-family: var(--sans); }
-    .brand-sub { font-size: .56rem; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; font-family: var(--mono); }
+    .brand-logo svg { width: 100%; height: 100%; filter: drop-shadow(0 0 7px var(--cyan-g)); }
+    .brand-name { font-size: 1rem; font-weight: 700; letter-spacing: .1em;
+      background: linear-gradient(135deg, var(--cyan), var(--violet)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .brand-sub { font-size: .56rem; color: var(--t2); letter-spacing: .14em; text-transform: uppercase; font-family: var(--mono); }
 
-    .city-tabs { display: flex; gap: 2px; background: rgba(5,7,10,0.6); padding: 3px; border-radius: 7px; border: 1px solid var(--line); }
-    .city-tab { padding: 4px 14px; font-size: .65rem; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; transition: all .2s; font-family: var(--sans); letter-spacing: .02em; }
-    .city-tab.active { color: var(--bone); background: rgba(223,231,224,0.06); border-color: var(--line); }
-    .city-tab:hover:not(.active) { color: var(--bone-dim); background: rgba(223,231,224,0.03); }
+    .city-tabs { display: flex; gap: 3px; background: rgba(0,0,0,0.35); padding: 3px; border-radius: 8px; border: 1px solid var(--b1); }
+    .city-tab { padding: 4px 14px; font-size: .68rem; font-weight: 600; color: var(--t2); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; transition: all .2s; }
+    .city-tab.active { color: var(--cyan); background: var(--cyan-d); border-color: rgba(0,255,245,0.25); }
+    .city-tab:hover:not(.active) { color: var(--t1); background: var(--b2); }
 
     .hdr-right { display: flex; align-items: center; gap: 10px; }
-    .pill { display: flex; align-items: center; gap: 6px; background: rgba(5,7,10,0.5); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--line); font-family: var(--mono); font-size: .65rem; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; }
+    .pill { display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.3); padding: 4px 12px; border-radius: 20px; border: 1px solid var(--b1); font-family: var(--mono); font-size: .65rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 7px var(--green-g); transition: all .3s; }
     .dot.out { background: var(--red); box-shadow: 0 0 10px var(--red-g); animation: blink .7s step-end infinite; }
     @keyframes blink { 50% { opacity: 0; } }
@@ -94,9 +84,9 @@
     .banner.snap { background: rgba(0,100,60,0.93); border-color: rgba(0,255,157,0.4); box-shadow: 0 4px 24px rgba(0,255,157,0.3); color: #d1fae5; }
 
     /* ── CARD ── */
-    .card { background: rgba(8,12,16,0.85); backdrop-filter: blur(16px); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 11px; position: relative; overflow: hidden; }
-    .card::before { content: ''; position: absolute; top: 0; left: 18%; right: 18%; height: 1px; background: linear-gradient(90deg, transparent, rgba(223,231,224,0.08), transparent); }
-    .ct { font-size: .58rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-family: var(--sans); }
+    .card { background: var(--card); backdrop-filter: blur(14px); border: 1px solid var(--b1); border-radius: var(--r); padding: 10px 11px; position: relative; overflow: hidden; }
+    .card::before { content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,255,245,0.18), transparent); }
+    .ct { font-size: .6rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: var(--t2); display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
     .ct-l { display: flex; align-items: center; gap: 5px; }
     .cdot { width: 5px; height: 5px; border-radius: 50%; }
     .cdot.c { background: var(--cyan); box-shadow: 0 0 5px var(--cyan-g); }
@@ -155,14 +145,14 @@
     .nhc-fill { height: 100%; border-radius: 2px; transition: width .3s; }
 
     /* ── MAP ── */
-    .map-wrap { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); min-height: 0; }
-    #map { width: 100%; height: 100%; background: #04060a; }
-    .leaflet-container { background: #04060a !important; }
+    .map-wrap { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--b1); min-height: 0; }
+    #map { width: 100%; height: 100%; background: #060610; }
+    .leaflet-container { background: #060610 !important; }
     .hud { position: absolute; z-index: 500; pointer-events: none; }
     .hud.tl { top: 9px; left: 9px; }
     .hud.tr { top: 9px; right: 9px; }
     .hud.bl { bottom: 9px; left: 9px; }
-    .hbox { background: rgba(5,7,10,0.88); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+    .hbox { background: rgba(6,6,14,0.85); backdrop-filter: blur(8px); border: 1px solid var(--b1); border-radius: 7px; padding: 6px 10px; }
     .hl { font-size: .52rem; font-family: var(--mono); color: var(--t3); letter-spacing: .08em; text-transform: uppercase; }
     .hv { font-size: .76rem; font-weight: 700; font-family: var(--mono); color: var(--cyan); margin-top: 1px; }
     .hv.out { color: var(--red); }
@@ -217,8 +207,8 @@
     .sig-bar.lost { background: var(--red); animation: blink 1s step-end infinite; }
 
     /* ── PIPELINE ── */
-    .pipe { display: flex; align-items: stretch; background: rgba(5,7,10,0.97); border-top: 1px solid var(--line); overflow: hidden; }
-    .pmod { display: flex; align-items: center; gap: 8px; padding: 0 14px; flex: 1; justify-content: center; border-right: 1px solid var(--line); cursor: default; transition: background .3s; }
+    .pipe { display: flex; align-items: stretch; background: rgba(6,6,14,0.96); border-top: 1px solid var(--b1); overflow: hidden; }
+    .pmod { display: flex; align-items: center; gap: 8px; padding: 0 14px; flex: 1; justify-content: center; border-right: 1px solid var(--b1); cursor: default; transition: background .3s; }
     .pmod:last-child { border-right: none; }
     .pmod.active { background: rgba(0,255,245,0.05); }
     .pico { font-size: .9rem; transition: filter .3s; }
@@ -231,7 +221,7 @@
     /* ── MODAL ── */
     .modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .25s; }
     .modal-ov.on { opacity: 1; pointer-events: all; }
-    .modal { background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px; padding: 22px; width: 400px; box-shadow: 0 8px 48px rgba(0,0,0,0.6); }
+    .modal { background: #0d0e1c; border: 1px solid rgba(0,255,245,0.25); border-radius: 12px; padding: 22px; width: 400px; box-shadow: 0 0 60px rgba(0,255,245,0.12); }
     .mtitle { font-size: .95rem; font-weight: 700; color: var(--cyan); margin-bottom: 14px; }
     .mlbl { font-size: .65rem; font-family: var(--mono); color: var(--t2); margin-bottom: 4px; letter-spacing: .05em; text-transform: uppercase; }
     .minp { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--b1); border-radius: 6px; padding: 7px 10px; color: var(--t1); font-family: var(--mono); font-size: .72rem; margin-bottom: 10px; outline: none; }
@@ -257,14 +247,14 @@
 .drift-delta-val{font-size:.9rem;font-weight:700;font-family:var(--mono);color:var(--green);}
 .drift-delta.bad .drift-delta-val{color:var(--red);}
 
-/* Kage vignette — very subtle depth */
+/* Scanline overlay — subtle CRT texture across whole app */
 .app::after { content:''; position:fixed; inset:0; z-index:1000; pointer-events:none;
-  background:radial-gradient(ellipse 120% 100% at 50% 0%,transparent 60%,rgba(0,0,0,0.28) 100%); }
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px); }
 
-/* Kage atmospheric grid bg */
+/* Grid bg */
 body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
-  background-image:linear-gradient(rgba(223,231,224,0.018) 1px,transparent 1px),linear-gradient(90deg,rgba(223,231,224,0.018) 1px,transparent 1px);
-  background-size:48px 48px; }
+  background-image:linear-gradient(rgba(0,255,245,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,245,0.03) 1px,transparent 1px);
+  background-size:40px 40px; }
 
 /* Phase badge */
 .phase-badge { display:flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px;
@@ -292,9 +282,9 @@ body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:no
 .tl-wrap { display:flex; height:14px; border-radius:4px; overflow:hidden; gap:1px; background:rgba(0,0,0,0.4); border:1px solid var(--b1); }
 .tl-seg { height:100%; border-radius:2px; transition:width .3s; }
 
-/* Tunnel mode — Kage amber variant */
-body.tunnel-mode { --cyan:#d97706; --cyan-d:rgba(217,119,6,0.10); --cyan-g:rgba(217,119,6,0.35); }
-body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rgba(217,119,6,0.1),transparent); }
+/* Tunnel mode — applied to body when in tunnel */
+body.tunnel-mode { --cyan:#f59e0b; --cyan-d:rgba(245,158,11,0.12); --cyan-g:rgba(245,158,11,0.4); }
+body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rgba(245,158,11,0.15),transparent); }
 
 /* Covariance ellipse (Leaflet SVG path) */
 .cov-ellipse { fill:rgba(168,85,247,0.08); stroke:#a855f7; stroke-width:1.5; stroke-dasharray:5,4; }
@@ -311,10 +301,10 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 .inf-layer { display:inline-block; width:7px; height:7px; border-radius:1px; margin:0 1px; animation:inf-pulse 1.2s ease-in-out infinite; }
 
     /* ── PANEL TABS ── */
-    .ptab-bar { display:flex; gap:2px; margin-bottom:7px; background:rgba(5,7,10,0.5); padding:3px; border-radius:6px; border:1px solid var(--line); flex-shrink:0; }
-    .ptab { flex:1; padding:4px 6px; font-size:.56rem; font-weight:500; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); background:transparent; border:1px solid transparent; border-radius:4px; cursor:pointer; transition:all .18s; font-family:var(--sans); text-align:center; }
-    .ptab.active { color:var(--bone-dim); background:rgba(223,231,224,0.05); border-color:var(--line); }
-    .ptab:hover:not(.active) { color:var(--bone-dim); background:rgba(223,231,224,0.03); }
+    .ptab-bar { display:flex; gap:3px; margin-bottom:7px; background:rgba(0,0,0,0.3); padding:3px; border-radius:7px; border:1px solid var(--b1); flex-shrink:0; }
+    .ptab { flex:1; padding:4px 6px; font-size:.58rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); background:transparent; border:1px solid transparent; border-radius:5px; cursor:pointer; transition:all .18s; font-family:var(--mono); text-align:center; }
+    .ptab.active { color:var(--cyan); background:var(--cyan-d); border-color:rgba(0,255,245,0.25); }
+    .ptab:hover:not(.active) { color:var(--t2); background:var(--b2); }
     .ptab-content { display:none; flex-direction:column; gap:7px; }
     .ptab-content.active { display:flex; }
     .panel { overflow-y:auto; overflow-x:hidden; }
@@ -331,7 +321,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     /* IMU Cal Wizard modal */
     .cal-modal{position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);}
     .cal-modal.open{display:flex;}
-    .cal-box{background:var(--ink-2);border:1px solid var(--line);border-radius:10px;padding:22px 26px;width:340px;font-family:var(--mono);box-shadow:0 8px 48px rgba(0,0,0,0.7);}
+    .cal-box{background:var(--surface);border:1px solid rgba(0,255,245,0.25);border-radius:12px;padding:22px 26px;width:340px;font-family:var(--mono);}
     .cal-title{font-size:.75rem;font-weight:700;color:var(--cyan);letter-spacing:.1em;margin-bottom:14px;}
     .cal-step{font-size:.62rem;color:var(--t2);margin-bottom:8px;line-height:1.5;}
     .cal-bar{height:6px;border-radius:3px;background:var(--b1);margin-bottom:14px;overflow:hidden;}
@@ -348,35 +338,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   </style>
 </head>
 <body>
-
-<!-- ── KAGE BOOT SEQUENCE ── -->
-<div id="boot-seq" style="
-  position:fixed;inset:0;z-index:9999;
-  background:var(--ink);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:18px;
-  font-family:'JetBrains Mono',monospace;
-  transition:opacity .6s ease;
-">
-  <svg width="52" height="52" viewBox="0 0 32 32" fill="none" style="opacity:.9">
-    <circle cx="16" cy="16" r="14" stroke="#00fff5" stroke-width="1" opacity=".4"/>
-    <circle cx="16" cy="16" r="8" stroke="#a855f7" stroke-width=".8" opacity=".5"/>
-    <circle cx="16" cy="16" r="2.5" fill="#00fff5"/>
-    <line x1="16" y1="2" x2="16" y2="7" stroke="#00fff5" stroke-width="1.2"/>
-    <line x1="16" y1="25" x2="16" y2="30" stroke="#00fff5" stroke-width="1.2" opacity=".3"/>
-    <line x1="2" y1="16" x2="7" y2="16" stroke="#00fff5" stroke-width="1.2" opacity=".3"/>
-    <line x1="25" y1="16" x2="30" y2="16" stroke="#00fff5" stroke-width="1.2" opacity=".3"/>
-  </svg>
-  <div style="font-size:1.1rem;font-weight:600;letter-spacing:.18em;color:var(--bone);font-family:'Onest',sans-serif">NAVDRIFT-0</div>
-  <div id="boot-status" style="font-size:.6rem;color:var(--muted);letter-spacing:.14em;text-transform:uppercase">INITIALIZING · ISRO SIH 2026</div>
-  <div style="width:220px;height:2px;background:var(--line-soft);border-radius:1px;overflow:hidden;margin-top:4px">
-    <div id="boot-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--violet));border-radius:1px;transition:width .3s ease"></div>
-  </div>
-  <div id="boot-pct" style="font-size:.55rem;color:var(--muted);letter-spacing:.1em">0%</div>
-</div>
-
-<!-- ── PARTICLE CANVAS (atmospheric emerald pixel grid) ── -->
-<canvas id="particle-cv" style="position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0.22"></canvas>
-
 <div id="outage-flash"></div>
 <div class="banner" id="banner">
   <span id="banner-txt">GNSS BLACKOUT — DEAD RECKONING ACTIVE</span>
@@ -1979,79 +1940,6 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
 
   init('delhi');
   requestAnimationFrame(loopNew);
-
-  /* ── KAGE BOOT SEQUENCE ── */
-  (function() {
-    const seq = document.getElementById('boot-seq');
-    const bar = document.getElementById('boot-bar');
-    const pct = document.getElementById('boot-pct');
-    const status = document.getElementById('boot-status');
-    const msgs = [
-      'LOADING DRIFTFORMER · INT8 ONNX',
-      'CALIBRATING IMU SENSOR ARRAY',
-      'CONNECTING NAVIC CONSTELLATION',
-      'INITIALIZING MAP MATCHER · HMM',
-      'STARTING EKF FILTER ENGINE',
-      'NAVDRIFT-0 ONLINE'
-    ];
-    let p = 0;
-    const step = () => {
-      p += Math.random() * 18 + 8;
-      if (p > 100) p = 100;
-      bar.style.width = p + '%';
-      pct.textContent = Math.floor(p) + '%';
-      const mi = Math.min(Math.floor(p / 17), msgs.length - 1);
-      status.textContent = msgs[mi];
-      if (p < 100) { setTimeout(step, 120 + Math.random()*180); }
-      else {
-        setTimeout(() => {
-          seq.style.opacity = '0';
-          setTimeout(() => seq.style.display = 'none', 650);
-        }, 400);
-      }
-    };
-    setTimeout(step, 300);
-  })();
-
-  /* ── ATMOSPHERIC PARTICLE CANVAS ── */
-  (function() {
-    const cv = document.getElementById('particle-cv');
-    if (!cv) return;
-    const ctx = cv.getContext('2d');
-    const CELL = 32, FADE = 0.04;
-    let W, H, cols, rows, grid;
-
-    function resize() {
-      W = cv.width = window.innerWidth;
-      H = cv.height = window.innerHeight;
-      cols = Math.ceil(W / CELL);
-      rows = Math.ceil(H / CELL);
-      grid = Array.from({length: cols * rows}, () => Math.random() < 0.06 ? Math.random() : 0);
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      for (let i = 0; i < grid.length; i++) {
-        if (grid[i] <= 0) continue;
-        const col = i % cols, row = Math.floor(i / cols);
-        const a = grid[i] * 0.55;
-        ctx.fillStyle = `rgba(0,255,157,${a.toFixed(3)})`;
-        ctx.fillRect(col * CELL + CELL/2 - 1, row * CELL + CELL/2 - 1, 2, 2);
-        grid[i] -= FADE;
-        if (grid[i] < 0) grid[i] = 0;
-      }
-      // spawn new
-      if (Math.random() < 0.08) {
-        const idx = Math.floor(Math.random() * grid.length);
-        grid[idx] = 0.4 + Math.random() * 0.6;
-      }
-      requestAnimationFrame(draw);
-    }
-
-    resize();
-    window.addEventListener('resize', resize);
-    draw();
-  })();
 </script>
 </body>
 </html>
