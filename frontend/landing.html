@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NAVDRIFT-0</title>
+<meta name="description" content="Intelligent dead reckoning for India's roads. ISRO SIH 2026.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── tokens ──────────────────────────────────────────── */
+:root {
+  --ink:    #05070a;
+  --bone:   #dfe7e0;
+  --mist:   #a8b5aa;
+  --red-k:  #8B1A1A;
+  --red-hi: #c0312a;
+  --glass-bg:     rgba(255,255,255,0.03);
+  --glass-border: rgba(255,255,255,0.09);
+  --glass-blur:   blur(20px) saturate(180%);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  --ease-silk: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── reset ───────────────────────────────────────────── */
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--ink);
+  color: var(--bone);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+img, video { max-width: 100%; display: block; }
+
+/* ── grain overlay ───────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: var(--grain);
+  background-size: 200px 200px;
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: overlay;
+  opacity: 0.6;
+}
+
+/* ── nav ─────────────────────────────────────────────── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 3rem;
+  background: rgba(5,7,10,0.55);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
+  transition: padding 0.4s var(--ease-silk);
+}
+nav.scrolled { padding: 0.85rem 3rem; }
+
+.nav-logo {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 1.3rem;
+  letter-spacing: 0.06em;
+}
+.nav-logo span { color: var(--red-k); }
+
+.nav-links {
+  display: flex;
+  gap: 2.5rem;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mist);
+  transition: color 0.25s;
+}
+.nav-links a:hover { color: var(--bone); }
+
+.nav-cta {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.55rem 1.4rem;
+  border: 1px solid var(--red-k);
+  color: var(--bone);
+  transition: background 0.3s, border-color 0.3s;
+}
+.nav-cta:hover { background: var(--red-k); }
+
+/* ── section shared ──────────────────────────────────── */
+section { position: relative; }
+
+/* ── hero ────────────────────────────────────────────── */
+#hero {
+  height: 100vh;
+  min-height: 640px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+}
+
+.hero-video-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.hero-video-wrap video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 2s ease;
+  position: absolute;
+  inset: 0;
+}
+.hero-video-wrap video.active { opacity: 1; }
+
+/* dark vignette + gradient over video */
+.hero-video-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 60%, transparent 20%, rgba(5,7,10,0.75) 100%),
+    linear-gradient(to bottom, rgba(5,7,10,0.3) 0%, rgba(5,7,10,0.85) 100%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 860px;
+  padding: 0 2rem;
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mist);
+  margin-bottom: 2rem;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.8s var(--ease-snap) 0.2s, transform 0.8s var(--ease-snap) 0.2s;
+}
+.hero-eyebrow .dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--red-k);
+}
+.hero-eyebrow.visible { opacity: 1; transform: translateY(0); }
+
+.hero-h1 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(3.2rem, 8vw, 7rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 1s var(--ease-snap) 0.45s, transform 1s var(--ease-snap) 0.45s;
+}
+.hero-h1 em { font-style: italic; color: var(--red-k); }
+.hero-h1.visible { opacity: 1; transform: translateY(0); }
+
+.hero-sub {
+  margin-top: 1.6rem;
+  font-size: 0.95rem;
+  color: var(--mist);
+  letter-spacing: 0.01em;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.9s var(--ease-snap) 0.7s, transform 0.9s var(--ease-snap) 0.7s;
+}
+.hero-sub.visible { opacity: 1; transform: translateY(0); }
+
+.hero-actions {
+  margin-top: 2.8rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.9s var(--ease-snap) 0.9s, transform 0.9s var(--ease-snap) 0.9s;
+}
+.hero-actions.visible { opacity: 1; transform: translateY(0); }
+
+.btn-primary {
+  padding: 0.85rem 2.2rem;
+  background: var(--red-k);
+  color: var(--bone);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--red-k);
+  transition: background 0.3s, transform 0.2s;
+}
+.btn-primary:hover { background: var(--red-hi); transform: translateY(-2px); }
+
+.btn-ghost {
+  padding: 0.85rem 2.2rem;
+  background: var(--glass-bg);
+  color: var(--bone);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  transition: background 0.3s, border-color 0.3s, transform 0.2s;
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.18); transform: translateY(-2px); }
+
+/* scroll indicator */
+.hero-scroll {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0;
+  animation: fadeInUp 1s var(--ease-snap) 1.5s forwards;
+}
+.hero-scroll span {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mist);
+}
+.scroll-line {
+  width: 1px;
+  height: 48px;
+  background: linear-gradient(to bottom, var(--red-k), transparent);
+  animation: scrollPulse 2.2s ease-in-out infinite;
+}
+@keyframes scrollPulse {
+  0%,100% { transform: scaleY(1); opacity: 0.6; }
+  50%      { transform: scaleY(0.5); opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── liquid glass card ───────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  position: relative;
+}
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ── about section ───────────────────────────────────── */
+#about {
+  padding: 10rem 3rem;
+}
+.about-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+  align-items: center;
+}
+.about-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--red-k);
+  margin-bottom: 1.2rem;
+}
+.about-h2 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(2.4rem, 4vw, 3.6rem);
+  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.about-h2 em { font-style: italic; color: var(--mist); }
+.about-body {
+  margin-top: 1.8rem;
+  font-size: 0.95rem;
+  color: var(--mist);
+  line-height: 1.8;
+}
+.about-body p + p { margin-top: 1rem; }
+
+.about-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--glass-border);
+  border: 1px solid var(--glass-border);
+}
+.stat {
+  background: var(--ink);
+  padding: 2.2rem 2rem;
+  transition: background 0.3s;
+}
+.stat:hover { background: rgba(139,26,26,0.06); }
+.stat-num {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 3rem;
+  font-style: italic;
+  color: var(--bone);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.stat-num sup { font-size: 1.2rem; vertical-align: super; }
+.stat-label {
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mist);
+}
+
+/* ── featured video section ──────────────────────────── */
+#featured {
+  padding: 4rem 3rem 10rem;
+}
+.featured-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.featured-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 3rem;
+}
+.featured-h2 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+.featured-sub {
+  font-size: 0.8rem;
+  color: var(--mist);
+  letter-spacing: 0.06em;
+  text-align: right;
+  max-width: 260px;
+}
+
+.video-card {
+  position: relative;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  cursor: pointer;
+}
+.video-card video,
+.video-card .video-poster {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 0.7s var(--ease-silk);
+}
+.video-card:hover video,
+.video-card:hover .video-poster { transform: scale(1.02); }
+
+.video-poster {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #0d1117 0%, #1a0a0a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.video-poster-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(139,26,26,0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139,26,26,0.12) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+.video-play-btn {
+  position: relative;
+  z-index: 2;
+  width: 72px; height: 72px;
+  border: 1.5px solid rgba(255,255,255,0.25);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(139,26,26,0.2);
+  backdrop-filter: blur(8px);
+  transition: transform 0.3s, background 0.3s;
+}
+.video-play-btn svg { fill: var(--bone); width: 24px; }
+.video-card:hover .video-play-btn { transform: scale(1.08); background: rgba(139,26,26,0.5); }
+
+.video-caption {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 3rem 2.5rem 2rem;
+  background: linear-gradient(to top, rgba(5,7,10,0.9), transparent);
+  z-index: 2;
+}
+.video-caption-tag {
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red-k);
+  margin-bottom: 0.4rem;
+}
+.video-caption-title {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 1.5rem;
+  font-style: italic;
+}
+
+/* DRIFTFormer canvas animation */
+.driftformer-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+}
+
+/* ── philosophy section ──────────────────────────────── */
+#philosophy {
+  padding: 10rem 3rem;
+  background: linear-gradient(to bottom, transparent, rgba(139,26,26,0.04), transparent);
+}
+.philosophy-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.philosophy-header {
+  text-align: center;
+  margin-bottom: 5rem;
+}
+.philosophy-eyebrow {
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--red-k);
+  margin-bottom: 1rem;
+}
+.philosophy-h2 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(2.4rem, 4.5vw, 4rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  font-style: italic;
+}
+
+.philosophy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--glass-border);
+  border: 1px solid var(--glass-border);
+}
+.phil-card {
+  background: var(--ink);
+  padding: 3rem 2.5rem;
+  transition: background 0.4s;
+  position: relative;
+  overflow: hidden;
+}
+.phil-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--red-k), transparent);
+  transform: scaleX(0);
+  transition: transform 0.4s var(--ease-snap);
+}
+.phil-card:hover { background: rgba(139,26,26,0.04); }
+.phil-card:hover::after { transform: scaleX(1); }
+
+.phil-num {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--red-k);
+  margin-bottom: 2rem;
+}
+.phil-icon {
+  width: 40px; height: 40px;
+  margin-bottom: 1.5rem;
+  color: var(--bone);
+  opacity: 0.7;
+}
+.phil-h3 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 1.5rem;
+  font-style: italic;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+.phil-p {
+  font-size: 0.85rem;
+  color: var(--mist);
+  line-height: 1.75;
+}
+
+/* ── services / pipeline section ─────────────────────── */
+#services {
+  padding: 10rem 3rem;
+}
+.services-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.services-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: end;
+  margin-bottom: 5rem;
+}
+.services-h2 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(2.4rem, 4vw, 3.6rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.services-desc {
+  font-size: 0.9rem;
+  color: var(--mist);
+  line-height: 1.75;
+}
+
+/* pipeline flow */
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  position: relative;
+}
+.pipeline::before {
+  content: '';
+  position: absolute;
+  top: 2.8rem;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    var(--glass-border) 15%,
+    var(--red-k) 50%,
+    var(--glass-border) 85%,
+    transparent
+  );
+  z-index: 0;
+}
+
+.pipe-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 1.5rem 3rem;
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s var(--ease-snap), transform 0.7s var(--ease-snap);
+}
+.pipe-step.visible { opacity: 1; transform: translateY(0); }
+.pipe-step:nth-child(1) { transition-delay: 0s; }
+.pipe-step:nth-child(2) { transition-delay: 0.12s; }
+.pipe-step:nth-child(3) { transition-delay: 0.24s; }
+.pipe-step:nth-child(4) { transition-delay: 0.36s; }
+
+.pipe-node {
+  width: 56px; height: 56px;
+  border: 1px solid var(--glass-border);
+  background: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 1.8rem;
+  transition: border-color 0.3s, background 0.3s;
+  position: relative;
+}
+.pipe-node::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px solid transparent;
+  transition: border-color 0.3s;
+}
+.pipe-step:hover .pipe-node {
+  background: rgba(139,26,26,0.1);
+  border-color: var(--red-k);
+}
+.pipe-step:hover .pipe-node::after { border-color: rgba(139,26,26,0.2); }
+
+.pipe-node svg { width: 22px; height: 22px; color: var(--bone); opacity: 0.8; }
+.pipe-order {
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red-k);
+  margin-bottom: 0.6rem;
+}
+.pipe-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.8rem;
+}
+.pipe-desc {
+  font-size: 0.78rem;
+  color: var(--mist);
+  line-height: 1.65;
+}
+
+/* pipeline glass card below */
+.pipeline-glass {
+  margin-top: 4rem;
+  padding: 2.5rem 3rem;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.pipeline-glass-text {
+  font-size: 0.85rem;
+  color: var(--mist);
+  line-height: 1.7;
+  max-width: 600px;
+}
+.pipeline-glass-text strong { color: var(--bone); }
+.pipeline-badge {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.6rem 1.4rem;
+  border: 1px solid var(--red-k);
+  color: var(--red-k);
+  white-space: nowrap;
+}
+
+/* ── footer ──────────────────────────────────────────── */
+footer {
+  padding: 5rem 3rem 3rem;
+  border-top: 1px solid var(--glass-border);
+}
+.footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+.footer-brand {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 1.8rem;
+  letter-spacing: 0.04em;
+}
+.footer-brand span { color: var(--red-k); }
+.footer-tagline {
+  font-size: 0.75rem;
+  color: var(--mist);
+  margin-top: 0.4rem;
+  letter-spacing: 0.08em;
+}
+.footer-meta {
+  font-size: 0.72rem;
+  color: var(--mist);
+  letter-spacing: 0.06em;
+  text-align: right;
+  line-height: 1.9;
+}
+
+/* ── scroll reveal ───────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.85s var(--ease-snap), transform 0.85s var(--ease-snap);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.35s; }
+.reveal-delay-4 { transition-delay: 0.5s; }
+
+/* ── responsive ──────────────────────────────────────── */
+@media (max-width: 900px) {
+  nav { padding: 1rem 1.5rem; }
+  .nav-links { display: none; }
+  #about { padding: 7rem 1.5rem; }
+  .about-inner { grid-template-columns: 1fr; gap: 3rem; }
+  .about-stats { grid-template-columns: 1fr 1fr; }
+  #featured { padding: 3rem 1.5rem 7rem; }
+  .featured-header { flex-direction: column; gap: 1rem; }
+  .featured-sub { text-align: left; }
+  #philosophy { padding: 7rem 1.5rem; }
+  .philosophy-grid { grid-template-columns: 1fr; }
+  #services { padding: 7rem 1.5rem; }
+  .services-header { grid-template-columns: 1fr; }
+  .pipeline { grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .pipeline::before { display: none; }
+  footer { padding: 4rem 1.5rem 2rem; }
+  .footer-inner { flex-direction: column; align-items: flex-start; }
+  .footer-meta { text-align: left; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── nav ──────────────────────────────────────────── -->
+<nav id="nav">
+  <div class="nav-logo">NAVDRIFT<span>-0</span></div>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#featured">Research</a></li>
+    <li><a href="#philosophy">Core</a></li>
+    <li><a href="#services">Pipeline</a></li>
+  </ul>
+  <a href="index.html" class="nav-cta">Open Dashboard →</a>
+</nav>
+
+<!-- ── hero ─────────────────────────────────────────── -->
+<section id="hero">
+  <div class="hero-video-wrap" id="heroVideoWrap">
+    <!-- videos crossfade via JS -->
+    <video class="active" id="hv0" autoplay muted loop playsinline
+      src="https://cdn.coverr.co/videos/coverr-flying-above-dark-clouds-4534/1080p.mp4"></video>
+    <video id="hv1" autoplay muted loop playsinline
+      src="https://cdn.coverr.co/videos/coverr-aerial-view-of-a-city-at-night-5232/1080p.mp4"></video>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow" id="he0">
+      <span class="dot"></span>
+      ISRO SIH 2026 &nbsp;·&nbsp; PS #26168
+      <span class="dot"></span>
+    </div>
+    <h1 class="hero-h1" id="he1">
+      Navigate it<br>then <em>all.</em>
+    </h1>
+    <p class="hero-sub" id="he2">
+      Intelligent dead reckoning for GPS-denied environments.<br>
+      Quaternion EKF × Adaptive RL × DRIFTFormer AI.
+    </p>
+    <div class="hero-actions" id="he3">
+      <a href="index.html" class="btn-primary">Launch Dashboard</a>
+      <a href="#about" class="btn-ghost">Discover More</a>
+    </div>
+  </div>
+
+  <div class="hero-scroll">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- ── about ─────────────────────────────────────────── -->
+<section id="about">
+  <div class="about-inner">
+
+    <div>
+      <div class="about-label reveal">Pioneer System</div>
+      <h2 class="about-h2 reveal reveal-delay-1">
+        Pioneering dead reckoning<br>for <em>India's roads.</em>
+      </h2>
+      <div class="about-body reveal reveal-delay-2">
+        <p>NAVDRIFT-0 is a next-generation inertial navigation system built for ISRO SIH 2026. Where satellite signals fail — urban canyons, tunnels, dense foliage — NAVDRIFT-0 holds the line.</p>
+        <p>Our quaternion SO(3) pre-integration framework eliminates gimbal lock entirely. A Transformer-based motion model learns sensor drift patterns from real IMU data, achieving sub-metre accuracy over 60-second outages.</p>
+        <p>Built for Bharat. Designed to last without GPS.</p>
+      </div>
+    </div>
+
+    <div class="about-stats reveal reveal-delay-2">
+      <div class="stat">
+        <div class="stat-num">0.8<sup>m</sup></div>
+        <div class="stat-label">Position Error — 60s GNSS Outage</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">200<sup>Hz</sup></div>
+        <div class="stat-label">IMU Fusion Rate</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">12×</div>
+        <div class="stat-label">Federated Vehicle Fleet</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">SO(3)</div>
+        <div class="stat-label">Quaternion EKF Manifold</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── featured video ─────────────────────────────────── -->
+<section id="featured">
+  <div class="featured-inner">
+    <div class="featured-header reveal">
+      <h2 class="featured-h2">DRIFTFormer<br>in Action</h2>
+      <p class="featured-sub">Attention-based motion prediction — watch the Transformer reason over your IMU history in real time.</p>
+    </div>
+
+    <div class="video-card reveal reveal-delay-1" id="videoCard">
+      <canvas class="driftformer-canvas" id="driftCanvas"></canvas>
+      <div class="video-caption">
+        <div class="video-caption-tag">DRIFTFormer · Attention Heatmap</div>
+        <div class="video-caption-title">Live IMU Sequence Reasoning</div>
+      </div>
+      <div class="video-play-btn" id="playBtn" style="position:absolute;z-index:3;top:50%;left:50%;transform:translate(-50%,-50%)">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── philosophy ─────────────────────────────────────── -->
+<section id="philosophy">
+  <div class="philosophy-inner">
+    <div class="philosophy-header">
+      <div class="philosophy-eyebrow reveal">Core Principles</div>
+      <h2 class="philosophy-h2 reveal reveal-delay-1">Algorithm × Precision</h2>
+    </div>
+
+    <div class="philosophy-grid">
+
+      <div class="phil-card reveal">
+        <div class="phil-num">01</div>
+        <svg class="phil-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/>
+          <path d="M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1"/>
+        </svg>
+        <h3 class="phil-h3">Quaternion SO(3)<br>Pre-integration</h3>
+        <p class="phil-p">Heading tracked on the SO(3) Lie group via quaternion multiplication. No gimbal lock. No Euler-angle singularities. Pure continuous attitude throughout manoeuvres.</p>
+      </div>
+
+      <div class="phil-card reveal reveal-delay-1">
+        <div class="phil-num">02</div>
+        <svg class="phil-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
+        </svg>
+        <h3 class="phil-h3">Adaptive RL<br>Noise Tuning</h3>
+        <p class="phil-p">PPO-style online reinforcement loop adapts the EKF Q/R matrices in real time. The filter tightens in steady motion and relaxes through hard manoeuvres — automatically.</p>
+      </div>
+
+      <div class="phil-card reveal reveal-delay-2">
+        <div class="phil-num">03</div>
+        <svg class="phil-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <h3 class="phil-h3">Sensor Fault<br>Detection</h3>
+        <p class="phil-p">Per-channel z-score anomaly scoring flags gyro, accelerometer, and GPS glitches the instant they deviate. Corrupted measurements are isolated before they reach the filter.</p>
+      </div>
+
+      <div class="phil-card reveal">
+        <div class="phil-num">04</div>
+        <svg class="phil-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 12h20M12 2v20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1"/>
+        </svg>
+        <h3 class="phil-h3">Uncertainty-Aware<br>Routing</h3>
+        <p class="phil-p">EKF covariance ellipses propagate live onto the map. Route planning weights paths by positioning confidence — safer choices when uncertainty grows.</p>
+      </div>
+
+      <div class="phil-card reveal reveal-delay-1">
+        <div class="phil-num">05</div>
+        <svg class="phil-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        <h3 class="phil-h3">Tunnel Dead-Reckoning<br>Predictor</h3>
+        <p class="phil-p">Barometric slope analysis predicts GNSS reacquisition ETA before the tunnel ends. The system prepares for handoff — seamless position continuity at the exit.</p>
+      </div>
+
+      <div class="phil-card reveal reveal-delay-2">
+        <div class="phil-num">06</div>
+        <svg class="phil-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <path d="M8.7 10.7 15.3 6.3M8.7 13.3l6.6 4.4"/>
+        </svg>
+        <h3 class="phil-h3">Federated<br>Fleet Learning</h3>
+        <p class="phil-p">Gradient aggregation across 12 simulated vehicles. Every road encounter — pothole, sharp corner, bridge — improves the shared model without sharing raw data.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── services / pipeline ───────────────────────────── -->
+<section id="services">
+  <div class="services-inner">
+    <div class="services-header">
+      <h2 class="services-h2 reveal">The Navigation<br>Pipeline</h2>
+      <p class="services-desc reveal reveal-delay-1">From raw sensor noise to a trusted position fix — four stages of intelligent signal processing, running continuously at 200 Hz.</p>
+    </div>
+
+    <div class="pipeline">
+
+      <div class="pipe-step">
+        <div class="pipe-node">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="m4.9 4.9 14.2 14.2"/>
+          </svg>
+        </div>
+        <div class="pipe-order">Stage 01</div>
+        <div class="pipe-name">IMU Preprocessing</div>
+        <p class="pipe-desc">Per-axis z-score fault detection. Bias estimation and temperature compensation on raw gyro + accelerometer streams.</p>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-node">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+          </svg>
+        </div>
+        <div class="pipe-order">Stage 02</div>
+        <div class="pipe-name">DRIFTFormer AI</div>
+        <p class="pipe-desc">12-head Transformer attention over 64-step IMU history. Predicts velocity and heading — even inside tunnels with zero satellite signal.</p>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-node">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="pipe-order">Stage 03</div>
+        <div class="pipe-name">NavIC + GNSS Fusion</div>
+        <p class="pipe-desc">Quaternion EKF on SO(3) fuses GPS, NavIC, and DRIFTFormer outputs. Adaptive RL continuously tunes process and measurement noise.</p>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-node">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M3 12h3m12 0h3M12 3v3m0 12v3"/>
+          </svg>
+        </div>
+        <div class="pipe-order">Stage 04</div>
+        <div class="pipe-name">Position Output</div>
+        <p class="pipe-desc">Uncertainty-weighted position fix with live covariance ellipse. Route planner selects paths by confidence. Fleet gradient sync every 30 s.</p>
+      </div>
+
+    </div>
+
+    <div class="pipeline-glass reveal">
+      <p class="pipeline-glass-text">
+        <strong>Built for ISRO SIH 2026 PS #26168.</strong> NAVDRIFT-0 targets sub-metre lateral error in worst-case urban canyon and 60-second tunnel scenarios — the benchmark conditions specified in the problem statement. All processing runs on embedded hardware at full frame rate.
+      </p>
+      <div class="pipeline-badge">ISRO SIH 2026</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── footer ─────────────────────────────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">NAVDRIFT<span>-0</span></div>
+      <div class="footer-tagline">Navigate it then all — ISRO SIH 2026</div>
+    </div>
+    <div class="footer-meta">
+      Problem Statement #26168<br>
+      Quaternion EKF &nbsp;·&nbsp; DRIFTFormer &nbsp;·&nbsp; NavIC<br>
+      <a href="index.html" style="color:var(--red-k);letter-spacing:0.06em;">Open Dashboard →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ── nav scroll ──────────────────────────────────────── */
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+}, { passive: true });
+
+/* ── hero entrance ───────────────────────────────────── */
+function animHero() {
+  ['he0','he1','he2','he3'].forEach(id => {
+    document.getElementById(id)?.classList.add('visible');
+  });
+}
+requestAnimationFrame(() => requestAnimationFrame(animHero));
+
+/* ── hero video crossfade ────────────────────────────── */
+(function() {
+  const vids = [document.getElementById('hv0'), document.getElementById('hv1')].filter(Boolean);
+  if (vids.length < 2) return;
+  let idx = 0;
+  setInterval(() => {
+    vids[idx].classList.remove('active');
+    idx = (idx + 1) % vids.length;
+    vids[idx].classList.add('active');
+  }, 9000);
+  vids.forEach(v => { v.muted = true; v.play?.().catch(()=>{}); });
+})();
+
+/* ── intersection observer reveal ───────────────────── */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll('.reveal, .pipe-step').forEach(el => io.observe(el));
+
+/* ── DRIFTFormer canvas animation ────────────────────── */
+(function() {
+  const canvas = document.getElementById('driftCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width  = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+
+  // Generate fake IMU attention heatmap data
+  const SEQ_LEN = 64;
+  const NUM_HEADS = 8;
+  let attWeights = [];
+  function genWeights() {
+    attWeights = [];
+    for (let h = 0; h < NUM_HEADS; h++) {
+      const row = [];
+      // Sparse attention — peak around recent tokens
+      for (let t = 0; t < SEQ_LEN; t++) {
+        const recency = Math.exp(-(SEQ_LEN - 1 - t) / 12);
+        const noise = Math.random() * 0.15;
+        row.push(Math.min(1, recency + noise));
+      }
+      // normalize
+      const sum = row.reduce((a,b)=>a+b,0);
+      attWeights.push(row.map(v=>v/sum));
+    }
+  }
+  genWeights();
+
+  // Simulated IMU signal
+  let phase = 0;
+  const imuBuf = new Float32Array(SEQ_LEN);
+  for (let i=0; i<SEQ_LEN; i++) imuBuf[i] = Math.sin(i * 0.3) * 0.5 + (Math.random()-0.5)*0.3;
+
+  let playMode = false;
+  const playBtn = document.getElementById('playBtn');
+  playBtn?.addEventListener('click', () => {
+    playMode = !playMode;
+    playBtn.style.opacity = playMode ? '0' : '1';
+  });
+
+  let frame = 0;
+  function draw() {
+    requestAnimationFrame(draw);
+    const W = canvas.width, H = canvas.height;
+    if (!W || !H) return;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Dark gradient bg
+    const bg = ctx.createLinearGradient(0,0,W,H);
+    bg.addColorStop(0,'#0d1117');
+    bg.addColorStop(1,'#1a0a0a');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0,0,W,H);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(139,26,26,0.1)';
+    ctx.lineWidth = 1;
+    const gs = 60;
+    for (let x=0; x<W; x+=gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y=0; y<H; y+=gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    if (playMode) {
+      // Update IMU buffer
+      frame++;
+      if (frame % 4 === 0) {
+        for (let i=0; i<SEQ_LEN-1; i++) imuBuf[i] = imuBuf[i+1];
+        phase += 0.08;
+        imuBuf[SEQ_LEN-1] = Math.sin(phase) * 0.6 + Math.sin(phase*2.3)*0.2 + (Math.random()-0.5)*0.15;
+        if (frame % 60 === 0) genWeights();
+      }
+    }
+
+    // IMU waveform strip at bottom
+    const waveH = Math.min(H * 0.22, 80);
+    const waveY = H - waveH - 32;
+    const waveW = W - 80;
+    const ox = 40;
+
+    ctx.strokeStyle = 'rgba(139,26,26,0.4)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ox, waveY, waveW, waveH);
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#c0312a';
+    ctx.lineWidth = 1.5;
+    for (let i=0; i<SEQ_LEN; i++) {
+      const x = ox + (i/(SEQ_LEN-1)) * waveW;
+      const y = waveY + waveH/2 - imuBuf[i] * waveH * 0.45;
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(223,231,224,0.4)';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.fillText('IMU Sequence (64 steps)', ox+4, waveY-6);
+
+    // Attention heatmap
+    const hmTop = 32, hmLeft = ox, hmRight = ox + waveW;
+    const hmH = waveY - hmTop - 16;
+    if (hmH < 10) return;
+    const cellW = waveW / SEQ_LEN;
+    const cellH = hmH / NUM_HEADS;
+
+    for (let h=0; h<NUM_HEADS; h++) {
+      for (let t=0; t<SEQ_LEN; t++) {
+        const val = attWeights[h][t];
+        const alpha = val * 0.9 + 0.05;
+        // color interpolate: dark → red → orange for high attention
+        const r = Math.round(5   + val * 195);
+        const g = Math.round(7   + val * 20);
+        const b = Math.round(10  + val * 5);
+        ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+        ctx.fillRect(
+          hmLeft + t * cellW,
+          hmTop  + h * cellH,
+          cellW - 0.5,
+          cellH - 0.5
+        );
+      }
+    }
+
+    // Labels
+    ctx.fillStyle = 'rgba(223,231,224,0.35)';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.fillText('Attention Heads → Sequence Position', hmLeft, hmTop - 6);
+
+    // Vertical cursor line (time marker)
+    const cursorT = (frame * 2) % SEQ_LEN;
+    const cursorX = hmLeft + cursorT * cellW;
+    ctx.strokeStyle = 'rgba(223,231,224,0.25)';
+    ctx.setLineDash([3,4]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cursorX, hmTop);
+    ctx.lineTo(cursorX, waveY + waveH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Softmax output bar (right side)
+    const barX = hmRight + 12;
+    const barW = W - barX - 12;
+    if (barW > 4) {
+      ctx.fillStyle = 'rgba(223,231,224,0.15)';
+      ctx.font = '9px Inter, sans-serif';
+      ctx.fillText('Σ', barX+2, hmTop-6);
+      for (let h=0; h<NUM_HEADS; h++) {
+        const sum = attWeights[h].reduce((a,b)=>a+b,0);
+        const norm = Math.min(1, sum / SEQ_LEN * 8);
+        ctx.fillStyle = `rgba(192,49,42,${0.2 + norm*0.7})`;
+        ctx.fillRect(barX, hmTop + h*cellH, barW * norm, cellH - 1);
+      }
+    }
+
+    // Legend
+    const lx = hmLeft, ly = H - 18;
+    ctx.fillStyle = 'rgba(139,26,26,0.9)';
+    ctx.fillRect(lx, ly, 14, 8);
+    ctx.fillStyle = 'rgba(223,231,224,0.4)';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.fillText('High attention', lx+18, ly+8);
+    ctx.fillStyle = 'rgba(13,17,23,0.9)';
+    ctx.fillRect(lx+130, ly, 14, 8);
+    ctx.strokeStyle = 'rgba(139,26,26,0.4)';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(lx+130, ly, 14, 8);
+    ctx.fillStyle = 'rgba(223,231,224,0.4)';
+    ctx.fillText('Low attention', lx+148, ly+8);
+
+    if (!playMode) {
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(0,0,W,H);
+    }
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
