@@ -2350,38 +2350,8 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   init('delhi');
   requestAnimationFrame(loopNew);
 
-  /* ── KAGE BOOT SEQUENCE ── */
-  (function() {
-    const seq = document.getElementById('boot-seq');
-    const bar = document.getElementById('boot-bar');
-    const pct = document.getElementById('boot-pct');
-    const status = document.getElementById('boot-status');
-    const msgs = [
-      'LOADING DRIFTFORMER · INT8 ONNX',
-      'CALIBRATING IMU SENSOR ARRAY',
-      'CONNECTING NAVIC CONSTELLATION',
-      'INITIALIZING MAP MATCHER · HMM',
-      'STARTING EKF FILTER ENGINE',
-      'NAVDRIFT-0 ONLINE'
-    ];
-    let p = 0;
-    const step = () => {
-      p += Math.random() * 18 + 8;
-      if (p > 100) p = 100;
-      bar.style.width = p + '%';
-      pct.textContent = Math.floor(p) + '%';
-      const mi = Math.min(Math.floor(p / 17), msgs.length - 1);
-      status.textContent = msgs[mi];
-      if (p < 100) { setTimeout(step, 120 + Math.random()*180); }
-      else {
-        setTimeout(() => {
-          seq.style.opacity = '0';
-          setTimeout(() => seq.style.display = 'none', 650);
-        }, 400);
-      }
-    };
-    setTimeout(step, 300);
-  })();
+  /* ── BOOT SCREEN: instant hide ── */
+  (function(){const s=document.getElementById('boot-seq');if(s)s.style.display='none';})();
 
   /* ── ATMOSPHERIC PARTICLE CANVAS ── */
   (function() {
