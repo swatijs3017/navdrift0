@@ -2088,6 +2088,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     drawVib();
     drawSkyPlot();
     if(S.step%5===0)updateCovEllipse();
+    if(S.step%6===0){updateBenchBars();updateFleetPanel();}
   }
 
   // ─── PANEL TAB SWITCHING ───
