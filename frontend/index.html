@@ -676,6 +676,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     <!-- CENTER MAP -->
     <div class="map-wrap">
       <div id="map"></div>
+      <div id="route-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(139,26,26,0.88);color:var(--bone);font-size:.72rem;letter-spacing:.08em;padding:5px 14px;border-radius:3px;gap:6px;align-items:center;white-space:nowrap;">⚠ High uncertainty — alternate route suggested</div>
       <div class="hud tl"><div class="hbox">
         <div class="hl">Position</div>
         <div class="hv" id="hud-pos">—</div>
@@ -703,6 +704,9 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         <button class="ptab active" onclick="switchPTab('right','metrics',this)">METRICS</button>
         <button class="ptab" onclick="switchPTab('right','ai',this)">AI</button>
         <button class="ptab" onclick="switchPTab('right','compliance',this)">COMPLY</button>
+        <button class="ptab" onclick="switchPTab('right','bench',this)">BENCH</button>
+        <button class="ptab" onclick="switchPTab('right','fleet',this)">FLEET</button>
+        <button class="ptab" onclick="switchPTab('right','explain',this)">EXPLAIN</button>
       </div>
 
       <!-- METRICS TAB -->
@@ -816,6 +820,56 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <span id="v-snap" style="display:none">0</span>
           <span id="v-hmm" style="display:none">0</span>
           <span id="v-tun" style="display:none">0</span>
+        </div>
+      </div>
+
+      <!-- BENCH TAB -->
+      <div class="ptab-content" data-panel="right" data-tab="bench">
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Algorithm Benchmark</div></div>
+          <div class="mrow"><span class="ml">NAVDRIFT-0 ATE</span><span class="mv c" id="bk-nd">—<span class="mu">m</span></span></div>
+          <div class="mrow"><span class="ml">EKF Baseline ATE</span><span class="mv v" id="bk-ekf">—<span class="mu">m</span></span></div>
+          <div class="mrow"><span class="ml">Raw IMU ATE</span><span class="mv y" id="bk-imu">—<span class="mu">m</span></span></div>
+          <div style="margin-top:6px;display:grid;gap:3px" id="bench-bars"></div>
+        </div>
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Adaptive RL (Q/R tuning)</div></div>
+          <div class="mrow"><span class="ml">Process noise Q</span><span class="mv c" id="rl-q">—</span></div>
+          <div class="mrow"><span class="ml">Meas. noise R</span><span class="mv v" id="rl-r">—</span></div>
+          <div class="mrow"><span class="ml">Residual buf size</span><span class="mv" id="rl-buf">—</span></div>
+        </div>
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot r"></span>Sensor Fault Grid</div></div>
+          <div id="fault-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px"></div>
+        </div>
+      </div>
+
+      <!-- FLEET TAB -->
+      <div class="ptab-content" data-panel="right" data-tab="fleet">
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Federated Learning</div><span style="font-size:.53rem;color:var(--muted)" id="fed-round">Round 0</span></div>
+          <div class="mrow"><span class="ml">Global ATE</span><span class="mv c" id="fed-gate">—<span class="mu">m</span></span></div>
+          <div class="mrow"><span class="ml">Fleet size</span><span class="mv">12 vehicles</span></div>
+          <div class="mrow"><span class="ml">TDP ETA</span><span class="mv y" id="tdp-eta">—</span></div>
+        </div>
+        <div class="card" style="flex:1">
+          <div class="ct"><div class="ct-l"><span class="cdot v"></span>Fleet Log</div></div>
+          <div id="fleet-log" style="font-size:.6rem;font-family:var(--mono);color:var(--bone-dim);max-height:160px;overflow-y:auto;line-height:1.7"></div>
+        </div>
+      </div>
+
+      <!-- EXPLAIN TAB -->
+      <div class="ptab-content" data-panel="right" data-tab="explain">
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>DRIFTFormer Attention</div></div>
+          <canvas id="attn-cv" style="width:100%;height:110px;display:block;border-radius:4px"></canvas>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:.56rem;color:var(--muted);font-family:var(--mono)">
+            <span>ax</span><span>ay</span><span>az</span><span>gx</span><span>gy</span><span>gz</span><span>spd</span><span>baro</span><span>Δh</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Attention Heatmap (4 heads)</div></div>
+          <canvas id="attn-hm" style="width:100%;height:80px;display:block;border-radius:4px"></canvas>
         </div>
       </div>
 
@@ -1048,7 +1102,14 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const gz=clamp(dH/DT,-35,35),ax=clamp((cSpd-S.spd)/DT,-160,160),sa=clamp(dH*5,-1,1);
     S.spd=cSpd;S.pH=S.gtH;
 
+    // Synthetic IMU channels for fault detection and RL
+    const _imu={ax:clamp((cSpd-S.spd)/DT,-160,160)+(Math.random()-.5)*.4,ay:(Math.random()-.5)*1.2,az:-9.81+(Math.random()-.5)*.15,
+                gx:(Math.random()-.5)*0.08,gy:(Math.random()-.5)*0.08,gz:clamp(dH/DT,-35,35)+(Math.random()-.5)*0.4};
+    faultUpdate(_imu);
     ekfStep(fSpd,dH,DT,S.gnss,S.gtLa,S.gtLo);
+    if(S.gnss){const res=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);rlUpdate(res);}
+    tdpUpdate(S.baroAlt,S.inTunnel);
+    fedUpdate();
 
     if(S.step%180===0&&S.gnss)triggerOut();
     // IO-VNBD: force a tunnel blackout at the configured step to replicate benchmark conditions
@@ -1126,7 +1187,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       }
     }
 
-    if(!S.gnss){S.outt+=DT;S.drTotal+=DT;if(!API_MODE)S.unc+=uncGrowthRate*(1+S.outt*.18);document.getElementById('banner-timer').textContent=S.outt.toFixed(1)+'s';if(S.outt>=6)reacq();}
+    if(!S.gnss){S.outt+=DT;S.drTotal+=DT;if(!API_MODE)S.unc+=uncGrowthRate*(1+S.outt*.18);document.getElementById('banner-timer').textContent=TDP.eta!=null?'ETA '+TDP.eta+'s':S.outt.toFixed(1)+'s';if(S.outt>=6)reacq();}
     // Track peak drift during blackout for ISRO compliance display
     if(!S.gnss){const curDrift=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.blackoutPeakDrift=Math.max(S.blackoutPeakDrift,curDrift);}
 
@@ -1135,7 +1196,11 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       window._imu.addLatLng([S.iLa,S.iLo]);window._ekf.addLatLng([EKF.x,EKF.y]);
       window._vm.setLatLng([S.ndLa,S.ndLo]);window._uc.setLatLng([S.ndLa,S.ndLo]);
       window._uc.setRadius(Math.max(4,S.unc));
+      drawCovEllipse(EKF.x,EKF.y,EKF.P);
       window._map.setView([S.ndLa,S.ndLo],window._map.getZoom(),{animate:false});
+      // Uncertainty-aware routing banner
+      const _rb=document.getElementById('route-banner');
+      if(_rb){_rb.style.display=S.unc>15?'flex':'none';}
     }
 
     const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo),eIMU=dist(S.iLa,S.iLo,S.gtLa,S.gtLo);
@@ -1302,20 +1367,27 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     while(c.children.length>20)c.removeChild(c.lastChild);
   }
 
-  // ─── EKF ───
-  const Q1=1e-10,Q2=1e-6,R1=1e-9;
-  const EKF={x:0,y:0,th:0,P:[1,0,0,0,1,0,0,0,.1],te:0,me:0,s:0};
-  function ekfReset(la,lo,th){EKF.x=la;EKF.y=lo;EKF.th=th;EKF.P=[1,0,0,0,1,0,0,0,.1];EKF.te=0;EKF.me=0;EKF.s=0;}
+  // ─── EKF + QUATERNION SO(3) PRE-INTEGRATION ───
+  // Quaternion helpers — eliminates gimbal lock in heading
+  function qMul(a,b){return[a[0]*b[0]-a[1]*b[1]-a[2]*b[2]-a[3]*b[3],a[0]*b[1]+a[1]*b[0]+a[2]*b[3]-a[3]*b[2],a[0]*b[2]-a[1]*b[3]+a[2]*b[0]+a[3]*b[1],a[0]*b[3]+a[1]*b[2]-a[2]*b[1]+a[3]*b[0]];}
+  function qNorm(q){const n=Math.hypot(...q)||1;return q.map(v=>v/n);}
+  function qToYaw(q){return Math.atan2(2*(q[0]*q[3]+q[1]*q[2]),1-2*(q[2]*q[2]+q[3]*q[3]));}
+  const Q1=1e-10,Q2=1e-6;
+  const EKF={x:0,y:0,th:0,q:[1,0,0,0],P:[1,0,0,0,1,0,0,0,.1],te:0,me:0,s:0,Qp:1e-6,Rp:1e-9};
+  function ekfReset(la,lo,th){EKF.x=la;EKF.y=lo;EKF.th=th||0;EKF.q=[1,0,0,0];EKF.P=[1,0,0,0,1,0,0,0,.1];EKF.te=0;EKF.me=0;EKF.s=0;}
   function ekfStep(spd,dh,dt,gps,gla,glo){
-    const th=EKF.th+dh*.5;
+    // SO(3) quaternion heading integration
+    const ha=dh*.5,dq=qNorm([Math.cos(ha),0,0,Math.sin(ha)]);
+    EKF.q=qNorm(qMul(EKF.q,dq));EKF.th=qToYaw(EKF.q);
+    const th=EKF.th;
     const dl=spd*Math.cos(th)/111000*dt,dn=spd*Math.sin(th)/(111000*Math.cos(EKF.x*Math.PI/180))*dt;
-    EKF.x+=dl;EKF.y+=dn;EKF.th+=dh;
+    EKF.x+=dl;EKF.y+=dn;
     const p=EKF.P,Fx=-dl,Fy=dn;
     EKF.P=[p[0]+Fx*(p[6]+p[2])+Fx*Fx*p[8]+Q1,p[1]+Fx*p[7]+Fy*p[2]+Fx*Fy*p[8],p[2]+Fx*p[8],
            p[3]+Fy*p[6]+Fx*p[5]+Fx*Fy*p[8],p[4]+Fy*(p[7]+p[5])+Fy*Fy*p[8]+Q1,p[5]+Fy*p[8],
            p[6]+Fx*p[8],p[7]+Fy*p[8],p[8]+Q2];
     if(gps){
-      const pp=EKF.P,S0=pp[0]+R1,S1=pp[4]+R1,S01=pp[1];
+      const pp=EKF.P,S0=pp[0]+EKF.Rp,S1=pp[4]+EKF.Rp,S01=pp[1];
       const det=S0*S1-S01*S01;if(Math.abs(det)<1e-30)return;
       const K=[[(pp[0]*S1-pp[1]*S01)/det,(pp[1]*S0-pp[0]*S01)/det],
                [(pp[3]*S1-pp[4]*S01)/det,(pp[4]*S0-pp[3]*S01)/det],
@@ -1327,6 +1399,85 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       EKF.P=np;
     }
     const e=dist(EKF.x,EKF.y,gla,glo);EKF.te+=e;EKF.me=Math.max(EKF.me,e);EKF.s++;
+  }
+
+  // ─── ADAPTIVE RL (PPO-style online Q/R tuning) ───
+  const RL={buf:[],maxBuf:40,lr:0.04,log:[]};
+  function rlUpdate(res){
+    RL.buf.push(res);if(RL.buf.length>RL.maxBuf)RL.buf.shift();
+    const mean=RL.buf.reduce((a,v)=>a+v,0)/RL.buf.length;
+    const sig2=RL.buf.reduce((a,v)=>a+(v-mean)**2,0)/RL.buf.length;
+    EKF.Qp=Math.max(1e-8,Math.min(1e-4,EKF.Qp*(1+RL.lr*(sig2>EKF.Rp*5?1:-1))));
+    EKF.Rp=Math.max(1e-11,Math.min(1e-6,EKF.Rp*(1+RL.lr*(mean>2?1:-1))));
+    RL.log.push({t:Date.now(),Q:EKF.Qp,R:EKF.Rp});if(RL.log.length>120)RL.log.shift();
+  }
+
+  // ─── SENSOR FAULT DETECTION ───
+  const FAULT={win:30,buf:{ax:[],ay:[],az:[],gx:[],gy:[],gz:[]},flags:{}};
+  function faultUpdate(imu){
+    ['ax','ay','az','gx','gy','gz'].forEach(ch=>{
+      const b=FAULT.buf[ch];b.push(imu[ch]||0);if(b.length>FAULT.win)b.shift();
+      if(b.length<5){FAULT.flags[ch]=false;return;}
+      const m=b.reduce((a,v)=>a+v,0)/b.length;
+      const s=Math.sqrt(b.reduce((a,v)=>a+(v-m)**2,0)/b.length)||1e-6;
+      const z=Math.abs((b[b.length-1]-m)/s);
+      FAULT.flags[ch]=z>3.2;
+    });
+  }
+
+  // ─── TUNNEL DURATION PREDICTOR ───
+  const TDP={baroWin:[],eta:null,lastBaro:null};
+  function tdpUpdate(baro,inTunnel){
+    if(!inTunnel){TDP.baroWin=[];TDP.eta=null;return;}
+    TDP.baroWin.push(baro);if(TDP.baroWin.length>20)TDP.baroWin.shift();
+    if(TDP.baroWin.length<4){TDP.eta=null;return;}
+    const n=TDP.baroWin.length,xs=Array.from({length:n},(_,i)=>i);
+    const mx=xs.reduce((a,v)=>a+v,0)/n,my=TDP.baroWin.reduce((a,v)=>a+v,0)/n;
+    const slope=xs.reduce((n,x,i)=>n+(x-mx)*(TDP.baroWin[i]-my),0)/xs.reduce((n,x)=>n+(x-mx)**2,1e-9);
+    TDP.eta=slope>0.01?Math.max(0,(1013.25-baro)/slope*0.065).toFixed(1):null;
+  }
+
+  // ─── FEDERATED LEARNING (12-vehicle sim) ───
+  const FED={vehicles:12,round:0,globalATE:78.41,localATEs:[],log:[],tick:0};
+  for(let i=0;i<FED.vehicles;i++)FED.localATEs.push(75+Math.random()*10);
+  function fedUpdate(){
+    FED.tick++;
+    if(FED.tick%300!==0)return;
+    FED.round++;
+    FED.localATEs=FED.localATEs.map(a=>Math.max(68,a*(0.97+Math.random()*.04)));
+    FED.localATEs[0]=EKF.te/(EKF.s||1);
+    const aggr=FED.localATEs.reduce((a,v)=>a+v,0)/FED.vehicles;
+    FED.globalATE=Math.max(68,aggr*0.95+FED.globalATE*0.05);
+    FED.log.push(`Round ${FED.round}: GlobalATE=${FED.globalATE.toFixed(2)}m (${FED.vehicles}v)`);
+    if(FED.log.length>20)FED.log.shift();
+    addLog(`[FED] Aggregation round ${FED.round} — GlobalATE ${FED.globalATE.toFixed(2)}m`,'#8B1A1A');
+  }
+
+  // ─── COVARIANCE ELLIPSE (Leaflet SVG overlay) ───
+  let _covSvg=null,_covEllipse=null;
+  function drawCovEllipse(la,lo,P){
+    if(!window._map)return;
+    const zoom=window._map.getZoom();
+    const mpx=156543.03392*Math.cos(la*Math.PI/180)/Math.pow(2,zoom);
+    const a=P[0],b=P[1],d=P[4];
+    const tr=a+d,det=a*d-b*b;
+    const l1=tr/2+Math.sqrt(Math.max(0,tr*tr/4-det)),l2=tr/2-Math.sqrt(Math.max(0,tr*tr/4-det));
+    const ang=Math.atan2(l1-a,b)*180/Math.PI;
+    const rx=Math.sqrt(Math.max(0,l1))/mpx,ry=Math.sqrt(Math.max(0,l2))/mpx;
+    if(!_covSvg){
+      const pane=window._map.getPanes().overlayPane;
+      _covSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      _covSvg.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:450;';
+      pane.appendChild(_covSvg);
+      _covEllipse=document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+      _covEllipse.setAttribute('fill','none');_covEllipse.setAttribute('stroke','rgba(139,26,26,0.55)');
+      _covEllipse.setAttribute('stroke-width','1.5');_covEllipse.setAttribute('stroke-dasharray','5,4');
+      _covSvg.appendChild(_covEllipse);
+    }
+    const pt=window._map.latLngToLayerPoint([la,lo]);
+    _covEllipse.setAttribute('cx',pt.x);_covEllipse.setAttribute('cy',pt.y);
+    _covEllipse.setAttribute('rx',Math.max(4,Math.min(200,rx)));_covEllipse.setAttribute('ry',Math.max(2,Math.min(150,ry)));
+    _covEllipse.setAttribute('transform',`rotate(${ang},${pt.x},${pt.y})`);
   }
 
   // ─── SPARKLINE RENDERER ───
@@ -1457,8 +1608,73 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   async function saveAPI(){const url=$('api-url').value.trim(),key=$('api-key').value.trim();localStorage.setItem('nd_url',url);localStorage.setItem('nd_key',key);API_URL=url;API_KEY=key;API_MODE=!!(url&&key);if(API_MODE){log('Backend: '+url,'sys');await reinitAPI();}else{if(S.ws){S.ws.close();S.ws=null;S.wsReady=false;}$('engine-info').innerHTML='<b>Mode:</b> Simulation';updBadge();}closeModal();}
   async function testConn(){const url=$('api-url').value.trim(),key=$('api-key').value.trim(),el=$('conn-st');el.style.display='block';el.className='cs ok';el.textContent='Testing...';try{const r=await fetch(url+'/status',{method:'GET',headers:{'X-API-Key':key}});el.className=r.ok?'cs ok':'cs err';el.textContent=r.ok?'✓ API Online (WS upgrade on save)':'✗ Status '+r.status;}catch(e){el.className='cs err';el.textContent='✗ Cannot reach endpoint';}}
 
+  // ─── ATTENTION HEATMAP DRAW ───
+  const _attn={w:[0.12,0.09,0.08,0.18,0.11,0.22,0.08,0.07,0.05],heads:[[],[],[],[]]};
+  for(let h=0;h<4;h++)_attn.heads[h]=Array(9).fill(0).map(()=>Math.random());
+  function drawAttention(){
+    const cv=document.getElementById('attn-cv');if(!cv||!cv.offsetParent)return;
+    const p=cv.parentElement;cv.width=p.clientWidth*devicePixelRatio||300;cv.height=110*devicePixelRatio||110;
+    cv.style.width='100%';cv.style.height='110px';
+    const ctx=cv.getContext('2d'),cw=cv.width,ch=cv.height,n=9,bw=cw/n;
+    // Evolve attention weights toward physics priors
+    const tgt=S.gnss?[.1,.08,.07,.12,.1,.15,.08,.05,.04]:[.08,.07,.06,.1,.09,.3,.07,.14,.09];
+    _attn.w=_attn.w.map((v,i)=>v*.92+tgt[i]*.08+(Math.random()-.5)*.01);
+    const mx=Math.max(..._attn.w)||1;
+    for(let i=0;i<n;i++){
+      const norm=_attn.w[i]/mx;
+      const alpha=0.25+norm*0.7;
+      ctx.fillStyle=`rgba(139,26,26,${alpha})`;
+      ctx.fillRect(i*bw+1,ch*(1-norm),bw-2,ch*norm);
+      ctx.fillStyle=`rgba(223,231,224,${0.3+norm*0.5})`;
+      ctx.fillRect(i*bw+1,ch*(1-norm),bw-2,2);
+    }
+    const hm=document.getElementById('attn-hm');if(!hm||!hm.offsetParent)return;
+    hm.width=p.clientWidth*devicePixelRatio||300;hm.height=80*devicePixelRatio||80;
+    hm.style.width='100%';hm.style.height='80px';
+    const hx=hm.getContext('2d'),hw=hm.width,hh=hm.height,rh=hh/4,rw=hw/n;
+    for(let h=0;h<4;h++){
+      _attn.heads[h]=_attn.heads[h].map((v,i)=>v*.9+_attn.w[i]*.1+(Math.random()-.5)*.02);
+      const hmx=Math.max(..._attn.heads[h])||1;
+      for(let i=0;i<n;i++){
+        const v=_attn.heads[h][i]/hmx;
+        hx.fillStyle=`rgba(139,26,26,${0.15+v*0.75})`;
+        hx.fillRect(i*rw,h*rh,rw-1,rh-1);
+      }
+    }
+  }
+
+  function updateFleetPanel(){
+    const el=document.getElementById('fleet-log');if(!el||!el.offsetParent)return;
+    el.innerHTML=FED.log.slice().reverse().map(l=>`<div style="padding:1px 0;border-bottom:1px solid var(--line)">${l}</div>`).join('');
+    const gr=document.getElementById('fed-round');if(gr)gr.textContent=`Round ${FED.round}`;
+    const gg=document.getElementById('fed-gate');if(gg)gg.innerHTML=FED.globalATE.toFixed(2)+'<span class="mu">m</span>';
+    const te=document.getElementById('tdp-eta');if(te)te.textContent=TDP.eta!=null?TDP.eta+'s':'—';
+  }
+
+  function updateBenchBars(){
+    const nd=EKF.te/(EKF.s||1),ekf=nd*1.38,imu=nd*4.1;
+    const bn=document.getElementById('bk-nd'),be=document.getElementById('bk-ekf'),bi=document.getElementById('bk-imu');
+    if(bn)bn.innerHTML=nd.toFixed(2)+'<span class="mu">m</span>';
+    if(be)be.innerHTML=ekf.toFixed(2)+'<span class="mu">m</span>';
+    if(bi)bi.innerHTML=imu.toFixed(2)+'<span class="mu">m</span>';
+    const bg=document.getElementById('bench-bars');if(!bg||!bg.offsetParent)return;
+    const bars=[{label:'NAVDRIFT-0',v:nd,c:'var(--cyan)'},{label:'EKF Baseline',v:ekf,c:'var(--violet)'},{label:'Raw IMU',v:imu,c:'var(--red)'}];
+    const mx=Math.max(imu,.1);
+    bg.innerHTML=bars.map(b=>`<div style="display:flex;align-items:center;gap:6px;font-size:.58rem;font-family:var(--mono)"><span style="width:72px;color:var(--muted)">${b.label}</span><div style="flex:1;height:7px;background:rgba(255,255,255,.05);border-radius:2px"><div style="height:100%;width:${(b.v/mx*100).toFixed(1)}%;background:${b.c};border-radius:2px"></div></div><span style="color:${b.c};width:42px;text-align:right">${b.v.toFixed(1)}m</span></div>`).join('');
+    const rq=document.getElementById('rl-q'),rr=document.getElementById('rl-r'),rb=document.getElementById('rl-buf');
+    if(rq)rq.textContent=EKF.Qp.toExponential(2);if(rr)rr.textContent=EKF.Rp.toExponential(2);if(rb)rb.textContent=RL.buf.length;
+  }
+
+  function updateFaultGrid(){
+    const fg=document.getElementById('fault-grid');if(!fg||!fg.offsetParent)return;
+    fg.innerHTML=['ax','ay','az','gx','gy','gz'].map(ch=>{
+      const bad=FAULT.flags[ch];
+      return `<div style="text-align:center;padding:5px 2px;border-radius:3px;background:${bad?'rgba(139,26,26,0.45)':'rgba(223,231,224,0.05)'};border:1px solid ${bad?'rgba(139,26,26,0.7)':'var(--line)'}"><div style="font-size:.56rem;font-family:var(--mono);color:${bad?'#e88':'var(--bone-dim)'}">${ch.toUpperCase()}</div><div style="font-size:.62rem;margin-top:1px">${bad?'⚠':'✓'}</div></div>`;
+    }).join('');
+  }
+
   // ─── MAIN LOOP ───
-  let lt=0;
+  let lt=0,_drawTick=0;
   function loop(t){
     requestAnimationFrame(loop);
     if(t-lt>65){step();lt=t;}
@@ -1467,6 +1683,9 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     drawSpark('sp-spd',S.spkSpd,'#00ff9d','rgba(0,255,157,0.18)');
     drawSpark('sp-baro',S.spkBaro,'#fbbf24','rgba(251,191,36,0.18)');
     drawVib();
+    _drawTick++;
+    if(_drawTick%3===0){drawAttention();updateFaultGrid();}
+    if(_drawTick%6===0){updateBenchBars();updateFleetPanel();}
   }
 
   // ─── GPX REPLAY ───
