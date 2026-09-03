@@ -346,206 +346,121 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     /* Recording indicator */
     .rec-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 7px var(--red-g);animation:blink .7s step-end infinite;margin-right:4px;vertical-align:middle;}
 
-  /* ═══════════════════════════════════════════════════
-     KAGE DEEP — eliminate neon, all values → bone-dim
-     ═══════════════════════════════════════════════════ */
+  /* ════════════════════════════════════════════════════
+     KAGE — consolidated theme layer (no neon, no glow)
+     ════════════════════════════════════════════════════ */
 
-  /* Kill all decorative glow box-shadows */
-  .dot, .cdot, .cdot.c, .cdot.v, .cdot.r, .cdot.g, .cdot.y,
-  .sig-bar, .phase-dot, .mod-dot, .rec-dot,
-  .phase-badge, .phase-badge.nominal, .phase-badge.snap,
-  .phase-badge.cal { box-shadow: none !important; }
+  /* ── Remove all decorative box-shadows ── */
+  .dot, .cdot, .sig-bar, .phase-dot, .mod-dot, .rec-dot,
+  .phase-badge { box-shadow: none !important; }
 
-  /* Status dot colours — dimmer, no glow */
-  .dot { background: #2a6b52 !important; }
+  /* ── Status dot (header GNSS indicator) ── */
+  .dot     { background: rgba(80,130,100,0.7) !important; }
   .dot.out { background: var(--red) !important; animation: blink .7s step-end infinite; }
-
-  /* Card indicator dots — tiny, muted, no bloom */
-  .cdot.c { background: rgba(0,255,245,0.45) !important; }
-  .cdot.g { background: rgba(0,255,157,0.45) !important; }
-  .cdot.v { background: rgba(168,85,247,0.45) !important; }
-  .cdot.r { background: rgba(224,35,28,0.45) !important; }
-  .cdot.y { background: rgba(251,191,36,0.45) !important; }
-
-  /* Signal bars — bone/muted, no glow */
-  .sig-bar { background: rgba(223,231,224,0.25) !important; box-shadow: none !important; }
-  .sig-bar.lost { background: var(--red) !important; }
-
-  /* Metric values — bone-white not cyan */
-  .mv.c { color: var(--bone) !important; }
-  .mv.g { color: #4ec994 !important; }   /* softer green */
-  .mv.v { color: #9b72d8 !important; }   /* softer violet */
-  .mv.r { color: var(--red) !important; }
-  .mv.y { color: var(--yellow) !important; }
-
-  /* HUD position/speed values */
-  .hv { color: var(--bone) !important; }
-  .hv.out { color: var(--red) !important; }
-
-  /* Pipeline bar — no cyan glow on active */
-  .pmod.active { background: rgba(223,231,224,0.035) !important; }
-  .pmod.active .pico { filter: none !important; opacity: 0.85; }
-  .pmod.active .pname { color: var(--bone-dim) !important; }
-
-  /* Sensor / calibration bars */
-  .sbar-fill { background: rgba(223,231,224,0.35) !important; }
-  .sbar-val  { color: var(--bone-dim) !important; }
-  .fbar-fill { opacity: 0.7; }
-
-  /* MET clock — no neon */
-  .met b { color: var(--bone-dim) !important; }
-
-  /* Modal — bone title not cyan */
-  .mtitle { color: var(--bone) !important; }
-  .cal-title { color: var(--bone-dim) !important; letter-spacing:.06em; }
-  .minp:focus { border-color: var(--line) !important; box-shadow: none !important; }
-  .cal-btn.primary { background: rgba(223,231,224,0.07) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
-
-  /* NavIC toggle pill — muted */
-  .navic-toggle { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
-  .navic-toggle.navonly { color: rgba(251,191,36,0.7) !important; border-color: rgba(251,191,36,0.25) !important; background: rgba(251,191,36,0.06) !important; }
-
-  /* Phase badges — no glow */
-  .phase-badge.nominal { background: rgba(42,107,82,0.15) !important; color: #4ec994 !important; border-color: rgba(42,107,82,0.4) !important; }
-  .phase-badge.snap    { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
-  .phase-badge.cal     { background: rgba(251,191,36,0.08) !important; color: rgba(251,191,36,0.75) !important; border-color: rgba(251,191,36,0.2) !important; }
-
-  /* Sparkline numbers — bone not cyan */
-  .spark-num { color: var(--bone-dim) !important; }
-
-  /* Benchmark table — bone not neon */
-  table.bench tr.rnd td { color: var(--bone) !important; font-weight: 600; }
-
-  /* btn icon hover — no cyan flash */
-  .btn-icon:hover { background: rgba(223,231,224,0.06) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
-
-  /* Badges — muted styling */
-  .badge-mode { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
-  .badge-mode.live { background: rgba(42,107,82,0.12) !important; color: #4ec994 !important; border-color: rgba(42,107,82,0.3) !important; }
-
-  /* Drift delta widget */
-  .drift-delta { background: rgba(42,107,82,0.07) !important; border-color: rgba(42,107,82,0.2) !important; }
-  .drift-delta-val { color: #4ec994 !important; }
-  .drift-delta.bad .drift-delta-val { color: var(--red) !important; }
-
-  /* Card top-edge line — more visible */
-  .card::before { background: linear-gradient(90deg,transparent,rgba(223,231,224,0.06),transparent) !important; }
-
-  /* City tab — less punchy */
-  .city-tab.active { background: rgba(223,231,224,0.05) !important; color: var(--bone) !important; border-color: var(--line) !important; }
-
-  /* Brand logo — no cyan drop-shadow */
-  .brand-logo svg { filter: none !important; opacity: 0.75; }
-
-  /* Compliance status — ok/err chips */
-  .cs.ok { background: rgba(42,107,82,0.12) !important; color: #4ec994 !important; border-color: rgba(42,107,82,0.3) !important; }
-
-  /* ═══════════════════════════════════════════════════
-     KAGE VISUAL LANGUAGE — inline override pass
-     · Red accent like Kage torii  · No neon anywhere
-     ═══════════════════════════════════════════════════ */
-
-  /* Override inline style="color:var(--cyan)" elements */
-  #met-clock              { color: var(--muted)    !important; }
-  #navic-lock-badge       { color: var(--muted)    !important; font-weight: 500 !important; }
-  .hv                     { color: var(--bone)     !important; }
-
-  /* Desaturate NavIC sky plot & SNR bars — no neon green canvas */
-  #sky-cv                 { filter: saturate(0.08) brightness(0.55) !important; }
-  #sat-snr-bars           { filter: saturate(0.1)  brightness(0.5)  !important; }
-
-  /* Card title — hide colored cdot, replace with red · via ::before */
-  .cdot { display: none !important; }
-  .ct-l::before {
-    content: '·';
-    color: #7a1a1a;
-    font-size: .85rem;
-    margin-right: 6px;
-    line-height: 1;
-    font-weight: 300;
-    opacity: .85;
-  }
-  .ct { letter-spacing: .13em !important; color: var(--muted) !important; }
-
-  /* Header right — flatten pills to bare text */
-  .phase-badge {
-    border: none !important; background: transparent !important;
-    padding: 0 4px !important; border-radius: 0 !important;
-    font-size: .6rem !important; letter-spacing: .12em !important;
-  }
-  .phase-badge.nominal  { color: var(--muted)    !important; }
-  .phase-badge.blackout { color: var(--red)       !important; background: transparent !important; }
-  .phase-dot { display: none !important; }
-
-  .pill {
-    border: none !important; background: transparent !important;
-    padding: 0 4px !important; gap: 5px !important;
-  }
+  .pill    { border: none !important; background: transparent !important; padding: 0 4px !important; gap: 5px !important; }
   .pill .dot { width: 5px !important; height: 5px !important; }
 
-  .badge-ps { display: none !important; }
+  /* ── Card title dots → hidden; replaced by red · marker ── */
+  .cdot { display: none !important; }
+  .ct-l::before { content: '·'; color: #7a1a1a; font-size: .85rem; margin-right: 6px; font-weight: 300; opacity: .85; }
+  .ct { letter-spacing: .13em !important; color: var(--muted) !important; }
 
-  /* Mode badge — very dim */
-  .badge-mode {
-    background: transparent !important;
-    border: none !important;
-    color: var(--muted) !important;
-    letter-spacing: .1em !important;
-    padding: 0 !important;
-  }
+  /* ── Signal bars — bone, no glow ── */
+  .sig-bar      { background: rgba(200,210,205,0.2) !important; }
+  .sig-bar.lost { background: rgba(180,50,50,0.6)   !important; }
 
-  /* Panel tabs — more spaced, dim */
-  .ptab.active {
-    background: transparent !important;
-    border-color: transparent !important;
-    border-bottom: 1px solid rgba(122,26,26,0.6) !important;
-    color: var(--bone-dim) !important;
-    border-radius: 0 !important;
-  }
-  .ptab-bar {
-    background: transparent !important;
-    border-color: var(--line-soft) !important;
-    border-left: none !important; border-right: none !important; border-top: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    gap: 0 !important;
-  }
-  .ptab { border-radius: 0 !important; padding: 5px 10px !important; }
+  /* ── Metric value colours (map lines keep their colours) ── */
+  .mv.c { color: var(--bone)     !important; }   /* NAVDRIFT ATE — bone */
+  .mv.g { color: #5fba95        !important; }   /* pass green — softer */
+  .mv.v { color: #9b72d8        !important; }   /* EKF — softer violet */
+  .mv.r { color: var(--red)     !important; }
+  .mv.y { color: var(--yellow)  !important; }
 
-  /* Control buttons — muted style */
-  .btn.p { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
-  .btn.d { background: rgba(180,30,30,0.08)   !important; color: rgba(224,35,28,0.7) !important; border-color: rgba(180,30,30,0.25) !important; }
+  /* ── HUD map overlays ── */
+  .hv     { color: var(--bone) !important; }
+  .hv.out { color: var(--red)  !important; }
+  .hbox   { background: rgba(5,7,10,0.75) !important; border-color: var(--line-soft) !important; backdrop-filter: none !important; }
+  .hl     { color: var(--muted) !important; }
 
-  /* Inline-styled buttons in controls card — flatten */
+  /* ── Header status area — flat text, no pill backgrounds ── */
+  .phase-badge          { border: none !important; background: transparent !important; padding: 0 4px !important; border-radius: 0 !important; font-size: .6rem !important; letter-spacing: .12em !important; }
+  .phase-badge.nominal  { color: var(--muted) !important; }
+  .phase-badge.blackout { color: var(--red)   !important; }
+  .phase-badge.snap     { color: var(--bone-dim) !important; }
+  .phase-badge.cal      { color: rgba(200,160,50,0.7) !important; }
+  .phase-dot            { display: none !important; }
+  .badge-ps             { display: none !important; }
+  .badge-mode           { background: transparent !important; border: none !important; color: var(--muted) !important; letter-spacing: .1em !important; padding: 0 !important; }
+  .badge-mode.live      { color: #5fba95 !important; }
+  .brand-logo svg       { filter: none !important; opacity: 0.8; }
+
+  /* ── City tabs ── */
+  .city-tab.active { background: rgba(223,231,224,0.05) !important; color: var(--bone) !important; border-color: var(--line) !important; }
+
+  /* ── NavIC toggle ── */
+  .navic-toggle        { background: rgba(223,231,224,0.04) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .navic-toggle.navonly{ color: rgba(200,160,50,0.7) !important; border-color: rgba(200,150,40,0.2) !important; background: rgba(200,150,40,0.05) !important; }
+
+  /* ── Panel tabs ── */
+  .ptab-bar      { background: transparent !important; border: none !important; border-bottom: 1px solid var(--line-soft) !important; border-radius: 0 !important; padding: 0 !important; gap: 0 !important; }
+  .ptab          { border-radius: 0 !important; padding: 5px 10px !important; }
+  .ptab.active   { background: transparent !important; border-color: transparent !important; border-bottom: 1px solid rgba(122,26,26,0.55) !important; color: var(--bone-dim) !important; border-radius: 0 !important; }
+
+  /* ── Control buttons ── */
+  .btn.p                { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .btn.d                { background: rgba(160,30,30,0.08)   !important; color: rgba(220,60,60,0.65) !important; border-color: rgba(160,30,30,0.25) !important; }
   .btn[style*="violet"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
   .btn[style*="yellow"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
   .btn[style*="green"]  { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
-  .btn[style*="red"]    { background: rgba(180,30,30,0.08)   !important; color: rgba(224,35,28,0.65) !important; border-color: rgba(180,30,30,0.2) !important; }
+  .btn[style*="red"]    { background: rgba(160,30,30,0.08)   !important; color: rgba(220,60,60,0.6) !important; border-color: rgba(160,30,30,0.2) !important; }
+  label[style*="violet"]{ background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  .btn-icon:hover       { background: rgba(223,231,224,0.06) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
 
-  /* Ground truth CSV label */
-  label[style*="violet"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  /* ── Module chips ── */
+  .mod.on  { background: rgba(40,80,60,0.12) !important; color: rgba(95,186,149,0.7) !important; border-color: rgba(40,80,60,0.28) !important; }
+  .mod.off { color: rgba(120,131,124,0.45) !important; }
 
-  /* Module chips — on=very dim green, off=muted */
-  .mod.on  { background: rgba(42,82,60,0.12) !important; color: rgba(78,201,148,0.7) !important; border-color: rgba(42,82,60,0.3) !important; }
-  .mod.off { color: rgba(120,131,124,0.5)    !important; }
+  /* ── Sensor / calibration bars ── */
+  .sbar-fill { background: rgba(200,210,205,0.3) !important; }
+  .sbar-val  { color: var(--bone-dim) !important; }
+  .fbar-fill { opacity: 0.65; }
 
-  /* HUD map overlays — keep position/speed but dim */
-  .hbox { background: rgba(5,7,10,0.75) !important; border-color: var(--line-soft) !important; backdrop-filter: none !important; }
-  .hl   { color: rgba(120,131,124,0.6) !important; }
+  /* ── Sparklines ── */
+  .spark-num { color: var(--bone-dim) !important; }
 
-  /* Pipeline bottom — very dim */
-  .pmod:hover { background: rgba(223,231,224,0.025) !important; }
-  .pname { color: var(--muted) !important; }
-  .psub  { color: rgba(120,131,124,0.5) !important; }
+  /* ── MET clock ── */
+  #met-clock        { color: var(--muted) !important; }
+  #navic-lock-badge { color: var(--muted) !important; font-weight: 500 !important; }
 
-  /* Grain noise overlay — Kage atmospheric texture */
+  /* ── Pipeline bottom bar ── */
+  .pmod.active      { background: rgba(223,231,224,0.03) !important; }
+  .pmod.active .pico{ filter: none !important; opacity: 0.8; }
+  .pmod.active .pname{ color: var(--bone-dim) !important; }
+  .pmod:hover       { background: rgba(223,231,224,0.02) !important; }
+  .pname            { color: var(--muted) !important; }
+  .psub             { color: rgba(120,131,124,0.45) !important; }
+
+  /* ── Modal ── */
+  .mtitle           { color: var(--bone) !important; }
+  .cal-title        { color: var(--bone-dim) !important; }
+  .minp:focus       { border-color: var(--line) !important; box-shadow: none !important; }
+  .cal-btn.primary  { background: rgba(223,231,224,0.06) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+
+  /* ── Drift delta & compliance chips ── */
+  .drift-delta            { background: rgba(40,80,60,0.07) !important; border-color: rgba(40,80,60,0.2) !important; }
+  .drift-delta-val        { color: #5fba95 !important; }
+  .drift-delta.bad .drift-delta-val { color: var(--red) !important; }
+  .cs.ok                  { background: rgba(40,80,60,0.12) !important; color: #5fba95 !important; border-color: rgba(40,80,60,0.3) !important; }
+  table.bench tr.rnd td   { color: var(--bone) !important; font-weight: 600; }
+
+  /* ── Card top-edge shimmer ── */
+  .card::before { background: linear-gradient(90deg,transparent,rgba(223,231,224,0.055),transparent) !important; }
+
+  /* ── Grain noise overlay ── */
   body::after {
-    content: '';
-    position: fixed; inset: 0; z-index: 9000; pointer-events: none;
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-    opacity: 0.038;
-    mix-blend-mode: overlay;
+    content: ''; position: fixed; inset: 0; z-index: 9000; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.038; mix-blend-mode: overlay;
   }
   </style>
 </head>
@@ -1682,56 +1597,89 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const sz=cv.parentElement.clientWidth; cv.width=sz; cv.height=sz;
     const ctx=cv.getContext('2d'); ctx.clearRect(0,0,sz,sz);
     const cx=sz/2,cy=sz/2,R=sz/2-8;
-    // Rings
+
+    // ── Background disc ──
+    const bgGrad=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+    bgGrad.addColorStop(0,'rgba(14,18,22,0.95)');
+    bgGrad.addColorStop(1,'rgba(5,7,10,0.98)');
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+    ctx.fillStyle=bgGrad; ctx.fill();
+
+    // ── Rings: 30°/60°/90° — dim bone hairlines ──
     [1,.67,.33].forEach((f,i)=>{
       ctx.beginPath(); ctx.arc(cx,cy,R*f,0,Math.PI*2);
-      ctx.strokeStyle=`rgba(0,255,245,${0.08+i*0.04})`; ctx.lineWidth=1; ctx.stroke();
-      if(i<2){ctx.fillStyle='rgba(0,255,245,0.25)'; ctx.font=`${sz*0.045}px JetBrains Mono`;
-        ctx.fillText(i===0?'30°':'60°',cx+4,cy-R*f+10);}
+      ctx.strokeStyle=`rgba(200,210,205,${0.07+i*0.03})`; ctx.lineWidth=.8; ctx.stroke();
+      if(i<2){
+        ctx.fillStyle='rgba(180,195,188,0.28)';
+        ctx.font=`${sz*0.042}px JetBrains Mono`;
+        ctx.textAlign='left';
+        ctx.fillText(i===0?'30°':'60°',cx+4,cy-R*f+9);
+      }
     });
-    // Cardinal lines
-    ctx.strokeStyle='rgba(0,255,245,0.07)'; ctx.lineWidth=1;
-    [[cx,cy-R,cx,cy+R],[cx-R,cy,cx+R,cy]].forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();});
-    // Cardinal labels
-    ctx.fillStyle='rgba(0,255,245,0.4)'; ctx.font=`bold ${sz*0.05}px JetBrains Mono`;
+
+    // ── Cardinal lines ──
+    ctx.strokeStyle='rgba(200,210,205,0.055)'; ctx.lineWidth=.7;
+    [[cx,cy-R,cx,cy+R],[cx-R,cy,cx+R,cy]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    });
+
+    // ── Cardinal labels ──
+    ctx.fillStyle='rgba(180,195,188,0.35)';
+    ctx.font=`500 ${sz*0.048}px Onest,sans-serif`;
     ctx.textAlign='center';
-    ctx.fillText('N',cx,cy-R+14); ctx.fillText('S',cx,cy+R-4);
-    ctx.fillText('E',cx+R-4,cy+4); ctx.fillText('W',cx-R+4,cy+4);
-    // Satellites
-    satState.forEach((sat,i)=>{
+    ctx.fillText('N',cx,cy-R+13); ctx.fillText('S',cx,cy+R-3);
+    ctx.fillText('E',cx+R-3,cy+4); ctx.fillText('W',cx-R+3,cy+4);
+
+    // ── Satellites ──
+    satState.forEach(sat=>{
       const azRad=(sat.az-90)*Math.PI/180;
       const r=R*(1-sat.el/90);
       const sx=cx+r*Math.cos(azRad), sy=cy+r*Math.sin(azRad);
       const locked=S.gnss&&sat.snr>30;
-      const col=locked?'#00ff9d':S.gnss?'#fbbf24':'#ff2255';
-      // Glow
-      const g=ctx.createRadialGradient(sx,sy,0,sx,sy,12);
-      g.addColorStop(0,col.replace(')',',0.5)').replace('rgb','rgba'));
-      g.addColorStop(1,'transparent');
-      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(sx,sy,12,0,Math.PI*2); ctx.fill();
-      // Dot
-      ctx.beginPath(); ctx.arc(sx,sy,Math.max(6,sz*0.04),0,Math.PI*2);
-      ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=8; ctx.fill(); ctx.shadowBlur=0;
-      // Label
-      ctx.fillStyle=col; ctx.font=`${sz*0.042}px JetBrains Mono`;
-      ctx.textAlign='center'; ctx.fillText(sat.prn.replace('NVS-','S'),sx,sy-sz*0.05);
-    });
-    // Center crosshair
-    ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2);
-    ctx.fillStyle='var(--cyan)'; ctx.shadowColor='var(--cyan)'; ctx.shadowBlur=10; ctx.fill(); ctx.shadowBlur=0;
+      const elevFactor=sat.el/90; // 0..1, higher=brighter
 
-    // SNR bars
+      // Colour: locked = cool bone-sage, marginal = dim amber, lost = dim red
+      let dotR,dotG,dotB,dotA;
+      if(!S.gnss){         dotR=140;dotG=50; dotB=50; dotA=0.45+elevFactor*0.2; }
+      else if(locked){     dotR=170;dotG=210;dotB=195;dotA=0.55+elevFactor*0.35; }
+      else{                dotR=190;dotG=155;dotB=70; dotA=0.40+elevFactor*0.2; }
+
+      const dotCol=`rgba(${dotR},${dotG},${dotB},${dotA.toFixed(2)})`;
+      const dotSize=Math.max(4,sz*0.032)*(0.75+elevFactor*0.35); // bigger if high
+
+      // Subtle halo — very dim, no glow, just a soft fill circle
+      ctx.beginPath(); ctx.arc(sx,sy,dotSize*2.2,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${dotR},${dotG},${dotB},0.06)`; ctx.fill();
+
+      // Dot
+      ctx.beginPath(); ctx.arc(sx,sy,dotSize,0,Math.PI*2);
+      ctx.fillStyle=dotCol; ctx.fill();
+
+      // Label — faint, above dot
+      ctx.fillStyle=`rgba(${dotR},${dotG},${dotB},${(dotA*0.7).toFixed(2)})`;
+      ctx.font=`${sz*0.038}px JetBrains Mono`;
+      ctx.textAlign='center';
+      ctx.fillText(sat.prn.replace('NVS-','S'),sx,sy-dotSize-3);
+    });
+
+    // ── Center dot — small dim bone ──
+    ctx.beginPath(); ctx.arc(cx,cy,2.5,0,Math.PI*2);
+    ctx.fillStyle='rgba(200,210,205,0.35)'; ctx.fill();
+
+    // ── SNR bars ──
     const snrCont=document.getElementById('sat-snr-bars'); if(!snrCont)return;
     snrCont.innerHTML='';
     satState.forEach(sat=>{
       const locked=S.gnss&&sat.snr>30;
-      const col=locked?'var(--green)':S.gnss?'var(--yellow)':'var(--red)';
       const pct=Math.max(0,Math.min(100,(sat.snr/50)*100));
+      // bar color mirrors dot palette
+      const barCol=!S.gnss?'rgba(140,50,50,0.5)':locked?'rgba(160,200,185,0.55)':'rgba(190,155,70,0.5)';
+      const lblCol=!S.gnss?'rgba(160,70,70,0.6)':locked?'rgba(170,200,190,0.5)':'rgba(190,155,70,0.55)';
       snrCont.innerHTML+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-        <div style="width:100%;height:22px;background:rgba(0,0,0,0.3);border-radius:2px;display:flex;align-items:flex-end;overflow:hidden">
-          <div style="width:100%;height:${pct}%;background:${col};transition:height .5s"></div>
+        <div style="width:100%;height:20px;background:rgba(255,255,255,0.04);border-radius:1px;display:flex;align-items:flex-end;overflow:hidden">
+          <div style="width:100%;height:${pct}%;background:${barCol};transition:height .5s"></div>
         </div>
-        <span style="font-size:.44rem;font-family:var(--mono);color:${col}">${sat.prn.replace('NVS-','S')}</span>
+        <span style="font-size:.42rem;font-family:var(--mono);color:${lblCol}">${sat.prn.replace('NVS-','S')}</span>
       </div>`;
     });
   }
@@ -1746,7 +1694,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     if(badge){
       const locked=satState.filter(s=>s.snr>30).length;
       badge.textContent=S.gnss?locked+' SAT LOCKED':'SIGNAL LOST';
-      badge.style.color=S.gnss?'var(--green)':'var(--red)';
+      badge.style.color=S.gnss?'rgba(160,200,185,0.55)':'rgba(180,60,60,0.7)';
     }
   }
 
@@ -1796,7 +1744,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       const d=document.createElement('div'); d.className='inf-layer';
       d.style.animationDelay=(i*0.075)+'s';
       d.style.height=(8+Math.random()*12)+'px';
-      d.style.background=i<4?'rgba(168,85,247,0.7)':i<8?'rgba(0,255,245,0.7)':i<12?'rgba(0,255,157,0.7)':'rgba(251,191,36,0.7)';
+      d.style.background=i<4?'rgba(120,80,180,0.35)':i<8?'rgba(80,160,150,0.35)':i<12?'rgba(80,150,120,0.35)':'rgba(160,130,60,0.35)';
       c.appendChild(d);
     }
   }
@@ -1843,7 +1791,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const wrap=document.getElementById('tl-wrap'); if(!wrap)return;
     const total=tlSegs.reduce((a,b)=>a+b.len,0);
     wrap.innerHTML='';
-    const colMap={gnss:'var(--green)',blackout:'var(--red)',tunnel:'var(--yellow)',snap:'var(--cyan)'};
+    const colMap={gnss:'rgba(80,140,110,0.6)',blackout:'rgba(160,50,50,0.65)',tunnel:'rgba(160,130,55,0.55)',snap:'rgba(80,140,150,0.55)'};
     tlSegs.forEach(seg=>{
       const d=document.createElement('div'); d.className='tl-seg';
       d.style.width=((seg.len/total)*100)+'%';
@@ -2237,7 +2185,7 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
         if (grid[i] <= 0) continue;
         const col = i % cols, row = Math.floor(i / cols);
         const a = grid[i] * 0.55;
-        ctx.fillStyle = `rgba(0,255,157,${a.toFixed(3)})`;
+        ctx.fillStyle = `rgba(200,210,205,${a.toFixed(3)})`;
         ctx.fillRect(col * CELL + CELL/2 - 1, row * CELL + CELL/2 - 1, 2, 2);
         grid[i] -= FADE;
         if (grid[i] < 0) grid[i] = 0;
