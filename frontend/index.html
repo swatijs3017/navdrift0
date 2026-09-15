@@ -156,12 +156,19 @@
 
     /* ── MAP ── */
     /* ── SPLIT MAP + STREET VIEW ── */
-    .map-wrap { position:relative; border-radius:var(--r); overflow:hidden; border:1px solid var(--line); min-height:0; display:grid; grid-template-columns:1fr 1fr; }
+    .map-wrap { position:relative; border-radius:var(--r); overflow:hidden; border:1px solid var(--line); min-height:0; display:grid; grid-template-columns:1fr; transition:grid-template-columns .3s; }
+    .map-wrap.sv-open { grid-template-columns:1fr 1fr; }
     #map { width:100%; height:100%; background:#04060a; }
-    #map-half { position:relative; overflow:hidden; border-right:1px solid var(--line); height:100%; }
-    #sv-half { position:relative; overflow:hidden; background:#020509; height:100%; }
+    #map-half { position:relative; overflow:hidden; height:100%; }
+    .sv-open #map-half { border-right:1px solid var(--line); }
+    #sv-half { position:relative; overflow:hidden; background:#020509; height:100%; display:none; }
+    .sv-open #sv-half { display:block; }
     #sv-viewer { width:100%; height:100%; }
     #sv-viewer > * { width:100% !important; height:100% !important; }
+    /* Street View toggle button */
+    #sv-toggle-btn { position:absolute; bottom:9px; right:9px; z-index:600; background:rgba(0,196,224,0.12); border:1px solid rgba(0,196,224,0.4); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.52rem; font-weight:700; letter-spacing:.1em; padding:5px 10px; border-radius:4px; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    #sv-toggle-btn:hover { background:rgba(0,196,224,0.25); }
+    #sv-toggle-btn.active { background:rgba(0,196,224,0.22); border-color:#00C4E0; }
 
     /* label bars at top of each half */
     .half-label { position:absolute; top:6px; left:50%; transform:translateX(-50%); z-index:601; font-family:'JetBrains Mono',monospace; font-size:.48rem; font-weight:700; letter-spacing:.12em; color:rgba(223,231,224,0.35); pointer-events:none; white-space:nowrap; }
@@ -726,8 +733,9 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         </div></div>
         <div class="mm-badge on" id="mm-badge"><span class="mm-dot"></span><span id="mm-txt">HMM Map-Match ACTIVE</span></div>
         <div id="route-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(139,26,26,0.88);color:var(--bone);font-size:.66rem;letter-spacing:.08em;padding:4px 12px;border-radius:3px;gap:6px;align-items:center;white-space:nowrap;">⚠ High uncertainty — alternate route suggested</div>
+        <button id="sv-toggle-btn" onclick="svTogglePanel()">🛣 STREET VIEW</button>
       </div>
-      <!-- RIGHT HALF: Google Street View -->
+      <!-- RIGHT HALF: Google Street View (hidden until toggled) -->
       <div id="sv-half">
         <div id="sv-viewer"></div>
         <div class="half-label" style="color:rgba(0,196,224,0.5)">STREET VIEW · GOOGLE</div>
@@ -2444,22 +2452,38 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
 //  STREET VIEW DRIVE MODE  —  Google Street View
 // ═══════════════════════════════════════════════════════════
 (function(){
-  let panorama=null, gmapsKey=null, loopRunning=false;
+  let panorama=null, svService=null, gmapsKey=null, loopRunning=false;
+  let svPanelOpen=false, svReady=false;
   let lastUpdate=0, lastLat=null, lastLon=null;
   const THROTTLE_MS=2500;
   const MOVE_THRESH=0.0002; // ~22m
+  const SNAP_RADIUS=80;     // metres to search for road panorama
 
   try { gmapsKey = localStorage.getItem('gmaps_key') || null; } catch(e){}
 
-  // Auto-init on load — show token overlay if no key, else load maps
-  window.addEventListener('load', function(){
-    if(!gmapsKey){
-      document.getElementById('sv-token-overlay').style.display='flex';
+  // Toggle the Street View panel open/closed
+  window.svTogglePanel=function(){
+    svPanelOpen=!svPanelOpen;
+    const wrap=document.getElementById('map-wrap');
+    const btn=document.getElementById('sv-toggle-btn');
+    if(svPanelOpen){
+      wrap.classList.add('sv-open');
+      btn.classList.add('active');
+      btn.textContent='✕ CLOSE VIEW';
+      // If maps not loaded yet, show token overlay or init
+      if(!svReady){
+        if(!gmapsKey){
+          document.getElementById('sv-token-overlay').style.display='flex';
+        } else {
+          _loadGoogleMaps(gmapsKey).then(_initPanorama).catch(_showTokenErr);
+        }
+      }
     } else {
-      _loadGoogleMaps(gmapsKey).then(_initPanorama).catch(_showTokenErr);
+      wrap.classList.remove('sv-open');
+      btn.classList.remove('active');
+      btn.textContent='🛣 STREET VIEW';
     }
-    _startLoop();
-  });
+  };
 
   window.svSetToken=function(){
     const inp=document.getElementById('sv-tok-input');
@@ -2475,7 +2499,6 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   function _loadGoogleMaps(key){
     return new Promise((resolve, reject)=>{
       if(window.google && window.google.maps && window.google.maps.StreetViewPanorama){ resolve(); return; }
-      // Remove any stale script tags with different keys
       const old=document.getElementById('gmaps-script');
       if(old) old.remove();
       window._gmapsCb=resolve;
@@ -2490,8 +2513,8 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   function _initPanorama(){
     const el=document.getElementById('sv-viewer');
     if(!el || !window.google) return;
-    // Clear any previous content
     el.innerHTML='';
+    svService=new google.maps.StreetViewService();
     const c=(typeof CITIES!=='undefined' && S.city && CITIES[S.city]) ? CITIES[S.city] : {lat:28.6337,lon:77.2190};
     panorama=new google.maps.StreetViewPanorama(el,{
       position:{lat:c.lat,lng:c.lon},
@@ -2505,14 +2528,34 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
       motionTrackingControl:false,
       showRoadLabels:false
     });
-    // Hide loading once panorama status is known
     panorama.addListener('status_changed',function(){
       const st=panorama.getStatus();
       const ld=document.getElementById('sv-loading');
       if(ld) ld.style.display='none';
-      if(st!=='OK') _showNoImgError('No Street View imagery at this location');
     });
+    svReady=true;
     document.getElementById('sv-loading').style.display='flex';
+    // Snap initial position to nearest road
+    _snapToRoad(c.lat, c.lon);
+  }
+
+  // Find nearest OUTDOOR (road) panorama within SNAP_RADIUS metres
+  function _snapToRoad(lat, lon){
+    if(!svService || !panorama) return;
+    svService.getPanorama({
+      location:{lat:lat,lng:lon},
+      radius:SNAP_RADIUS,
+      source:google.maps.StreetViewSource.OUTDOOR,
+      preference:google.maps.StreetViewPreference.NEAREST
+    }, function(data, status){
+      const ld=document.getElementById('sv-loading');
+      if(ld) ld.style.display='none';
+      if(status===google.maps.StreetViewStatus.OK){
+        panorama.setPano(data.location.pano);
+        panorama.setPov({heading:34,pitch:0});
+      }
+      // If not found, just stay where panorama is — don't show error
+    });
   }
 
   function _showTokenErr(){
@@ -2522,6 +2565,7 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
     gmapsKey=null;
     try { localStorage.removeItem('gmaps_key'); } catch(e){}
     panorama=null;
+    svReady=false;
   }
 
   function _startLoop(){
@@ -2533,29 +2577,18 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   async function _loop(){
     while(loopRunning){
       _updateHUD();
-      if(panorama && S.ndLa && S.ndLo){
+      if(panorama && svPanelOpen && S.ndLa && S.ndLo){
         const now=Date.now();
         const moved=lastLat===null||
           Math.abs(S.ndLa-lastLat)>MOVE_THRESH||
           Math.abs(S.ndLo-lastLon)>MOVE_THRESH;
         if(now-lastUpdate>THROTTLE_MS && moved){
           lastUpdate=now; lastLat=S.ndLa; lastLon=S.ndLo;
-          panorama.setPosition({lat:S.ndLa,lng:S.ndLo});
+          // Snap to nearest road panorama instead of raw coordinate
+          _snapToRoad(S.ndLa, S.ndLo);
         }
       }
       await new Promise(r=>setTimeout(r,500));
-    }
-  }
-
-  function _showNoImgError(msg){
-    const el=document.getElementById('sv-viewer');
-    if(el && !el.querySelector('.sv-no-img')){
-      const d=document.createElement('div');
-      d.className='sv-no-img';
-      d.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(223,231,224,0.35);font-family:JetBrains Mono,monospace;font-size:.6rem;letter-spacing:.08em;text-align:center;gap:10px;z-index:10;pointer-events:none;';
-      d.innerHTML=`<div style="font-size:1.6rem">📷</div><div>${msg}</div><div style="font-size:.5rem;color:rgba(223,231,224,0.2)">Google Street View — moving to next road…</div>`;
-      el.appendChild(d);
-      setTimeout(()=>{const n=el.querySelector('.sv-no-img');if(n)n.remove();},3000);
     }
   }
 
@@ -2569,6 +2602,8 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
       else{ badge.className='g'; badge.textContent='GNSS LOCKED · NavIC L5'; }
     }
   }
+
+  window.addEventListener('load', function(){ _startLoop(); });
 
 })();
 </script>
