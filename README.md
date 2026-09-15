@@ -35,9 +35,24 @@ NAVDRIFT-0 replaces raw integration with a causal transformer that has learned d
 | ARM latency target (INT4) | **< 5 ms** | n/a | n/a |
 | Throughput | **10 Hz** | 10 Hz | 10 Hz |
 
+### End-to-End Validation Results (EuRoC MAV, September 2026)
+
+After full training on EuRoC MAV with the 5-model Colab pipeline, validated against the held-out test sequence (36,819 steps):
+
+| Metric | Value | ISRO Target |
+|---|---|---|
+| ATE RMSE | 0.247 m | -- |
+| Mean Drift | 0.023% | < 10% |
+| Max Drift | 1.742% | < 10% |
+| Steps under 10% drift | 100.0% | >= 90% |
+| Steps under 5% drift | 100.0% | -- |
+| Total pipeline latency (FP32) | 4.85 ms | < 8 ms |
+
+**ISRO compliance: PASS**
+
 ---
 
-## How It Works — End to End
+## How It Works -- End to End
 
 This is the complete data flow from raw sensor to corrected position output.
 
@@ -172,6 +187,56 @@ The `tunnel_mode` flag propagates through the WebSocket payload, the REST respon
 
 ---
 
+## Colab Training Pipeline
+
+All five models were trained on Google Colab (A100 GPU, 42.4 GB VRAM) with Google Drive checkpointing under `MyDrive/NAVDRIFT0/`. The training scripts are in `navdrift_colab/`.
+
+| Script | Purpose |
+|---|---|
+| `navdrift_00_setup.py` | Paths, Drive mount, keepalive thread, shared utilities |
+| `navdrift_01_data_pipeline.py` | EuRoC MAV ingestion, preprocessing, HDF5 packaging |
+| `navdrift_02_driftformer.py` | DRIFTFormer transformer training |
+| `navdrift_03_imu_denoiser.py` | IMU Denoiser TCN training |
+| `navdrift_04_adaptive_ekf.py` | Adaptive EKF noise predictor MLP training |
+| `navdrift_05_tunnel_det.py` | Tunnel Detector Bi-LSTM training |
+| `navdrift_06_navic_dop.py` | NavIC DOP predictor MLP training (500 epochs, synthetic dataset of 972,000 records, best val loss 0.167) |
+| `navdrift_07_onnx_export.py` | ONNX FP32 export for all 5 models + INT8 quantisation where supported |
+| `navdrift_08_validate.py` | End-to-end validation across test sequences, compliance report generation |
+
+### Trained Models
+
+All ONNX models are in `models/`. FP32 is the primary export. INT8 quantisation succeeded only for the IMU Denoiser (shape inference constraints blocked it for the other four).
+
+| Model | File | Size | Inference (ms) | Role |
+|---|---|---|---|---|
+| DRIFTFormer | `driftformer_fp32.onnx` | 0.036 MB | 3.78 | Position drift correction via 4-layer 8-head transformer |
+| IMU Denoiser | `imu_denoiser_int8.onnx` | 0.149 MB | 0.56 | Raw IMU noise removal via TCN (5 blocks) |
+| Adaptive EKF | `adaptive_ekf_fp32.onnx` | 0.006 MB | 0.05 | Dynamic Q/R noise covariance prediction |
+| Tunnel Detector | `tunnel_det_fp32.onnx` | 0.014 MB | 0.42 | GNSS-denied zone detection via Bi-LSTM |
+| NavIC DOP | `navic_dop_fp32.onnx` | 0.004 MB | 0.04 | NavIC signal quality prediction |
+| **Total pipeline** | | **0.209 MB** | **4.85 ms** | All 5 models combined |
+
+### Dataset
+
+Training used EuRoC MAV (MH_01_easy, MH_02_easy, MH_03_medium). 6-DOF IMU at 200 Hz with Vicon motion capture ground truth. Split: 2 sequences train, 1 val, 1 test. The NavIC DOP model used a synthetic dataset of 972,000 records generated from realistic DOP distributions across Indian geography.
+
+### Validation Results
+
+Validation runs the full 5-model pipeline on the held-out test sequence (`euroc_MH_01_easy`, 36,819 steps) and computes drift compliance against the ISRO <10% target.
+
+```
+ATE RMSE:                0.2472 m
+Mean Drift:              0.023%
+Max Drift:               1.742%
+Steps under 10% target:  100.0%
+Steps under 5%:          100.0%
+ISRO PASS:               True
+```
+
+The compliance curve and benchmark table are saved in `results/`.
+
+---
+
 ## Quantisation
 
 The FP32 model is 22 MB and runs at 48 ms. INT8 brings it to 6.2 MB at 20 ms. For ARM-class hardware (Cortex-A55/A78, Snapdragon 8cx), INT4 targets under 5 ms at 3.4 MB.
@@ -275,13 +340,13 @@ wscat -c "wss://navdrift0-api.onrender.com/ws/stream?api_key=your-secret-key"
 
 Open https://navdrift0.pages.dev in a desktop browser.
 
-The dashboard is a single-page app that works completely offline in simulation mode. All the same physics — IMU integration, EKF, HMM map matching, tunnel detection, SNAP correction — run in JavaScript locally. No backend required to use it.
+The dashboard is a single-page app that works completely offline in simulation mode. All the same physics -- IMU integration, EKF, HMM map matching, tunnel detection, SNAP correction -- run in JavaScript locally. No backend required to use it.
 
 The Leaflet map shows four trajectory lines:
-- **Cyan** — NAVDRIFT-0 estimated position
-- **Green** — Ground truth
-- **Violet** — EKF baseline
-- **Red/dim** — Raw IMU (uncorrected)
+- **Cyan** -- NAVDRIFT-0 estimated position
+- **Green** -- Ground truth
+- **Violet** -- EKF baseline
+- **Red/dim** -- Raw IMU (uncorrected)
 
 Five Indian cities are available: Delhi, Mumbai, Bengaluru, Chennai, Hyderabad. Each has a hand-coded waypoint loop the simulation follows.
 
@@ -527,7 +592,28 @@ navdrift0/
 |   └-- NavDriftService.kt        Android foreground service and NavDriftClient
 |
 |-- models/
-|   └-- drift_former.py           DRIFTFormer architecture (PyTorch)
+|   |-- drift_former.py           DRIFTFormer architecture (PyTorch)
+|   |-- driftformer_fp32.onnx     Trained DRIFTFormer, FP32
+|   |-- imu_denoiser_int8.onnx    Trained IMU Denoiser, INT8
+|   |-- adaptive_ekf_fp32.onnx    Trained Adaptive EKF predictor, FP32
+|   |-- tunnel_det_fp32.onnx      Trained Tunnel Detector, FP32
+|   └-- navic_dop_fp32.onnx       Trained NavIC DOP predictor, FP32
+|
+|-- navdrift_colab/
+|   |-- navdrift_00_setup.py      Paths, Drive mount, keepalive, shared utilities
+|   |-- navdrift_01_data_pipeline.py  EuRoC MAV ingestion and HDF5 packaging
+|   |-- navdrift_02_driftformer.py    DRIFTFormer training
+|   |-- navdrift_03_imu_denoiser.py   IMU Denoiser TCN training
+|   |-- navdrift_04_adaptive_ekf.py   Adaptive EKF MLP training
+|   |-- navdrift_05_tunnel_det.py     Tunnel Detector Bi-LSTM training
+|   |-- navdrift_06_navic_dop.py      NavIC DOP MLP training
+|   |-- navdrift_07_onnx_export.py    ONNX FP32 export and INT8 quantisation
+|   └-- navdrift_08_validate.py       End-to-end validation and compliance report
+|
+|-- results/
+|   |-- validation_full.json      Full validation output with all compliance metrics
+|   |-- isro_benchmark_table.csv  Per-model size and latency benchmark table
+|   └-- compliance_curve.png      Drift compliance plot and trajectory overlay
 |
 |-- training/
 |   └-- train.py                  Training loop with KL annealing and auxiliary heading loss
@@ -571,7 +657,15 @@ The dashboard is deployed on Cloudflare Pages from the `frontend/` directory. No
 
 ## Changelog
 
-### v1.3 (current)
+### v1.4 (current)
+- Completed full 5-model Colab training pipeline on EuRoC MAV dataset (A100 GPU).
+- All 5 models exported to ONNX FP32. IMU Denoiser also quantised to INT8.
+- Total pipeline latency: 4.85 ms FP32 (ISRO target <8 ms -- PASS).
+- End-to-end validation on held-out test sequence (36,819 steps): mean drift 0.023%, 100% of steps under 10% target, ATE RMSE 0.247 m.
+- NavIC DOP model trained on 972,000 synthetic records, best val loss 0.167.
+- Validation results, compliance curve, and benchmark table saved in `results/`.
+
+### v1.3
 - Added NavIC toggle: switch between NavIC+GPS and NavIC-only fusion from the dashboard header. NavIC-only mode increases uncertainty baseline and shows a banner notification.
 - Added IMU Calibration Wizard: 3-step modal with live sensor readouts, progress bar, and automatic uncertainty offset on completion.
 - Added Session Recording: start/stop button records telemetry at 2 Hz and exports a timestamped CSV on stop.
