@@ -16,8 +16,6 @@
   <meta name="apple-mobile-web-app-title" content="NAVDRIFT-0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mapillary-js@4/dist/mapillary.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/mapillary-js@4/dist/mapillary.min.js"></script>
   <style>
     :root {
       /* ── Kage palette ── */
@@ -160,13 +158,11 @@
     .map-wrap { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); min-height: 0; }
     #map { width: 100%; height: 100%; background: #04060a; }
 
-    /* ── STREET VIEW (Mapillary real imagery) ── */
+    /* ── STREET VIEW (Google Street View) ── */
     #sv-viewer { position:absolute; inset:0; width:100%; height:100%; display:none; z-index:2; background:#020509; }
     .map-wrap.sv-on #sv-viewer { display:block; }
     .map-wrap.sv-on #map { opacity:0; pointer-events:none; }
-    /* Override Mapillary default controls to match NAVDRIFT theme */
-    #sv-viewer .mapillary-js { width:100% !important; height:100% !important; }
-    #sv-viewer .mapillary-js canvas { border-radius:0; }
+    #sv-viewer > * { width:100% !important; height:100% !important; }
     #sv-minimap { display:none; position:absolute; bottom:10px; right:10px; z-index:600; width:190px; height:140px; border-radius:3px; border:1px solid rgba(0,196,224,0.4); overflow:hidden; box-shadow:0 2px 18px rgba(0,0,0,0.85); }
     .map-wrap.sv-on #sv-minimap { display:block; }
     #sv-btn { position:absolute; top:9px; right:9px; z-index:601; background:rgba(2,5,9,0.9); border:1px solid rgba(0,196,224,0.4); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.58rem; font-weight:700; padding:4px 11px; border-radius:2px; cursor:pointer; letter-spacing:.1em; text-transform:uppercase; transition:all .15s; }
@@ -708,9 +704,9 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <div id="sv-viewer"></div>
       <div id="sv-token-overlay">
         <div class="sv-tok-box">
-          <div class="sv-tok-title">🛣 REAL STREET VIEW · MAPILLARY</div>
-          <div class="sv-tok-sub">Free access token required.<br><a href="https://www.mapillary.com/developer/app" target="_blank">Get yours at mapillary.com/developer</a><br><br>Sign up free → Create App → copy the <b style="color:#00C4E0">Client Token</b></div>
-          <input id="sv-tok-input" type="text" placeholder="Paste Mapillary Client Access Token…" autocomplete="off" spellcheck="false">
+          <div class="sv-tok-title">🛣 REAL STREET VIEW · GOOGLE</div>
+          <div class="sv-tok-sub">Free Google Maps API key required.<br><a href="https://console.cloud.google.com/apis/credentials" target="_blank">console.cloud.google.com → Credentials</a><br><br>Create Project → Enable <b style="color:#00C4E0">Maps JavaScript API</b> → Create API Key</div>
+          <input id="sv-tok-input" type="text" placeholder="Paste Google Maps API Key…" autocomplete="off" spellcheck="false">
           <span id="sv-tok-err">⚠ Could not load imagery — check token</span>
           <button id="sv-tok-submit" onclick="svSetToken()">ACTIVATE REAL STREET VIEW ▶</button>
           <div style="font-family:'JetBrains Mono',monospace;font-size:.5rem;color:rgba(223,231,224,0.3);text-align:center">Token is stored in localStorage for this browser only</div>
@@ -2437,17 +2433,16 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   })();
 
 // ═══════════════════════════════════════════════════════════
-//  STREET VIEW DRIVE MODE  —  Mapillary real imagery
+//  STREET VIEW DRIVE MODE  —  Google Street View
 // ═══════════════════════════════════════════════════════════
 (function(){
   let active=false, miniMap=null, miniDot=null, miniTrail=null;
-  let viewer=null, mlyToken=null, loopRunning=false;
-  let lastImgUpdate=0, lastLat=null, lastLon=null;
-  const THROTTLE_MS=3500; // fetch new image at most every 3.5s
-  const MOVE_THRESH=0.00015; // ~15m — skip fetch if barely moved
+  let panorama=null, gmapsKey=null, loopRunning=false;
+  let lastUpdate=0, lastLat=null, lastLon=null;
+  const THROTTLE_MS=2500;
+  const MOVE_THRESH=0.0002; // ~22m
 
-  // ── Restore saved token from localStorage ──
-  try { mlyToken = localStorage.getItem('mly_token') || null; } catch(e){}
+  try { gmapsKey = localStorage.getItem('gmaps_key') || null; } catch(e){}
 
   window.svToggle=function(){
     active=!active;
@@ -2460,10 +2455,10 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
       btn.classList.add('on'); btn.textContent='🗺  MAP';
       spdhud.style.display='block'; badge.style.display='block';
       _initMini();
-      if(!mlyToken){
+      if(!gmapsKey){
         document.getElementById('sv-token-overlay').style.display='flex';
       } else {
-        _initViewer();
+        _loadGoogleMaps(gmapsKey).then(_initPanorama).catch(_showTokenErr);
         _startLoop();
       }
     } else {
@@ -2476,73 +2471,66 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
 
   window.svSetToken=function(){
     const inp=document.getElementById('sv-tok-input');
-    const tok=inp.value.trim();
-    if(!tok) return;
-    mlyToken=tok;
-    try { localStorage.setItem('mly_token', tok); } catch(e){}
+    const key=inp.value.trim();
+    if(!key) return;
+    gmapsKey=key;
+    try { localStorage.setItem('gmaps_key', key); } catch(e){}
     document.getElementById('sv-token-overlay').style.display='none';
     document.getElementById('sv-tok-err').style.display='none';
-    _initViewer();
+    _loadGoogleMaps(key).then(_initPanorama).catch(_showTokenErr);
     _startLoop();
   };
 
-  function _initViewer(){
-    if(viewer) return;
-    // mapillary-js UMD may expose as 'mapillary' or 'Mapillary'
-    const MLY = (typeof mapillary !== 'undefined') ? mapillary
-               : (typeof Mapillary !== 'undefined') ? Mapillary
-               : null;
-    if(!MLY){ _initIframeViewer(); return; }
-    try {
-      viewer = new MLY.Viewer({
-        accessToken: mlyToken,
-        container: 'sv-viewer',
-        component: { cover: false, sequence: false, direction: false }
-      });
-      viewer.on('dataloading', function(e){
-        const el=document.getElementById('sv-loading');
-        if(el) el.style.display = e.loading ? 'flex' : 'none';
-      });
-      // Load initial image at city center immediately
-      const c = (typeof CITIES !== 'undefined' && S.city && CITIES[S.city]) ? CITIES[S.city] : {lat:28.6337,lon:77.2190};
-      _fetchNearest(c.lat, c.lon).then(id => {
-        if(id && viewer) viewer.moveTo(id).catch(()=>{});
-      });
-    } catch(ex) {
-      console.error('Mapillary init failed:', ex);
-      _initIframeViewer();
-    }
-  }
-
-  function _initIframeViewer(){
-    // Fallback: iframe embed — no SDK needed, works everywhere
-    viewer = 'iframe';
-    const wrap = document.getElementById('sv-viewer');
-    if(!wrap) return;
-    wrap.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(0,196,224,0.6);font-family:JetBrains Mono,monospace;font-size:.6rem;letter-spacing:.1em">FETCHING IMAGERY…</div><iframe id="sv-iframe" src="about:blank" style="width:100%;height:100%;border:none;background:#020509;display:none"></iframe>';
-    const c = (typeof CITIES !== 'undefined' && S.city && CITIES[S.city]) ? CITIES[S.city] : {lat:28.6337,lon:77.2190};
-    _fetchNearest(c.lat, c.lon).then(id => {
-      if(id) _setIframeSrc(id);
+  function _loadGoogleMaps(key){
+    return new Promise((resolve, reject)=>{
+      if(window.google && window.google.maps && window.google.maps.StreetViewPanorama){ resolve(); return; }
+      // Remove any stale script tags with different keys
+      const old=document.getElementById('gmaps-script');
+      if(old) old.remove();
+      window._gmapsCb=resolve;
+      const s=document.createElement('script');
+      s.id='gmaps-script';
+      s.src=`https://maps.googleapis.com/maps/api/js?key=${key}&callback=_gmapsCb`;
+      s.onerror=()=>{ _showTokenErr(); reject(new Error('Maps load failed')); };
+      document.head.appendChild(s);
     });
   }
 
-  function _setIframeSrc(imgId){
-    const iframe = document.getElementById('sv-iframe');
-    if(!iframe) return;
-    iframe.style.display = 'block';
-    // Hide the "fetching" placeholder
-    const prev = iframe.previousSibling;
-    if(prev && prev.nodeType===1) prev.style.display='none';
-    iframe.src = `https://www.mapillary.com/embed?image_key=${imgId}&style=photo`;
+  function _initPanorama(){
+    const el=document.getElementById('sv-viewer');
+    if(!el || !window.google) return;
+    // Clear any previous content
+    el.innerHTML='';
+    const c=(typeof CITIES!=='undefined' && S.city && CITIES[S.city]) ? CITIES[S.city] : {lat:28.6337,lon:77.2190};
+    panorama=new google.maps.StreetViewPanorama(el,{
+      position:{lat:c.lat,lng:c.lon},
+      pov:{heading:34,pitch:0},
+      addressControl:false,
+      linksControl:true,
+      panControl:true,
+      enableCloseButton:false,
+      zoomControl:false,
+      fullscreenControl:false,
+      motionTrackingControl:false,
+      showRoadLabels:false
+    });
+    // Hide loading once panorama status is known
+    panorama.addListener('status_changed',function(){
+      const st=panorama.getStatus();
+      const ld=document.getElementById('sv-loading');
+      if(ld) ld.style.display='none';
+      if(st!=='OK') _showNoImgError('No Street View imagery at this location');
+    });
+    document.getElementById('sv-loading').style.display='flex';
   }
 
   function _showTokenErr(){
     const err=document.getElementById('sv-tok-err');
     if(err) err.style.display='block';
     document.getElementById('sv-token-overlay').style.display='flex';
-    mlyToken=null;
-    try { localStorage.removeItem('mly_token'); } catch(e){}
-    viewer=null;
+    gmapsKey=null;
+    try { localStorage.removeItem('gmaps_key'); } catch(e){}
+    panorama=null;
   }
 
   function _startLoop(){
@@ -2555,51 +2543,18 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
     while(loopRunning && active){
       _updateHUD();
       if(S.ndLa && S.ndLo) _updateMini(S.ndLa, S.ndLo);
-
-      // Fetch & move to nearest Mapillary image (throttled + movement check)
-      if(viewer && mlyToken && S.ndLa && S.ndLo){
+      if(panorama && S.ndLa && S.ndLo){
         const now=Date.now();
-        const moved = lastLat===null ||
-          Math.abs(S.ndLa-lastLat)>MOVE_THRESH ||
+        const moved=lastLat===null||
+          Math.abs(S.ndLa-lastLat)>MOVE_THRESH||
           Math.abs(S.ndLo-lastLon)>MOVE_THRESH;
-        if(now-lastImgUpdate > THROTTLE_MS && moved){
-          lastImgUpdate=now; lastLat=S.ndLa; lastLon=S.ndLo;
-          const id=await _fetchNearest(S.ndLa, S.ndLo);
-          if(id && viewer){
-            if(viewer === 'iframe'){
-              _setIframeSrc(id);
-            } else {
-              try { await viewer.moveTo(id); } catch(ex){
-                if(ex && ex.message && ex.message.includes('403')) _showTokenErr();
-              }
-            }
-          }
+        if(now-lastUpdate>THROTTLE_MS && moved){
+          lastUpdate=now; lastLat=S.ndLa; lastLon=S.ndLo;
+          panorama.setPosition({lat:S.ndLa,lng:S.ndLo});
         }
       }
-      await new Promise(r=>setTimeout(r,400));
+      await new Promise(r=>setTimeout(r,500));
     }
-  }
-
-  async function _fetchNearest(lat, lon){
-    // Try progressively larger radius if no images found nearby
-    const radii=[200, 500, 1000, 2000];
-    for(const radius of radii){
-      const url=`https://graph.mapillary.com/images?access_token=${mlyToken}&fields=id&closeto=${lon},${lat}&limit=1&radius=${radius}`;
-      try {
-        const r=await fetch(url, {mode:'cors'});
-        if(r.status===401||r.status===403){ _showTokenErr(); return null; }
-        if(!r.ok) continue;
-        const j=await r.json();
-        if(j.data && j.data[0]) return j.data[0].id;
-      } catch(e){
-        // CORS blocked or network fail — fall through to iframe-only mode
-        console.warn('Mapillary API unreachable:', e.message);
-        _showNoImgError('API unreachable — check browser console');
-        return null;
-      }
-    }
-    _showNoImgError('No street imagery within 2km of this location');
-    return null;
   }
 
   function _showNoImgError(msg){
@@ -2607,9 +2562,10 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
     if(el && !el.querySelector('.sv-no-img')){
       const d=document.createElement('div');
       d.className='sv-no-img';
-      d.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(223,231,224,0.35);font-family:JetBrains Mono,monospace;font-size:.6rem;letter-spacing:.08em;text-align:center;gap:10px;';
-      d.innerHTML=`<div style="font-size:1.6rem">📷</div><div>${msg}</div><div style="font-size:.5rem;color:rgba(223,231,224,0.2)">Mapillary has limited coverage in some areas</div>`;
+      d.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(223,231,224,0.35);font-family:JetBrains Mono,monospace;font-size:.6rem;letter-spacing:.08em;text-align:center;gap:10px;z-index:10;pointer-events:none;';
+      d.innerHTML=`<div style="font-size:1.6rem">📷</div><div>${msg}</div><div style="font-size:.5rem;color:rgba(223,231,224,0.2)">Google Street View — moving to next road…</div>`;
       el.appendChild(d);
+      setTimeout(()=>{const n=el.querySelector('.sv-no-img');if(n)n.remove();},3000);
     }
   }
 
