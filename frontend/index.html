@@ -2519,7 +2519,7 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
     viewer = 'iframe';
     const wrap = document.getElementById('sv-viewer');
     if(!wrap) return;
-    wrap.innerHTML = '<iframe id="sv-iframe" src="" style="width:100%;height:100%;border:none;background:#020509"></iframe>';
+    wrap.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(0,196,224,0.6);font-family:JetBrains Mono,monospace;font-size:.6rem;letter-spacing:.1em">FETCHING IMAGERY…</div><iframe id="sv-iframe" src="about:blank" style="width:100%;height:100%;border:none;background:#020509;display:none"></iframe>';
     const c = (typeof CITIES !== 'undefined' && S.city && CITIES[S.city]) ? CITIES[S.city] : {lat:28.6337,lon:77.2190};
     _fetchNearest(c.lat, c.lon).then(id => {
       if(id) _setIframeSrc(id);
@@ -2528,7 +2528,12 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
 
   function _setIframeSrc(imgId){
     const iframe = document.getElementById('sv-iframe');
-    if(iframe) iframe.src = `https://www.mapillary.com/embed?image_key=${imgId}&style=photo`;
+    if(!iframe) return;
+    iframe.style.display = 'block';
+    // Hide the "fetching" placeholder
+    const prev = iframe.previousSibling;
+    if(prev && prev.nodeType===1) prev.style.display='none';
+    iframe.src = `https://www.mapillary.com/embed?image_key=${imgId}&style=photo`;
   }
 
   function _showTokenErr(){
@@ -2576,14 +2581,36 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   }
 
   async function _fetchNearest(lat, lon){
-    // Mapillary Graph API — find closest image
-    const url=`https://graph.mapillary.com/images?access_token=${mlyToken}&fields=id&closeto=${lon},${lat}&limit=1&radius=50`;
-    try {
-      const r=await fetch(url);
-      if(!r.ok){ if(r.status===401||r.status===403) _showTokenErr(); return null; }
-      const j=await r.json();
-      return (j.data && j.data[0]) ? j.data[0].id : null;
-    } catch(e){ return null; }
+    // Try progressively larger radius if no images found nearby
+    const radii=[200, 500, 1000, 2000];
+    for(const radius of radii){
+      const url=`https://graph.mapillary.com/images?access_token=${mlyToken}&fields=id&closeto=${lon},${lat}&limit=1&radius=${radius}`;
+      try {
+        const r=await fetch(url, {mode:'cors'});
+        if(r.status===401||r.status===403){ _showTokenErr(); return null; }
+        if(!r.ok) continue;
+        const j=await r.json();
+        if(j.data && j.data[0]) return j.data[0].id;
+      } catch(e){
+        // CORS blocked or network fail — fall through to iframe-only mode
+        console.warn('Mapillary API unreachable:', e.message);
+        _showNoImgError('API unreachable — check browser console');
+        return null;
+      }
+    }
+    _showNoImgError('No street imagery within 2km of this location');
+    return null;
+  }
+
+  function _showNoImgError(msg){
+    const el=document.getElementById('sv-viewer');
+    if(el && !el.querySelector('.sv-no-img')){
+      const d=document.createElement('div');
+      d.className='sv-no-img';
+      d.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(223,231,224,0.35);font-family:JetBrains Mono,monospace;font-size:.6rem;letter-spacing:.08em;text-align:center;gap:10px;';
+      d.innerHTML=`<div style="font-size:1.6rem">📷</div><div>${msg}</div><div style="font-size:.5rem;color:rgba(223,231,224,0.2)">Mapillary has limited coverage in some areas</div>`;
+      el.appendChild(d);
+    }
   }
 
   function _initMini(){
