@@ -2443,7 +2443,7 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   let active=false, miniMap=null, miniDot=null, miniTrail=null;
   let viewer=null, mlyToken=null, loopRunning=false;
   let lastImgUpdate=0, lastLat=null, lastLon=null;
-  const THROTTLE_MS=4000; // fetch new image at most every 4s
+  const THROTTLE_MS=3500; // fetch new image at most every 3.5s
   const MOVE_THRESH=0.00015; // ~15m — skip fetch if barely moved
 
   // ── Restore saved token from localStorage ──
@@ -2488,9 +2488,13 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
 
   function _initViewer(){
     if(viewer) return;
-    if(typeof mapillary === 'undefined'){ console.warn('mapillary-js not loaded'); return; }
+    // mapillary-js UMD may expose as 'mapillary' or 'Mapillary'
+    const MLY = (typeof mapillary !== 'undefined') ? mapillary
+               : (typeof Mapillary !== 'undefined') ? Mapillary
+               : null;
+    if(!MLY){ _initIframeViewer(); return; }
     try {
-      viewer = new mapillary.Viewer({
+      viewer = new MLY.Viewer({
         accessToken: mlyToken,
         container: 'sv-viewer',
         component: { cover: false, sequence: false, direction: false }
@@ -2499,10 +2503,32 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
         const el=document.getElementById('sv-loading');
         if(el) el.style.display = e.loading ? 'flex' : 'none';
       });
+      // Load initial image at city center immediately
+      const c = (typeof CITIES !== 'undefined' && S.city && CITIES[S.city]) ? CITIES[S.city] : {lat:28.6337,lon:77.2190};
+      _fetchNearest(c.lat, c.lon).then(id => {
+        if(id && viewer) viewer.moveTo(id).catch(()=>{});
+      });
     } catch(ex) {
       console.error('Mapillary init failed:', ex);
-      _showTokenErr();
+      _initIframeViewer();
     }
+  }
+
+  function _initIframeViewer(){
+    // Fallback: iframe embed — no SDK needed, works everywhere
+    viewer = 'iframe';
+    const wrap = document.getElementById('sv-viewer');
+    if(!wrap) return;
+    wrap.innerHTML = '<iframe id="sv-iframe" src="" style="width:100%;height:100%;border:none;background:#020509"></iframe>';
+    const c = (typeof CITIES !== 'undefined' && S.city && CITIES[S.city]) ? CITIES[S.city] : {lat:28.6337,lon:77.2190};
+    _fetchNearest(c.lat, c.lon).then(id => {
+      if(id) _setIframeSrc(id);
+    });
+  }
+
+  function _setIframeSrc(imgId){
+    const iframe = document.getElementById('sv-iframe');
+    if(iframe) iframe.src = `https://www.mapillary.com/embed?image_key=${imgId}&style=photo`;
   }
 
   function _showTokenErr(){
@@ -2535,9 +2561,12 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
           lastImgUpdate=now; lastLat=S.ndLa; lastLon=S.ndLo;
           const id=await _fetchNearest(S.ndLa, S.ndLo);
           if(id && viewer){
-            try { await viewer.moveTo(id); } catch(ex){
-              // image not found or token expired
-              if(ex.message && ex.message.includes('403')) _showTokenErr();
+            if(viewer === 'iframe'){
+              _setIframeSrc(id);
+            } else {
+              try { await viewer.moveTo(id); } catch(ex){
+                if(ex && ex.message && ex.message.includes('403')) _showTokenErr();
+              }
             }
           }
         }
