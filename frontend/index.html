@@ -18,26 +18,25 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
     :root {
-      /* ── Kage palette ── */
-      --ink:   #05070a;
-      --ink-2: #080c10;
-      --bone:  #dfe7e0;
-      --bone-dim: #aab4ad;
-      --muted: #78837c;
-      --line:  rgba(223,231,224,0.10);
-      --line-soft: rgba(223,231,224,0.05);
+      /* ── ISRO Mission Control Palette ── */
+      --ink:   #020509;
+      --ink-2: #060b12;
+      --bone:  #D4E2EE;
+      --bone-dim: #7A94A8;
+      --muted: #445566;
+      --line:  rgba(0,196,224,0.09);
+      --line-soft: rgba(0,196,224,0.04);
 
-      /* map old vars → Kage */
-      --bg: var(--ink); --surface: var(--ink-2); --card: rgba(8,12,16,0.88);
-      --cyan: #00fff5; --cyan-d: rgba(0,255,245,0.10); --cyan-g: rgba(0,255,245,0.28);
-      --violet: #a855f7; --violet-d: rgba(168,85,247,0.10);
-      --red: #E0231C; --red-d: rgba(224,35,28,0.12); --red-g: rgba(224,35,28,0.35);
-      --green: #00ff9d; --green-d: rgba(0,255,157,0.10); --green-g: rgba(0,255,157,0.3);
-      --yellow: #fbbf24; --orange: #f97316;
+      --bg: var(--ink); --surface: var(--ink-2); --card: rgba(4,9,16,0.94);
+      --cyan: #00C4E0; --cyan-d: rgba(0,196,224,0.10); --cyan-g: rgba(0,196,224,0.30);
+      --violet: #8B5CF6; --violet-d: rgba(139,92,246,0.12);
+      --red: #E02020; --red-d: rgba(224,32,32,0.12); --red-g: rgba(224,32,32,0.38);
+      --green: #00C87A; --green-d: rgba(0,200,122,0.10); --green-g: rgba(0,200,122,0.32);
+      --yellow: #F0A000; --orange: #FF5500;
       --b1: var(--line); --b2: var(--line-soft);
       --t1: var(--bone); --t2: var(--bone-dim); --t3: var(--muted);
       --mono: 'JetBrains Mono', monospace; --sans: 'Onest', sans-serif;
-      --r: 8px;
+      --r: 3px;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: var(--sans); user-select: none; }
@@ -296,16 +295,49 @@ body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:no
 body.tunnel-mode { --cyan:#d97706; --cyan-d:rgba(217,119,6,0.10); --cyan-g:rgba(217,119,6,0.35); }
 body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rgba(217,119,6,0.1),transparent); }
 
-/* ── HERO STATS BAR ── */
-.hero-bar{display:flex;align-items:center;justify-content:center;gap:0;background:linear-gradient(180deg,rgba(0,0,0,0.5),rgba(0,0,0,0.2));border-bottom:1px solid rgba(0,255,245,0.12);padding:5px 0;flex-shrink:0;overflow-x:auto}
-.hero-stat{display:flex;flex-direction:column;align-items:center;padding:0 16px;white-space:nowrap}
-.hero-label{font-size:.44rem;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
-.hero-val{font-size:.72rem;font-weight:800;font-family:var(--mono);margin-top:1px;letter-spacing:.04em}
-.hero-val.cyan{color:var(--cyan);text-shadow:0 0 8px rgba(0,255,245,0.35)}
-.hero-val.violet{color:var(--violet)}
-.hero-val.green{color:var(--green);text-shadow:0 0 8px rgba(0,255,157,0.35)}
-.hero-val.yellow{color:var(--yellow)}
-.hero-divider{width:1px;height:24px;background:rgba(255,255,255,0.08);flex-shrink:0}
+/* ── HERO STATS BAR — ISRO Mission Control ── */
+.hero-bar{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(80px,1fr));
+  align-items:stretch;
+  gap:0;
+  background:linear-gradient(180deg,rgba(2,5,9,0.98) 0%,rgba(4,9,16,0.95) 100%);
+  border-top:1px solid rgba(0,196,224,0.12);
+  border-bottom:1px solid rgba(0,196,224,0.08);
+  padding:0;
+  flex-shrink:0;
+  overflow:hidden;
+  position:relative;
+}
+/* orange sweep line across top */
+.hero-bar::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,85,0,0.5) 15%,rgba(0,196,224,0.25) 50%,rgba(255,85,0,0.5) 85%,transparent 100%);
+  pointer-events:none;z-index:2;
+}
+.hero-stat{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:7px 10px;white-space:nowrap;
+  border-right:1px solid rgba(0,196,224,0.06);
+  position:relative;
+  transition:background .2s;
+}
+.hero-stat:last-child{border-right:none;}
+.hero-stat:hover{background:rgba(0,196,224,0.03);}
+/* tiny cyan corner tick on hover */
+.hero-stat::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:transparent;transition:background .2s;
+}
+.hero-stat:hover::after{background:rgba(0,196,224,0.2);}
+.hero-label{font-size:.42rem;font-family:var(--mono);color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px;}
+.hero-val{font-size:.85rem;font-weight:700;font-family:var(--mono);letter-spacing:.03em;line-height:1;}
+.hero-val.cyan{color:var(--cyan);text-shadow:0 0 12px rgba(0,196,224,0.4);}
+.hero-val.violet{color:var(--violet);text-shadow:0 0 8px rgba(139,92,246,0.3);}
+.hero-val.green{color:var(--green);text-shadow:0 0 12px rgba(0,200,122,0.4);}
+.hero-val.yellow{color:var(--yellow);}
+.hero-val.orange{color:var(--orange);}
+.hero-divider{display:none;}
 /* ── TUNNEL DEMO BUTTON ── */
 .btn-tunnel-demo{width:100%;margin-top:7px;background:linear-gradient(135deg,rgba(200,160,40,0.15),rgba(140,40,40,0.15));color:rgba(220,185,60,0.95);border:1px solid rgba(200,160,40,0.38);font-size:.59rem;font-family:var(--mono);letter-spacing:.1em;padding:6px 10px;border-radius:5px;cursor:pointer;font-weight:700;transition:all .2s}
 .btn-tunnel-demo:hover{background:linear-gradient(135deg,rgba(200,160,40,0.28),rgba(140,40,40,0.28));border-color:rgba(220,185,60,0.6);box-shadow:0 0 10px rgba(200,160,40,0.2)}
@@ -363,120 +395,185 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     .rec-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 7px var(--red-g);animation:blink .7s step-end infinite;margin-right:4px;vertical-align:middle;}
 
   /* ════════════════════════════════════════════════════
-     KAGE — consolidated theme layer (no neon, no glow)
+     ISRO MISSION CONTROL — Visual Design System
+     NASA density · Premium polish · Military HUD
      ════════════════════════════════════════════════════ */
 
-  /* ── Remove all decorative box-shadows ── */
-  .dot, .cdot, .sig-bar, .phase-dot, .mod-dot, .rec-dot,
-  .phase-badge { box-shadow: none !important; }
+  /* ── Layout tightening ── */
+  .body { gap: 6px; padding: 6px; }
+  .panel { gap: 6px; }
+  .panel::-webkit-scrollbar { width: 2px; }
+  .panel::-webkit-scrollbar-thumb { background: rgba(0,196,224,0.18); border-radius: 2px; }
 
-  /* ── Status dot (header GNSS indicator) ── */
-  .dot     { background: rgba(80,130,100,0.7) !important; }
-  .dot.out { background: var(--red) !important; animation: blink .7s step-end infinite; }
-  .pill    { border: none !important; background: transparent !important; padding: 0 4px !important; gap: 5px !important; }
-  .pill .dot { width: 5px !important; height: 5px !important; }
+  /* ── Cards — tactical sharp edge with cyan top accent ── */
+  .card {
+    background: rgba(4,9,16,0.95) !important;
+    border: 1px solid rgba(0,196,224,0.07) !important;
+    border-top: 1px solid rgba(0,196,224,0.22) !important;
+    border-radius: 3px !important;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,196,224,0.06) !important;
+  }
+  .card::before { display: none; }
+  /* ISRO-orange corner accent */
+  .card::after {
+    content: '';
+    position: absolute;
+    top: -1px; right: -1px;
+    width: 0; height: 0;
+    border-top: 10px solid rgba(255,85,0,0.5);
+    border-left: 10px solid transparent;
+    z-index: 2;
+  }
 
-  /* ── Card title dots → hidden; replaced by red · marker ── */
-  .cdot { display: none !important; }
-  .ct-l::before { content: '·'; color: #7a1a1a; font-size: .85rem; margin-right: 6px; font-weight: 300; opacity: .85; }
-  .ct { letter-spacing: .13em !important; color: var(--muted) !important; }
+  /* ── Card title ── */
+  .ct { letter-spacing: .14em !important; color: var(--muted) !important; font-size: .5rem !important; }
+  .ct-l::before { content: none; }
+  .cdot { display: flex !important; }
+  .cdot.c { background: var(--cyan) !important; box-shadow: 0 0 5px var(--cyan-g) !important; }
+  .cdot.g { background: var(--green) !important; box-shadow: 0 0 5px var(--green-g) !important; }
+  .cdot.v { background: var(--violet) !important; }
+  .cdot.r { background: var(--red) !important; }
+  .cdot.y { background: var(--yellow) !important; }
 
-  /* ── Signal bars — bone, no glow ── */
-  .sig-bar      { background: rgba(200,210,205,0.2) !important; }
-  .sig-bar.lost { background: rgba(180,50,50,0.6)   !important; }
+  /* ── Status dot ── */
+  .dot     { background: var(--green) !important; box-shadow: 0 0 6px var(--green-g) !important; }
+  .dot.out { background: var(--red) !important; box-shadow: 0 0 8px var(--red-g) !important; animation: blink .7s step-end infinite; }
+  .pill    { background: rgba(0,196,224,0.05) !important; border: 1px solid rgba(0,196,224,0.14) !important; padding: 3px 10px !important; gap: 6px !important; border-radius: 20px !important; }
+  .pill .dot { width: 6px !important; height: 6px !important; }
 
-  /* ── Metric value colours (map lines keep their colours) ── */
-  .mv.c { color: var(--bone)     !important; }   /* NAVDRIFT ATE — bone */
-  .mv.g { color: #5fba95        !important; }   /* pass green — softer */
-  .mv.v { color: #9b72d8        !important; }   /* EKF — softer violet */
-  .mv.r { color: var(--red)     !important; }
-  .mv.y { color: var(--yellow)  !important; }
+  /* ── Header ── */
+  header { background: rgba(2,5,9,0.99) !important; border-bottom: 1px solid rgba(0,196,224,0.1) !important; position: relative; }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,85,0,0.25) 20%, rgba(0,196,224,0.15) 50%, rgba(255,85,0,0.25) 80%, transparent);
+    pointer-events: none;
+  }
+  .brand-name { font-size: .9rem !important; letter-spacing: .06em !important; color: var(--bone) !important; }
+  .brand-sub { font-size: .48rem !important; color: rgba(68,85,102,0.9) !important; letter-spacing: .15em !important; }
+  .brand-logo svg { filter: none !important; opacity: 0.9; }
 
-  /* ── HUD map overlays ── */
-  .hv     { color: var(--bone) !important; }
-  .hv.out { color: var(--red)  !important; }
-  .hbox   { background: rgba(5,7,10,0.75) !important; border-color: var(--line-soft) !important; backdrop-filter: none !important; }
-  .hl     { color: var(--muted) !important; }
-
-  /* ── Header status area — flat text, no pill backgrounds ── */
-  .phase-badge          { border: none !important; background: transparent !important; padding: 0 4px !important; border-radius: 0 !important; font-size: .6rem !important; letter-spacing: .12em !important; }
-  .phase-badge.nominal  { color: var(--muted) !important; }
-  .phase-badge.blackout { color: var(--red)   !important; }
-  .phase-badge.snap     { color: var(--bone-dim) !important; }
-  .phase-badge.cal      { color: rgba(200,160,50,0.7) !important; }
-  .phase-dot            { display: none !important; }
+  /* ── Phase badge ── */
+  .phase-badge          { border: 1px solid !important; border-radius: 3px !important; padding: 3px 10px !important; font-size: .58rem !important; letter-spacing: .1em !important; }
+  .phase-badge.nominal  { color: var(--green) !important; border-color: rgba(0,200,122,0.3) !important; background: rgba(0,200,122,0.07) !important; }
+  .phase-badge.blackout { color: var(--red) !important; border-color: rgba(224,32,32,0.4) !important; background: rgba(224,32,32,0.08) !important; animation: blink .6s step-end infinite; }
+  .phase-badge.snap     { color: var(--cyan) !important; border-color: rgba(0,196,224,0.3) !important; background: rgba(0,196,224,0.06) !important; }
+  .phase-badge.cal      { color: var(--yellow) !important; border-color: rgba(240,160,0,0.3) !important; background: rgba(240,160,0,0.07) !important; }
+  .phase-dot            { display: flex !important; background: currentColor; box-shadow: 0 0 5px currentColor !important; }
   .badge-ps             { display: none !important; }
-  .badge-mode           { background: transparent !important; border: none !important; color: var(--muted) !important; letter-spacing: .1em !important; padding: 0 !important; }
-  .badge-mode.live      { color: #5fba95 !important; }
-  .brand-logo svg       { filter: none !important; opacity: 0.8; }
+  .badge-mode           { background: rgba(0,196,224,0.07) !important; border: 1px solid rgba(0,196,224,0.2) !important; color: var(--cyan) !important; letter-spacing: .08em !important; }
+  .badge-mode.live      { background: rgba(0,200,122,0.07) !important; color: var(--green) !important; border-color: rgba(0,200,122,0.25) !important; }
 
   /* ── City tabs ── */
-  .city-tab.active { background: rgba(223,231,224,0.05) !important; color: var(--bone) !important; border-color: var(--line) !important; }
+  .city-tab { color: var(--muted) !important; border-color: transparent !important; }
+  .city-tab.active { color: var(--cyan) !important; background: rgba(0,196,224,0.08) !important; border-color: rgba(0,196,224,0.22) !important; }
+  .city-tab:hover:not(.active) { color: var(--bone-dim) !important; background: rgba(0,196,224,0.04) !important; }
 
   /* ── NavIC toggle ── */
-  .navic-toggle        { background: rgba(223,231,224,0.04) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
-  .navic-toggle.navonly{ color: rgba(200,160,50,0.7) !important; border-color: rgba(200,150,40,0.2) !important; background: rgba(200,150,40,0.05) !important; }
+  .navic-toggle        { background: rgba(0,196,224,0.06) !important; color: var(--bone-dim) !important; border-color: rgba(0,196,224,0.18) !important; }
+  .navic-toggle.navonly{ color: var(--yellow) !important; border-color: rgba(240,160,0,0.3) !important; background: rgba(240,160,0,0.07) !important; }
 
   /* ── Panel tabs ── */
-  .ptab-bar      { background: transparent !important; border: none !important; border-bottom: 1px solid var(--line-soft) !important; border-radius: 0 !important; padding: 0 !important; gap: 0 !important; }
-  .ptab          { border-radius: 0 !important; padding: 5px 10px !important; }
-  .ptab.active   { background: transparent !important; border-color: transparent !important; border-bottom: 1px solid rgba(122,26,26,0.55) !important; color: var(--bone-dim) !important; border-radius: 0 !important; }
+  .ptab-bar   { background: transparent !important; border: none !important; border-bottom: 1px solid rgba(0,196,224,0.07) !important; border-radius: 0 !important; padding: 0 !important; gap: 0 !important; }
+  .ptab       { border-radius: 0 !important; padding: 5px 8px !important; color: var(--muted) !important; }
+  .ptab.active{ background: transparent !important; border-color: transparent !important; border-bottom: 2px solid rgba(255,85,0,0.6) !important; color: var(--bone-dim) !important; }
+  .ptab:hover:not(.active) { color: var(--bone-dim) !important; background: rgba(0,196,224,0.03) !important; }
+
+  /* ── Metric values — full color ── */
+  .mv.c { color: var(--cyan)   !important; text-shadow: 0 0 10px rgba(0,196,224,0.35) !important; }
+  .mv.g { color: var(--green)  !important; }
+  .mv.v { color: var(--violet) !important; }
+  .mv.r { color: var(--red)    !important; }
+  .mv.y { color: var(--yellow) !important; }
+  .mv   { font-size: .88rem !important; }
+
+  /* ── Signal bars ── */
+  .sig-bar      { background: var(--green) !important; box-shadow: 0 0 4px var(--green-g) !important; }
+  .sig-bar.lost { background: var(--red) !important; box-shadow: 0 0 6px var(--red-g) !important; animation: blink 1s step-end infinite !important; }
+
+  /* ── HUD map overlays ── */
+  .hv     { color: var(--cyan) !important; }
+  .hv.out { color: var(--red)  !important; }
+  .hbox   { background: rgba(2,5,9,0.92) !important; border: 1px solid rgba(0,196,224,0.1) !important; border-radius: 3px !important; backdrop-filter: blur(8px) !important; }
+  .hl     { color: var(--muted) !important; }
+
+  /* ── Map scanlines + vignette ── */
+  .map-wrap { border-radius: 3px !important; border: 1px solid rgba(0,196,224,0.1) !important; }
+  .map-wrap::after {
+    content: '';
+    position: absolute; inset: 0; pointer-events: none; z-index: 499;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.025) 3px, rgba(0,0,0,0.025) 4px);
+  }
 
   /* ── Control buttons ── */
-  .btn.p                { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
-  .btn.d                { background: rgba(160,30,30,0.08)   !important; color: rgba(220,60,60,0.65) !important; border-color: rgba(160,30,30,0.25) !important; }
-  .btn[style*="violet"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
-  .btn[style*="yellow"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
-  .btn[style*="green"]  { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
-  .btn[style*="red"]    { background: rgba(160,30,30,0.08)   !important; color: rgba(220,60,60,0.6) !important; border-color: rgba(160,30,30,0.2) !important; }
-  label[style*="violet"]{ background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
-  .btn-icon:hover       { background: rgba(223,231,224,0.06) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .btn.p { background: rgba(0,196,224,0.08) !important; color: var(--cyan) !important; border-color: rgba(0,196,224,0.25) !important; }
+  .btn.d { background: rgba(224,32,32,0.08) !important; color: var(--red) !important; border-color: rgba(224,32,32,0.25) !important; }
+  .btn[style*="violet"] { background: rgba(139,92,246,0.08) !important; color: var(--violet) !important; border-color: rgba(139,92,246,0.25) !important; }
+  .btn[style*="yellow"] { background: rgba(240,160,0,0.08) !important; color: var(--yellow) !important; border-color: rgba(240,160,0,0.25) !important; }
+  .btn[style*="green"]  { background: rgba(0,200,122,0.08) !important; color: var(--green) !important; border-color: rgba(0,200,122,0.25) !important; }
+  .btn[style*="red"]    { background: rgba(224,32,32,0.08) !important; color: var(--red) !important; border-color: rgba(224,32,32,0.22) !important; }
+  label[style*="violet"]{ background: rgba(139,92,246,0.08) !important; color: var(--violet) !important; border-color: rgba(139,92,246,0.25) !important; }
+  .btn-icon:hover { background: rgba(0,196,224,0.08) !important; color: var(--cyan) !important; border-color: rgba(0,196,224,0.25) !important; }
 
   /* ── Module chips ── */
-  .mod.on  { background: rgba(40,80,60,0.12) !important; color: rgba(95,186,149,0.7) !important; border-color: rgba(40,80,60,0.28) !important; }
-  .mod.off { color: rgba(120,131,124,0.45) !important; }
+  .mod.on  { background: rgba(0,200,122,0.08) !important; color: var(--green) !important; border-color: rgba(0,200,122,0.25) !important; }
+  .mod.warn{ background: rgba(240,160,0,0.08) !important; color: var(--yellow) !important; border-color: rgba(240,160,0,0.25) !important; }
+  .mod.off { color: rgba(68,85,102,0.6) !important; border-color: rgba(0,196,224,0.05) !important; }
 
-  /* ── Sensor / calibration bars ── */
-  .sbar-fill { background: rgba(200,210,205,0.3) !important; }
-  .sbar-val  { color: var(--bone-dim) !important; }
-  .fbar-fill { opacity: 0.65; }
+  /* ── Calibration / sensor bars ── */
+  .sbar-fill { background: var(--cyan) !important; }
+  .sbar-val  { color: var(--cyan) !important; }
+  .fbar-fill { opacity: 0.8; }
+  .spark-num { color: var(--cyan) !important; }
 
-  /* ── Sparklines ── */
-  .spark-num { color: var(--bone-dim) !important; }
-
-  /* ── MET clock ── */
-  #met-clock        { color: var(--muted) !important; }
-  #navic-lock-badge { color: var(--muted) !important; font-weight: 500 !important; }
+  /* ── MET / NavIC lock ── */
+  #met-clock        { color: var(--cyan) !important; }
+  #navic-lock-badge { color: var(--green) !important; font-weight: 700 !important; }
 
   /* ── Pipeline bottom bar ── */
-  .pmod.active      { background: rgba(223,231,224,0.03) !important; }
-  .pmod.active .pico{ filter: none !important; opacity: 0.8; }
-  .pmod.active .pname{ color: var(--bone-dim) !important; }
-  .pmod:hover       { background: rgba(223,231,224,0.02) !important; }
-  .pname            { color: var(--muted) !important; }
-  .psub             { color: rgba(120,131,124,0.45) !important; }
+  .pipe         { background: rgba(2,5,9,0.99) !important; border-top: 1px solid rgba(0,196,224,0.1) !important; }
+  .pmod.active  { background: rgba(0,196,224,0.05) !important; }
+  .pmod.active .pico  { filter: drop-shadow(0 0 4px var(--cyan)) !important; }
+  .pmod.active .pname { color: var(--cyan) !important; }
+  .pmod:hover   { background: rgba(0,196,224,0.03) !important; }
+  .pname        { color: var(--muted) !important; }
+  .psub         { color: rgba(68,85,102,0.5) !important; }
 
   /* ── Modal ── */
-  .mtitle           { color: var(--bone) !important; }
-  .cal-title        { color: var(--bone-dim) !important; }
-  .minp:focus       { border-color: var(--line) !important; box-shadow: none !important; }
-  .cal-btn.primary  { background: rgba(223,231,224,0.06) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .mtitle  { color: var(--cyan) !important; }
+  .cal-title { color: var(--bone-dim) !important; }
+  .minp:focus { border-color: rgba(0,196,224,0.3) !important; box-shadow: 0 0 0 2px rgba(0,196,224,0.07) !important; }
+  .cal-btn.primary { background: rgba(0,196,224,0.08) !important; color: var(--cyan) !important; border-color: rgba(0,196,224,0.28) !important; }
+  .modal { border-radius: 4px !important; border-color: rgba(0,196,224,0.12) !important; }
 
-  /* ── Drift delta & compliance chips ── */
-  .drift-delta            { background: rgba(40,80,60,0.07) !important; border-color: rgba(40,80,60,0.2) !important; }
-  .drift-delta-val        { color: #5fba95 !important; }
+  /* ── Drift delta & compliance ── */
+  .drift-delta          { background: rgba(0,200,122,0.06) !important; border-color: rgba(0,200,122,0.2) !important; }
+  .drift-delta-val      { color: var(--green) !important; }
   .drift-delta.bad .drift-delta-val { color: var(--red) !important; }
-  .cs.ok                  { background: rgba(40,80,60,0.12) !important; color: #5fba95 !important; border-color: rgba(40,80,60,0.3) !important; }
-  table.bench tr.rnd td   { color: var(--bone) !important; font-weight: 600; }
+  .cs.ok   { background: rgba(0,200,122,0.08) !important; color: var(--green) !important; border-color: rgba(0,200,122,0.28) !important; }
+  table.bench tr.rnd td { color: var(--cyan) !important; font-weight: 700; }
+  table.bench tr.rekf td{ color: var(--violet) !important; }
+  table.bench tr.rimu td{ color: var(--red) !important; }
 
-  /* ── Card top-edge shimmer ── */
-  .card::before { background: linear-gradient(90deg,transparent,rgba(223,231,224,0.055),transparent) !important; }
+  /* ── Atmospheric grid — cyan tactical ── */
+  body::before {
+    background-image:
+      linear-gradient(rgba(0,196,224,0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,196,224,0.022) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
 
-  /* ── Grain noise overlay ── */
+  /* ── Vignette — tactical oval ── */
+  .app::after {
+    background: radial-gradient(ellipse 110% 110% at 50% 50%, transparent 55%, rgba(0,0,0,0.45) 100%) !important;
+  }
+
+  /* ── Grain noise — subtle ── */
   body::after {
     content: ''; position: fixed; inset: 0; z-index: 9000; pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
-    opacity: 0.038; mix-blend-mode: overlay;
+    opacity: 0.028; mix-blend-mode: overlay;
   }
   </style>
 </head>
