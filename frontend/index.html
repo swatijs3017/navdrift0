@@ -18,31 +18,32 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
     :root {
-      /* ── ISRO Mission Control Palette ── */
-      --ink:   #020509;
-      --ink-2: #060b12;
-      --bone:  #D4E2EE;
-      --bone-dim: #7A94A8;
-      --muted: #445566;
-      --line:  rgba(0,196,224,0.10);
-      --line-soft: rgba(0,196,224,0.05);
+      /* ── Kage palette ── */
+      --ink:   #05070a;
+      --ink-2: #080c10;
+      --bone:  #dfe7e0;
+      --bone-dim: #aab4ad;
+      --muted: #78837c;
+      --line:  rgba(223,231,224,0.10);
+      --line-soft: rgba(223,231,224,0.05);
 
-      --bg: var(--ink); --surface: var(--ink-2); --card: rgba(3,7,12,0.96);
-      --cyan: #00C4E0; --cyan-d: rgba(0,196,224,0.10); --cyan-g: rgba(0,196,224,0.35);
-      --violet: #A78BFA; --violet-d: rgba(167,139,250,0.12);
-      --red: #E02020; --red-d: rgba(224,32,32,0.12); --red-g: rgba(224,32,32,0.4);
-      --green: #00C87A; --green-d: rgba(0,200,122,0.10); --green-g: rgba(0,200,122,0.35);
-      --yellow: #F0A000; --orange: #FF5500;
+      /* map old vars → Kage */
+      --bg: var(--ink); --surface: var(--ink-2); --card: rgba(8,12,16,0.88);
+      --cyan: #00fff5; --cyan-d: rgba(0,255,245,0.10); --cyan-g: rgba(0,255,245,0.28);
+      --violet: #a855f7; --violet-d: rgba(168,85,247,0.10);
+      --red: #E0231C; --red-d: rgba(224,35,28,0.12); --red-g: rgba(224,35,28,0.35);
+      --green: #00ff9d; --green-d: rgba(0,255,157,0.10); --green-g: rgba(0,255,157,0.3);
+      --yellow: #fbbf24; --orange: #f97316;
       --b1: var(--line); --b2: var(--line-soft);
       --t1: var(--bone); --t2: var(--bone-dim); --t3: var(--muted);
       --mono: 'JetBrains Mono', monospace; --sans: 'Onest', sans-serif;
-      --r: 2px;
+      --r: 8px;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: var(--sans); user-select: none; }
 
     /* ── LAYOUT ── */
-    .app { display: grid; grid-template-rows: 50px auto 1fr 76px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
+    .app { display: grid; grid-template-rows: 50px 1fr 76px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
     .body { display: grid; grid-template-columns: 268px 1fr 252px; gap: 8px; padding: 8px; min-height: 0; overflow: hidden; }
     .panel { display: flex; flex-direction: column; gap: 7px; overflow-y: auto; overflow-x: hidden; }
     .panel::-webkit-scrollbar { width: 3px; }
@@ -61,8 +62,7 @@
       color: var(--bone); font-family: var(--sans); }
     .brand-sub { font-size: .56rem; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; font-family: var(--mono); }
 
-    .city-tabs { display: flex; gap: 2px; background: rgba(5,7,10,0.6); padding: 3px; border-radius: 7px; border: 1px solid var(--line); overflow-x: auto; max-width: 680px; scrollbar-width: none; -ms-overflow-style: none; }
-    .city-tabs::-webkit-scrollbar { display: none; }
+    .city-tabs { display: flex; gap: 2px; background: rgba(5,7,10,0.6); padding: 3px; border-radius: 7px; border: 1px solid var(--line); }
     .city-tab { padding: 4px 14px; font-size: .65rem; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; transition: all .2s; font-family: var(--sans); letter-spacing: .02em; }
     .city-tab.active { color: var(--bone); background: rgba(223,231,224,0.06); border-color: var(--line); }
     .city-tab:hover:not(.active) { color: var(--bone-dim); background: rgba(223,231,224,0.03); }
@@ -157,6 +157,23 @@
     /* ── MAP ── */
     .map-wrap { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); min-height: 0; }
     #map { width: 100%; height: 100%; background: #04060a; }
+
+    /* ── STREET VIEW ── */
+    #road-canvas { position:absolute; inset:0; width:100%; height:100%; display:none; z-index:2; }
+    .map-wrap.street-mode #map { opacity:0; pointer-events:none; }
+    .map-wrap.street-mode #road-canvas { display:block; }
+    .map-wrap.street-mode #minimap-leaf { display:block !important; }
+    #minimap-leaf { display:none; position:absolute; bottom:9px; left:9px; z-index:600; width:200px; height:150px; border-radius:4px; border:1px solid rgba(0,196,224,0.35); overflow:hidden; box-shadow:0 0 16px rgba(0,0,0,0.7); }
+    #sv-toggle { position:absolute; top:9px; right:9px; z-index:601; background:rgba(2,5,9,0.88); border:1px solid rgba(0,196,224,0.35); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.6rem; font-weight:600; padding:4px 10px; border-radius:3px; cursor:pointer; letter-spacing:.08em; transition:all .2s; }
+    #sv-toggle:hover { background:rgba(0,196,224,0.12); }
+    #sv-toggle.active { background:rgba(0,196,224,0.18); border-color:#00C4E0; color:#fff; }
+    #sv-speed-hud { position:absolute; bottom:12px; right:12px; z-index:601; text-align:right; pointer-events:none; }
+    #sv-speed-num { font-family:'JetBrains Mono',monospace; font-size:2.2rem; font-weight:700; color:#00C4E0; line-height:1; text-shadow:0 0 20px rgba(0,196,224,0.8); }
+    #sv-speed-unit { font-family:'JetBrains Mono',monospace; font-size:.6rem; color:rgba(0,196,224,0.6); letter-spacing:.12em; }
+    #sv-mode-badge { position:absolute; top:9px; left:50%; transform:translateX(-50%); z-index:601; font-family:'JetBrains Mono',monospace; font-size:.62rem; font-weight:700; letter-spacing:.1em; padding:3px 10px; border-radius:2px; pointer-events:none; transition:all .3s; }
+    #sv-mode-badge.gnss { background:rgba(0,200,122,0.15); color:#00C87A; border:1px solid rgba(0,200,122,0.4); }
+    #sv-mode-badge.blackout { background:rgba(224,32,32,0.18); color:#FF4455; border:1px solid rgba(224,32,32,0.5); animation:blink .7s step-end infinite; }
+    #sv-mode-badge.tunnel { background:rgba(240,160,0,0.15); color:#F0A000; border:1px solid rgba(240,160,0,0.4); }
     .leaflet-container { background: #04060a !important; }
     .hud { position: absolute; z-index: 500; pointer-events: none; }
     .hud.tl { top: 9px; left: 9px; }
@@ -346,204 +363,121 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     /* Recording indicator */
     .rec-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 7px var(--red-g);animation:blink .7s step-end infinite;margin-right:4px;vertical-align:middle;}
 
-  /* ══════════════════════════════════════════════════════════
-     ISRO MISSION CONTROL — Visual Design System v2
-     NASA density · Military HUD · ISRO SIH 2026 PS #26168
-     ══════════════════════════════════════════════════════════ */
+  /* ════════════════════════════════════════════════════
+     KAGE — consolidated theme layer (no neon, no glow)
+     ════════════════════════════════════════════════════ */
 
-  /* ── Tactical background grid — cyan ── */
-  body::before {
-    background-image:
-      linear-gradient(rgba(0,196,224,0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,196,224,0.05) 1px, transparent 1px);
-    background-size: 44px 44px;
-  }
+  /* ── Remove all decorative box-shadows ── */
+  .dot, .cdot, .sig-bar, .phase-dot, .mod-dot, .rec-dot,
+  .phase-badge { box-shadow: none !important; }
 
-  /* ── Vignette ── */
-  .app::after {
-    background: radial-gradient(ellipse 110% 110% at 50% 50%, transparent 50%, rgba(0,0,0,0.55) 100%) !important;
-  }
+  /* ── Status dot (header GNSS indicator) ── */
+  .dot     { background: rgba(80,130,100,0.7) !important; }
+  .dot.out { background: var(--red) !important; animation: blink .7s step-end infinite; }
+  .pill    { border: none !important; background: transparent !important; padding: 0 4px !important; gap: 5px !important; }
+  .pill .dot { width: 5px !important; height: 5px !important; }
 
-  /* ── Header — deep black with orange sweep ── */
-  header {
-    background: rgba(1,3,6,0.99) !important;
-    border-bottom: 1px solid rgba(255,85,0,0.25) !important;
-    box-shadow: 0 1px 0 rgba(0,196,224,0.08), 0 4px 24px rgba(0,0,0,0.6) !important;
-  }
-  .brand-name { color: #E8F4F8 !important; font-size: .95rem !important; letter-spacing: .07em !important; }
-  .brand-sub  { color: rgba(255,85,0,0.6) !important; letter-spacing: .14em !important; font-size: .47rem !important; }
+  /* ── Card title dots → hidden; replaced by red · marker ── */
+  .cdot { display: none !important; }
+  .ct-l::before { content: '·'; color: #7a1a1a; font-size: .85rem; margin-right: 6px; font-weight: 300; opacity: .85; }
+  .ct { letter-spacing: .13em !important; color: var(--muted) !important; }
 
-  /* ── Hero stats bar ── */
-  .hero-bar {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)) !important;
-    padding: 0 !important;
-    background: #020609 !important;
-    border-top: 2px solid rgba(255,85,0,0.55) !important;
-    border-bottom: 1px solid rgba(0,196,224,0.15) !important;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(0,196,224,0.08) !important;
-  }
-  .hero-bar::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(255,85,0,0.8) 20%, rgba(0,196,224,0.5) 50%, rgba(255,85,0,0.8) 80%, transparent);
-    pointer-events: none;
-  }
-  .hero-stat {
-    display: flex !important; flex-direction: column !important;
-    align-items: center !important; justify-content: center !important;
-    padding: 8px 6px !important;
-    border-right: 1px solid rgba(0,196,224,0.1) !important;
-    position: relative !important;
-  }
-  .hero-stat:last-child { border-right: none !important; }
-  .hero-label {
-    font-size: .4rem !important; color: rgba(100,140,160,0.85) !important;
-    letter-spacing: .14em !important; margin-bottom: 3px !important;
-    text-transform: uppercase !important; font-family: var(--mono) !important;
-  }
-  .hero-val {
-    font-size: 1.05rem !important; font-weight: 700 !important;
-    font-family: var(--mono) !important; letter-spacing: .02em !important; line-height: 1 !important;
-  }
-  .hero-val.cyan   { color: #00C4E0 !important; text-shadow: 0 0 14px rgba(0,196,224,0.6) !important; }
-  .hero-val.violet { color: #A78BFA !important; text-shadow: 0 0 10px rgba(167,139,250,0.4) !important; }
-  .hero-val.green  { color: #00C87A !important; text-shadow: 0 0 14px rgba(0,200,122,0.6) !important; }
-  .hero-val.yellow { color: #F0A000 !important; }
-  .hero-val.orange { color: #FF5500 !important; }
-  .hero-divider    { display: none !important; }
+  /* ── Signal bars — bone, no glow ── */
+  .sig-bar      { background: rgba(200,210,205,0.2) !important; }
+  .sig-bar.lost { background: rgba(180,50,50,0.6)   !important; }
 
-  /* ── Cards — sharp with glowing cyan top ── */
-  .card {
-    background: rgba(3,7,12,0.96) !important;
-    border: 1px solid rgba(0,196,224,0.12) !important;
-    border-top: 2px solid rgba(0,196,224,0.5) !important;
-    border-radius: 2px !important;
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,196,224,0.08) !important;
-    position: relative !important;
-  }
-  /* ISRO orange corner triangle */
-  .card::after {
-    content: '' !important; position: absolute !important;
-    top: -1px !important; right: -1px !important;
-    width: 0 !important; height: 0 !important;
-    border-top: 12px solid rgba(255,85,0,0.65) !important;
-    border-left: 12px solid transparent !important;
-    z-index: 2 !important;
-  }
-  .card::before { display: none !important; }
+  /* ── Metric value colours (map lines keep their colours) ── */
+  .mv.c { color: var(--bone)     !important; }   /* NAVDRIFT ATE — bone */
+  .mv.g { color: #5fba95        !important; }   /* pass green — softer */
+  .mv.v { color: #9b72d8        !important; }   /* EKF — softer violet */
+  .mv.r { color: var(--red)     !important; }
+  .mv.y { color: var(--yellow)  !important; }
 
-  /* ── Card title ── */
-  .ct { color: rgba(100,130,150,0.9) !important; letter-spacing: .15em !important; font-size: .49rem !important; }
-  .cdot { display: flex !important; }
-  .cdot.c { background: #00C4E0 !important; box-shadow: 0 0 6px rgba(0,196,224,0.7) !important; }
-  .cdot.g { background: #00C87A !important; box-shadow: 0 0 6px rgba(0,200,122,0.7) !important; }
-  .cdot.v { background: #A78BFA !important; }
-  .cdot.r { background: #E02020 !important; box-shadow: 0 0 6px rgba(224,32,32,0.6) !important; }
-  .cdot.y { background: #F0A000 !important; }
-  .ct-l::before { display: none !important; content: none !important; }
+  /* ── HUD map overlays ── */
+  .hv     { color: var(--bone) !important; }
+  .hv.out { color: var(--red)  !important; }
+  .hbox   { background: rgba(5,7,10,0.75) !important; border-color: var(--line-soft) !important; backdrop-filter: none !important; }
+  .hl     { color: var(--muted) !important; }
 
-  /* ── Status pill ── */
-  .dot     { background: #00C87A !important; box-shadow: 0 0 8px rgba(0,200,122,0.8) !important; width: 7px !important; height: 7px !important; }
-  .dot.out { background: #E02020 !important; box-shadow: 0 0 10px rgba(224,32,32,0.9) !important; animation: blink .7s step-end infinite !important; }
-  .pill    { background: rgba(0,196,224,0.06) !important; border: 1px solid rgba(0,196,224,0.18) !important; padding: 3px 10px !important; border-radius: 20px !important; }
-
-  /* ── Metric values — FULL color + glow ── */
-  .mv.c { color: #00C4E0 !important; text-shadow: 0 0 12px rgba(0,196,224,0.5) !important; }
-  .mv.g { color: #00C87A !important; text-shadow: 0 0 10px rgba(0,200,122,0.4) !important; }
-  .mv.v { color: #A78BFA !important; }
-  .mv.r { color: #E02020 !important; text-shadow: 0 0 10px rgba(224,32,32,0.5) !important; }
-  .mv.y { color: #F0A000 !important; }
-  .mv   { font-size: .9rem !important; }
-
-  /* ── Phase badges ── */
-  .phase-badge.nominal  { background: rgba(0,200,122,0.12) !important; color: #00C87A !important; border: 1px solid rgba(0,200,122,0.4) !important; border-radius: 3px !important; }
-  .phase-badge.blackout { background: rgba(224,32,32,0.15) !important; color: #FF4455 !important; border: 1px solid rgba(224,32,32,0.5) !important; border-radius: 3px !important; animation: blink .6s step-end infinite !important; }
-  .phase-badge.snap     { background: rgba(0,196,224,0.12) !important; color: #00C4E0 !important; border: 1px solid rgba(0,196,224,0.4) !important; border-radius: 3px !important; }
-  .phase-badge.cal      { background: rgba(240,160,0,0.12) !important; color: #F0A000 !important; border: 1px solid rgba(240,160,0,0.4) !important; border-radius: 3px !important; }
-  .phase-dot { display: flex !important; background: currentColor !important; box-shadow: 0 0 6px currentColor !important; }
-  .badge-ps  { display: none !important; }
-  .badge-mode { background: rgba(0,196,224,0.1) !important; border: 1px solid rgba(0,196,224,0.3) !important; color: #00C4E0 !important; }
-  .badge-mode.live { background: rgba(0,200,122,0.1) !important; color: #00C87A !important; border-color: rgba(0,200,122,0.35) !important; }
+  /* ── Header status area — flat text, no pill backgrounds ── */
+  .phase-badge          { border: none !important; background: transparent !important; padding: 0 4px !important; border-radius: 0 !important; font-size: .6rem !important; letter-spacing: .12em !important; }
+  .phase-badge.nominal  { color: var(--muted) !important; }
+  .phase-badge.blackout { color: var(--red)   !important; }
+  .phase-badge.snap     { color: var(--bone-dim) !important; }
+  .phase-badge.cal      { color: rgba(200,160,50,0.7) !important; }
+  .phase-dot            { display: none !important; }
+  .badge-ps             { display: none !important; }
+  .badge-mode           { background: transparent !important; border: none !important; color: var(--muted) !important; letter-spacing: .1em !important; padding: 0 !important; }
+  .badge-mode.live      { color: #5fba95 !important; }
+  .brand-logo svg       { filter: none !important; opacity: 0.8; }
 
   /* ── City tabs ── */
-  .city-tab        { color: rgba(68,85,102,0.9) !important; }
-  .city-tab.active { color: #00C4E0 !important; background: rgba(0,196,224,0.1) !important; border-color: rgba(0,196,224,0.35) !important; box-shadow: 0 0 8px rgba(0,196,224,0.15) inset !important; }
-  .city-tab:hover:not(.active) { color: #7A94A8 !important; background: rgba(0,196,224,0.05) !important; }
-
-  /* ── Panel tabs ── */
-  .ptab-bar   { background: transparent !important; border: none !important; border-bottom: 1px solid rgba(0,196,224,0.1) !important; border-radius: 0 !important; padding: 0 !important; gap: 0 !important; }
-  .ptab       { border-radius: 0 !important; padding: 5px 10px !important; color: rgba(68,85,102,0.9) !important; }
-  .ptab.active { background: transparent !important; border: none !important; border-bottom: 2px solid rgba(255,85,0,0.7) !important; color: #D4E2EE !important; }
-  .ptab:hover:not(.active) { color: #7A94A8 !important; background: rgba(0,196,224,0.03) !important; }
+  .city-tab.active { background: rgba(223,231,224,0.05) !important; color: var(--bone) !important; border-color: var(--line) !important; }
 
   /* ── NavIC toggle ── */
-  .navic-toggle        { background: rgba(0,196,224,0.07) !important; color: #7A94A8 !important; border-color: rgba(0,196,224,0.2) !important; }
-  .navic-toggle.navonly { color: #F0A000 !important; border-color: rgba(240,160,0,0.35) !important; background: rgba(240,160,0,0.08) !important; }
+  .navic-toggle        { background: rgba(223,231,224,0.04) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .navic-toggle.navonly{ color: rgba(200,160,50,0.7) !important; border-color: rgba(200,150,40,0.2) !important; background: rgba(200,150,40,0.05) !important; }
 
-  /* ── Signal bars ── */
-  .sig-bar      { background: #00C87A !important; box-shadow: 0 0 5px rgba(0,200,122,0.5) !important; }
-  .sig-bar.lost { background: #E02020 !important; box-shadow: 0 0 7px rgba(224,32,32,0.6) !important; animation: blink 1s step-end infinite !important; }
-
-  /* ── Map overlays ── */
-  .hv     { color: #00C4E0 !important; }
-  .hv.out { color: #E02020 !important; }
-  .hbox   { background: rgba(1,3,8,0.92) !important; border: 1px solid rgba(0,196,224,0.15) !important; border-radius: 3px !important; }
-  .hl     { color: rgba(68,85,102,0.9) !important; }
-  .map-wrap { border: 1px solid rgba(0,196,224,0.15) !important; border-radius: 2px !important; }
+  /* ── Panel tabs ── */
+  .ptab-bar      { background: transparent !important; border: none !important; border-bottom: 1px solid var(--line-soft) !important; border-radius: 0 !important; padding: 0 !important; gap: 0 !important; }
+  .ptab          { border-radius: 0 !important; padding: 5px 10px !important; }
+  .ptab.active   { background: transparent !important; border-color: transparent !important; border-bottom: 1px solid rgba(122,26,26,0.55) !important; color: var(--bone-dim) !important; border-radius: 0 !important; }
 
   /* ── Control buttons ── */
-  .btn.p { background: rgba(0,196,224,0.1) !important; color: #00C4E0 !important; border-color: rgba(0,196,224,0.3) !important; }
-  .btn.d { background: rgba(224,32,32,0.1) !important; color: #E02020 !important; border-color: rgba(224,32,32,0.3) !important; }
-  .btn[style*="violet"] { background: rgba(167,139,250,0.1) !important; color: #A78BFA !important; border-color: rgba(167,139,250,0.3) !important; }
-  .btn[style*="yellow"] { background: rgba(240,160,0,0.1) !important; color: #F0A000 !important; border-color: rgba(240,160,0,0.3) !important; }
-  .btn[style*="green"]  { background: rgba(0,200,122,0.1) !important; color: #00C87A !important; border-color: rgba(0,200,122,0.3) !important; }
-  .btn[style*="red"]    { background: rgba(224,32,32,0.1) !important; color: #E02020 !important; border-color: rgba(224,32,32,0.28) !important; }
-  label[style*="violet"] { background: rgba(167,139,250,0.1) !important; color: #A78BFA !important; border-color: rgba(167,139,250,0.3) !important; }
-  .btn-icon:hover { background: rgba(0,196,224,0.1) !important; color: #00C4E0 !important; border-color: rgba(0,196,224,0.3) !important; }
+  .btn.p                { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .btn.d                { background: rgba(160,30,30,0.08)   !important; color: rgba(220,60,60,0.65) !important; border-color: rgba(160,30,30,0.25) !important; }
+  .btn[style*="violet"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  .btn[style*="yellow"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  .btn[style*="green"]  { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  .btn[style*="red"]    { background: rgba(160,30,30,0.08)   !important; color: rgba(220,60,60,0.6) !important; border-color: rgba(160,30,30,0.2) !important; }
+  label[style*="violet"]{ background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  .btn-icon:hover       { background: rgba(223,231,224,0.06) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
 
   /* ── Module chips ── */
-  .mod.on   { background: rgba(0,200,122,0.1) !important; color: #00C87A !important; border-color: rgba(0,200,122,0.3) !important; }
-  .mod.warn { background: rgba(240,160,0,0.1) !important; color: #F0A000 !important; border-color: rgba(240,160,0,0.3) !important; }
-  .mod.off  { color: rgba(68,85,102,0.5) !important; border-color: rgba(0,196,224,0.06) !important; }
+  .mod.on  { background: rgba(40,80,60,0.12) !important; color: rgba(95,186,149,0.7) !important; border-color: rgba(40,80,60,0.28) !important; }
+  .mod.off { color: rgba(120,131,124,0.45) !important; }
 
-  /* ── Calibration bars ── */
-  .sbar-fill { background: #00C4E0 !important; box-shadow: 0 0 6px rgba(0,196,224,0.4) !important; }
-  .sbar-val  { color: #00C4E0 !important; }
-  .spark-num { color: #00C4E0 !important; }
+  /* ── Sensor / calibration bars ── */
+  .sbar-fill { background: rgba(200,210,205,0.3) !important; }
+  .sbar-val  { color: var(--bone-dim) !important; }
+  .fbar-fill { opacity: 0.65; }
 
-  /* ── MET / NavIC lock ── */
-  #met-clock        { color: #00C4E0 !important; text-shadow: 0 0 8px rgba(0,196,224,0.4) !important; }
-  #navic-lock-badge { color: #00C87A !important; font-weight: 700 !important; text-shadow: 0 0 6px rgba(0,200,122,0.4) !important; }
+  /* ── Sparklines ── */
+  .spark-num { color: var(--bone-dim) !important; }
 
-  /* ── Pipeline ── */
-  .pipe         { background: rgba(1,3,6,0.99) !important; border-top: 1px solid rgba(255,85,0,0.2) !important; }
-  .pmod.active  { background: rgba(0,196,224,0.06) !important; border-top: 1px solid rgba(0,196,224,0.2) !important; }
-  .pmod.active .pico  { filter: drop-shadow(0 0 5px #00C4E0) !important; }
-  .pmod.active .pname { color: #00C4E0 !important; }
-  .pmod:hover   { background: rgba(0,196,224,0.03) !important; }
-  .pname        { color: rgba(68,85,102,0.9) !important; }
-  .psub         { color: rgba(68,85,102,0.45) !important; }
+  /* ── MET clock ── */
+  #met-clock        { color: var(--muted) !important; }
+  #navic-lock-badge { color: var(--muted) !important; font-weight: 500 !important; }
 
-  /* ── Drift delta ── */
-  .drift-delta     { background: rgba(0,200,122,0.08) !important; border-color: rgba(0,200,122,0.25) !important; }
-  .drift-delta-val { color: #00C87A !important; text-shadow: 0 0 8px rgba(0,200,122,0.4) !important; }
-  .drift-delta.bad .drift-delta-val { color: #E02020 !important; }
-  .cs.ok { background: rgba(0,200,122,0.1) !important; color: #00C87A !important; border-color: rgba(0,200,122,0.3) !important; }
-  table.bench tr.rnd td  { color: #00C4E0 !important; font-weight: 700 !important; }
-  table.bench tr.rekf td { color: #A78BFA !important; }
-  table.bench tr.rimu td { color: #E02020 !important; }
+  /* ── Pipeline bottom bar ── */
+  .pmod.active      { background: rgba(223,231,224,0.03) !important; }
+  .pmod.active .pico{ filter: none !important; opacity: 0.8; }
+  .pmod.active .pname{ color: var(--bone-dim) !important; }
+  .pmod:hover       { background: rgba(223,231,224,0.02) !important; }
+  .pname            { color: var(--muted) !important; }
+  .psub             { color: rgba(120,131,124,0.45) !important; }
 
   /* ── Modal ── */
-  .mtitle  { color: #00C4E0 !important; }
-  .cal-btn.primary { background: rgba(0,196,224,0.1) !important; color: #00C4E0 !important; border-color: rgba(0,196,224,0.3) !important; }
-  .modal { border-color: rgba(0,196,224,0.15) !important; border-radius: 3px !important; }
+  .mtitle           { color: var(--bone) !important; }
+  .cal-title        { color: var(--bone-dim) !important; }
+  .minp:focus       { border-color: var(--line) !important; box-shadow: none !important; }
+  .cal-btn.primary  { background: rgba(223,231,224,0.06) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
 
-  /* ── Grain noise ── */
+  /* ── Drift delta & compliance chips ── */
+  .drift-delta            { background: rgba(40,80,60,0.07) !important; border-color: rgba(40,80,60,0.2) !important; }
+  .drift-delta-val        { color: #5fba95 !important; }
+  .drift-delta.bad .drift-delta-val { color: var(--red) !important; }
+  .cs.ok                  { background: rgba(40,80,60,0.12) !important; color: #5fba95 !important; border-color: rgba(40,80,60,0.3) !important; }
+  table.bench tr.rnd td   { color: var(--bone) !important; font-weight: 600; }
+
+  /* ── Card top-edge shimmer ── */
+  .card::before { background: linear-gradient(90deg,transparent,rgba(223,231,224,0.055),transparent) !important; }
+
+  /* ── Grain noise overlay ── */
   body::after {
     content: ''; position: fixed; inset: 0; z-index: 9000; pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
-    opacity: 0.032; mix-blend-mode: overlay;
+    opacity: 0.038; mix-blend-mode: overlay;
   }
   </style>
 </head>
@@ -610,17 +544,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <button class="city-tab" onclick="switchCity('bengaluru',event)">Bengaluru</button>
       <button class="city-tab" onclick="switchCity('chennai',event)">Chennai</button>
       <button class="city-tab" onclick="switchCity('hyderabad',event)">Hyderabad</button>
-      <button class="city-tab" onclick="switchCity('kolkata',event)">Kolkata</button>
-      <button class="city-tab" onclick="switchCity('pune',event)">Pune</button>
-      <button class="city-tab" onclick="switchCity('ahmedabad',event)">Ahmedabad</button>
-      <button class="city-tab" onclick="switchCity('jaipur',event)">Jaipur</button>
-      <button class="city-tab" onclick="switchCity('lucknow',event)">Lucknow</button>
-      <button class="city-tab" onclick="switchCity('kochi',event)">Kochi</button>
-      <button class="city-tab" onclick="switchCity('nagpur',event)">Nagpur</button>
-      <button class="city-tab" onclick="switchCity('chandigarh',event)">Chandigarh</button>
-      <button class="city-tab" onclick="switchCity('surat',event)">Surat</button>
-      <button class="city-tab" onclick="switchCity('indore',event)">Indore</button>
-      <button class="city-tab" onclick="switchCity('vizag',event)">Vizag</button>
       <button class="city-tab iovnbd" onclick="switchCity('iovnbd',event)" title="IO-VNBD Dataset Replay">IO-VNBD ★</button>
     </div>
 
@@ -633,18 +556,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <div class="btn-icon" onclick="openModal()" title="API Settings">⚙</div>
     </div>
   </header>
-
-  <!-- HERO STATS BAR -->
-  <div class="hero-bar">
-    <div class="hero-stat"><div class="hero-label">NAVDRIFT-0 ATE</div><div class="hero-val cyan" id="hs-nd">78.41 m</div></div>
-    <div class="hero-stat"><div class="hero-label">EKF BASELINE ATE</div><div class="hero-val violet" id="hs-ekf">121.69 m</div></div>
-    <div class="hero-stat"><div class="hero-label">ISRO TARGET</div><div class="hero-val green">≤ 100 m ✓</div></div>
-    <div class="hero-stat"><div class="hero-label">50 M BLACKOUT DRIFT</div><div class="hero-val cyan" id="hs-drift">3.19 m</div></div>
-    <div class="hero-stat"><div class="hero-label">ISRO DRIFT LIMIT</div><div class="hero-val green">≤ 5 m ✓</div></div>
-    <div class="hero-stat"><div class="hero-label">INFERENCE LATENCY</div><div class="hero-val orange">20 ms INT8</div></div>
-    <div class="hero-stat"><div class="hero-label">GNSS-DR TRANSITION</div><div class="hero-val cyan" id="hs-trans">0.4 ms</div></div>
-    <div class="hero-stat"><div class="hero-label">NAVIC CONSTELLATION</div><div class="hero-val green" id="hs-navic">L5 / S1 ✓</div></div>
-  </div>
 
   <!-- BODY -->
   <div class="body">
@@ -774,8 +685,13 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     </div>
 
     <!-- CENTER MAP -->
-    <div class="map-wrap">
+    <div class="map-wrap" id="map-wrap">
       <div id="map"></div>
+      <canvas id="road-canvas"></canvas>
+      <div id="minimap-leaf"></div>
+      <button id="sv-toggle" onclick="toggleStreetView()">⬛ 3D DRIVE</button>
+      <div id="sv-speed-hud" style="display:none"><div id="sv-speed-num">0</div><div id="sv-speed-unit">KM/H</div></div>
+      <div id="sv-mode-badge" class="gnss" style="display:none">GNSS LOCKED</div>
       <div id="route-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(139,26,26,0.88);color:var(--bone);font-size:.72rem;letter-spacing:.08em;padding:5px 14px;border-radius:3px;gap:6px;align-items:center;white-space:nowrap;">⚠ High uncertainty — alternate route suggested</div>
       <div class="hud tl"><div class="hbox">
         <div class="hl">Position</div>
@@ -1040,29 +956,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     bengaluru:{ name:'Bengaluru (Outer Ring)',   lat:12.9352, lon:77.6245, zoom:13, wp:[[12.9352,77.6245],[12.9400,77.6320],[12.9450,77.6390],[12.9480,77.6470],[12.9460,77.6560],[12.9410,77.6620],[12.9340,77.6650],[12.9270,77.6630],[12.9210,77.6580],[12.9180,77.6500],[12.9190,77.6410],[12.9230,77.6330],[12.9280,77.6270],[12.9320,77.6250],[12.9352,77.6245]] },
     chennai:  { name:'Chennai (Anna Salai)',     lat:13.0524, lon:80.2580, zoom:14, wp:[[13.0524,80.2580],[13.0560,80.2560],[13.0600,80.2530],[13.0640,80.2500],[13.0680,80.2470],[13.0710,80.2440],[13.0730,80.2400],[13.0720,80.2360],[13.0690,80.2330],[13.0650,80.2310],[13.0610,80.2320],[13.0570,80.2340],[13.0540,80.2370],[13.0520,80.2410],[13.0510,80.2450],[13.0520,80.2510],[13.0524,80.2580]] },
     hyderabad:{ name:'Hyderabad (ORR Loop)',     lat:17.4065, lon:78.4772, zoom:13, wp:[[17.4065,78.4772],[17.4120,78.4850],[17.4170,78.4940],[17.4180,78.5040],[17.4150,78.5130],[17.4090,78.5190],[17.4010,78.5210],[17.3930,78.5180],[17.3870,78.5110],[17.3840,78.5010],[17.3850,78.4910],[17.3900,78.4830],[17.3960,78.4780],[17.4010,78.4760],[17.4065,78.4772]] },
-    // ── NEW CITY ROUTES ── real OSM-aligned waypoints with tunnel corridors ──
-    kolkata:  { name:'Kolkata (Metro Corridor · Howrah)', lat:22.5726, lon:88.3639, zoom:14, forceTunnelAt:100,
-      wp:[[22.5726,88.3639],[22.5750,88.3660],[22.5780,88.3680],[22.5810,88.3700],[22.5840,88.3715],[22.5870,88.3700],[22.5880,88.3660],[22.5860,88.3620],[22.5830,88.3590],[22.5800,88.3570],[22.5770,88.3580],[22.5750,88.3600],[22.5726,88.3639]] },
-    pune:     { name:'Pune (Katraj Tunnel · Swargate)', lat:18.4655, lon:73.8849, zoom:14, forceTunnelAt:90,
-      wp:[[18.4655,73.8849],[18.4620,73.8820],[18.4580,73.8790],[18.4545,73.8760],[18.4510,73.8740],[18.4480,73.8760],[18.4460,73.8800],[18.4450,73.8850],[18.4460,73.8910],[18.4490,73.8960],[18.4530,73.8990],[18.4570,73.8980],[18.4610,73.8960],[18.4640,73.8930],[18.4655,73.8849]] },
-    ahmedabad:{ name:'Ahmedabad (BRTS · Sabarmati)', lat:23.0225, lon:72.5714, zoom:14, forceTunnelAt:110,
-      wp:[[23.0225,72.5714],[23.0260,72.5760],[23.0300,72.5800],[23.0340,72.5830],[23.0380,72.5820],[23.0410,72.5790],[23.0420,72.5740],[23.0400,72.5690],[23.0360,72.5660],[23.0310,72.5650],[23.0270,72.5670],[23.0240,72.5700],[23.0225,72.5714]] },
-    jaipur:   { name:'Jaipur (Metro · Chandpole)', lat:26.9124, lon:75.7873, zoom:14, forceTunnelAt:85,
-      wp:[[26.9124,75.7873],[26.9150,75.7920],[26.9180,75.7970],[26.9210,75.8010],[26.9240,75.8030],[26.9260,75.7990],[26.9250,75.7940],[26.9220,75.7900],[26.9180,75.7870],[26.9150,75.7860],[26.9124,75.7873]] },
-    lucknow:  { name:'Lucknow (Metro · Hazratganj)', lat:26.8467, lon:80.9462, zoom:14, forceTunnelAt:95,
-      wp:[[26.8467,80.9462],[26.8490,80.9500],[26.8520,80.9540],[26.8550,80.9570],[26.8580,80.9560],[26.8600,80.9520],[26.8590,80.9470],[26.8560,80.9430],[26.8520,80.9410],[26.8490,80.9430],[26.8467,80.9462]] },
-    kochi:    { name:'Kochi (NH-66 Tunnel · Marine Drive)', lat:9.9312, lon:76.2673, zoom:14, forceTunnelAt:105,
-      wp:[[9.9312,76.2673],[9.9340,76.2710],[9.9370,76.2750],[9.9400,76.2780],[9.9430,76.2770],[9.9450,76.2730],[9.9440,76.2680],[9.9410,76.2640],[9.9370,76.2620],[9.9340,76.2640],[9.9312,76.2673]] },
-    nagpur:   { name:'Nagpur (MIHAN Expressway)', lat:21.1458, lon:79.0882, zoom:13, forceTunnelAt:120,
-      wp:[[21.1458,79.0882],[21.1500,79.0960],[21.1540,79.1050],[21.1560,79.1150],[21.1540,79.1250],[21.1500,79.1320],[21.1440,79.1350],[21.1370,79.1320],[21.1310,79.1250],[21.1280,79.1150],[21.1290,79.1050],[21.1330,79.0970],[21.1390,79.0910],[21.1430,79.0880],[21.1458,79.0882]] },
-    chandigarh:{ name:'Chandigarh (NH-44 · Sector 17)', lat:30.7333, lon:76.7794, zoom:14, forceTunnelAt:80,
-      wp:[[30.7333,76.7794],[30.7360,76.7840],[30.7390,76.7880],[30.7420,76.7910],[30.7450,76.7900],[30.7460,76.7860],[30.7450,76.7810],[30.7420,76.7770],[30.7390,76.7750],[30.7360,76.7760],[30.7333,76.7794]] },
-    surat:    { name:'Surat (Diamond Bourse · Ring Road)', lat:21.1702, lon:72.8311, zoom:14, forceTunnelAt:115,
-      wp:[[21.1702,72.8311],[21.1740,72.8360],[21.1780,72.8410],[21.1810,72.8450],[21.1840,72.8440],[21.1860,72.8390],[21.1850,72.8330],[21.1820,72.8270],[21.1780,72.8240],[21.1740,72.8260],[21.1702,72.8311]] },
-    indore:   { name:'Indore (BRT · Rajwada Circuit)', lat:22.7196, lon:75.8577, zoom:14, forceTunnelAt:100,
-      wp:[[22.7196,75.8577],[22.7230,75.8620],[22.7260,75.8660],[22.7290,75.8680],[22.7310,75.8650],[22.7310,75.8600],[22.7290,75.8550],[22.7260,75.8520],[22.7230,75.8530],[22.7210,75.8560],[22.7196,75.8577]] },
-    vizag:    { name:'Vizag (Port Tunnel · Beach Road)', lat:17.6868, lon:83.2185, zoom:14, forceTunnelAt:90,
-      wp:[[17.6868,83.2185],[17.6900,83.2230],[17.6930,83.2270],[17.6960,83.2300],[17.6990,83.2290],[17.7010,83.2250],[17.7000,83.2200],[17.6970,83.2160],[17.6940,83.2140],[17.6910,83.2160],[17.6868,83.2185]] },
     // IO-VNBD: Inertial & Odometry benchmark route — IIT Bombay campus & JVLR tunnel corridor
     // This is the required dataset for ISRO PS #26168 screening
     iovnbd:{ name:'IO-VNBD · IIT Bombay Benchmark Route', lat:19.1334, lon:72.9133, zoom:15, iovnbd:true,
@@ -1132,8 +1025,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       S.forceTunnelAt=120;  // force first tunnel blackout at step 120 (~8 s into replay)
     } else {
       S.imuNoiseMult=1.0;
-      // Use per-city tunnel trigger if defined, otherwise let baro simulation handle it
-      S.forceTunnelAt=c.forceTunnelAt||(-1);
+      S.forceTunnelAt=-1;
     }
     document.getElementById('hud-route').textContent=c.name;
     log('Mission loaded: '+c.name,'sys');
@@ -1236,8 +1128,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     fedUpdate();
 
     if(S.step%180===0&&S.gnss)triggerOut();
-    // Per-city tunnel blackout at configured step (IO-VNBD + all new Indian city tunnel corridors)
-    if(S.forceTunnelAt>0&&S.step===S.forceTunnelAt&&S.gnss)triggerOut();
+    // IO-VNBD: force a tunnel blackout at the configured step to replicate benchmark conditions
+    if(S.iovnbd&&S.forceTunnelAt>0&&S.step===S.forceTunnelAt&&S.gnss)triggerOut();
 
     if(API_MODE){
       const sensor={type:'sensor',data:{accel_x:ax,accel_y:0,accel_z:-9.81,gyro_x:0,gyro_y:0,gyro_z:gz,
@@ -2514,6 +2406,323 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
     window.addEventListener('resize', resize);
     draw();
   })();
+
+  // ─── MINI-MAP (street-view mode) ───────────────────────────────────────────
+  let _miniMap = null;
+  function initMiniMap(lat, lon, zoom) {
+    if (!_miniMap) {
+      _miniMap = L.map('minimap-leaf', { zoomControl:false, attributionControl:false, dragging:false, scrollWheelZoom:false, touchZoom:false, doubleClickZoom:false });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(_miniMap);
+      const ms = document.createElement('style');
+      ms.textContent = '#minimap-leaf .leaflet-tile-pane{filter:brightness(0.28) saturate(0.6) hue-rotate(172deg)}';
+      document.head.appendChild(ms);
+      window._miniDot = L.circleMarker([lat,lon],{radius:5,color:'#00C4E0',fillColor:'#00C4E0',fillOpacity:1,weight:2}).addTo(_miniMap);
+      window._miniTrail = L.polyline([], {color:'#00C4E0',weight:2,opacity:.7}).addTo(_miniMap);
+    }
+    _miniMap.setView([lat,lon], Math.min(zoom,16), {animate:false});
+  }
+  function miniMapUpdate(lat, lon) {
+    if (!_miniMap) return;
+    window._miniDot.setLatLng([lat,lon]);
+    const trail = window._miniTrail.getLatLngs();
+    trail.push([lat,lon]);
+    if(trail.length > 200) trail.shift();
+    window._miniTrail.setLatLngs(trail);
+    _miniMap.setView([lat,lon], _miniMap.getZoom(), {animate:false});
+    setTimeout(()=>{ if(_miniMap) _miniMap.invalidateSize(); }, 50);
+  }
+
+  // ─── 3D STREET VIEW RENDERER ───────────────────────────────────────────────
+  let _svActive = false;
+  let _svRaf = null;
+  let _svNoise = new Float32Array(512);
+  for(let i=0;i<512;i++) _svNoise[i]=Math.random();
+  let _svNoiseT = 0;
+
+  function toggleStreetView() {
+    _svActive = !_svActive;
+    const wrap = document.getElementById('map-wrap');
+    const btn  = document.getElementById('sv-toggle');
+    const speedHud = document.getElementById('sv-speed-hud');
+    const modeBadge = document.getElementById('sv-mode-badge');
+    if (_svActive) {
+      wrap.classList.add('street-mode');
+      btn.classList.add('active');
+      btn.textContent = '🗺 MAP';
+      speedHud.style.display = 'block';
+      modeBadge.style.display = 'block';
+      // init mini map at current city
+      const c = CITIES[S.city];
+      if (c) initMiniMap(c.lat, c.lon, c.zoom || 15);
+      if (_miniMap) setTimeout(() => _miniMap.invalidateSize(), 100);
+      _svRafLoop();
+    } else {
+      wrap.classList.remove('street-mode');
+      btn.classList.remove('active');
+      btn.textContent = '⬛ 3D DRIVE';
+      speedHud.style.display = 'none';
+      modeBadge.style.display = 'none';
+      if (_svRaf) { cancelAnimationFrame(_svRaf); _svRaf = null; }
+    }
+  }
+
+  function _svRafLoop() {
+    if (!_svActive) return;
+    _drawRoad();
+    _svRaf = requestAnimationFrame(_svRafLoop);
+  }
+
+  function _drawRoad() {
+    const cv = document.getElementById('road-canvas');
+    if (!cv || !cv.offsetParent) return;
+    const W = cv.offsetWidth, H = cv.offsetHeight;
+    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+    const ctx = cv.getContext('2d');
+    const spd = S.spd || 0;
+    const inTunnel = S.inTunnel || false;
+    const gnss = S.gnss !== false;
+    _svNoiseT++;
+
+    // ── heading: derive from upcoming waypoints ──
+    const ri = S.ri || 0;
+    const route = S.route || [];
+    const ahead = [];
+    for (let k = ri; k < Math.min(ri+80, route.length); k++) ahead.push(route[k]);
+
+    // Heading changes expressed as normalized x-offset of vanishing point
+    let vpX = W/2;
+    if (ahead.length >= 4) {
+      const dLon = (ahead[3][1]-ahead[0][1]);
+      const dLat = (ahead[3][0]-ahead[0][0]);
+      // Map heading delta to VP offset (-1..1 → vpX shift)
+      const headDeg = Math.atan2(dLon, dLat) * 180/Math.PI;
+      const prevDeg = S._svPrevHead || headDeg;
+      const delta = ((headDeg - prevDeg + 540)%360) - 180; // signed diff
+      S._svVpOff = (S._svVpOff||0)*0.93 + delta*0.22; // smooth
+      S._svPrevHead = headDeg;
+      vpX = W/2 + Math.max(-W*0.32, Math.min(W*0.32, S._svVpOff * W*0.012));
+    }
+    const vpY = H * 0.38;
+
+    // ── Sky ──
+    if (inTunnel) {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      // Sky gradient
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, vpY);
+      if (!gnss) {
+        skyGrad.addColorStop(0, '#0a0005');
+        skyGrad.addColorStop(1, '#1a0510');
+      } else {
+        skyGrad.addColorStop(0, '#020509');
+        skyGrad.addColorStop(0.6, '#060e1a');
+        skyGrad.addColorStop(1, '#0a1520');
+      }
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, W, vpY+2);
+
+      // Horizon haze
+      const hazeGrad = ctx.createLinearGradient(0, vpY-18, 0, vpY+18);
+      hazeGrad.addColorStop(0, 'transparent');
+      hazeGrad.addColorStop(0.5, gnss ? 'rgba(0,196,224,0.04)' : 'rgba(224,32,32,0.05)');
+      hazeGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = hazeGrad;
+      ctx.fillRect(0, vpY-18, W, 36);
+
+      // Stars (sparse)
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      for (let i=0; i<40; i++) {
+        const sx = (_svNoise[i*3]   * W);
+        const sy = (_svNoise[i*3+1] * vpY * 0.85);
+        const ss = _svNoise[i*3+2] * 1.2;
+        ctx.beginPath(); ctx.arc(sx, sy, ss, 0, Math.PI*2); ctx.fill();
+      }
+    }
+
+    // ── Ground ──
+    const groundGrad = ctx.createLinearGradient(0, vpY, 0, H);
+    if (inTunnel) {
+      groundGrad.addColorStop(0, '#0a0a06');
+      groundGrad.addColorStop(1, '#141410');
+    } else {
+      groundGrad.addColorStop(0, '#080c08');
+      groundGrad.addColorStop(1, '#0c1208');
+    }
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(0, vpY, W, H-vpY);
+
+    // ── Road surface ──
+    // Road narrows to VP with perspective. Road width at bottom = 55% of W.
+    const rBotL = W*0.22, rBotR = W*0.78;
+    const rTopL = vpX - 28, rTopR = vpX + 28;
+
+    ctx.beginPath();
+    ctx.moveTo(rBotL, H);
+    ctx.lineTo(rTopL, vpY);
+    ctx.lineTo(rTopR, vpY);
+    ctx.lineTo(rBotR, H);
+    ctx.closePath();
+    const roadGrad = ctx.createLinearGradient(0, vpY, 0, H);
+    if (inTunnel) {
+      roadGrad.addColorStop(0, '#1a1a14');
+      roadGrad.addColorStop(1, '#252520');
+    } else {
+      roadGrad.addColorStop(0, '#151814');
+      roadGrad.addColorStop(1, '#1e221e');
+    }
+    ctx.fillStyle = roadGrad;
+    ctx.fill();
+
+    // ── Lane markings ──
+    // Center dashes
+    const dashCount = 12;
+    const speed_scroll = (spd/80)*0.05;
+    const phase = (_svNoiseT * speed_scroll) % 1;
+    ctx.strokeStyle = '#ffffff55';
+    ctx.lineWidth = 2;
+    for (let d=0; d<dashCount; d++) {
+      const t1 = (d/dashCount + phase) % 1;
+      const t2 = ((d+0.4)/dashCount + phase) % 1;
+      if (t1 > t2) continue;
+      const y1 = vpY + (H-vpY)*t1;
+      const y2 = vpY + (H-vpY)*t2;
+      const x1 = vpX + (W/2-vpX)*(1-t1)*0 + lerp(rTopL,rBotL,t1)*0.5 + lerp(rTopR,rBotR,t1)*0.5;
+      const x2 = lerp(rTopL,rBotL,t2)*0.5 + lerp(rTopR,rBotR,t2)*0.5;
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    }
+    // Edge lines (solid)
+    ctx.strokeStyle = inTunnel ? 'rgba(255,200,0,0.7)' : 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(rTopL,vpY); ctx.lineTo(rBotL,H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(rTopR,vpY); ctx.lineTo(rBotR,H); ctx.stroke();
+
+    // ── Side environment ──
+    if (inTunnel) {
+      // Tunnel walls
+      const wGrad = ctx.createLinearGradient(0, vpY, 0, H);
+      wGrad.addColorStop(0,'#1a1205'); wGrad.addColorStop(1,'#0d0d08');
+      // Left wall
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(rTopL,vpY); ctx.lineTo(rBotL,H); ctx.lineTo(0,H); ctx.closePath();
+      ctx.fillStyle = wGrad; ctx.fill();
+      // Right wall
+      ctx.beginPath(); ctx.moveTo(W,0); ctx.lineTo(rTopR,vpY); ctx.lineTo(rBotR,H); ctx.lineTo(W,H); ctx.closePath();
+      ctx.fillStyle = wGrad; ctx.fill();
+      // Tunnel ceiling
+      ctx.fillStyle = '#0c0c08';
+      ctx.fillRect(0,0,W,vpY);
+      // Overhead lamp strip
+      const lampCount = 8;
+      for (let l=0; l<lampCount; l++) {
+        const lt = ((l/lampCount) + phase*0.5) % 1;
+        const lx = lerp(vpX, W/2, lt);
+        const ly = lerp(vpY*0.6, vpY*0.98, lt);
+        const lR = lerp(2, 8, lt);
+        const lAlpha = lt < 0.05 ? 0 : Math.min(1, lt*6);
+        ctx.beginPath();
+        ctx.arc(lx, ly, lR, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(255,220,160,${lAlpha*0.8})`;
+        ctx.fill();
+        // Glow
+        const grd = ctx.createRadialGradient(lx,ly,0,lx,ly,lR*5);
+        grd.addColorStop(0,`rgba(255,200,100,${lAlpha*0.18})`);
+        grd.addColorStop(1,'transparent');
+        ctx.fillStyle = grd;
+        ctx.fillRect(lx-lR*5,ly-lR*5,lR*10,lR*10);
+      }
+      // Tunnel arch at vanishing point
+      ctx.strokeStyle = 'rgba(80,60,20,0.5)';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(vpX, vpY, 30, Math.PI, 0); ctx.stroke();
+    } else {
+      // Trees left
+      _drawTrees(ctx, vpX, vpY, W, H, rTopL, rBotL, 'left');
+      // Trees right
+      _drawTrees(ctx, vpX, vpY, W, H, rTopR, rBotR, 'right');
+      // Road shoulders
+      ctx.fillStyle = 'rgba(40,50,35,0.8)';
+      ctx.beginPath(); ctx.moveTo(0,vpY); ctx.lineTo(rTopL,vpY); ctx.lineTo(rBotL,H); ctx.lineTo(0,H); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(W,vpY); ctx.lineTo(rTopR,vpY); ctx.lineTo(rBotR,H); ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+    }
+
+    // ── GNSS blackout overlay (static / interference) ──
+    if (!gnss) {
+      // Scanlines
+      ctx.fillStyle = 'rgba(255,0,30,0.04)';
+      for (let y=0; y<H; y+=3) { ctx.fillRect(0,y,W,1); }
+      // Static noise patches
+      const imgd = ctx.createImageData(W, H);
+      const d = imgd.data;
+      const nt = _svNoiseT % 256;
+      for (let px=0; px<W*H; px++) {
+        if (Math.random()<0.06) {
+          const v = _svNoise[(px+nt)%512]*255|0;
+          d[px*4]=v; d[px*4+1]=0; d[px*4+2]=0; d[px*4+3]=30;
+        }
+      }
+      ctx.putImageData(imgd,0,0);
+      // Red vignette
+      const vig = ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.75);
+      vig.addColorStop(0,'transparent');
+      vig.addColorStop(1,'rgba(180,0,20,0.22)');
+      ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
+      // DR drift arrow
+      const drift = S.lat || 0;
+      ctx.strokeStyle='rgba(255,60,80,0.9)'; ctx.lineWidth=2;
+      ctx.setLineDash([6,3]);
+      ctx.beginPath(); ctx.moveTo(W/2,H*0.7); ctx.lineTo(W/2+drift*200,H*0.65); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // ── HUD speed & mode badge ──
+    const speedEl = document.getElementById('sv-speed-num');
+    if (speedEl) speedEl.textContent = Math.round(spd)||0;
+    const badge = document.getElementById('sv-mode-badge');
+    if (badge) {
+      if (!gnss) { badge.className='gnss'; badge.className='blackout'; badge.textContent='GNSS BLACKOUT · DR ACTIVE'; }
+      else if (inTunnel) { badge.className='tunnel'; badge.textContent='TUNNEL · BARO DETECT'; }
+      else { badge.className='gnss'; badge.textContent='GNSS LOCKED · NavIC L5'; }
+    }
+
+    // Update mini-map
+    if (_miniMap && S.ndLa && S.ndLo) miniMapUpdate(S.ndLa, S.ndLo);
+  }
+
+  function _drawTrees(ctx, vpX, vpY, W, H, edgeTopX, edgeBotX, side) {
+    const isLeft = side==='left';
+    const count = 12;
+    const phase = (_svNoiseT * 0.003) % 1;
+    for (let i=0; i<count; i++) {
+      const t = ((i/count)+phase) % 1;
+      if (t<0.02) continue;
+      const edgeX = lerp(edgeTopX, edgeBotX, t);
+      const groundY = vpY + (H-vpY)*t;
+      const h = lerp(8, 60, t);
+      const w = lerp(4, 28, t);
+      const x = isLeft ? edgeX - w*0.7 : edgeX + w*0.7;
+      const alpha = Math.min(1, t*3);
+      // Tree trunk
+      ctx.fillStyle = `rgba(30,22,10,${alpha*0.9})`;
+      ctx.fillRect(x-w*0.08, groundY-h, w*0.16, h);
+      // Tree canopy (pine silhouette)
+      ctx.fillStyle = `rgba(8,22,10,${alpha*0.85})`;
+      ctx.beginPath();
+      ctx.moveTo(x, groundY-h-h*0.5);
+      ctx.lineTo(x-w*0.5, groundY-h*0.3);
+      ctx.lineTo(x+w*0.5, groundY-h*0.3);
+      ctx.closePath();
+      ctx.fill();
+      // Secondary layer
+      ctx.beginPath();
+      ctx.moveTo(x, groundY-h-h*0.25);
+      ctx.lineTo(x-w*0.65, groundY-h*0.6);
+      ctx.lineTo(x+w*0.65, groundY-h*0.6);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function lerp(a, b, t) { return a + (b-a)*t; }
 </script>
 </body>
 </html>
