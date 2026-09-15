@@ -1,0 +1,7 @@
+Model,FP32 Size (MB),INT8 Size (MB),FP32 Inf (ms),INT8 Inf (ms),Accuracy Delta
+DRIFTFormer (4L-8H Transformer),0.036,N/A,3.778,N/A,-1.0
+IMU Denoiser (TCN 5-block),0.026,0.149,0.555,4.815,0.007483
+Adaptive EKF Predictor (MLP),0.006,N/A,0.052,N/A,-1.0
+Tunnel Detector (Bi-LSTM),0.014,N/A,0.424,N/A,-1.0
+NavIC DOP Predictor (MLP),0.004,N/A,0.044,N/A,-1.0
+System Drift Compliance,,,,4.815,0.023% drift (ISRO target <10%)
