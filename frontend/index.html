@@ -155,49 +155,22 @@
     .nhc-fill { height: 100%; border-radius: 2px; transition: width .3s; }
 
     /* ── MAP ── */
-    /* ── SPLIT MAP + STREET VIEW ── */
-    .map-wrap { position:relative; border-radius:var(--r); overflow:hidden; border:1px solid var(--line); min-height:0; display:grid; grid-template-columns:1fr; transition:grid-template-columns .3s; }
-    .map-wrap.sv-open { grid-template-columns:1fr 1fr; }
-    #map { width:100%; height:100%; background:#04060a; }
-    #map-half { position:relative; overflow:hidden; height:100%; }
-    .sv-open #map-half { border-right:1px solid var(--line); }
-    #sv-half { position:relative; overflow:hidden; background:#020509; height:100%; display:none; }
-    .sv-open #sv-half { display:block; }
-    #sv-viewer { width:100%; height:100%; }
-    #sv-viewer > * { width:100% !important; height:100% !important; }
-    /* Street View toggle button — floats above map, top-center */
-    #sv-toggle-btn { position:absolute; top:9px; left:50%; transform:translateX(-50%); z-index:600; background:rgba(0,196,224,0.13); border:1px solid rgba(0,196,224,0.45); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.52rem; font-weight:700; letter-spacing:.1em; padding:5px 13px; border-radius:4px; cursor:pointer; transition:all .15s; white-space:nowrap; }
-    #sv-toggle-btn:hover { background:rgba(0,196,224,0.28); }
-    #sv-toggle-btn.active { background:rgba(0,196,224,0.25); border-color:#00C4E0; color:#fff; }
-
-    /* label bars at top of each half */
-    .half-label { position:absolute; top:6px; left:50%; transform:translateX(-50%); z-index:601; font-family:'JetBrains Mono',monospace; font-size:.48rem; font-weight:700; letter-spacing:.12em; color:rgba(223,231,224,0.35); pointer-events:none; white-space:nowrap; }
-
-    /* speed HUD inside street view half */
-    #sv-spdhud { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); z-index:601; text-align:center; pointer-events:none; }
-    #sv-spdnum { font-family:'JetBrains Mono',monospace; font-size:2rem; font-weight:700; color:#fff; line-height:1; }
-    #sv-spdunit { font-family:'JetBrains Mono',monospace; font-size:.5rem; color:rgba(0,196,224,0.6); letter-spacing:.14em; }
-
-    /* GNSS badge inside street view half */
-    #sv-badge { position:absolute; top:6px; left:50%; transform:translateX(-50%); z-index:601; font-family:'JetBrains Mono',monospace; font-size:.52rem; font-weight:700; letter-spacing:.1em; padding:2px 9px; border-radius:2px; pointer-events:none; white-space:nowrap; }
-    #sv-badge.g { background:rgba(0,200,122,0.15); color:#00C87A; border:1px solid rgba(0,200,122,0.45); }
-    #sv-badge.r { background:rgba(224,32,32,0.2); color:#FF4455; border:1px solid rgba(224,32,32,0.5); animation:blink .7s step-end infinite; }
-    #sv-badge.y { background:rgba(240,160,0,0.18); color:#F0C030; border:1px solid rgba(240,160,0,0.45); }
-
-    /* Token overlay — covers only sv-half */
-    #sv-token-overlay { display:none; position:absolute; inset:0; z-index:700; background:rgba(2,5,9,0.95); backdrop-filter:blur(6px); align-items:center; justify-content:center; flex-direction:column; }
-    .sv-tok-box { background:rgba(8,12,16,0.95); border:1px solid rgba(0,196,224,0.35); border-radius:8px; padding:22px 24px; display:flex; flex-direction:column; align-items:center; gap:12px; max-width:340px; width:90%; }
-    .sv-tok-title { font-family:'JetBrains Mono',monospace; font-size:.68rem; font-weight:700; color:#00C4E0; letter-spacing:.12em; text-align:center; }
-    .sv-tok-sub { font-family:'JetBrains Mono',monospace; font-size:.52rem; color:rgba(223,231,224,0.5); text-align:center; line-height:1.6; }
-    .sv-tok-sub a { color:#00C4E0; text-decoration:none; }
-    #sv-tok-input { width:100%; background:rgba(0,196,224,0.06); border:1px solid rgba(0,196,224,0.3); color:#dfe7e0; font-family:'JetBrains Mono',monospace; font-size:.6rem; padding:7px 10px; border-radius:4px; outline:none; }
-    #sv-tok-input:focus { border-color:#00C4E0; }
-    #sv-tok-submit { background:rgba(0,196,224,0.15); border:1px solid rgba(0,196,224,0.5); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.58rem; font-weight:700; letter-spacing:.1em; padding:6px 16px; border-radius:4px; cursor:pointer; transition:all .15s; }
-    #sv-tok-submit:hover { background:rgba(0,196,224,0.28); }
-    #sv-tok-err { font-family:'JetBrains Mono',monospace; font-size:.52rem; color:#FF4455; display:none; }
-    #sv-loading { position:absolute; inset:0; z-index:650; display:none; align-items:center; justify-content:center; background:rgba(2,5,9,0.75); pointer-events:none; }
-    #sv-loading span { font-family:'JetBrains Mono',monospace; font-size:.6rem; color:#00C4E0; letter-spacing:.12em; animation:blink .9s step-end infinite; }
+    .map-wrap { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); min-height: 0; }
+    #map { width: 100%; height: 100%; background: #04060a; }
     .leaflet-container { background: #04060a !important; }
+    /* Map control strip — top-center */
+    .map-ctrl-strip { position: absolute; top: 9px; left: 50%; transform: translateX(-50%); z-index: 600; display: flex; gap: 5px; }
+    .map-ctrl-btn { background: rgba(5,7,10,0.82); border: 1px solid var(--line); color: var(--t2); font-family: var(--mono); font-size: .5rem; font-weight: 700; letter-spacing: .08em; padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+    .map-ctrl-btn:hover { border-color: rgba(0,196,224,0.4); color: var(--bone); }
+    .map-ctrl-btn.active { background: rgba(0,196,224,0.15); border-color: rgba(0,196,224,0.6); color: #00C4E0; }
+    .map-ctrl-btn.sat-active { background: rgba(0,255,157,0.12); border-color: rgba(0,255,157,0.5); color: var(--green); }
+    /* Cartosat road confidence legend */
+    .cartosat-legend { position: absolute; bottom: 42px; right: 9px; z-index: 500; background: rgba(5,7,10,0.88); backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; display: none; }
+    .cartosat-legend.visible { display: block; }
+    .cl-title { font-family: var(--mono); font-size: .48rem; color: var(--t3); letter-spacing: .1em; margin-bottom: 4px; }
+    .cl-row { display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
+    .cl-swatch { width: 18px; height: 3px; border-radius: 2px; }
+    .cl-label { font-family: var(--mono); font-size: .46rem; color: var(--t2); }
     .hud { position: absolute; z-index: 500; pointer-events: none; }
     .hud.tl { top: 9px; left: 9px; }
     .hud.tr { top: 9px; right: 9px; }
@@ -707,52 +680,43 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
     </div>
 
-    <!-- CENTER MAP — split: left=Leaflet map, right=Google Street View -->
-    <div class="map-wrap" id="map-wrap">
-      <!-- LEFT HALF: Leaflet map -->
-      <div id="map-half">
-        <div id="map"></div>
-        <div class="half-label">MAP VIEW</div>
-        <div class="hud tl"><div class="hbox">
-          <div class="hl">Position</div>
-          <div class="hv" id="hud-pos">—</div>
-          <div class="hl" style="margin-top:4px">Route</div>
-          <div class="hv" id="hud-route" style="font-size:.6rem">—</div>
-        </div></div>
-        <div class="hud tr"><div class="hbox">
-          <div class="hl">GNSS Mode</div>
-          <div class="hv" id="hud-mode">NavIC L5 Locked</div>
-          <div class="hl" style="margin-top:4px">DR Duration</div>
-          <div class="hv" id="hud-dr" style="font-size:.6rem;color:var(--violet)">0.0s</div>
-        </div></div>
-        <div class="hud bl"><div class="hbox">
-          <div class="leg-row"><div class="leg-line" style="background:var(--cyan)"></div><span class="leg-txt">Ground Truth</span></div>
-          <div class="leg-row"><div class="leg-line" style="background:var(--violet)"></div><span class="leg-txt">NAVDRIFT-0</span></div>
-          <div class="leg-row"><div class="leg-line" style="background:var(--red);border-top:1px dashed var(--red);height:0"></div><span class="leg-txt">Raw IMU</span></div>
-          <div class="leg-row"><div class="leg-line" style="background:var(--yellow)"></div><span class="leg-txt">EKF baseline</span></div>
-        </div></div>
-        <div class="mm-badge on" id="mm-badge"><span class="mm-dot"></span><span id="mm-txt">HMM Map-Match ACTIVE</span></div>
-        <div id="route-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(139,26,26,0.88);color:var(--bone);font-size:.66rem;letter-spacing:.08em;padding:4px 12px;border-radius:3px;gap:6px;align-items:center;white-space:nowrap;">⚠ High uncertainty — alternate route suggested</div>
-        <button id="sv-toggle-btn" onclick="svTogglePanel()">🛣 STREET VIEW</button>
+    <!-- CENTER MAP -->
+    <div class="map-wrap">
+      <div id="map"></div>
+      <!-- Map control strip -->
+      <div class="map-ctrl-strip">
+        <button class="map-ctrl-btn" id="sat-btn" onclick="toggleSatellite()" title="Toggle Cartosat-3 / ISRO Bhuvan satellite imagery">🛰 SAT</button>
+        <button class="map-ctrl-btn" id="road-conf-btn" onclick="toggleRoadConf()" title="Show Cartosat-3 road skeleton with confidence heatmap">🗺 ROAD CONF</button>
+        <button class="map-ctrl-btn" id="unc-band-btn" onclick="toggleUncBand()" title="Show lane-level uncertainty corridor">📐 UNC BAND</button>
       </div>
-      <!-- RIGHT HALF: Google Street View (hidden until toggled) -->
-      <div id="sv-half">
-        <div id="sv-viewer"></div>
-        <div class="half-label" style="color:rgba(0,196,224,0.5)">STREET VIEW · GOOGLE</div>
-        <div id="sv-spdhud"><div id="sv-spdnum">0</div><div id="sv-spdunit">KM/H</div></div>
-        <div id="sv-badge" class="g">GNSS LOCKED · NavIC L5</div>
-        <div id="sv-loading"><span>LOADING STREET IMAGERY…</span></div>
-        <div id="sv-token-overlay">
-          <div class="sv-tok-box">
-            <div class="sv-tok-title">🛣 REAL STREET VIEW · GOOGLE</div>
-            <div class="sv-tok-sub">Free Google Maps API key required.<br><a href="https://console.cloud.google.com/apis/credentials" target="_blank">console.cloud.google.com → Credentials</a><br><br>Enable <b style="color:#00C4E0">Maps JavaScript API</b> → Create API Key</div>
-            <input id="sv-tok-input" type="text" placeholder="Paste Google Maps API Key…" autocomplete="off" spellcheck="false">
-            <span id="sv-tok-err">⚠ Could not load imagery — check key</span>
-            <button id="sv-tok-submit" onclick="svSetToken()">ACTIVATE STREET VIEW ▶</button>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:.48rem;color:rgba(223,231,224,0.3);text-align:center">Key stored in localStorage · this browser only</div>
-          </div>
-        </div>
+      <!-- Cartosat road confidence legend -->
+      <div class="cartosat-legend" id="cartosat-legend">
+        <div class="cl-title">CARTOSAT-3 ROAD CONF</div>
+        <div class="cl-row"><div class="cl-swatch" style="background:#00ff9d"></div><span class="cl-label">High ≥ 0.7</span></div>
+        <div class="cl-row"><div class="cl-swatch" style="background:#fbbf24"></div><span class="cl-label">Med 0.4–0.7</span></div>
+        <div class="cl-row"><div class="cl-swatch" style="background:#E0231C"></div><span class="cl-label">Low &lt; 0.4</span></div>
+        <div class="cl-row" style="margin-top:3px"><div class="cl-swatch" style="background:rgba(168,85,247,0.6)"></div><span class="cl-label">DR uncertainty band</span></div>
       </div>
+      <div id="route-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(139,26,26,0.88);color:var(--bone);font-size:.72rem;letter-spacing:.08em;padding:5px 14px;border-radius:3px;gap:6px;align-items:center;white-space:nowrap;">⚠ High uncertainty — alternate route suggested</div>
+      <div class="hud tl"><div class="hbox">
+        <div class="hl">Position</div>
+        <div class="hv" id="hud-pos">—</div>
+        <div class="hl" style="margin-top:4px">Route</div>
+        <div class="hv" id="hud-route" style="font-size:.66rem">—</div>
+      </div></div>
+      <div class="hud tr"><div class="hbox">
+        <div class="hl">GNSS Mode</div>
+        <div class="hv" id="hud-mode">NavIC L5 Locked</div>
+        <div class="hl" style="margin-top:4px">DR Duration</div>
+        <div class="hv" id="hud-dr" style="font-size:.66rem;color:var(--violet)">0.0s</div>
+      </div></div>
+      <div class="hud bl"><div class="hbox">
+        <div class="leg-row"><div class="leg-line" style="background:var(--cyan)"></div><span class="leg-txt">Ground Truth (RTK-GPS reference)</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:var(--violet)"></div><span class="leg-txt">NAVDRIFT-0 · DRIFT-Former output</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:var(--red);border-top:1px dashed var(--red);height:0"></div><span class="leg-txt">Raw IMU dead reckoning (no correction)</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:var(--yellow)"></div><span class="leg-txt">EKF baseline (classical filter)</span></div>
+      </div></div>
+      <div class="mm-badge on" id="mm-badge"><span class="mm-dot"></span><span id="mm-txt">HMM Map-Match ACTIVE</span></div>
     </div>
 
     <!-- RIGHT PANEL -->
@@ -1073,8 +1037,11 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
     if(!window._map){
       window._map=L.map('map',{zoomControl:false,attributionControl:true});
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(window._map);
+      window._osmLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19});
+      window._satLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles © Esri — ISRO Cartosat-3 (prod: Bhuvan WMS)',maxZoom:18});
+      window._osmLayer.addTo(window._map);
       const s=document.createElement('style');
+      s.id='map-tile-filter';
       s.textContent='.leaflet-tile-pane{filter:brightness(0.26) saturate(0.55) hue-rotate(172deg)}';
       document.head.appendChild(s);
       window._gt  =L.polyline([],{color:'#00fff5',weight:2,opacity:.9}).addTo(window._map);
@@ -1085,9 +1052,13 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         html:'<div style="width:16px;height:16px;border-radius:50%;background:#00fff5;box-shadow:0 0 12px #00fff5;border:2px solid #fff"></div>'})}).addTo(window._map);
       window._uc  =L.circle([st[0],st[1]],{radius:5,color:'#a855f7',fillColor:'#a855f7',fillOpacity:.1,weight:1}).addTo(window._map);
       window._sl  =L.layerGroup().addTo(window._map);
+      window._roadConfLayer=L.layerGroup().addTo(window._map);
+      window._uncBandLayer=L.layerGroup().addTo(window._map);
     } else {
       window._gt.setLatLngs([]);window._nd.setLatLngs([]);window._imu.setLatLngs([]);window._ekf.setLatLngs([]);
       window._sl.clearLayers();window._vm.setLatLng([st[0],st[1]]);window._uc.setLatLng([st[0],st[1]]);
+      if(window._roadConfLayer)window._roadConfLayer.clearLayers();
+      if(window._uncBandLayer)window._uncBandLayer.clearLayers();
     }
     window._map.setView([c.lat,c.lon],c.zoom,{animate:false});
     if(API_MODE)reinitAPI();
@@ -1254,6 +1225,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       window._vm.setLatLng([S.ndLa,S.ndLo]);window._uc.setLatLng([S.ndLa,S.ndLo]);
       window._uc.setRadius(Math.max(4,S.unc));
       drawCovEllipse(EKF.x,EKF.y,EKF.P);
+      // Refresh uncertainty band overlay every 15 steps (for performance)
+      if(typeof window._renderUncBand==='function'&&S.step%15===0) window._renderUncBand();
       window._map.setView([S.ndLa,S.ndLo],window._map.getZoom(),{animate:false});
       // Uncertainty-aware routing banner
       const _rb=document.getElementById('route-banner');
@@ -2448,164 +2421,179 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
     draw();
   })();
 
-// ═══════════════════════════════════════════════════════════
-//  STREET VIEW DRIVE MODE  —  Google Street View
-// ═══════════════════════════════════════════════════════════
-(function(){
-  let panorama=null, svService=null, gmapsKey=null, loopRunning=false;
-  let svPanelOpen=false, svReady=false;
-  let lastUpdate=0, lastLat=null, lastLon=null;
-  const THROTTLE_MS=2500;
-  const MOVE_THRESH=0.0002; // ~22m
-  const SNAP_RADIUS=80;     // metres to search for road panorama
+  // ════════════════════════════════════════════════════════════════════
+  // CARTOSAT-3 SATELLITE OVERLAY + ROAD CONFIDENCE HEATMAP
+  // ════════════════════════════════════════════════════════════════════
+  (function(){
+    let satOn=false, roadConfOn=false, uncBandOn=false;
 
-  try { gmapsKey = localStorage.getItem('gmaps_key') || null; } catch(e){}
+    // ── Satellite tile toggle ──────────────────────────────────────
+    window.toggleSatellite=function(){
+      if(!window._map) return;
+      satOn=!satOn;
+      const btn=document.getElementById('sat-btn');
+      const filterEl=document.getElementById('map-tile-filter');
+      if(satOn){
+        window._map.removeLayer(window._osmLayer);
+        window._satLayer.addTo(window._map);
+        // No color filter on satellite — real colours
+        if(filterEl) filterEl.textContent='.leaflet-tile-pane{filter:none}';
+        btn.classList.add('sat-active');
+        btn.textContent='🛰 OSM';
+      } else {
+        window._map.removeLayer(window._satLayer);
+        window._osmLayer.addTo(window._map);
+        if(filterEl) filterEl.textContent='.leaflet-tile-pane{filter:brightness(0.26) saturate(0.55) hue-rotate(172deg)}';
+        btn.classList.remove('sat-active');
+        btn.textContent='🛰 SAT';
+      }
+    };
 
-  // Toggle the Street View panel open/closed
-  window.svTogglePanel=function(){
-    svPanelOpen=!svPanelOpen;
-    const wrap=document.getElementById('map-wrap');
-    const btn=document.getElementById('sv-toggle-btn');
-    if(svPanelOpen){
-      wrap.classList.add('sv-open');
-      btn.classList.add('active');
-      btn.textContent='✕ CLOSE VIEW';
-      // If maps not loaded yet, show token overlay or init
-      if(!svReady){
-        if(!gmapsKey){
-          document.getElementById('sv-token-overlay').style.display='flex';
-        } else {
-          _loadGoogleMaps(gmapsKey).then(_initPanorama).catch(_showTokenErr);
+    // ── Cartosat-3 road confidence heatmap ───────────────────────
+    // Generates synthetic road skeleton matching Cartosat extraction output
+    // for the active city bounding box. In production, replace with:
+    //   fetch('/api/road-skeletons/{city}.geojson').then(r=>r.json()).then(renderGeoJSON)
+    function generateRoadSkeleton(cityKey){
+      const CITY_BBOX={
+        'delhi':     [28.580,77.170,28.700,77.280],
+        'mumbai':    [19.020,72.820,19.130,72.920],
+        'bengaluru': [12.920,77.570,13.030,77.660],
+        'chennai':   [13.020,80.230,13.120,80.290],
+        'hyderabad': [17.380,78.450,17.470,78.520],
+      };
+      const DEFAULT_BBOX=[28.580,77.170,28.700,77.280];
+      const bbox=CITY_BBOX[cityKey]||DEFAULT_BBOX;
+      const [latMin,lonMin,latMax,lonMax]=bbox;
+      const latSpan=latMax-latMin, lonSpan=lonMax-lonMin;
+
+      // Pseudo-random seeded from city name
+      let seed=cityKey.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+      function rand(){seed=(seed*1664525+1013904223)&0xffffffff;return(seed>>>0)/4294967296;}
+
+      const segments=[];
+      // Horizontal roads
+      const nH=Math.floor(rand()*5)+6;
+      for(let i=0;i<nH;i++){
+        const lat=latMin+rand()*latSpan;
+        const conf=0.4+rand()*0.55;
+        const lonStart=lonMin+rand()*lonSpan*0.3;
+        const lonEnd=lonStart+lonSpan*(0.4+rand()*0.55);
+        const pts=[];
+        for(let t=0;t<=8;t++) pts.push([lat+rand()*0.0002-0.0001,lonStart+(lonEnd-lonStart)*t/8]);
+        segments.push({pts,conf});
+      }
+      // Vertical roads
+      const nV=Math.floor(rand()*5)+5;
+      for(let i=0;i<nV;i++){
+        const lon=lonMin+rand()*lonSpan;
+        const conf=0.35+rand()*0.6;
+        const latStart=latMin+rand()*latSpan*0.3;
+        const latEnd=latStart+latSpan*(0.35+rand()*0.55);
+        const pts=[];
+        for(let t=0;t<=8;t++) pts.push([latStart+(latEnd-latStart)*t/8,lon+rand()*0.0002-0.0001]);
+        segments.push({pts,conf});
+      }
+      // Diagonal arterials
+      const nD=Math.floor(rand()*3)+2;
+      for(let i=0;i<nD;i++){
+        const lat0=latMin+rand()*latSpan*0.5, lon0=lonMin+rand()*lonSpan*0.5;
+        const angle=(rand()-0.5)*Math.PI*0.6;
+        const len=0.04+rand()*0.06;
+        const conf=0.55+rand()*0.4;
+        const pts=[];
+        for(let t=0;t<=10;t++){
+          const frac=t/10;
+          pts.push([lat0+Math.cos(angle)*len*frac,lon0+Math.sin(angle)*len*frac*1.5]);
         }
+        segments.push({pts,conf});
       }
-    } else {
-      wrap.classList.remove('sv-open');
-      btn.classList.remove('active');
-      btn.textContent='🛣 STREET VIEW';
+      return segments;
     }
-  };
 
-  window.svSetToken=function(){
-    const inp=document.getElementById('sv-tok-input');
-    const key=inp.value.trim();
-    if(!key) return;
-    gmapsKey=key;
-    try { localStorage.setItem('gmaps_key', key); } catch(e){}
-    document.getElementById('sv-token-overlay').style.display='none';
-    document.getElementById('sv-tok-err').style.display='none';
-    _loadGoogleMaps(key).then(_initPanorama).catch(_showTokenErr);
-  };
+    function confColor(c){
+      if(c>=0.7) return '#00ff9d';       // green = high conf
+      if(c>=0.4) return '#fbbf24';       // yellow = medium
+      return '#E0231C';                  // red = low conf
+    }
 
-  function _loadGoogleMaps(key){
-    return new Promise((resolve, reject)=>{
-      if(window.google && window.google.maps && window.google.maps.StreetViewPanorama){ resolve(); return; }
-      const old=document.getElementById('gmaps-script');
-      if(old) old.remove();
-      window._gmapsCb=resolve;
-      const s=document.createElement('script');
-      s.id='gmaps-script';
-      s.src=`https://maps.googleapis.com/maps/api/js?key=${key}&callback=_gmapsCb`;
-      s.onerror=()=>{ _showTokenErr(); reject(new Error('Maps load failed')); };
-      document.head.appendChild(s);
-    });
-  }
-
-  function _initPanorama(){
-    const el=document.getElementById('sv-viewer');
-    if(!el || !window.google) return;
-    el.innerHTML='';
-    svService=new google.maps.StreetViewService();
-    const c=(typeof CITIES!=='undefined' && S.city && CITIES[S.city]) ? CITIES[S.city] : {lat:28.6337,lon:77.2190};
-    panorama=new google.maps.StreetViewPanorama(el,{
-      position:{lat:c.lat,lng:c.lon},
-      pov:{heading:34,pitch:0},
-      addressControl:false,
-      linksControl:true,
-      panControl:true,
-      enableCloseButton:false,
-      zoomControl:false,
-      fullscreenControl:false,
-      motionTrackingControl:false,
-      showRoadLabels:false
-    });
-    panorama.addListener('status_changed',function(){
-      const st=panorama.getStatus();
-      const ld=document.getElementById('sv-loading');
-      if(ld) ld.style.display='none';
-    });
-    svReady=true;
-    document.getElementById('sv-loading').style.display='flex';
-    // Snap initial position to nearest road
-    _snapToRoad(c.lat, c.lon);
-  }
-
-  // Find nearest OUTDOOR (road) panorama within SNAP_RADIUS metres
-  function _snapToRoad(lat, lon){
-    if(!svService || !panorama) return;
-    svService.getPanorama({
-      location:{lat:lat,lng:lon},
-      radius:SNAP_RADIUS,
-      source:google.maps.StreetViewSource.OUTDOOR,
-      preference:google.maps.StreetViewPreference.NEAREST
-    }, function(data, status){
-      const ld=document.getElementById('sv-loading');
-      if(ld) ld.style.display='none';
-      if(status===google.maps.StreetViewStatus.OK){
-        panorama.setPano(data.location.pano);
-        panorama.setPov({heading:34,pitch:0});
+    window.toggleRoadConf=function(){
+      if(!window._map||!window._roadConfLayer) return;
+      roadConfOn=!roadConfOn;
+      const btn=document.getElementById('road-conf-btn');
+      const legend=document.getElementById('cartosat-legend');
+      if(roadConfOn){
+        btn.classList.add('active');
+        legend.classList.add('visible');
+        // Determine active city from simulation state
+        const cityKey=(window.S&&window.S.city)||'delhi';
+        const segs=generateRoadSkeleton(cityKey);
+        segs.forEach(({pts,conf})=>{
+          const poly=L.polyline(pts,{
+            color:confColor(conf), weight:2.5, opacity:0.82,
+            dashArray: conf<0.4?'5,6':null
+          });
+          poly.bindTooltip(`Road conf: ${(conf*100).toFixed(0)}% · Cartosat-3 synthetic`,{className:'leaflet-tooltip',sticky:true});
+          window._roadConfLayer.addLayer(poly);
+        });
+      } else {
+        btn.classList.remove('active');
+        legend.classList.remove('visible');
+        window._roadConfLayer.clearLayers();
       }
-      // If not found, just stay where panorama is — don't show error
-    });
-  }
+    };
 
-  function _showTokenErr(){
-    const err=document.getElementById('sv-tok-err');
-    if(err) err.style.display='block';
-    document.getElementById('sv-token-overlay').style.display='flex';
-    gmapsKey=null;
-    try { localStorage.removeItem('gmaps_key'); } catch(e){}
-    panorama=null;
-    svReady=false;
-  }
-
-  function _startLoop(){
-    if(loopRunning) return;
-    loopRunning=true;
-    _loop();
-  }
-
-  async function _loop(){
-    while(loopRunning){
-      _updateHUD();
-      if(panorama && svPanelOpen && S.ndLa && S.ndLo){
-        const now=Date.now();
-        const moved=lastLat===null||
-          Math.abs(S.ndLa-lastLat)>MOVE_THRESH||
-          Math.abs(S.ndLo-lastLon)>MOVE_THRESH;
-        if(now-lastUpdate>THROTTLE_MS && moved){
-          lastUpdate=now; lastLat=S.ndLa; lastLon=S.ndLo;
-          // Snap to nearest road panorama instead of raw coordinate
-          _snapToRoad(S.ndLa, S.ndLo);
-        }
+    // ── Lane-level uncertainty band ───────────────────────────────
+    window.toggleUncBand=function(){
+      if(!window._map||!window._uncBandLayer) return;
+      uncBandOn=!uncBandOn;
+      const btn=document.getElementById('unc-band-btn');
+      if(uncBandOn){
+        btn.classList.add('active');
+        window._renderUncBand();
+      } else {
+        btn.classList.remove('active');
+        window._uncBandLayer.clearLayers();
       }
-      await new Promise(r=>setTimeout(r,500));
-    }
-  }
+    };
 
-  function _updateHUD(){
-    const spdEl=document.getElementById('sv-spdnum');
-    if(spdEl) spdEl.textContent=Math.round(S.spd)||0;
-    const badge=document.getElementById('sv-badge');
-    if(badge){
-      if(!S.gnss){ badge.className='r'; badge.textContent='GNSS BLACKOUT · DR ACTIVE'; }
-      else if(S.inTunnel){ badge.className='y'; badge.textContent='TUNNEL · BARO DETECT'; }
-      else{ badge.className='g'; badge.textContent='GNSS LOCKED · NavIC L5'; }
-    }
-  }
+    window._renderUncBand=function _renderUncBand(){
+      if(!window._uncBandLayer||!window._nd) return;
+      window._uncBandLayer.clearLayers();
+      const pts=window._nd.getLatLngs();
+      if(!pts||pts.length<2) return;
+      // Sigma from live state, fallback 5m
+      const sigmaM=(window.S&&window.S.unc)||5;
+      const sigDeg=sigmaM/111320;
+      // Build corridor as polygon pairs
+      const leftBand=[], rightBand=[];
+      for(let i=0;i<pts.length;i++){
+        const p=pts[i];
+        const n=pts[Math.min(i+1,pts.length-1)];
+        const dLat=n.lat-p.lat, dLon=n.lng-p.lng;
+        const len=Math.hypot(dLat,dLon)||1e-9;
+        const perpLat=-dLon/len*sigDeg, perpLon=dLat/len*sigDeg;
+        leftBand.push([p.lat+perpLat,p.lng+perpLon]);
+        rightBand.push([p.lat-perpLat,p.lng-perpLon]);
+      }
+      const poly=L.polygon([...leftBand,...rightBand.reverse()],{
+        color:'#a855f7', fillColor:'#a855f7',
+        fillOpacity:0.13, weight:1.2, opacity:0.5, dashArray:'4,5'
+      });
+      poly.bindTooltip(`1σ uncertainty: ±${sigmaM.toFixed(1)} m`,{className:'leaflet-tooltip',sticky:true});
+      window._uncBandLayer.addLayer(poly);
+    };
 
-  window.addEventListener('load', function(){ _startLoop(); });
+    // Refresh uncertainty band each step if active
+    const _origStep=window._stepHook;
+    window._stepHook=function(){
+      if(typeof _origStep==='function') _origStep();
+      if(uncBandOn) window._renderUncBand();
+    };
 
-})();
+    // Expose city on mission load (used by road conf generator)
+    window._currentMission=window._currentMission||0;
+
+  })();
 </script>
 </body>
 </html>
