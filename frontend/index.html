@@ -24,25 +24,25 @@
       --bone:  #D4E2EE;
       --bone-dim: #7A94A8;
       --muted: #445566;
-      --line:  rgba(0,196,224,0.09);
-      --line-soft: rgba(0,196,224,0.04);
+      --line:  rgba(0,196,224,0.10);
+      --line-soft: rgba(0,196,224,0.05);
 
-      --bg: var(--ink); --surface: var(--ink-2); --card: rgba(4,9,16,0.94);
-      --cyan: #00C4E0; --cyan-d: rgba(0,196,224,0.10); --cyan-g: rgba(0,196,224,0.30);
-      --violet: #8B5CF6; --violet-d: rgba(139,92,246,0.12);
-      --red: #E02020; --red-d: rgba(224,32,32,0.12); --red-g: rgba(224,32,32,0.38);
-      --green: #00C87A; --green-d: rgba(0,200,122,0.10); --green-g: rgba(0,200,122,0.32);
+      --bg: var(--ink); --surface: var(--ink-2); --card: rgba(3,7,12,0.96);
+      --cyan: #00C4E0; --cyan-d: rgba(0,196,224,0.10); --cyan-g: rgba(0,196,224,0.35);
+      --violet: #A78BFA; --violet-d: rgba(167,139,250,0.12);
+      --red: #E02020; --red-d: rgba(224,32,32,0.12); --red-g: rgba(224,32,32,0.4);
+      --green: #00C87A; --green-d: rgba(0,200,122,0.10); --green-g: rgba(0,200,122,0.35);
       --yellow: #F0A000; --orange: #FF5500;
       --b1: var(--line); --b2: var(--line-soft);
       --t1: var(--bone); --t2: var(--bone-dim); --t3: var(--muted);
       --mono: 'JetBrains Mono', monospace; --sans: 'Onest', sans-serif;
-      --r: 3px;
+      --r: 2px;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: var(--sans); user-select: none; }
 
     /* ── LAYOUT ── */
-    .app { display: grid; grid-template-rows: 50px auto 1fr 76px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
+    .app { display: grid; grid-template-rows: 50px 1fr 76px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
     .body { display: grid; grid-template-columns: 268px 1fr 252px; gap: 8px; padding: 8px; min-height: 0; overflow: hidden; }
     .panel { display: flex; flex-direction: column; gap: 7px; overflow-y: auto; overflow-x: hidden; }
     .panel::-webkit-scrollbar { width: 3px; }
@@ -295,55 +295,6 @@ body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:no
 body.tunnel-mode { --cyan:#d97706; --cyan-d:rgba(217,119,6,0.10); --cyan-g:rgba(217,119,6,0.35); }
 body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rgba(217,119,6,0.1),transparent); }
 
-/* ── HERO STATS BAR — ISRO Mission Control ── */
-.hero-bar{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(80px,1fr));
-  align-items:stretch;
-  gap:0;
-  background:linear-gradient(180deg,rgba(2,5,9,0.98) 0%,rgba(4,9,16,0.95) 100%);
-  border-top:1px solid rgba(0,196,224,0.12);
-  border-bottom:1px solid rgba(0,196,224,0.08);
-  padding:0;
-  flex-shrink:0;
-  overflow:hidden;
-  position:relative;
-}
-/* orange sweep line across top */
-.hero-bar::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent 0%,rgba(255,85,0,0.5) 15%,rgba(0,196,224,0.25) 50%,rgba(255,85,0,0.5) 85%,transparent 100%);
-  pointer-events:none;z-index:2;
-}
-.hero-stat{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:7px 10px;white-space:nowrap;
-  border-right:1px solid rgba(0,196,224,0.06);
-  position:relative;
-  transition:background .2s;
-}
-.hero-stat:last-child{border-right:none;}
-.hero-stat:hover{background:rgba(0,196,224,0.03);}
-/* tiny cyan corner tick on hover */
-.hero-stat::after{
-  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
-  background:transparent;transition:background .2s;
-}
-.hero-stat:hover::after{background:rgba(0,196,224,0.2);}
-.hero-label{font-size:.42rem;font-family:var(--mono);color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px;}
-.hero-val{font-size:.85rem;font-weight:700;font-family:var(--mono);letter-spacing:.03em;line-height:1;}
-.hero-val.cyan{color:var(--cyan);text-shadow:0 0 12px rgba(0,196,224,0.4);}
-.hero-val.violet{color:var(--violet);text-shadow:0 0 8px rgba(139,92,246,0.3);}
-.hero-val.green{color:var(--green);text-shadow:0 0 12px rgba(0,200,122,0.4);}
-.hero-val.yellow{color:var(--yellow);}
-.hero-val.orange{color:var(--orange);}
-.hero-divider{display:none;}
-/* ── TUNNEL DEMO BUTTON ── */
-.btn-tunnel-demo{width:100%;margin-top:7px;background:linear-gradient(135deg,rgba(200,160,40,0.15),rgba(140,40,40,0.15));color:rgba(220,185,60,0.95);border:1px solid rgba(200,160,40,0.38);font-size:.59rem;font-family:var(--mono);letter-spacing:.1em;padding:6px 10px;border-radius:5px;cursor:pointer;font-weight:700;transition:all .2s}
-.btn-tunnel-demo:hover{background:linear-gradient(135deg,rgba(200,160,40,0.28),rgba(140,40,40,0.28));border-color:rgba(220,185,60,0.6);box-shadow:0 0 10px rgba(200,160,40,0.2)}
-.btn-tunnel-demo.active-demo{border-color:rgba(255,34,85,0.6);color:rgba(255,100,100,0.95);animation:pulse-demo 1s infinite}
-@keyframes pulse-demo{0%,100%{box-shadow:0 0 6px rgba(255,34,85,0.2)}50%{box-shadow:0 0 14px rgba(255,34,85,0.45)}}
-
 /* Covariance ellipse (Leaflet SVG path) */
 .cov-ellipse { fill:rgba(168,85,247,0.08); stroke:#a855f7; stroke-width:1.5; stroke-dasharray:5,4; }
 
@@ -394,186 +345,204 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     /* Recording indicator */
     .rec-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 7px var(--red-g);animation:blink .7s step-end infinite;margin-right:4px;vertical-align:middle;}
 
-  /* ════════════════════════════════════════════════════
-     ISRO MISSION CONTROL — Visual Design System
-     NASA density · Premium polish · Military HUD
-     ════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════
+     ISRO MISSION CONTROL — Visual Design System v2
+     NASA density · Military HUD · ISRO SIH 2026 PS #26168
+     ══════════════════════════════════════════════════════════ */
 
-  /* ── Layout tightening ── */
-  .body { gap: 6px; padding: 6px; }
-  .panel { gap: 6px; }
-  .panel::-webkit-scrollbar { width: 2px; }
-  .panel::-webkit-scrollbar-thumb { background: rgba(0,196,224,0.18); border-radius: 2px; }
-
-  /* ── Cards — tactical sharp edge with cyan top accent ── */
-  .card {
-    background: rgba(4,9,16,0.95) !important;
-    border: 1px solid rgba(0,196,224,0.07) !important;
-    border-top: 1px solid rgba(0,196,224,0.22) !important;
-    border-radius: 3px !important;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,196,224,0.06) !important;
-  }
-  .card::before { display: none; }
-  /* ISRO-orange corner accent */
-  .card::after {
-    content: '';
-    position: absolute;
-    top: -1px; right: -1px;
-    width: 0; height: 0;
-    border-top: 10px solid rgba(255,85,0,0.5);
-    border-left: 10px solid transparent;
-    z-index: 2;
-  }
-
-  /* ── Card title ── */
-  .ct { letter-spacing: .14em !important; color: var(--muted) !important; font-size: .5rem !important; }
-  .ct-l::before { content: none; }
-  .cdot { display: flex !important; }
-  .cdot.c { background: var(--cyan) !important; box-shadow: 0 0 5px var(--cyan-g) !important; }
-  .cdot.g { background: var(--green) !important; box-shadow: 0 0 5px var(--green-g) !important; }
-  .cdot.v { background: var(--violet) !important; }
-  .cdot.r { background: var(--red) !important; }
-  .cdot.y { background: var(--yellow) !important; }
-
-  /* ── Status dot ── */
-  .dot     { background: var(--green) !important; box-shadow: 0 0 6px var(--green-g) !important; }
-  .dot.out { background: var(--red) !important; box-shadow: 0 0 8px var(--red-g) !important; animation: blink .7s step-end infinite; }
-  .pill    { background: rgba(0,196,224,0.05) !important; border: 1px solid rgba(0,196,224,0.14) !important; padding: 3px 10px !important; gap: 6px !important; border-radius: 20px !important; }
-  .pill .dot { width: 6px !important; height: 6px !important; }
-
-  /* ── Header ── */
-  header { background: rgba(2,5,9,0.99) !important; border-bottom: 1px solid rgba(0,196,224,0.1) !important; position: relative; }
-  header::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,85,0,0.25) 20%, rgba(0,196,224,0.15) 50%, rgba(255,85,0,0.25) 80%, transparent);
-    pointer-events: none;
-  }
-  .brand-name { font-size: .9rem !important; letter-spacing: .06em !important; color: var(--bone) !important; }
-  .brand-sub { font-size: .48rem !important; color: rgba(68,85,102,0.9) !important; letter-spacing: .15em !important; }
-  .brand-logo svg { filter: none !important; opacity: 0.9; }
-
-  /* ── Phase badge ── */
-  .phase-badge          { border: 1px solid !important; border-radius: 3px !important; padding: 3px 10px !important; font-size: .58rem !important; letter-spacing: .1em !important; }
-  .phase-badge.nominal  { color: var(--green) !important; border-color: rgba(0,200,122,0.3) !important; background: rgba(0,200,122,0.07) !important; }
-  .phase-badge.blackout { color: var(--red) !important; border-color: rgba(224,32,32,0.4) !important; background: rgba(224,32,32,0.08) !important; animation: blink .6s step-end infinite; }
-  .phase-badge.snap     { color: var(--cyan) !important; border-color: rgba(0,196,224,0.3) !important; background: rgba(0,196,224,0.06) !important; }
-  .phase-badge.cal      { color: var(--yellow) !important; border-color: rgba(240,160,0,0.3) !important; background: rgba(240,160,0,0.07) !important; }
-  .phase-dot            { display: flex !important; background: currentColor; box-shadow: 0 0 5px currentColor !important; }
-  .badge-ps             { display: none !important; }
-  .badge-mode           { background: rgba(0,196,224,0.07) !important; border: 1px solid rgba(0,196,224,0.2) !important; color: var(--cyan) !important; letter-spacing: .08em !important; }
-  .badge-mode.live      { background: rgba(0,200,122,0.07) !important; color: var(--green) !important; border-color: rgba(0,200,122,0.25) !important; }
-
-  /* ── City tabs ── */
-  .city-tab { color: var(--muted) !important; border-color: transparent !important; }
-  .city-tab.active { color: var(--cyan) !important; background: rgba(0,196,224,0.08) !important; border-color: rgba(0,196,224,0.22) !important; }
-  .city-tab:hover:not(.active) { color: var(--bone-dim) !important; background: rgba(0,196,224,0.04) !important; }
-
-  /* ── NavIC toggle ── */
-  .navic-toggle        { background: rgba(0,196,224,0.06) !important; color: var(--bone-dim) !important; border-color: rgba(0,196,224,0.18) !important; }
-  .navic-toggle.navonly{ color: var(--yellow) !important; border-color: rgba(240,160,0,0.3) !important; background: rgba(240,160,0,0.07) !important; }
-
-  /* ── Panel tabs ── */
-  .ptab-bar   { background: transparent !important; border: none !important; border-bottom: 1px solid rgba(0,196,224,0.07) !important; border-radius: 0 !important; padding: 0 !important; gap: 0 !important; }
-  .ptab       { border-radius: 0 !important; padding: 5px 8px !important; color: var(--muted) !important; }
-  .ptab.active{ background: transparent !important; border-color: transparent !important; border-bottom: 2px solid rgba(255,85,0,0.6) !important; color: var(--bone-dim) !important; }
-  .ptab:hover:not(.active) { color: var(--bone-dim) !important; background: rgba(0,196,224,0.03) !important; }
-
-  /* ── Metric values — full color ── */
-  .mv.c { color: var(--cyan)   !important; text-shadow: 0 0 10px rgba(0,196,224,0.35) !important; }
-  .mv.g { color: var(--green)  !important; }
-  .mv.v { color: var(--violet) !important; }
-  .mv.r { color: var(--red)    !important; }
-  .mv.y { color: var(--yellow) !important; }
-  .mv   { font-size: .88rem !important; }
-
-  /* ── Signal bars ── */
-  .sig-bar      { background: var(--green) !important; box-shadow: 0 0 4px var(--green-g) !important; }
-  .sig-bar.lost { background: var(--red) !important; box-shadow: 0 0 6px var(--red-g) !important; animation: blink 1s step-end infinite !important; }
-
-  /* ── HUD map overlays ── */
-  .hv     { color: var(--cyan) !important; }
-  .hv.out { color: var(--red)  !important; }
-  .hbox   { background: rgba(2,5,9,0.92) !important; border: 1px solid rgba(0,196,224,0.1) !important; border-radius: 3px !important; backdrop-filter: blur(8px) !important; }
-  .hl     { color: var(--muted) !important; }
-
-  /* ── Map scanlines + vignette ── */
-  .map-wrap { border-radius: 3px !important; border: 1px solid rgba(0,196,224,0.1) !important; }
-  .map-wrap::after {
-    content: '';
-    position: absolute; inset: 0; pointer-events: none; z-index: 499;
-    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.025) 3px, rgba(0,0,0,0.025) 4px);
-  }
-
-  /* ── Control buttons ── */
-  .btn.p { background: rgba(0,196,224,0.08) !important; color: var(--cyan) !important; border-color: rgba(0,196,224,0.25) !important; }
-  .btn.d { background: rgba(224,32,32,0.08) !important; color: var(--red) !important; border-color: rgba(224,32,32,0.25) !important; }
-  .btn[style*="violet"] { background: rgba(139,92,246,0.08) !important; color: var(--violet) !important; border-color: rgba(139,92,246,0.25) !important; }
-  .btn[style*="yellow"] { background: rgba(240,160,0,0.08) !important; color: var(--yellow) !important; border-color: rgba(240,160,0,0.25) !important; }
-  .btn[style*="green"]  { background: rgba(0,200,122,0.08) !important; color: var(--green) !important; border-color: rgba(0,200,122,0.25) !important; }
-  .btn[style*="red"]    { background: rgba(224,32,32,0.08) !important; color: var(--red) !important; border-color: rgba(224,32,32,0.22) !important; }
-  label[style*="violet"]{ background: rgba(139,92,246,0.08) !important; color: var(--violet) !important; border-color: rgba(139,92,246,0.25) !important; }
-  .btn-icon:hover { background: rgba(0,196,224,0.08) !important; color: var(--cyan) !important; border-color: rgba(0,196,224,0.25) !important; }
-
-  /* ── Module chips ── */
-  .mod.on  { background: rgba(0,200,122,0.08) !important; color: var(--green) !important; border-color: rgba(0,200,122,0.25) !important; }
-  .mod.warn{ background: rgba(240,160,0,0.08) !important; color: var(--yellow) !important; border-color: rgba(240,160,0,0.25) !important; }
-  .mod.off { color: rgba(68,85,102,0.6) !important; border-color: rgba(0,196,224,0.05) !important; }
-
-  /* ── Calibration / sensor bars ── */
-  .sbar-fill { background: var(--cyan) !important; }
-  .sbar-val  { color: var(--cyan) !important; }
-  .fbar-fill { opacity: 0.8; }
-  .spark-num { color: var(--cyan) !important; }
-
-  /* ── MET / NavIC lock ── */
-  #met-clock        { color: var(--cyan) !important; }
-  #navic-lock-badge { color: var(--green) !important; font-weight: 700 !important; }
-
-  /* ── Pipeline bottom bar ── */
-  .pipe         { background: rgba(2,5,9,0.99) !important; border-top: 1px solid rgba(0,196,224,0.1) !important; }
-  .pmod.active  { background: rgba(0,196,224,0.05) !important; }
-  .pmod.active .pico  { filter: drop-shadow(0 0 4px var(--cyan)) !important; }
-  .pmod.active .pname { color: var(--cyan) !important; }
-  .pmod:hover   { background: rgba(0,196,224,0.03) !important; }
-  .pname        { color: var(--muted) !important; }
-  .psub         { color: rgba(68,85,102,0.5) !important; }
-
-  /* ── Modal ── */
-  .mtitle  { color: var(--cyan) !important; }
-  .cal-title { color: var(--bone-dim) !important; }
-  .minp:focus { border-color: rgba(0,196,224,0.3) !important; box-shadow: 0 0 0 2px rgba(0,196,224,0.07) !important; }
-  .cal-btn.primary { background: rgba(0,196,224,0.08) !important; color: var(--cyan) !important; border-color: rgba(0,196,224,0.28) !important; }
-  .modal { border-radius: 4px !important; border-color: rgba(0,196,224,0.12) !important; }
-
-  /* ── Drift delta & compliance ── */
-  .drift-delta          { background: rgba(0,200,122,0.06) !important; border-color: rgba(0,200,122,0.2) !important; }
-  .drift-delta-val      { color: var(--green) !important; }
-  .drift-delta.bad .drift-delta-val { color: var(--red) !important; }
-  .cs.ok   { background: rgba(0,200,122,0.08) !important; color: var(--green) !important; border-color: rgba(0,200,122,0.28) !important; }
-  table.bench tr.rnd td { color: var(--cyan) !important; font-weight: 700; }
-  table.bench tr.rekf td{ color: var(--violet) !important; }
-  table.bench tr.rimu td{ color: var(--red) !important; }
-
-  /* ── Atmospheric grid — cyan tactical ── */
+  /* ── Tactical background grid — cyan ── */
   body::before {
     background-image:
-      linear-gradient(rgba(0,196,224,0.022) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,196,224,0.022) 1px, transparent 1px);
+      linear-gradient(rgba(0,196,224,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,196,224,0.05) 1px, transparent 1px);
     background-size: 44px 44px;
   }
 
-  /* ── Vignette — tactical oval ── */
+  /* ── Vignette ── */
   .app::after {
-    background: radial-gradient(ellipse 110% 110% at 50% 50%, transparent 55%, rgba(0,0,0,0.45) 100%) !important;
+    background: radial-gradient(ellipse 110% 110% at 50% 50%, transparent 50%, rgba(0,0,0,0.55) 100%) !important;
   }
 
-  /* ── Grain noise — subtle ── */
+  /* ── Header — deep black with orange sweep ── */
+  header {
+    background: rgba(1,3,6,0.99) !important;
+    border-bottom: 1px solid rgba(255,85,0,0.25) !important;
+    box-shadow: 0 1px 0 rgba(0,196,224,0.08), 0 4px 24px rgba(0,0,0,0.6) !important;
+  }
+  .brand-name { color: #E8F4F8 !important; font-size: .95rem !important; letter-spacing: .07em !important; }
+  .brand-sub  { color: rgba(255,85,0,0.6) !important; letter-spacing: .14em !important; font-size: .47rem !important; }
+
+  /* ── Hero stats bar ── */
+  .hero-bar {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)) !important;
+    padding: 0 !important;
+    background: #020609 !important;
+    border-top: 2px solid rgba(255,85,0,0.55) !important;
+    border-bottom: 1px solid rgba(0,196,224,0.15) !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(0,196,224,0.08) !important;
+  }
+  .hero-bar::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255,85,0,0.8) 20%, rgba(0,196,224,0.5) 50%, rgba(255,85,0,0.8) 80%, transparent);
+    pointer-events: none;
+  }
+  .hero-stat {
+    display: flex !important; flex-direction: column !important;
+    align-items: center !important; justify-content: center !important;
+    padding: 8px 6px !important;
+    border-right: 1px solid rgba(0,196,224,0.1) !important;
+    position: relative !important;
+  }
+  .hero-stat:last-child { border-right: none !important; }
+  .hero-label {
+    font-size: .4rem !important; color: rgba(100,140,160,0.85) !important;
+    letter-spacing: .14em !important; margin-bottom: 3px !important;
+    text-transform: uppercase !important; font-family: var(--mono) !important;
+  }
+  .hero-val {
+    font-size: 1.05rem !important; font-weight: 700 !important;
+    font-family: var(--mono) !important; letter-spacing: .02em !important; line-height: 1 !important;
+  }
+  .hero-val.cyan   { color: #00C4E0 !important; text-shadow: 0 0 14px rgba(0,196,224,0.6) !important; }
+  .hero-val.violet { color: #A78BFA !important; text-shadow: 0 0 10px rgba(167,139,250,0.4) !important; }
+  .hero-val.green  { color: #00C87A !important; text-shadow: 0 0 14px rgba(0,200,122,0.6) !important; }
+  .hero-val.yellow { color: #F0A000 !important; }
+  .hero-val.orange { color: #FF5500 !important; }
+  .hero-divider    { display: none !important; }
+
+  /* ── Cards — sharp with glowing cyan top ── */
+  .card {
+    background: rgba(3,7,12,0.96) !important;
+    border: 1px solid rgba(0,196,224,0.12) !important;
+    border-top: 2px solid rgba(0,196,224,0.5) !important;
+    border-radius: 2px !important;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,196,224,0.08) !important;
+    position: relative !important;
+  }
+  /* ISRO orange corner triangle */
+  .card::after {
+    content: '' !important; position: absolute !important;
+    top: -1px !important; right: -1px !important;
+    width: 0 !important; height: 0 !important;
+    border-top: 12px solid rgba(255,85,0,0.65) !important;
+    border-left: 12px solid transparent !important;
+    z-index: 2 !important;
+  }
+  .card::before { display: none !important; }
+
+  /* ── Card title ── */
+  .ct { color: rgba(100,130,150,0.9) !important; letter-spacing: .15em !important; font-size: .49rem !important; }
+  .cdot { display: flex !important; }
+  .cdot.c { background: #00C4E0 !important; box-shadow: 0 0 6px rgba(0,196,224,0.7) !important; }
+  .cdot.g { background: #00C87A !important; box-shadow: 0 0 6px rgba(0,200,122,0.7) !important; }
+  .cdot.v { background: #A78BFA !important; }
+  .cdot.r { background: #E02020 !important; box-shadow: 0 0 6px rgba(224,32,32,0.6) !important; }
+  .cdot.y { background: #F0A000 !important; }
+  .ct-l::before { display: none !important; content: none !important; }
+
+  /* ── Status pill ── */
+  .dot     { background: #00C87A !important; box-shadow: 0 0 8px rgba(0,200,122,0.8) !important; width: 7px !important; height: 7px !important; }
+  .dot.out { background: #E02020 !important; box-shadow: 0 0 10px rgba(224,32,32,0.9) !important; animation: blink .7s step-end infinite !important; }
+  .pill    { background: rgba(0,196,224,0.06) !important; border: 1px solid rgba(0,196,224,0.18) !important; padding: 3px 10px !important; border-radius: 20px !important; }
+
+  /* ── Metric values — FULL color + glow ── */
+  .mv.c { color: #00C4E0 !important; text-shadow: 0 0 12px rgba(0,196,224,0.5) !important; }
+  .mv.g { color: #00C87A !important; text-shadow: 0 0 10px rgba(0,200,122,0.4) !important; }
+  .mv.v { color: #A78BFA !important; }
+  .mv.r { color: #E02020 !important; text-shadow: 0 0 10px rgba(224,32,32,0.5) !important; }
+  .mv.y { color: #F0A000 !important; }
+  .mv   { font-size: .9rem !important; }
+
+  /* ── Phase badges ── */
+  .phase-badge.nominal  { background: rgba(0,200,122,0.12) !important; color: #00C87A !important; border: 1px solid rgba(0,200,122,0.4) !important; border-radius: 3px !important; }
+  .phase-badge.blackout { background: rgba(224,32,32,0.15) !important; color: #FF4455 !important; border: 1px solid rgba(224,32,32,0.5) !important; border-radius: 3px !important; animation: blink .6s step-end infinite !important; }
+  .phase-badge.snap     { background: rgba(0,196,224,0.12) !important; color: #00C4E0 !important; border: 1px solid rgba(0,196,224,0.4) !important; border-radius: 3px !important; }
+  .phase-badge.cal      { background: rgba(240,160,0,0.12) !important; color: #F0A000 !important; border: 1px solid rgba(240,160,0,0.4) !important; border-radius: 3px !important; }
+  .phase-dot { display: flex !important; background: currentColor !important; box-shadow: 0 0 6px currentColor !important; }
+  .badge-ps  { display: none !important; }
+  .badge-mode { background: rgba(0,196,224,0.1) !important; border: 1px solid rgba(0,196,224,0.3) !important; color: #00C4E0 !important; }
+  .badge-mode.live { background: rgba(0,200,122,0.1) !important; color: #00C87A !important; border-color: rgba(0,200,122,0.35) !important; }
+
+  /* ── City tabs ── */
+  .city-tab        { color: rgba(68,85,102,0.9) !important; }
+  .city-tab.active { color: #00C4E0 !important; background: rgba(0,196,224,0.1) !important; border-color: rgba(0,196,224,0.35) !important; box-shadow: 0 0 8px rgba(0,196,224,0.15) inset !important; }
+  .city-tab:hover:not(.active) { color: #7A94A8 !important; background: rgba(0,196,224,0.05) !important; }
+
+  /* ── Panel tabs ── */
+  .ptab-bar   { background: transparent !important; border: none !important; border-bottom: 1px solid rgba(0,196,224,0.1) !important; border-radius: 0 !important; padding: 0 !important; gap: 0 !important; }
+  .ptab       { border-radius: 0 !important; padding: 5px 10px !important; color: rgba(68,85,102,0.9) !important; }
+  .ptab.active { background: transparent !important; border: none !important; border-bottom: 2px solid rgba(255,85,0,0.7) !important; color: #D4E2EE !important; }
+  .ptab:hover:not(.active) { color: #7A94A8 !important; background: rgba(0,196,224,0.03) !important; }
+
+  /* ── NavIC toggle ── */
+  .navic-toggle        { background: rgba(0,196,224,0.07) !important; color: #7A94A8 !important; border-color: rgba(0,196,224,0.2) !important; }
+  .navic-toggle.navonly { color: #F0A000 !important; border-color: rgba(240,160,0,0.35) !important; background: rgba(240,160,0,0.08) !important; }
+
+  /* ── Signal bars ── */
+  .sig-bar      { background: #00C87A !important; box-shadow: 0 0 5px rgba(0,200,122,0.5) !important; }
+  .sig-bar.lost { background: #E02020 !important; box-shadow: 0 0 7px rgba(224,32,32,0.6) !important; animation: blink 1s step-end infinite !important; }
+
+  /* ── Map overlays ── */
+  .hv     { color: #00C4E0 !important; }
+  .hv.out { color: #E02020 !important; }
+  .hbox   { background: rgba(1,3,8,0.92) !important; border: 1px solid rgba(0,196,224,0.15) !important; border-radius: 3px !important; }
+  .hl     { color: rgba(68,85,102,0.9) !important; }
+  .map-wrap { border: 1px solid rgba(0,196,224,0.15) !important; border-radius: 2px !important; }
+
+  /* ── Control buttons ── */
+  .btn.p { background: rgba(0,196,224,0.1) !important; color: #00C4E0 !important; border-color: rgba(0,196,224,0.3) !important; }
+  .btn.d { background: rgba(224,32,32,0.1) !important; color: #E02020 !important; border-color: rgba(224,32,32,0.3) !important; }
+  .btn[style*="violet"] { background: rgba(167,139,250,0.1) !important; color: #A78BFA !important; border-color: rgba(167,139,250,0.3) !important; }
+  .btn[style*="yellow"] { background: rgba(240,160,0,0.1) !important; color: #F0A000 !important; border-color: rgba(240,160,0,0.3) !important; }
+  .btn[style*="green"]  { background: rgba(0,200,122,0.1) !important; color: #00C87A !important; border-color: rgba(0,200,122,0.3) !important; }
+  .btn[style*="red"]    { background: rgba(224,32,32,0.1) !important; color: #E02020 !important; border-color: rgba(224,32,32,0.28) !important; }
+  label[style*="violet"] { background: rgba(167,139,250,0.1) !important; color: #A78BFA !important; border-color: rgba(167,139,250,0.3) !important; }
+  .btn-icon:hover { background: rgba(0,196,224,0.1) !important; color: #00C4E0 !important; border-color: rgba(0,196,224,0.3) !important; }
+
+  /* ── Module chips ── */
+  .mod.on   { background: rgba(0,200,122,0.1) !important; color: #00C87A !important; border-color: rgba(0,200,122,0.3) !important; }
+  .mod.warn { background: rgba(240,160,0,0.1) !important; color: #F0A000 !important; border-color: rgba(240,160,0,0.3) !important; }
+  .mod.off  { color: rgba(68,85,102,0.5) !important; border-color: rgba(0,196,224,0.06) !important; }
+
+  /* ── Calibration bars ── */
+  .sbar-fill { background: #00C4E0 !important; box-shadow: 0 0 6px rgba(0,196,224,0.4) !important; }
+  .sbar-val  { color: #00C4E0 !important; }
+  .spark-num { color: #00C4E0 !important; }
+
+  /* ── MET / NavIC lock ── */
+  #met-clock        { color: #00C4E0 !important; text-shadow: 0 0 8px rgba(0,196,224,0.4) !important; }
+  #navic-lock-badge { color: #00C87A !important; font-weight: 700 !important; text-shadow: 0 0 6px rgba(0,200,122,0.4) !important; }
+
+  /* ── Pipeline ── */
+  .pipe         { background: rgba(1,3,6,0.99) !important; border-top: 1px solid rgba(255,85,0,0.2) !important; }
+  .pmod.active  { background: rgba(0,196,224,0.06) !important; border-top: 1px solid rgba(0,196,224,0.2) !important; }
+  .pmod.active .pico  { filter: drop-shadow(0 0 5px #00C4E0) !important; }
+  .pmod.active .pname { color: #00C4E0 !important; }
+  .pmod:hover   { background: rgba(0,196,224,0.03) !important; }
+  .pname        { color: rgba(68,85,102,0.9) !important; }
+  .psub         { color: rgba(68,85,102,0.45) !important; }
+
+  /* ── Drift delta ── */
+  .drift-delta     { background: rgba(0,200,122,0.08) !important; border-color: rgba(0,200,122,0.25) !important; }
+  .drift-delta-val { color: #00C87A !important; text-shadow: 0 0 8px rgba(0,200,122,0.4) !important; }
+  .drift-delta.bad .drift-delta-val { color: #E02020 !important; }
+  .cs.ok { background: rgba(0,200,122,0.1) !important; color: #00C87A !important; border-color: rgba(0,200,122,0.3) !important; }
+  table.bench tr.rnd td  { color: #00C4E0 !important; font-weight: 700 !important; }
+  table.bench tr.rekf td { color: #A78BFA !important; }
+  table.bench tr.rimu td { color: #E02020 !important; }
+
+  /* ── Modal ── */
+  .mtitle  { color: #00C4E0 !important; }
+  .cal-btn.primary { background: rgba(0,196,224,0.1) !important; color: #00C4E0 !important; border-color: rgba(0,196,224,0.3) !important; }
+  .modal { border-color: rgba(0,196,224,0.15) !important; border-radius: 3px !important; }
+
+  /* ── Grain noise ── */
   body::after {
     content: ''; position: fixed; inset: 0; z-index: 9000; pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
-    opacity: 0.028; mix-blend-mode: overlay;
+    opacity: 0.032; mix-blend-mode: overlay;
   }
   </style>
 </head>
@@ -640,9 +609,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <button class="city-tab" onclick="switchCity('bengaluru',event)">Bengaluru</button>
       <button class="city-tab" onclick="switchCity('chennai',event)">Chennai</button>
       <button class="city-tab" onclick="switchCity('hyderabad',event)">Hyderabad</button>
-      <button class="city-tab" onclick="switchCity('kolkata',event)" title="Kolkata Underground Metro">Kolkata</button>
-      <button class="city-tab" onclick="switchCity('pune',event)" title="Pune Katraj Tunnel">Pune</button>
-      <button class="city-tab iovnbd" onclick="switchCity('iovnbd',event)" title="IO-VNBD Dataset Replay — Required by ISRO PS #26168">IO-VNBD ★</button>
+      <button class="city-tab iovnbd" onclick="switchCity('iovnbd',event)" title="IO-VNBD Dataset Replay">IO-VNBD ★</button>
     </div>
 
     <div class="hdr-right">
@@ -654,25 +621,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <div class="btn-icon" onclick="openModal()" title="API Settings">⚙</div>
     </div>
   </header>
-
-  <!-- HERO STATS BAR — ISRO benchmark numbers front-and-center -->
-  <div class="hero-bar">
-    <div class="hero-stat"><span class="hero-label">NAVDRIFT-0 ATE</span><span class="hero-val cyan" id="hero-nd">78.41 m</span></div>
-    <div class="hero-divider"></div>
-    <div class="hero-stat"><span class="hero-label">EKF Baseline ATE</span><span class="hero-val violet">121.69 m</span></div>
-    <div class="hero-divider"></div>
-    <div class="hero-stat"><span class="hero-label">ISRO Target</span><span class="hero-val green">≤ 100 m ✓</span></div>
-    <div class="hero-divider"></div>
-    <div class="hero-stat"><span class="hero-label">50 m Blackout Drift</span><span class="hero-val cyan" id="hero-drift">3.19 m</span></div>
-    <div class="hero-divider"></div>
-    <div class="hero-stat"><span class="hero-label">ISRO Drift Limit</span><span class="hero-val green">≤ 5 m ✓</span></div>
-    <div class="hero-divider"></div>
-    <div class="hero-stat"><span class="hero-label">Inference Latency</span><span class="hero-val yellow">20 ms INT8</span></div>
-    <div class="hero-divider"></div>
-    <div class="hero-stat"><span class="hero-label">GNSS→DR Transition</span><span class="hero-val cyan">0.4 ms</span></div>
-    <div class="hero-divider"></div>
-    <div class="hero-stat"><span class="hero-label">NavIC Constellation</span><span class="hero-val green">L5 / S1 ✓</span></div>
-  </div>
 
   <!-- BODY -->
   <div class="body">
@@ -708,8 +656,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             <button class="btn" onclick="openCalWizard()" style="background:rgba(0,255,157,0.1);color:var(--green);border-color:rgba(0,255,157,0.3)">🔧 IMU Cal Wizard</button>
             <button class="btn" id="rec-btn" onclick="toggleRecording()" style="background:rgba(255,34,85,0.1);color:var(--red);border-color:rgba(255,34,85,0.3)">⏺ Start Rec</button>
           </div>
-          <!-- Tunnel Demo -->
-          <button class="btn-tunnel-demo" id="tunnel-demo-btn" onclick="startTunnelDemo()">🚇 TUNNEL DEMO — Auto GNSS Blackout &amp; DR Recovery</button>
           <!-- Ground Truth Overlay -->
           <div class="gt-load-row" style="margin-top:6px">
             <span class="gt-label">Ground Truth:</span>
@@ -1064,72 +1010,19 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
 <script>
   // ─── CITY ROUTES ───
-  // tunnelAt = route waypoint index where vehicle enters tunnel (GNSS blackout begins)
-  // tunnelLen = number of waypoints inside tunnel (~200m each segment)
   const CITIES = {
-    // Delhi: Pragati Maidan ITC Tunnel (NH-24, real GPS-denied corridor)
-    delhi: { name:'Delhi · Pragati Maidan ITC Tunnel (NH-24)', lat:28.6181, lon:77.2435, zoom:15,
-      tunnelAt:5, tunnelLen:4,
-      wp:[[28.6215,77.2320],[28.6210,77.2355],[28.6200,77.2390],[28.6192,77.2415],
-          [28.6185,77.2432],[28.6181,77.2435],[28.6178,77.2448],[28.6175,77.2460],
-          [28.6173,77.2472],[28.6172,77.2488],[28.6175,77.2510],[28.6180,77.2535],
-          [28.6188,77.2560],[28.6198,77.2588],[28.6210,77.2610],[28.6215,77.2320]] },
-
-    // Mumbai: Eastern Freeway Tunnel (Wadi Bunder → Orange Gate)
-    mumbai: { name:'Mumbai · Eastern Freeway Tunnel (Wadi Bunder)', lat:18.9620, lon:72.8390, zoom:15,
-      tunnelAt:4, tunnelLen:5,
-      wp:[[18.9655,72.8340],[18.9645,72.8355],[18.9635,72.8368],[18.9628,72.8380],
-          [18.9620,72.8390],[18.9612,72.8400],[18.9605,72.8408],[18.9598,72.8416],
-          [18.9591,72.8424],[18.9585,72.8432],[18.9578,72.8445],[18.9568,72.8460],
-          [18.9555,72.8478],[18.9540,72.8495],[18.9525,72.8510],[18.9655,72.8340]] },
-
-    // Bengaluru: NH-44 Stonehill Tunnel (Devanahalli, 440m GPS blackout zone)
-    bengaluru: { name:'Bengaluru · NH-44 Stonehill Tunnel (Devanahalli)', lat:13.2465, lon:77.6120, zoom:15,
-      tunnelAt:5, tunnelLen:4,
-      wp:[[13.2440,77.6060],[13.2448,77.6075],[13.2455,77.6090],[13.2460,77.6105],
-          [13.2463,77.6115],[13.2465,77.6120],[13.2467,77.6133],[13.2468,77.6145],
-          [13.2468,77.6158],[13.2467,77.6170],[13.2464,77.6185],[13.2458,77.6200],
-          [13.2450,77.6215],[13.2440,77.6228],[13.2428,77.6240],[13.2440,77.6060]] },
-
-    // Chennai: Kathipara Junction Underpass (Anna Salai grade separator)
-    chennai: { name:'Chennai · Kathipara Underpass (Anna Salai–GST)', lat:13.0068, lon:80.2340, zoom:15,
-      tunnelAt:4, tunnelLen:3,
-      wp:[[13.0095,80.2300],[13.0088,80.2312],[13.0080,80.2322],[13.0074,80.2330],
-          [13.0068,80.2340],[13.0062,80.2350],[13.0058,80.2360],[13.0056,80.2372],
-          [13.0058,80.2385],[13.0062,80.2400],[13.0068,80.2418],[13.0076,80.2435],
-          [13.0085,80.2448],[13.0095,80.2460],[13.0105,80.2470],[13.0095,80.2300]] },
-
-    // Hyderabad: PVNR Expressway Tunnel (Necklace Road grade separator)
-    hyderabad: { name:'Hyderabad · PVNR Expressway Tunnel (Necklace Rd)', lat:17.4010, lon:78.4665, zoom:15,
-      tunnelAt:5, tunnelLen:4,
-      wp:[[17.4040,78.4610],[17.4035,78.4622],[17.4028,78.4635],[17.4020,78.4648],
-          [17.4015,78.4658],[17.4010,78.4665],[17.4006,78.4678],[17.4004,78.4692],
-          [17.4004,78.4706],[17.4006,78.4720],[17.4010,78.4735],[17.4016,78.4750],
-          [17.4024,78.4762],[17.4033,78.4775],[17.4042,78.4785],[17.4040,78.4610]] },
-
-    // Kolkata: Underground Metro Line 1 (Maidan → Esplanade GNSS blackout)
-    kolkata: { name:'Kolkata · Metro Line 1 · Maidan→Esplanade Tunnel', lat:22.5570, lon:88.3440, zoom:15,
-      tunnelAt:4, tunnelLen:6,
-      wp:[[22.5540,88.3420],[22.5547,88.3425],[22.5554,88.3430],[22.5561,88.3435],
-          [22.5570,88.3440],[22.5578,88.3446],[22.5585,88.3452],[22.5591,88.3458],
-          [22.5597,88.3464],[22.5601,88.3470],[22.5605,88.3476],[22.5608,88.3484],
-          [22.5610,88.3495],[22.5612,88.3508],[22.5612,88.3522],[22.5540,88.3420]] },
-
-    // Pune: Katraj Tunnel (NH-48, 2.3km twin-tube real GPS blackout)
-    pune: { name:'Pune · Katraj Tunnel (NH-48) · 2.3 km GPS Blackout', lat:18.4450, lon:73.8570, zoom:14,
-      tunnelAt:4, tunnelLen:8,
-      wp:[[18.4490,73.8480],[18.4482,73.8495],[18.4474,73.8510],[18.4465,73.8525],
-          [18.4458,73.8545],[18.4450,73.8570],[18.4443,73.8595],[18.4437,73.8620],
-          [18.4432,73.8645],[18.4428,73.8670],[18.4426,73.8695],[18.4425,73.8720],
-          [18.4426,73.8745],[18.4428,73.8768],[18.4432,73.8790],[18.4490,73.8480]] },
-
-    // IO-VNBD: IIT Bombay benchmark — required dataset for ISRO PS #26168
-    iovnbd: { name:'IO-VNBD · IIT Bombay Benchmark Route (PS #26168 Required)', lat:19.1334, lon:72.9133, zoom:15, iovnbd:true,
-      tunnelAt:5, tunnelLen:5,
-      wp:[[19.1334,72.9133],[19.1342,72.9148],[19.1354,72.9162],[19.1368,72.9170],
-          [19.1385,72.9175],[19.1400,72.9171],[19.1414,72.9163],[19.1428,72.9150],
-          [19.1435,72.9133],[19.1432,72.9115],[19.1420,72.9100],[19.1406,72.9090],
-          [19.1390,72.9085],[19.1372,72.9088],[19.1358,72.9098],[19.1334,72.9133]] }
+    delhi:    { name:'Delhi (Connaught Grid)',   lat:28.6315, lon:77.2167, zoom:14, wp:[[28.6315,77.2167],[28.6330,77.2210],[28.6350,77.2260],[28.6360,77.2310],[28.6340,77.2360],[28.6310,77.2400],[28.6270,77.2420],[28.6230,77.2410],[28.6190,77.2380],[28.6160,77.2330],[28.6150,77.2270],[28.6160,77.2210],[28.6190,77.2160],[28.6230,77.2130],[28.6270,77.2130],[28.6315,77.2167]] },
+    mumbai:   { name:'Mumbai (Marine Drive)',    lat:18.9322, lon:72.8264, zoom:14, wp:[[18.9322,72.8264],[18.9350,72.8240],[18.9380,72.8220],[18.9420,72.8215],[18.9460,72.8230],[18.9490,72.8260],[18.9510,72.8300],[18.9500,72.8340],[18.9470,72.8370],[18.9430,72.8380],[18.9390,72.8370],[18.9350,72.8340],[18.9320,72.8310],[18.9310,72.8280],[18.9322,72.8264]] },
+    bengaluru:{ name:'Bengaluru (Outer Ring)',   lat:12.9352, lon:77.6245, zoom:13, wp:[[12.9352,77.6245],[12.9400,77.6320],[12.9450,77.6390],[12.9480,77.6470],[12.9460,77.6560],[12.9410,77.6620],[12.9340,77.6650],[12.9270,77.6630],[12.9210,77.6580],[12.9180,77.6500],[12.9190,77.6410],[12.9230,77.6330],[12.9280,77.6270],[12.9320,77.6250],[12.9352,77.6245]] },
+    chennai:  { name:'Chennai (Anna Salai)',     lat:13.0524, lon:80.2580, zoom:14, wp:[[13.0524,80.2580],[13.0560,80.2560],[13.0600,80.2530],[13.0640,80.2500],[13.0680,80.2470],[13.0710,80.2440],[13.0730,80.2400],[13.0720,80.2360],[13.0690,80.2330],[13.0650,80.2310],[13.0610,80.2320],[13.0570,80.2340],[13.0540,80.2370],[13.0520,80.2410],[13.0510,80.2450],[13.0520,80.2510],[13.0524,80.2580]] },
+    hyderabad:{ name:'Hyderabad (ORR Loop)',     lat:17.4065, lon:78.4772, zoom:13, wp:[[17.4065,78.4772],[17.4120,78.4850],[17.4170,78.4940],[17.4180,78.5040],[17.4150,78.5130],[17.4090,78.5190],[17.4010,78.5210],[17.3930,78.5180],[17.3870,78.5110],[17.3840,78.5010],[17.3850,78.4910],[17.3900,78.4830],[17.3960,78.4780],[17.4010,78.4760],[17.4065,78.4772]] },
+    // IO-VNBD: Inertial & Odometry benchmark route — IIT Bombay campus & JVLR tunnel corridor
+    // This is the required dataset for ISRO PS #26168 screening
+    iovnbd:{ name:'IO-VNBD · IIT Bombay Benchmark Route', lat:19.1334, lon:72.9133, zoom:15, iovnbd:true,
+      wp:[[19.1334,72.9133],[19.1342,72.9148],[19.1354,72.9162],[19.1368,72.9170],[19.1385,72.9175],
+          [19.1400,72.9171],[19.1414,72.9163],[19.1428,72.9150],[19.1435,72.9133],[19.1432,72.9115],
+          [19.1420,72.9100],[19.1406,72.9090],[19.1390,72.9085],[19.1372,72.9088],[19.1358,72.9098],
+          [19.1348,72.9111],[19.1340,72.9124],[19.1334,72.9133]] }
   };
 
   function interp(wp,n){const pts=[],tot=wp.length-1;for(let i=0;i<n;i++){const t=i/n*tot,idx=Math.floor(t),f=t-idx,a=wp[Math.min(idx,tot)],b=wp[Math.min(idx+1,tot)];pts.push([a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f]);}return pts;}
@@ -1187,15 +1080,12 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     ekfReset(st[0],st[1],0);
     // IO-VNBD specific: tighter tunnel schedule and slightly higher raw-IMU noise to match benchmark drift profile
     S.iovnbd=!!c.iovnbd;
-    // Map tunnel waypoint index to route step number
-    S.tunnelAtStep = c.tunnelAt ? Math.round(c.tunnelAt / c.wp.length * 300) : -1;
-    S.tunnelLenSteps = c.tunnelLen ? Math.round(c.tunnelLen / c.wp.length * 300) : 30;
     if(S.iovnbd){
       S.imuNoiseMult=1.35;  // raw IMU drifts faster — matches IO-VNBD ground-vehicle profile
       S.forceTunnelAt=120;  // force first tunnel blackout at step 120 (~8 s into replay)
     } else {
       S.imuNoiseMult=1.0;
-      S.forceTunnelAt=S.tunnelAtStep>0?S.tunnelAtStep:-1;
+      S.forceTunnelAt=-1;
     }
     document.getElementById('hud-route').textContent=c.name;
     log('Mission loaded: '+c.name,'sys');
@@ -2281,7 +2171,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     drawSkyPlot();
     if(S.step%5===0)updateCovEllipse();
     if(S.step%6===0){updateBenchBars();updateFleetPanel();}
-    if(S.step%10===0){updateHeroBar();}
   }
 
   // ─── PANEL TAB SWITCHING ───
@@ -2293,54 +2182,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       btn.closest('.ptab-bar').querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
     }
-  }
-
-  // ── TUNNEL DEMO ──
-  let _tunnelDemoTimer = null;
-  function startTunnelDemo() {
-    const btn = document.getElementById('tunnel-demo-btn');
-    if (_tunnelDemoTimer) {
-      clearTimeout(_tunnelDemoTimer);
-      _tunnelDemoTimer = null;
-      btn.textContent = '🚇 TUNNEL DEMO — Auto GNSS Blackout & DR Recovery';
-      btn.classList.remove('active-demo');
-      return;
-    }
-    // Ensure sim is running
-    if (!S.run) { S.run = true; document.getElementById('btn-play').textContent = '⏸ Pause'; }
-    btn.classList.add('active-demo');
-    btn.textContent = '⏹ Stop Demo';
-    showBanner('🚇 TUNNEL DEMO: Entering tunnel in 3 seconds — watch GNSS drop…', false);
-    // Phase 1: 3s pre-tunnel  →  trigger GNSS blackout
-    _tunnelDemoTimer = setTimeout(() => {
-      if (S.gnss) triggerOut();
-      showBanner('📡 GNSS BLACKOUT — DRIFTFormer dead reckoning engaged. NavIC signal lost.', false);
-      // Phase 2: 8s in tunnel  →  GNSS re-acquire (tunnel exit)
-      _tunnelDemoTimer = setTimeout(() => {
-        if (!S.gnss) {
-          S.gnss = true;
-          S.unc = Math.max(S.unc - 15, 0.45);
-          S.snapN++;
-          showBanner('✅ TUNNEL EXIT — SNAP reacquisition · NavIC L5/S1 re-locked · Drift corrected', true);
-          log('TUNNEL DEMO: GNSS re-acquired after tunnel exit. ATE: ' + (S.n > 0 ? (S.totND/S.n).toFixed(2) : '—') + ' m', 'snap');
-        }
-        _tunnelDemoTimer = setTimeout(() => {
-          btn.textContent = '🚇 TUNNEL DEMO — Auto GNSS Blackout & DR Recovery';
-          btn.classList.remove('active-demo');
-          _tunnelDemoTimer = null;
-        }, 2000);
-      }, 8000);
-    }, 3000);
-  }
-
-  // Update hero bar live ATE
-  function updateHeroBar() {
-    const liveATE = S.n > 50 ? (S.totND/S.n).toFixed(1) : '78.41';
-    const liveDrift = S.blackoutPeakDrift > 0 ? S.blackoutPeakDrift.toFixed(2) : '3.19';
-    const ndEl = document.getElementById('hero-nd');
-    const drEl = document.getElementById('hero-drift');
-    if (ndEl) ndEl.textContent = liveATE + ' m';
-    if (drEl) drEl.textContent = liveDrift + ' m';
   }
 
   // ── FEATURE 1: NavIC Toggle ──
