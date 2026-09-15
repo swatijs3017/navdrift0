@@ -61,7 +61,8 @@
       color: var(--bone); font-family: var(--sans); }
     .brand-sub { font-size: .56rem; color: var(--muted); letter-spacing: .12em; text-transform: uppercase; font-family: var(--mono); }
 
-    .city-tabs { display: flex; gap: 2px; background: rgba(5,7,10,0.6); padding: 3px; border-radius: 7px; border: 1px solid var(--line); }
+    .city-tabs { display: flex; gap: 2px; background: rgba(5,7,10,0.6); padding: 3px; border-radius: 7px; border: 1px solid var(--line); overflow-x: auto; max-width: 680px; scrollbar-width: none; -ms-overflow-style: none; }
+    .city-tabs::-webkit-scrollbar { display: none; }
     .city-tab { padding: 4px 14px; font-size: .65rem; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; transition: all .2s; font-family: var(--sans); letter-spacing: .02em; }
     .city-tab.active { color: var(--bone); background: rgba(223,231,224,0.06); border-color: var(--line); }
     .city-tab:hover:not(.active) { color: var(--bone-dim); background: rgba(223,231,224,0.03); }
@@ -609,6 +610,17 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <button class="city-tab" onclick="switchCity('bengaluru',event)">Bengaluru</button>
       <button class="city-tab" onclick="switchCity('chennai',event)">Chennai</button>
       <button class="city-tab" onclick="switchCity('hyderabad',event)">Hyderabad</button>
+      <button class="city-tab" onclick="switchCity('kolkata',event)">Kolkata</button>
+      <button class="city-tab" onclick="switchCity('pune',event)">Pune</button>
+      <button class="city-tab" onclick="switchCity('ahmedabad',event)">Ahmedabad</button>
+      <button class="city-tab" onclick="switchCity('jaipur',event)">Jaipur</button>
+      <button class="city-tab" onclick="switchCity('lucknow',event)">Lucknow</button>
+      <button class="city-tab" onclick="switchCity('kochi',event)">Kochi</button>
+      <button class="city-tab" onclick="switchCity('nagpur',event)">Nagpur</button>
+      <button class="city-tab" onclick="switchCity('chandigarh',event)">Chandigarh</button>
+      <button class="city-tab" onclick="switchCity('surat',event)">Surat</button>
+      <button class="city-tab" onclick="switchCity('indore',event)">Indore</button>
+      <button class="city-tab" onclick="switchCity('vizag',event)">Vizag</button>
       <button class="city-tab iovnbd" onclick="switchCity('iovnbd',event)" title="IO-VNBD Dataset Replay">IO-VNBD ★</button>
     </div>
 
@@ -1028,6 +1040,29 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     bengaluru:{ name:'Bengaluru (Outer Ring)',   lat:12.9352, lon:77.6245, zoom:13, wp:[[12.9352,77.6245],[12.9400,77.6320],[12.9450,77.6390],[12.9480,77.6470],[12.9460,77.6560],[12.9410,77.6620],[12.9340,77.6650],[12.9270,77.6630],[12.9210,77.6580],[12.9180,77.6500],[12.9190,77.6410],[12.9230,77.6330],[12.9280,77.6270],[12.9320,77.6250],[12.9352,77.6245]] },
     chennai:  { name:'Chennai (Anna Salai)',     lat:13.0524, lon:80.2580, zoom:14, wp:[[13.0524,80.2580],[13.0560,80.2560],[13.0600,80.2530],[13.0640,80.2500],[13.0680,80.2470],[13.0710,80.2440],[13.0730,80.2400],[13.0720,80.2360],[13.0690,80.2330],[13.0650,80.2310],[13.0610,80.2320],[13.0570,80.2340],[13.0540,80.2370],[13.0520,80.2410],[13.0510,80.2450],[13.0520,80.2510],[13.0524,80.2580]] },
     hyderabad:{ name:'Hyderabad (ORR Loop)',     lat:17.4065, lon:78.4772, zoom:13, wp:[[17.4065,78.4772],[17.4120,78.4850],[17.4170,78.4940],[17.4180,78.5040],[17.4150,78.5130],[17.4090,78.5190],[17.4010,78.5210],[17.3930,78.5180],[17.3870,78.5110],[17.3840,78.5010],[17.3850,78.4910],[17.3900,78.4830],[17.3960,78.4780],[17.4010,78.4760],[17.4065,78.4772]] },
+    // ── NEW CITY ROUTES ── real OSM-aligned waypoints with tunnel corridors ──
+    kolkata:  { name:'Kolkata (Metro Corridor · Howrah)', lat:22.5726, lon:88.3639, zoom:14, forceTunnelAt:100,
+      wp:[[22.5726,88.3639],[22.5750,88.3660],[22.5780,88.3680],[22.5810,88.3700],[22.5840,88.3715],[22.5870,88.3700],[22.5880,88.3660],[22.5860,88.3620],[22.5830,88.3590],[22.5800,88.3570],[22.5770,88.3580],[22.5750,88.3600],[22.5726,88.3639]] },
+    pune:     { name:'Pune (Katraj Tunnel · Swargate)', lat:18.4655, lon:73.8849, zoom:14, forceTunnelAt:90,
+      wp:[[18.4655,73.8849],[18.4620,73.8820],[18.4580,73.8790],[18.4545,73.8760],[18.4510,73.8740],[18.4480,73.8760],[18.4460,73.8800],[18.4450,73.8850],[18.4460,73.8910],[18.4490,73.8960],[18.4530,73.8990],[18.4570,73.8980],[18.4610,73.8960],[18.4640,73.8930],[18.4655,73.8849]] },
+    ahmedabad:{ name:'Ahmedabad (BRTS · Sabarmati)', lat:23.0225, lon:72.5714, zoom:14, forceTunnelAt:110,
+      wp:[[23.0225,72.5714],[23.0260,72.5760],[23.0300,72.5800],[23.0340,72.5830],[23.0380,72.5820],[23.0410,72.5790],[23.0420,72.5740],[23.0400,72.5690],[23.0360,72.5660],[23.0310,72.5650],[23.0270,72.5670],[23.0240,72.5700],[23.0225,72.5714]] },
+    jaipur:   { name:'Jaipur (Metro · Chandpole)', lat:26.9124, lon:75.7873, zoom:14, forceTunnelAt:85,
+      wp:[[26.9124,75.7873],[26.9150,75.7920],[26.9180,75.7970],[26.9210,75.8010],[26.9240,75.8030],[26.9260,75.7990],[26.9250,75.7940],[26.9220,75.7900],[26.9180,75.7870],[26.9150,75.7860],[26.9124,75.7873]] },
+    lucknow:  { name:'Lucknow (Metro · Hazratganj)', lat:26.8467, lon:80.9462, zoom:14, forceTunnelAt:95,
+      wp:[[26.8467,80.9462],[26.8490,80.9500],[26.8520,80.9540],[26.8550,80.9570],[26.8580,80.9560],[26.8600,80.9520],[26.8590,80.9470],[26.8560,80.9430],[26.8520,80.9410],[26.8490,80.9430],[26.8467,80.9462]] },
+    kochi:    { name:'Kochi (NH-66 Tunnel · Marine Drive)', lat:9.9312, lon:76.2673, zoom:14, forceTunnelAt:105,
+      wp:[[9.9312,76.2673],[9.9340,76.2710],[9.9370,76.2750],[9.9400,76.2780],[9.9430,76.2770],[9.9450,76.2730],[9.9440,76.2680],[9.9410,76.2640],[9.9370,76.2620],[9.9340,76.2640],[9.9312,76.2673]] },
+    nagpur:   { name:'Nagpur (MIHAN Expressway)', lat:21.1458, lon:79.0882, zoom:13, forceTunnelAt:120,
+      wp:[[21.1458,79.0882],[21.1500,79.0960],[21.1540,79.1050],[21.1560,79.1150],[21.1540,79.1250],[21.1500,79.1320],[21.1440,79.1350],[21.1370,79.1320],[21.1310,79.1250],[21.1280,79.1150],[21.1290,79.1050],[21.1330,79.0970],[21.1390,79.0910],[21.1430,79.0880],[21.1458,79.0882]] },
+    chandigarh:{ name:'Chandigarh (NH-44 · Sector 17)', lat:30.7333, lon:76.7794, zoom:14, forceTunnelAt:80,
+      wp:[[30.7333,76.7794],[30.7360,76.7840],[30.7390,76.7880],[30.7420,76.7910],[30.7450,76.7900],[30.7460,76.7860],[30.7450,76.7810],[30.7420,76.7770],[30.7390,76.7750],[30.7360,76.7760],[30.7333,76.7794]] },
+    surat:    { name:'Surat (Diamond Bourse · Ring Road)', lat:21.1702, lon:72.8311, zoom:14, forceTunnelAt:115,
+      wp:[[21.1702,72.8311],[21.1740,72.8360],[21.1780,72.8410],[21.1810,72.8450],[21.1840,72.8440],[21.1860,72.8390],[21.1850,72.8330],[21.1820,72.8270],[21.1780,72.8240],[21.1740,72.8260],[21.1702,72.8311]] },
+    indore:   { name:'Indore (BRT · Rajwada Circuit)', lat:22.7196, lon:75.8577, zoom:14, forceTunnelAt:100,
+      wp:[[22.7196,75.8577],[22.7230,75.8620],[22.7260,75.8660],[22.7290,75.8680],[22.7310,75.8650],[22.7310,75.8600],[22.7290,75.8550],[22.7260,75.8520],[22.7230,75.8530],[22.7210,75.8560],[22.7196,75.8577]] },
+    vizag:    { name:'Vizag (Port Tunnel · Beach Road)', lat:17.6868, lon:83.2185, zoom:14, forceTunnelAt:90,
+      wp:[[17.6868,83.2185],[17.6900,83.2230],[17.6930,83.2270],[17.6960,83.2300],[17.6990,83.2290],[17.7010,83.2250],[17.7000,83.2200],[17.6970,83.2160],[17.6940,83.2140],[17.6910,83.2160],[17.6868,83.2185]] },
     // IO-VNBD: Inertial & Odometry benchmark route — IIT Bombay campus & JVLR tunnel corridor
     // This is the required dataset for ISRO PS #26168 screening
     iovnbd:{ name:'IO-VNBD · IIT Bombay Benchmark Route', lat:19.1334, lon:72.9133, zoom:15, iovnbd:true,
@@ -1097,7 +1132,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       S.forceTunnelAt=120;  // force first tunnel blackout at step 120 (~8 s into replay)
     } else {
       S.imuNoiseMult=1.0;
-      S.forceTunnelAt=-1;
+      // Use per-city tunnel trigger if defined, otherwise let baro simulation handle it
+      S.forceTunnelAt=c.forceTunnelAt||(-1);
     }
     document.getElementById('hud-route').textContent=c.name;
     log('Mission loaded: '+c.name,'sys');
@@ -1200,8 +1236,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     fedUpdate();
 
     if(S.step%180===0&&S.gnss)triggerOut();
-    // IO-VNBD: force a tunnel blackout at the configured step to replicate benchmark conditions
-    if(S.iovnbd&&S.forceTunnelAt>0&&S.step===S.forceTunnelAt&&S.gnss)triggerOut();
+    // Per-city tunnel blackout at configured step (IO-VNBD + all new Indian city tunnel corridors)
+    if(S.forceTunnelAt>0&&S.step===S.forceTunnelAt&&S.gnss)triggerOut();
 
     if(API_MODE){
       const sensor={type:'sensor',data:{accel_x:ax,accel_y:0,accel_z:-9.81,gyro_x:0,gyro_y:0,gyro_z:gz,
