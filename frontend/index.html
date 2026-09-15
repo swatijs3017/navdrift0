@@ -165,10 +165,10 @@
     .sv-open #sv-half { display:block; }
     #sv-viewer { width:100%; height:100%; }
     #sv-viewer > * { width:100% !important; height:100% !important; }
-    /* Street View toggle button */
-    #sv-toggle-btn { position:absolute; bottom:9px; right:9px; z-index:600; background:rgba(0,196,224,0.12); border:1px solid rgba(0,196,224,0.4); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.52rem; font-weight:700; letter-spacing:.1em; padding:5px 10px; border-radius:4px; cursor:pointer; transition:all .15s; white-space:nowrap; }
-    #sv-toggle-btn:hover { background:rgba(0,196,224,0.25); }
-    #sv-toggle-btn.active { background:rgba(0,196,224,0.22); border-color:#00C4E0; }
+    /* Street View toggle button — floats above map, top-center */
+    #sv-toggle-btn { position:absolute; top:9px; left:50%; transform:translateX(-50%); z-index:600; background:rgba(0,196,224,0.13); border:1px solid rgba(0,196,224,0.45); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.52rem; font-weight:700; letter-spacing:.1em; padding:5px 13px; border-radius:4px; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    #sv-toggle-btn:hover { background:rgba(0,196,224,0.28); }
+    #sv-toggle-btn.active { background:rgba(0,196,224,0.25); border-color:#00C4E0; color:#fff; }
 
     /* label bars at top of each half */
     .half-label { position:absolute; top:6px; left:50%; transform:translateX(-50%); z-index:601; font-family:'JetBrains Mono',monospace; font-size:.48rem; font-weight:700; letter-spacing:.12em; color:rgba(223,231,224,0.35); pointer-events:none; white-space:nowrap; }
