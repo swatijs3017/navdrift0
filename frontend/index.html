@@ -16,6 +16,8 @@
   <meta name="apple-mobile-web-app-title" content="NAVDRIFT-0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mapillary-js@4/dist/mapillary.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/mapillary-js@4/dist/mapillary.min.js"></script>
   <style>
     :root {
       /* ── Kage palette ── */
@@ -158,22 +160,38 @@
     .map-wrap { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); min-height: 0; }
     #map { width: 100%; height: 100%; background: #04060a; }
 
-    /* ── STREET VIEW ── */
-    #road-canvas { position:absolute; inset:0; width:100%; height:100%; display:none; z-index:2; }
-    .map-wrap.street-mode #map { opacity:0; pointer-events:none; }
-    .map-wrap.street-mode #road-canvas { display:block; }
-    .map-wrap.street-mode #minimap-leaf { display:block !important; }
-    #minimap-leaf { display:none; position:absolute; bottom:9px; left:9px; z-index:600; width:200px; height:150px; border-radius:4px; border:1px solid rgba(0,196,224,0.35); overflow:hidden; box-shadow:0 0 16px rgba(0,0,0,0.7); }
-    #sv-toggle { position:absolute; top:9px; right:9px; z-index:601; background:rgba(2,5,9,0.88); border:1px solid rgba(0,196,224,0.35); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.6rem; font-weight:600; padding:4px 10px; border-radius:3px; cursor:pointer; letter-spacing:.08em; transition:all .2s; }
-    #sv-toggle:hover { background:rgba(0,196,224,0.12); }
-    #sv-toggle.active { background:rgba(0,196,224,0.18); border-color:#00C4E0; color:#fff; }
-    #sv-speed-hud { position:absolute; bottom:12px; right:12px; z-index:601; text-align:right; pointer-events:none; }
-    #sv-speed-num { font-family:'JetBrains Mono',monospace; font-size:2.2rem; font-weight:700; color:#00C4E0; line-height:1; text-shadow:0 0 20px rgba(0,196,224,0.8); }
-    #sv-speed-unit { font-family:'JetBrains Mono',monospace; font-size:.6rem; color:rgba(0,196,224,0.6); letter-spacing:.12em; }
-    #sv-mode-badge { position:absolute; top:9px; left:50%; transform:translateX(-50%); z-index:601; font-family:'JetBrains Mono',monospace; font-size:.62rem; font-weight:700; letter-spacing:.1em; padding:3px 10px; border-radius:2px; pointer-events:none; transition:all .3s; }
-    #sv-mode-badge.gnss { background:rgba(0,200,122,0.15); color:#00C87A; border:1px solid rgba(0,200,122,0.4); }
-    #sv-mode-badge.blackout { background:rgba(224,32,32,0.18); color:#FF4455; border:1px solid rgba(224,32,32,0.5); animation:blink .7s step-end infinite; }
-    #sv-mode-badge.tunnel { background:rgba(240,160,0,0.15); color:#F0A000; border:1px solid rgba(240,160,0,0.4); }
+    /* ── STREET VIEW (Mapillary real imagery) ── */
+    #sv-viewer { position:absolute; inset:0; width:100%; height:100%; display:none; z-index:2; background:#020509; }
+    .map-wrap.sv-on #sv-viewer { display:block; }
+    .map-wrap.sv-on #map { opacity:0; pointer-events:none; }
+    /* Override Mapillary default controls to match NAVDRIFT theme */
+    #sv-viewer .mapillary-js { width:100% !important; height:100% !important; }
+    #sv-viewer .mapillary-js canvas { border-radius:0; }
+    #sv-minimap { display:none; position:absolute; bottom:10px; right:10px; z-index:600; width:190px; height:140px; border-radius:3px; border:1px solid rgba(0,196,224,0.4); overflow:hidden; box-shadow:0 2px 18px rgba(0,0,0,0.85); }
+    .map-wrap.sv-on #sv-minimap { display:block; }
+    #sv-btn { position:absolute; top:9px; right:9px; z-index:601; background:rgba(2,5,9,0.9); border:1px solid rgba(0,196,224,0.4); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.58rem; font-weight:700; padding:4px 11px; border-radius:2px; cursor:pointer; letter-spacing:.1em; text-transform:uppercase; transition:all .15s; }
+    #sv-btn:hover { background:rgba(0,196,224,0.14); }
+    #sv-btn.on { background:rgba(0,196,224,0.18); border-color:#00C4E0; color:#fff; }
+    #sv-spdhud { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); z-index:601; text-align:center; pointer-events:none; display:none; }
+    #sv-spdnum { font-family:'JetBrains Mono',monospace; font-size:2.6rem; font-weight:700; color:#fff; line-height:1; text-shadow:0 0 24px rgba(0,196,224,0.9),0 0 60px rgba(0,196,224,0.4); }
+    #sv-spdunit { font-family:'JetBrains Mono',monospace; font-size:.55rem; color:rgba(0,196,224,0.6); letter-spacing:.14em; }
+    #sv-badge { position:absolute; top:9px; left:50%; transform:translateX(-50%); z-index:601; font-family:'JetBrains Mono',monospace; font-size:.6rem; font-weight:700; letter-spacing:.1em; padding:3px 12px; border-radius:2px; pointer-events:none; display:none; white-space:nowrap; }
+    #sv-badge.g { background:rgba(0,200,122,0.15); color:#00C87A; border:1px solid rgba(0,200,122,0.45); }
+    #sv-badge.r { background:rgba(224,32,32,0.2); color:#FF4455; border:1px solid rgba(224,32,32,0.5); animation:blink .7s step-end infinite; }
+    #sv-badge.y { background:rgba(240,160,0,0.18); color:#F0C030; border:1px solid rgba(240,160,0,0.45); }
+    /* Token overlay */
+    #sv-token-overlay { display:none; position:absolute; inset:0; z-index:700; background:rgba(2,5,9,0.92); backdrop-filter:blur(6px); align-items:center; justify-content:center; flex-direction:column; }
+    .sv-tok-box { background:rgba(8,12,16,0.95); border:1px solid rgba(0,196,224,0.35); border-radius:8px; padding:28px 32px; display:flex; flex-direction:column; align-items:center; gap:14px; max-width:400px; width:90%; }
+    .sv-tok-title { font-family:'JetBrains Mono',monospace; font-size:.75rem; font-weight:700; color:#00C4E0; letter-spacing:.12em; }
+    .sv-tok-sub { font-family:'JetBrains Mono',monospace; font-size:.56rem; color:rgba(223,231,224,0.5); text-align:center; line-height:1.6; }
+    .sv-tok-sub a { color:#00C4E0; text-decoration:none; }
+    #sv-tok-input { width:100%; background:rgba(0,196,224,0.06); border:1px solid rgba(0,196,224,0.3); color:#dfe7e0; font-family:'JetBrains Mono',monospace; font-size:.62rem; padding:8px 12px; border-radius:4px; outline:none; }
+    #sv-tok-input:focus { border-color:#00C4E0; }
+    #sv-tok-submit { background:rgba(0,196,224,0.15); border:1px solid rgba(0,196,224,0.5); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.6rem; font-weight:700; letter-spacing:.1em; padding:7px 20px; border-radius:4px; cursor:pointer; transition:all .15s; }
+    #sv-tok-submit:hover { background:rgba(0,196,224,0.28); }
+    #sv-tok-err { font-family:'JetBrains Mono',monospace; font-size:.55rem; color:#FF4455; display:none; }
+    #sv-loading { position:absolute; inset:0; z-index:650; display:none; align-items:center; justify-content:center; background:rgba(2,5,9,0.75); pointer-events:none; }
+    #sv-loading span { font-family:'JetBrains Mono',monospace; font-size:.62rem; color:#00C4E0; letter-spacing:.12em; animation:blink .9s step-end infinite; }
     .leaflet-container { background: #04060a !important; }
     .hud { position: absolute; z-index: 500; pointer-events: none; }
     .hud.tl { top: 9px; left: 9px; }
@@ -687,11 +705,22 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     <!-- CENTER MAP -->
     <div class="map-wrap" id="map-wrap">
       <div id="map"></div>
-      <canvas id="road-canvas"></canvas>
-      <div id="minimap-leaf"></div>
-      <button id="sv-toggle" onclick="toggleStreetView()">⬛ 3D DRIVE</button>
-      <div id="sv-speed-hud" style="display:none"><div id="sv-speed-num">0</div><div id="sv-speed-unit">KM/H</div></div>
-      <div id="sv-mode-badge" class="gnss" style="display:none">GNSS LOCKED</div>
+      <div id="sv-viewer"></div>
+      <div id="sv-token-overlay">
+        <div class="sv-tok-box">
+          <div class="sv-tok-title">🛣 REAL STREET VIEW · MAPILLARY</div>
+          <div class="sv-tok-sub">Free access token required.<br><a href="https://www.mapillary.com/developer/app" target="_blank">Get yours at mapillary.com/developer</a><br><br>Sign up free → Create App → copy the <b style="color:#00C4E0">Client Token</b></div>
+          <input id="sv-tok-input" type="text" placeholder="Paste Mapillary Client Access Token…" autocomplete="off" spellcheck="false">
+          <span id="sv-tok-err">⚠ Could not load imagery — check token</span>
+          <button id="sv-tok-submit" onclick="svSetToken()">ACTIVATE REAL STREET VIEW ▶</button>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:.5rem;color:rgba(223,231,224,0.3);text-align:center">Token is stored in localStorage for this browser only</div>
+        </div>
+      </div>
+      <div id="sv-loading"><span>LOADING STREET IMAGERY…</span></div>
+      <div id="sv-minimap"></div>
+      <button id="sv-btn" onclick="svToggle()">⬛ STREET VIEW</button>
+      <div id="sv-spdhud"><div id="sv-spdnum">0</div><div id="sv-spdunit">KM/H</div></div>
+      <div id="sv-badge" class="g">GNSS LOCKED · NavIC L5</div>
       <div id="route-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(139,26,26,0.88);color:var(--bone);font-size:.72rem;letter-spacing:.08em;padding:5px 14px;border-radius:3px;gap:6px;align-items:center;white-space:nowrap;">⚠ High uncertainty — alternate route suggested</div>
       <div class="hud tl"><div class="hbox">
         <div class="hl">Position</div>
@@ -2407,322 +2436,162 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
     draw();
   })();
 
-  // ─── MINI-MAP (street-view mode) ───────────────────────────────────────────
-  let _miniMap = null;
-  function initMiniMap(lat, lon, zoom) {
-    if (!_miniMap) {
-      _miniMap = L.map('minimap-leaf', { zoomControl:false, attributionControl:false, dragging:false, scrollWheelZoom:false, touchZoom:false, doubleClickZoom:false });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(_miniMap);
-      const ms = document.createElement('style');
-      ms.textContent = '#minimap-leaf .leaflet-tile-pane{filter:brightness(0.28) saturate(0.6) hue-rotate(172deg)}';
-      document.head.appendChild(ms);
-      window._miniDot = L.circleMarker([lat,lon],{radius:5,color:'#00C4E0',fillColor:'#00C4E0',fillOpacity:1,weight:2}).addTo(_miniMap);
-      window._miniTrail = L.polyline([], {color:'#00C4E0',weight:2,opacity:.7}).addTo(_miniMap);
-    }
-    _miniMap.setView([lat,lon], Math.min(zoom,16), {animate:false});
-  }
-  function miniMapUpdate(lat, lon) {
-    if (!_miniMap) return;
-    window._miniDot.setLatLng([lat,lon]);
-    const trail = window._miniTrail.getLatLngs();
-    trail.push([lat,lon]);
-    if(trail.length > 200) trail.shift();
-    window._miniTrail.setLatLngs(trail);
-    _miniMap.setView([lat,lon], _miniMap.getZoom(), {animate:false});
-    setTimeout(()=>{ if(_miniMap) _miniMap.invalidateSize(); }, 50);
-  }
+// ═══════════════════════════════════════════════════════════
+//  STREET VIEW DRIVE MODE  —  Mapillary real imagery
+// ═══════════════════════════════════════════════════════════
+(function(){
+  let active=false, miniMap=null, miniDot=null, miniTrail=null;
+  let viewer=null, mlyToken=null, loopRunning=false;
+  let lastImgUpdate=0, lastLat=null, lastLon=null;
+  const THROTTLE_MS=4000; // fetch new image at most every 4s
+  const MOVE_THRESH=0.00015; // ~15m — skip fetch if barely moved
 
-  // ─── 3D STREET VIEW RENDERER ───────────────────────────────────────────────
-  let _svActive = false;
-  let _svRaf = null;
-  let _svNoise = new Float32Array(512);
-  for(let i=0;i<512;i++) _svNoise[i]=Math.random();
-  let _svNoiseT = 0;
+  // ── Restore saved token from localStorage ──
+  try { mlyToken = localStorage.getItem('mly_token') || null; } catch(e){}
 
-  function toggleStreetView() {
-    _svActive = !_svActive;
-    const wrap = document.getElementById('map-wrap');
-    const btn  = document.getElementById('sv-toggle');
-    const speedHud = document.getElementById('sv-speed-hud');
-    const modeBadge = document.getElementById('sv-mode-badge');
-    if (_svActive) {
-      wrap.classList.add('street-mode');
-      btn.classList.add('active');
-      btn.textContent = '🗺 MAP';
-      speedHud.style.display = 'block';
-      modeBadge.style.display = 'block';
-      // init mini map at current city
-      const c = CITIES[S.city];
-      if (c) initMiniMap(c.lat, c.lon, c.zoom || 15);
-      if (_miniMap) setTimeout(() => _miniMap.invalidateSize(), 100);
-      _svRafLoop();
-    } else {
-      wrap.classList.remove('street-mode');
-      btn.classList.remove('active');
-      btn.textContent = '⬛ 3D DRIVE';
-      speedHud.style.display = 'none';
-      modeBadge.style.display = 'none';
-      if (_svRaf) { cancelAnimationFrame(_svRaf); _svRaf = null; }
-    }
-  }
-
-  function _svRafLoop() {
-    if (!_svActive) return;
-    _drawRoad();
-    _svRaf = requestAnimationFrame(_svRafLoop);
-  }
-
-  function _drawRoad() {
-    const cv = document.getElementById('road-canvas');
-    if (!cv || !cv.offsetParent) return;
-    const W = cv.offsetWidth, H = cv.offsetHeight;
-    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-    const ctx = cv.getContext('2d');
-    const spd = S.spd || 0;
-    const inTunnel = S.inTunnel || false;
-    const gnss = S.gnss !== false;
-    _svNoiseT++;
-
-    // ── heading: derive from upcoming waypoints ──
-    const ri = S.ri || 0;
-    const route = S.route || [];
-    const ahead = [];
-    for (let k = ri; k < Math.min(ri+80, route.length); k++) ahead.push(route[k]);
-
-    // Heading changes expressed as normalized x-offset of vanishing point
-    let vpX = W/2;
-    if (ahead.length >= 4) {
-      const dLon = (ahead[3][1]-ahead[0][1]);
-      const dLat = (ahead[3][0]-ahead[0][0]);
-      // Map heading delta to VP offset (-1..1 → vpX shift)
-      const headDeg = Math.atan2(dLon, dLat) * 180/Math.PI;
-      const prevDeg = S._svPrevHead || headDeg;
-      const delta = ((headDeg - prevDeg + 540)%360) - 180; // signed diff
-      S._svVpOff = (S._svVpOff||0)*0.93 + delta*0.22; // smooth
-      S._svPrevHead = headDeg;
-      vpX = W/2 + Math.max(-W*0.32, Math.min(W*0.32, S._svVpOff * W*0.012));
-    }
-    const vpY = H * 0.38;
-
-    // ── Sky ──
-    if (inTunnel) {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, W, H);
-    } else {
-      // Sky gradient
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, vpY);
-      if (!gnss) {
-        skyGrad.addColorStop(0, '#0a0005');
-        skyGrad.addColorStop(1, '#1a0510');
+  window.svToggle=function(){
+    active=!active;
+    const wrap=document.getElementById('map-wrap');
+    const btn=document.getElementById('sv-btn');
+    const spdhud=document.getElementById('sv-spdhud');
+    const badge=document.getElementById('sv-badge');
+    if(active){
+      wrap.classList.add('sv-on');
+      btn.classList.add('on'); btn.textContent='🗺  MAP';
+      spdhud.style.display='block'; badge.style.display='block';
+      _initMini();
+      if(!mlyToken){
+        document.getElementById('sv-token-overlay').style.display='flex';
       } else {
-        skyGrad.addColorStop(0, '#020509');
-        skyGrad.addColorStop(0.6, '#060e1a');
-        skyGrad.addColorStop(1, '#0a1520');
+        _initViewer();
+        _startLoop();
       }
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, W, vpY+2);
-
-      // Horizon haze
-      const hazeGrad = ctx.createLinearGradient(0, vpY-18, 0, vpY+18);
-      hazeGrad.addColorStop(0, 'transparent');
-      hazeGrad.addColorStop(0.5, gnss ? 'rgba(0,196,224,0.04)' : 'rgba(224,32,32,0.05)');
-      hazeGrad.addColorStop(1, 'transparent');
-      ctx.fillStyle = hazeGrad;
-      ctx.fillRect(0, vpY-18, W, 36);
-
-      // Stars (sparse)
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      for (let i=0; i<40; i++) {
-        const sx = (_svNoise[i*3]   * W);
-        const sy = (_svNoise[i*3+1] * vpY * 0.85);
-        const ss = _svNoise[i*3+2] * 1.2;
-        ctx.beginPath(); ctx.arc(sx, sy, ss, 0, Math.PI*2); ctx.fill();
-      }
-    }
-
-    // ── Ground ──
-    const groundGrad = ctx.createLinearGradient(0, vpY, 0, H);
-    if (inTunnel) {
-      groundGrad.addColorStop(0, '#0a0a06');
-      groundGrad.addColorStop(1, '#141410');
     } else {
-      groundGrad.addColorStop(0, '#080c08');
-      groundGrad.addColorStop(1, '#0c1208');
+      wrap.classList.remove('sv-on');
+      btn.classList.remove('on'); btn.textContent='⬛ STREET VIEW';
+      spdhud.style.display='none'; badge.style.display='none';
+      loopRunning=false;
     }
-    ctx.fillStyle = groundGrad;
-    ctx.fillRect(0, vpY, W, H-vpY);
+  };
 
-    // ── Road surface ──
-    // Road narrows to VP with perspective. Road width at bottom = 55% of W.
-    const rBotL = W*0.22, rBotR = W*0.78;
-    const rTopL = vpX - 28, rTopR = vpX + 28;
+  window.svSetToken=function(){
+    const inp=document.getElementById('sv-tok-input');
+    const tok=inp.value.trim();
+    if(!tok) return;
+    mlyToken=tok;
+    try { localStorage.setItem('mly_token', tok); } catch(e){}
+    document.getElementById('sv-token-overlay').style.display='none';
+    document.getElementById('sv-tok-err').style.display='none';
+    _initViewer();
+    _startLoop();
+  };
 
-    ctx.beginPath();
-    ctx.moveTo(rBotL, H);
-    ctx.lineTo(rTopL, vpY);
-    ctx.lineTo(rTopR, vpY);
-    ctx.lineTo(rBotR, H);
-    ctx.closePath();
-    const roadGrad = ctx.createLinearGradient(0, vpY, 0, H);
-    if (inTunnel) {
-      roadGrad.addColorStop(0, '#1a1a14');
-      roadGrad.addColorStop(1, '#252520');
-    } else {
-      roadGrad.addColorStop(0, '#151814');
-      roadGrad.addColorStop(1, '#1e221e');
+  function _initViewer(){
+    if(viewer) return;
+    if(typeof mapillary === 'undefined'){ console.warn('mapillary-js not loaded'); return; }
+    try {
+      viewer = new mapillary.Viewer({
+        accessToken: mlyToken,
+        container: 'sv-viewer',
+        component: { cover: false, sequence: false, direction: false }
+      });
+      viewer.on('dataloading', function(e){
+        const el=document.getElementById('sv-loading');
+        if(el) el.style.display = e.loading ? 'flex' : 'none';
+      });
+    } catch(ex) {
+      console.error('Mapillary init failed:', ex);
+      _showTokenErr();
     }
-    ctx.fillStyle = roadGrad;
-    ctx.fill();
+  }
 
-    // ── Lane markings ──
-    // Center dashes
-    const dashCount = 12;
-    const speed_scroll = (spd/80)*0.05;
-    const phase = (_svNoiseT * speed_scroll) % 1;
-    ctx.strokeStyle = '#ffffff55';
-    ctx.lineWidth = 2;
-    for (let d=0; d<dashCount; d++) {
-      const t1 = (d/dashCount + phase) % 1;
-      const t2 = ((d+0.4)/dashCount + phase) % 1;
-      if (t1 > t2) continue;
-      const y1 = vpY + (H-vpY)*t1;
-      const y2 = vpY + (H-vpY)*t2;
-      const x1 = vpX + (W/2-vpX)*(1-t1)*0 + lerp(rTopL,rBotL,t1)*0.5 + lerp(rTopR,rBotR,t1)*0.5;
-      const x2 = lerp(rTopL,rBotL,t2)*0.5 + lerp(rTopR,rBotR,t2)*0.5;
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    }
-    // Edge lines (solid)
-    ctx.strokeStyle = inTunnel ? 'rgba(255,200,0,0.7)' : 'rgba(255,255,255,0.5)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(rTopL,vpY); ctx.lineTo(rBotL,H); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(rTopR,vpY); ctx.lineTo(rBotR,H); ctx.stroke();
+  function _showTokenErr(){
+    const err=document.getElementById('sv-tok-err');
+    if(err) err.style.display='block';
+    document.getElementById('sv-token-overlay').style.display='flex';
+    mlyToken=null;
+    try { localStorage.removeItem('mly_token'); } catch(e){}
+    viewer=null;
+  }
 
-    // ── Side environment ──
-    if (inTunnel) {
-      // Tunnel walls
-      const wGrad = ctx.createLinearGradient(0, vpY, 0, H);
-      wGrad.addColorStop(0,'#1a1205'); wGrad.addColorStop(1,'#0d0d08');
-      // Left wall
-      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(rTopL,vpY); ctx.lineTo(rBotL,H); ctx.lineTo(0,H); ctx.closePath();
-      ctx.fillStyle = wGrad; ctx.fill();
-      // Right wall
-      ctx.beginPath(); ctx.moveTo(W,0); ctx.lineTo(rTopR,vpY); ctx.lineTo(rBotR,H); ctx.lineTo(W,H); ctx.closePath();
-      ctx.fillStyle = wGrad; ctx.fill();
-      // Tunnel ceiling
-      ctx.fillStyle = '#0c0c08';
-      ctx.fillRect(0,0,W,vpY);
-      // Overhead lamp strip
-      const lampCount = 8;
-      for (let l=0; l<lampCount; l++) {
-        const lt = ((l/lampCount) + phase*0.5) % 1;
-        const lx = lerp(vpX, W/2, lt);
-        const ly = lerp(vpY*0.6, vpY*0.98, lt);
-        const lR = lerp(2, 8, lt);
-        const lAlpha = lt < 0.05 ? 0 : Math.min(1, lt*6);
-        ctx.beginPath();
-        ctx.arc(lx, ly, lR, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(255,220,160,${lAlpha*0.8})`;
-        ctx.fill();
-        // Glow
-        const grd = ctx.createRadialGradient(lx,ly,0,lx,ly,lR*5);
-        grd.addColorStop(0,`rgba(255,200,100,${lAlpha*0.18})`);
-        grd.addColorStop(1,'transparent');
-        ctx.fillStyle = grd;
-        ctx.fillRect(lx-lR*5,ly-lR*5,lR*10,lR*10);
-      }
-      // Tunnel arch at vanishing point
-      ctx.strokeStyle = 'rgba(80,60,20,0.5)';
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(vpX, vpY, 30, Math.PI, 0); ctx.stroke();
-    } else {
-      // Trees left
-      _drawTrees(ctx, vpX, vpY, W, H, rTopL, rBotL, 'left');
-      // Trees right
-      _drawTrees(ctx, vpX, vpY, W, H, rTopR, rBotR, 'right');
-      // Road shoulders
-      ctx.fillStyle = 'rgba(40,50,35,0.8)';
-      ctx.beginPath(); ctx.moveTo(0,vpY); ctx.lineTo(rTopL,vpY); ctx.lineTo(rBotL,H); ctx.lineTo(0,H); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(W,vpY); ctx.lineTo(rTopR,vpY); ctx.lineTo(rBotR,H); ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
-    }
+  function _startLoop(){
+    if(loopRunning) return;
+    loopRunning=true;
+    _loop();
+  }
 
-    // ── GNSS blackout overlay (static / interference) ──
-    if (!gnss) {
-      // Scanlines
-      ctx.fillStyle = 'rgba(255,0,30,0.04)';
-      for (let y=0; y<H; y+=3) { ctx.fillRect(0,y,W,1); }
-      // Static noise patches
-      const imgd = ctx.createImageData(W, H);
-      const d = imgd.data;
-      const nt = _svNoiseT % 256;
-      for (let px=0; px<W*H; px++) {
-        if (Math.random()<0.06) {
-          const v = _svNoise[(px+nt)%512]*255|0;
-          d[px*4]=v; d[px*4+1]=0; d[px*4+2]=0; d[px*4+3]=30;
+  async function _loop(){
+    while(loopRunning && active){
+      _updateHUD();
+      if(S.ndLa && S.ndLo) _updateMini(S.ndLa, S.ndLo);
+
+      // Fetch & move to nearest Mapillary image (throttled + movement check)
+      if(viewer && mlyToken && S.ndLa && S.ndLo){
+        const now=Date.now();
+        const moved = lastLat===null ||
+          Math.abs(S.ndLa-lastLat)>MOVE_THRESH ||
+          Math.abs(S.ndLo-lastLon)>MOVE_THRESH;
+        if(now-lastImgUpdate > THROTTLE_MS && moved){
+          lastImgUpdate=now; lastLat=S.ndLa; lastLon=S.ndLo;
+          const id=await _fetchNearest(S.ndLa, S.ndLo);
+          if(id && viewer){
+            try { await viewer.moveTo(id); } catch(ex){
+              // image not found or token expired
+              if(ex.message && ex.message.includes('403')) _showTokenErr();
+            }
+          }
         }
       }
-      ctx.putImageData(imgd,0,0);
-      // Red vignette
-      const vig = ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.75);
-      vig.addColorStop(0,'transparent');
-      vig.addColorStop(1,'rgba(180,0,20,0.22)');
-      ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
-      // DR drift arrow
-      const drift = S.lat || 0;
-      ctx.strokeStyle='rgba(255,60,80,0.9)'; ctx.lineWidth=2;
-      ctx.setLineDash([6,3]);
-      ctx.beginPath(); ctx.moveTo(W/2,H*0.7); ctx.lineTo(W/2+drift*200,H*0.65); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    // ── HUD speed & mode badge ──
-    const speedEl = document.getElementById('sv-speed-num');
-    if (speedEl) speedEl.textContent = Math.round(spd)||0;
-    const badge = document.getElementById('sv-mode-badge');
-    if (badge) {
-      if (!gnss) { badge.className='gnss'; badge.className='blackout'; badge.textContent='GNSS BLACKOUT · DR ACTIVE'; }
-      else if (inTunnel) { badge.className='tunnel'; badge.textContent='TUNNEL · BARO DETECT'; }
-      else { badge.className='gnss'; badge.textContent='GNSS LOCKED · NavIC L5'; }
-    }
-
-    // Update mini-map
-    if (_miniMap && S.ndLa && S.ndLo) miniMapUpdate(S.ndLa, S.ndLo);
-  }
-
-  function _drawTrees(ctx, vpX, vpY, W, H, edgeTopX, edgeBotX, side) {
-    const isLeft = side==='left';
-    const count = 12;
-    const phase = (_svNoiseT * 0.003) % 1;
-    for (let i=0; i<count; i++) {
-      const t = ((i/count)+phase) % 1;
-      if (t<0.02) continue;
-      const edgeX = lerp(edgeTopX, edgeBotX, t);
-      const groundY = vpY + (H-vpY)*t;
-      const h = lerp(8, 60, t);
-      const w = lerp(4, 28, t);
-      const x = isLeft ? edgeX - w*0.7 : edgeX + w*0.7;
-      const alpha = Math.min(1, t*3);
-      // Tree trunk
-      ctx.fillStyle = `rgba(30,22,10,${alpha*0.9})`;
-      ctx.fillRect(x-w*0.08, groundY-h, w*0.16, h);
-      // Tree canopy (pine silhouette)
-      ctx.fillStyle = `rgba(8,22,10,${alpha*0.85})`;
-      ctx.beginPath();
-      ctx.moveTo(x, groundY-h-h*0.5);
-      ctx.lineTo(x-w*0.5, groundY-h*0.3);
-      ctx.lineTo(x+w*0.5, groundY-h*0.3);
-      ctx.closePath();
-      ctx.fill();
-      // Secondary layer
-      ctx.beginPath();
-      ctx.moveTo(x, groundY-h-h*0.25);
-      ctx.lineTo(x-w*0.65, groundY-h*0.6);
-      ctx.lineTo(x+w*0.65, groundY-h*0.6);
-      ctx.closePath();
-      ctx.fill();
+      await new Promise(r=>setTimeout(r,400));
     }
   }
 
-  function lerp(a, b, t) { return a + (b-a)*t; }
+  async function _fetchNearest(lat, lon){
+    // Mapillary Graph API — find closest image
+    const url=`https://graph.mapillary.com/images?access_token=${mlyToken}&fields=id&closeto=${lon},${lat}&limit=1&radius=50`;
+    try {
+      const r=await fetch(url);
+      if(!r.ok){ if(r.status===401||r.status===403) _showTokenErr(); return null; }
+      const j=await r.json();
+      return (j.data && j.data[0]) ? j.data[0].id : null;
+    } catch(e){ return null; }
+  }
+
+  function _initMini(){
+    if(miniMap) return;
+    miniMap=L.map('sv-minimap',{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,touchZoom:false,doubleClickZoom:false});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(miniMap);
+    const ms=document.createElement('style');
+    ms.textContent='#sv-minimap .leaflet-tile-pane{filter:brightness(0.25) saturate(0.5) hue-rotate(172deg)}';
+    document.head.appendChild(ms);
+    const c=CITIES[S.city]||{lat:28.63,lon:77.22};
+    miniMap.setView([c.lat,c.lon],15,{animate:false});
+    miniDot=L.circleMarker([c.lat,c.lon],{radius:5,color:'#00C4E0',fillColor:'#00C4E0',fillOpacity:1,weight:2}).addTo(miniMap);
+    miniTrail=L.polyline([],{color:'#00C4E0',weight:2,opacity:.7}).addTo(miniMap);
+    setTimeout(()=>miniMap.invalidateSize(),120);
+  }
+
+  function _updateMini(la,lo){
+    if(!miniMap||!la||!lo) return;
+    miniDot.setLatLng([la,lo]);
+    const pts=miniTrail.getLatLngs(); pts.push([la,lo]);
+    if(pts.length>300) pts.shift();
+    miniTrail.setLatLngs(pts);
+    miniMap.setView([la,lo],miniMap.getZoom(),{animate:false});
+  }
+
+  function _updateHUD(){
+    const spdEl=document.getElementById('sv-spdnum');
+    if(spdEl) spdEl.textContent=Math.round(S.spd)||0;
+    const badge=document.getElementById('sv-badge');
+    if(badge){
+      if(!S.gnss){ badge.className='r'; badge.textContent='GNSS BLACKOUT · DR ACTIVE'; }
+      else if(S.inTunnel){ badge.className='y'; badge.textContent='TUNNEL · BARO DETECT'; }
+      else{ badge.className='g'; badge.textContent='GNSS LOCKED · NavIC L5'; }
+    }
+  }
+
+})();
 </script>
 </body>
 </html>
