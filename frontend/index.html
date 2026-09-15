@@ -155,39 +155,41 @@
     .nhc-fill { height: 100%; border-radius: 2px; transition: width .3s; }
 
     /* ── MAP ── */
-    .map-wrap { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); min-height: 0; }
-    #map { width: 100%; height: 100%; background: #04060a; }
-
-    /* ── STREET VIEW (Google Street View) ── */
-    #sv-viewer { position:absolute; inset:0; width:100%; height:100%; display:none; z-index:2; background:#020509; }
-    .map-wrap.sv-on #sv-viewer { display:block; }
-    .map-wrap.sv-on #map { opacity:0; pointer-events:none; }
+    /* ── SPLIT MAP + STREET VIEW ── */
+    .map-wrap { position:relative; border-radius:var(--r); overflow:hidden; border:1px solid var(--line); min-height:0; display:grid; grid-template-columns:1fr 1fr; }
+    #map { width:100%; height:100%; background:#04060a; }
+    #map-half { position:relative; overflow:hidden; border-right:1px solid var(--line); height:100%; }
+    #sv-half { position:relative; overflow:hidden; background:#020509; height:100%; }
+    #sv-viewer { width:100%; height:100%; }
     #sv-viewer > * { width:100% !important; height:100% !important; }
-    #sv-minimap { display:none; position:absolute; bottom:10px; right:10px; z-index:600; width:190px; height:140px; border-radius:3px; border:1px solid rgba(0,196,224,0.4); overflow:hidden; box-shadow:0 2px 18px rgba(0,0,0,0.85); }
-    .map-wrap.sv-on #sv-minimap { display:block; }
-    #sv-btn { position:absolute; top:9px; right:9px; z-index:601; background:rgba(2,5,9,0.9); border:1px solid rgba(0,196,224,0.4); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.58rem; font-weight:700; padding:4px 11px; border-radius:2px; cursor:pointer; letter-spacing:.1em; text-transform:uppercase; transition:all .15s; }
-    #sv-btn:hover { background:rgba(0,196,224,0.14); }
-    #sv-btn.on { background:rgba(0,196,224,0.18); border-color:#00C4E0; color:#fff; }
-    #sv-spdhud { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); z-index:601; text-align:center; pointer-events:none; display:none; }
-    #sv-spdnum { font-family:'JetBrains Mono',monospace; font-size:2.6rem; font-weight:700; color:#fff; line-height:1; text-shadow:0 0 24px rgba(0,196,224,0.9),0 0 60px rgba(0,196,224,0.4); }
-    #sv-spdunit { font-family:'JetBrains Mono',monospace; font-size:.55rem; color:rgba(0,196,224,0.6); letter-spacing:.14em; }
-    #sv-badge { position:absolute; top:9px; left:50%; transform:translateX(-50%); z-index:601; font-family:'JetBrains Mono',monospace; font-size:.6rem; font-weight:700; letter-spacing:.1em; padding:3px 12px; border-radius:2px; pointer-events:none; display:none; white-space:nowrap; }
+
+    /* label bars at top of each half */
+    .half-label { position:absolute; top:6px; left:50%; transform:translateX(-50%); z-index:601; font-family:'JetBrains Mono',monospace; font-size:.48rem; font-weight:700; letter-spacing:.12em; color:rgba(223,231,224,0.35); pointer-events:none; white-space:nowrap; }
+
+    /* speed HUD inside street view half */
+    #sv-spdhud { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); z-index:601; text-align:center; pointer-events:none; }
+    #sv-spdnum { font-family:'JetBrains Mono',monospace; font-size:2rem; font-weight:700; color:#fff; line-height:1; }
+    #sv-spdunit { font-family:'JetBrains Mono',monospace; font-size:.5rem; color:rgba(0,196,224,0.6); letter-spacing:.14em; }
+
+    /* GNSS badge inside street view half */
+    #sv-badge { position:absolute; top:6px; left:50%; transform:translateX(-50%); z-index:601; font-family:'JetBrains Mono',monospace; font-size:.52rem; font-weight:700; letter-spacing:.1em; padding:2px 9px; border-radius:2px; pointer-events:none; white-space:nowrap; }
     #sv-badge.g { background:rgba(0,200,122,0.15); color:#00C87A; border:1px solid rgba(0,200,122,0.45); }
     #sv-badge.r { background:rgba(224,32,32,0.2); color:#FF4455; border:1px solid rgba(224,32,32,0.5); animation:blink .7s step-end infinite; }
     #sv-badge.y { background:rgba(240,160,0,0.18); color:#F0C030; border:1px solid rgba(240,160,0,0.45); }
-    /* Token overlay */
-    #sv-token-overlay { display:none; position:absolute; inset:0; z-index:700; background:rgba(2,5,9,0.92); backdrop-filter:blur(6px); align-items:center; justify-content:center; flex-direction:column; }
-    .sv-tok-box { background:rgba(8,12,16,0.95); border:1px solid rgba(0,196,224,0.35); border-radius:8px; padding:28px 32px; display:flex; flex-direction:column; align-items:center; gap:14px; max-width:400px; width:90%; }
-    .sv-tok-title { font-family:'JetBrains Mono',monospace; font-size:.75rem; font-weight:700; color:#00C4E0; letter-spacing:.12em; }
-    .sv-tok-sub { font-family:'JetBrains Mono',monospace; font-size:.56rem; color:rgba(223,231,224,0.5); text-align:center; line-height:1.6; }
+
+    /* Token overlay — covers only sv-half */
+    #sv-token-overlay { display:none; position:absolute; inset:0; z-index:700; background:rgba(2,5,9,0.95); backdrop-filter:blur(6px); align-items:center; justify-content:center; flex-direction:column; }
+    .sv-tok-box { background:rgba(8,12,16,0.95); border:1px solid rgba(0,196,224,0.35); border-radius:8px; padding:22px 24px; display:flex; flex-direction:column; align-items:center; gap:12px; max-width:340px; width:90%; }
+    .sv-tok-title { font-family:'JetBrains Mono',monospace; font-size:.68rem; font-weight:700; color:#00C4E0; letter-spacing:.12em; text-align:center; }
+    .sv-tok-sub { font-family:'JetBrains Mono',monospace; font-size:.52rem; color:rgba(223,231,224,0.5); text-align:center; line-height:1.6; }
     .sv-tok-sub a { color:#00C4E0; text-decoration:none; }
-    #sv-tok-input { width:100%; background:rgba(0,196,224,0.06); border:1px solid rgba(0,196,224,0.3); color:#dfe7e0; font-family:'JetBrains Mono',monospace; font-size:.62rem; padding:8px 12px; border-radius:4px; outline:none; }
+    #sv-tok-input { width:100%; background:rgba(0,196,224,0.06); border:1px solid rgba(0,196,224,0.3); color:#dfe7e0; font-family:'JetBrains Mono',monospace; font-size:.6rem; padding:7px 10px; border-radius:4px; outline:none; }
     #sv-tok-input:focus { border-color:#00C4E0; }
-    #sv-tok-submit { background:rgba(0,196,224,0.15); border:1px solid rgba(0,196,224,0.5); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.6rem; font-weight:700; letter-spacing:.1em; padding:7px 20px; border-radius:4px; cursor:pointer; transition:all .15s; }
+    #sv-tok-submit { background:rgba(0,196,224,0.15); border:1px solid rgba(0,196,224,0.5); color:#00C4E0; font-family:'JetBrains Mono',monospace; font-size:.58rem; font-weight:700; letter-spacing:.1em; padding:6px 16px; border-radius:4px; cursor:pointer; transition:all .15s; }
     #sv-tok-submit:hover { background:rgba(0,196,224,0.28); }
-    #sv-tok-err { font-family:'JetBrains Mono',monospace; font-size:.55rem; color:#FF4455; display:none; }
+    #sv-tok-err { font-family:'JetBrains Mono',monospace; font-size:.52rem; color:#FF4455; display:none; }
     #sv-loading { position:absolute; inset:0; z-index:650; display:none; align-items:center; justify-content:center; background:rgba(2,5,9,0.75); pointer-events:none; }
-    #sv-loading span { font-family:'JetBrains Mono',monospace; font-size:.62rem; color:#00C4E0; letter-spacing:.12em; animation:blink .9s step-end infinite; }
+    #sv-loading span { font-family:'JetBrains Mono',monospace; font-size:.6rem; color:#00C4E0; letter-spacing:.12em; animation:blink .9s step-end infinite; }
     .leaflet-container { background: #04060a !important; }
     .hud { position: absolute; z-index: 500; pointer-events: none; }
     .hud.tl { top: 9px; left: 9px; }
@@ -698,45 +700,51 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
     </div>
 
-    <!-- CENTER MAP -->
+    <!-- CENTER MAP — split: left=Leaflet map, right=Google Street View -->
     <div class="map-wrap" id="map-wrap">
-      <div id="map"></div>
-      <div id="sv-viewer"></div>
-      <div id="sv-token-overlay">
-        <div class="sv-tok-box">
-          <div class="sv-tok-title">🛣 REAL STREET VIEW · GOOGLE</div>
-          <div class="sv-tok-sub">Free Google Maps API key required.<br><a href="https://console.cloud.google.com/apis/credentials" target="_blank">console.cloud.google.com → Credentials</a><br><br>Create Project → Enable <b style="color:#00C4E0">Maps JavaScript API</b> → Create API Key</div>
-          <input id="sv-tok-input" type="text" placeholder="Paste Google Maps API Key…" autocomplete="off" spellcheck="false">
-          <span id="sv-tok-err">⚠ Could not load imagery — check token</span>
-          <button id="sv-tok-submit" onclick="svSetToken()">ACTIVATE REAL STREET VIEW ▶</button>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:.5rem;color:rgba(223,231,224,0.3);text-align:center">Token is stored in localStorage for this browser only</div>
+      <!-- LEFT HALF: Leaflet map -->
+      <div id="map-half">
+        <div id="map"></div>
+        <div class="half-label">MAP VIEW</div>
+        <div class="hud tl"><div class="hbox">
+          <div class="hl">Position</div>
+          <div class="hv" id="hud-pos">—</div>
+          <div class="hl" style="margin-top:4px">Route</div>
+          <div class="hv" id="hud-route" style="font-size:.6rem">—</div>
+        </div></div>
+        <div class="hud tr"><div class="hbox">
+          <div class="hl">GNSS Mode</div>
+          <div class="hv" id="hud-mode">NavIC L5 Locked</div>
+          <div class="hl" style="margin-top:4px">DR Duration</div>
+          <div class="hv" id="hud-dr" style="font-size:.6rem;color:var(--violet)">0.0s</div>
+        </div></div>
+        <div class="hud bl"><div class="hbox">
+          <div class="leg-row"><div class="leg-line" style="background:var(--cyan)"></div><span class="leg-txt">Ground Truth</span></div>
+          <div class="leg-row"><div class="leg-line" style="background:var(--violet)"></div><span class="leg-txt">NAVDRIFT-0</span></div>
+          <div class="leg-row"><div class="leg-line" style="background:var(--red);border-top:1px dashed var(--red);height:0"></div><span class="leg-txt">Raw IMU</span></div>
+          <div class="leg-row"><div class="leg-line" style="background:var(--yellow)"></div><span class="leg-txt">EKF baseline</span></div>
+        </div></div>
+        <div class="mm-badge on" id="mm-badge"><span class="mm-dot"></span><span id="mm-txt">HMM Map-Match ACTIVE</span></div>
+        <div id="route-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(139,26,26,0.88);color:var(--bone);font-size:.66rem;letter-spacing:.08em;padding:4px 12px;border-radius:3px;gap:6px;align-items:center;white-space:nowrap;">⚠ High uncertainty — alternate route suggested</div>
+      </div>
+      <!-- RIGHT HALF: Google Street View -->
+      <div id="sv-half">
+        <div id="sv-viewer"></div>
+        <div class="half-label" style="color:rgba(0,196,224,0.5)">STREET VIEW · GOOGLE</div>
+        <div id="sv-spdhud"><div id="sv-spdnum">0</div><div id="sv-spdunit">KM/H</div></div>
+        <div id="sv-badge" class="g">GNSS LOCKED · NavIC L5</div>
+        <div id="sv-loading"><span>LOADING STREET IMAGERY…</span></div>
+        <div id="sv-token-overlay">
+          <div class="sv-tok-box">
+            <div class="sv-tok-title">🛣 REAL STREET VIEW · GOOGLE</div>
+            <div class="sv-tok-sub">Free Google Maps API key required.<br><a href="https://console.cloud.google.com/apis/credentials" target="_blank">console.cloud.google.com → Credentials</a><br><br>Enable <b style="color:#00C4E0">Maps JavaScript API</b> → Create API Key</div>
+            <input id="sv-tok-input" type="text" placeholder="Paste Google Maps API Key…" autocomplete="off" spellcheck="false">
+            <span id="sv-tok-err">⚠ Could not load imagery — check key</span>
+            <button id="sv-tok-submit" onclick="svSetToken()">ACTIVATE STREET VIEW ▶</button>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:.48rem;color:rgba(223,231,224,0.3);text-align:center">Key stored in localStorage · this browser only</div>
+          </div>
         </div>
       </div>
-      <div id="sv-loading"><span>LOADING STREET IMAGERY…</span></div>
-      <div id="sv-minimap"></div>
-      <button id="sv-btn" onclick="svToggle()">⬛ STREET VIEW</button>
-      <div id="sv-spdhud"><div id="sv-spdnum">0</div><div id="sv-spdunit">KM/H</div></div>
-      <div id="sv-badge" class="g">GNSS LOCKED · NavIC L5</div>
-      <div id="route-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(139,26,26,0.88);color:var(--bone);font-size:.72rem;letter-spacing:.08em;padding:5px 14px;border-radius:3px;gap:6px;align-items:center;white-space:nowrap;">⚠ High uncertainty — alternate route suggested</div>
-      <div class="hud tl"><div class="hbox">
-        <div class="hl">Position</div>
-        <div class="hv" id="hud-pos">—</div>
-        <div class="hl" style="margin-top:4px">Route</div>
-        <div class="hv" id="hud-route" style="font-size:.66rem">—</div>
-      </div></div>
-      <div class="hud tr"><div class="hbox">
-        <div class="hl">GNSS Mode</div>
-        <div class="hv" id="hud-mode">NavIC L5 Locked</div>
-        <div class="hl" style="margin-top:4px">DR Duration</div>
-        <div class="hv" id="hud-dr" style="font-size:.66rem;color:var(--violet)">0.0s</div>
-      </div></div>
-      <div class="hud bl"><div class="hbox">
-        <div class="leg-row"><div class="leg-line" style="background:var(--cyan)"></div><span class="leg-txt">Ground Truth (RTK-GPS reference)</span></div>
-        <div class="leg-row"><div class="leg-line" style="background:var(--violet)"></div><span class="leg-txt">NAVDRIFT-0 · DRIFT-Former output</span></div>
-        <div class="leg-row"><div class="leg-line" style="background:var(--red);border-top:1px dashed var(--red);height:0"></div><span class="leg-txt">Raw IMU dead reckoning (no correction)</span></div>
-        <div class="leg-row"><div class="leg-line" style="background:var(--yellow)"></div><span class="leg-txt">EKF baseline (classical filter)</span></div>
-      </div></div>
-      <div class="mm-badge on" id="mm-badge"><span class="mm-dot"></span><span id="mm-txt">HMM Map-Match ACTIVE</span></div>
     </div>
 
     <!-- RIGHT PANEL -->
@@ -2436,7 +2444,6 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
 //  STREET VIEW DRIVE MODE  —  Google Street View
 // ═══════════════════════════════════════════════════════════
 (function(){
-  let active=false, miniMap=null, miniDot=null, miniTrail=null;
   let panorama=null, gmapsKey=null, loopRunning=false;
   let lastUpdate=0, lastLat=null, lastLon=null;
   const THROTTLE_MS=2500;
@@ -2444,30 +2451,15 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
 
   try { gmapsKey = localStorage.getItem('gmaps_key') || null; } catch(e){}
 
-  window.svToggle=function(){
-    active=!active;
-    const wrap=document.getElementById('map-wrap');
-    const btn=document.getElementById('sv-btn');
-    const spdhud=document.getElementById('sv-spdhud');
-    const badge=document.getElementById('sv-badge');
-    if(active){
-      wrap.classList.add('sv-on');
-      btn.classList.add('on'); btn.textContent='🗺  MAP';
-      spdhud.style.display='block'; badge.style.display='block';
-      _initMini();
-      if(!gmapsKey){
-        document.getElementById('sv-token-overlay').style.display='flex';
-      } else {
-        _loadGoogleMaps(gmapsKey).then(_initPanorama).catch(_showTokenErr);
-        _startLoop();
-      }
+  // Auto-init on load — show token overlay if no key, else load maps
+  window.addEventListener('load', function(){
+    if(!gmapsKey){
+      document.getElementById('sv-token-overlay').style.display='flex';
     } else {
-      wrap.classList.remove('sv-on');
-      btn.classList.remove('on'); btn.textContent='⬛ STREET VIEW';
-      spdhud.style.display='none'; badge.style.display='none';
-      loopRunning=false;
+      _loadGoogleMaps(gmapsKey).then(_initPanorama).catch(_showTokenErr);
     }
-  };
+    _startLoop();
+  });
 
   window.svSetToken=function(){
     const inp=document.getElementById('sv-tok-input');
@@ -2478,7 +2470,6 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
     document.getElementById('sv-token-overlay').style.display='none';
     document.getElementById('sv-tok-err').style.display='none';
     _loadGoogleMaps(key).then(_initPanorama).catch(_showTokenErr);
-    _startLoop();
   };
 
   function _loadGoogleMaps(key){
@@ -2540,9 +2531,8 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   }
 
   async function _loop(){
-    while(loopRunning && active){
+    while(loopRunning){
       _updateHUD();
-      if(S.ndLa && S.ndLo) _updateMini(S.ndLa, S.ndLo);
       if(panorama && S.ndLa && S.ndLo){
         const now=Date.now();
         const moved=lastLat===null||
@@ -2567,29 +2557,6 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
       el.appendChild(d);
       setTimeout(()=>{const n=el.querySelector('.sv-no-img');if(n)n.remove();},3000);
     }
-  }
-
-  function _initMini(){
-    if(miniMap) return;
-    miniMap=L.map('sv-minimap',{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,touchZoom:false,doubleClickZoom:false});
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(miniMap);
-    const ms=document.createElement('style');
-    ms.textContent='#sv-minimap .leaflet-tile-pane{filter:brightness(0.25) saturate(0.5) hue-rotate(172deg)}';
-    document.head.appendChild(ms);
-    const c=CITIES[S.city]||{lat:28.63,lon:77.22};
-    miniMap.setView([c.lat,c.lon],15,{animate:false});
-    miniDot=L.circleMarker([c.lat,c.lon],{radius:5,color:'#00C4E0',fillColor:'#00C4E0',fillOpacity:1,weight:2}).addTo(miniMap);
-    miniTrail=L.polyline([],{color:'#00C4E0',weight:2,opacity:.7}).addTo(miniMap);
-    setTimeout(()=>miniMap.invalidateSize(),120);
-  }
-
-  function _updateMini(la,lo){
-    if(!miniMap||!la||!lo) return;
-    miniDot.setLatLng([la,lo]);
-    const pts=miniTrail.getLatLngs(); pts.push([la,lo]);
-    if(pts.length>300) pts.shift();
-    miniTrail.setLatLngs(pts);
-    miniMap.setView([la,lo],miniMap.getZoom(),{animate:false});
   }
 
   function _updateHUD(){
