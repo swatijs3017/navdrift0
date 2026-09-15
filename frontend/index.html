@@ -155,22 +155,30 @@
     .nhc-fill { height: 100%; border-radius: 2px; transition: width .3s; }
 
     /* ── MAP ── */
-    .map-wrap { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); min-height: 0; }
-    #map { width: 100%; height: 100%; background: #04060a; }
-    .leaflet-container { background: #04060a !important; }
-    /* Map control strip — top-center */
-    .map-ctrl-strip { position: absolute; top: 9px; left: 50%; transform: translateX(-50%); z-index: 600; display: flex; gap: 5px; }
-    .map-ctrl-btn { background: rgba(5,7,10,0.82); border: 1px solid var(--line); color: var(--t2); font-family: var(--mono); font-size: .5rem; font-weight: 700; letter-spacing: .08em; padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: all .15s; white-space: nowrap; }
-    .map-ctrl-btn:hover { border-color: rgba(0,196,224,0.4); color: var(--bone); }
+    /* Map control strip */
+    .map-ctrl-strip { position: absolute; top: 9px; left: 50%; transform: translateX(-50%); z-index: 600; display: flex; gap: 5px; pointer-events: all; }
+    .map-ctrl-btn { background: rgba(5,7,10,0.82); border: 1px solid rgba(223,231,224,0.12); color: #aab4ad; font-family: 'JetBrains Mono',monospace; font-size: .5rem; font-weight: 700; letter-spacing: .08em; padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+    .map-ctrl-btn:hover { border-color: rgba(0,196,224,0.4); color: #dfe7e0; }
     .map-ctrl-btn.active { background: rgba(0,196,224,0.15); border-color: rgba(0,196,224,0.6); color: #00C4E0; }
-    .map-ctrl-btn.sat-active { background: rgba(0,255,157,0.12); border-color: rgba(0,255,157,0.5); color: var(--green); }
-    /* Cartosat road confidence legend */
-    .cartosat-legend { position: absolute; bottom: 42px; right: 9px; z-index: 500; background: rgba(5,7,10,0.88); backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; display: none; }
+    .map-ctrl-btn.sat-active { background: rgba(0,255,157,0.12); border-color: rgba(0,255,157,0.5); color: #00ff9d; }
+    /* Cartosat legend */
+    .cartosat-legend { position: absolute; bottom: 42px; right: 9px; z-index: 500; background: rgba(5,7,10,0.88); backdrop-filter: blur(10px); border: 1px solid rgba(223,231,224,0.10); border-radius: 6px; padding: 6px 9px; display: none; }
     .cartosat-legend.visible { display: block; }
-    .cl-title { font-family: var(--mono); font-size: .48rem; color: var(--t3); letter-spacing: .1em; margin-bottom: 4px; }
+    .cl-title { font-family: 'JetBrains Mono',monospace; font-size: .48rem; color: #78837c; letter-spacing: .1em; margin-bottom: 4px; }
     .cl-row { display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
     .cl-swatch { width: 18px; height: 3px; border-radius: 2px; }
-    .cl-label { font-family: var(--mono); font-size: .46rem; color: var(--t2); }
+    .cl-label { font-family: 'JetBrains Mono',monospace; font-size: .46rem; color: #aab4ad; }
+    .map-wrap { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); min-height: 0; display: grid; grid-template-columns: 1fr; transition: grid-template-columns .3s; }
+    .map-wrap.sv-open { grid-template-columns: 1fr 1fr; }
+    #map-half { position: relative; overflow: hidden; height: 100%; }
+    .sv-open #map-half { border-right: 1px solid var(--line); }
+    #map { width: 100%; height: 100%; background: #04060a; }
+    #sv-half { position: relative; overflow: hidden; background: #020509; height: 100%; display: none; }
+    .sv-open #sv-half { display: block; }
+    #sv-token-overlay { display: none; position: absolute; inset: 0; z-index: 900; background: rgba(5,7,10,0.93); flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+    #sv-token-overlay input { background: rgba(255,255,255,0.06); border: 1px solid var(--line); color: var(--bone); font-family: var(--mono); font-size: .65rem; padding: 6px 10px; border-radius: 4px; width: 260px; outline: none; }
+    #sv-token-overlay button { background: rgba(0,196,224,0.15); border: 1px solid rgba(0,196,224,0.5); color: #00C4E0; font-family: var(--mono); font-size: .58rem; padding: 5px 14px; border-radius: 4px; cursor: pointer; }
+    .leaflet-container { background: #04060a !important; }
     .hud { position: absolute; z-index: 500; pointer-events: none; }
     .hud.tl { top: 9px; left: 9px; }
     .hud.tr { top: 9px; right: 9px; }
@@ -681,21 +689,33 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     </div>
 
     <!-- CENTER MAP -->
-    <div class="map-wrap">
-      <div id="map"></div>
-      <!-- Map control strip -->
-      <div class="map-ctrl-strip">
-        <button class="map-ctrl-btn" id="sat-btn" onclick="toggleSatellite()" title="Toggle Cartosat-3 / ISRO Bhuvan satellite imagery">🛰 SAT</button>
-        <button class="map-ctrl-btn" id="road-conf-btn" onclick="toggleRoadConf()" title="Show Cartosat-3 road skeleton with confidence heatmap">🗺 ROAD CONF</button>
-        <button class="map-ctrl-btn" id="unc-band-btn" onclick="toggleUncBand()" title="Show lane-level uncertainty corridor">📐 UNC BAND</button>
+    <div class="map-wrap" id="map-wrap">
+      <div id="map-half">
+        <div id="map"></div>
+        <!-- Map control strip -->
+        <div class="map-ctrl-strip">
+          <button class="map-ctrl-btn" id="sat-btn" onclick="toggleSatellite()" title="Toggle satellite imagery">&#x1F6F0; SAT</button>
+          <button class="map-ctrl-btn" id="road-conf-btn" onclick="toggleRoadConf()" title="Cartosat-3 road confidence heatmap">&#x1F5FA; ROAD CONF</button>
+          <button class="map-ctrl-btn" id="unc-band-btn" onclick="toggleUncBand()" title="Lane-level uncertainty corridor">&#x1F4D0; UNC BAND</button>
+          <button class="map-ctrl-btn" id="sv-toggle-btn" onclick="svTogglePanel()" title="Street View — road-level outdoor imagery">&#x1F6E3; STREET VIEW</button>
+        </div>
+        <!-- Cartosat road confidence legend -->
+        <div class="cartosat-legend" id="cartosat-legend">
+          <div class="cl-title">CARTOSAT-3 ROAD CONF</div>
+          <div class="cl-row"><div class="cl-swatch" style="background:#00ff9d"></div><span class="cl-label">High &ge;0.7</span></div>
+          <div class="cl-row"><div class="cl-swatch" style="background:#fbbf24"></div><span class="cl-label">Med 0.4&ndash;0.7</span></div>
+          <div class="cl-row"><div class="cl-swatch" style="background:#E0231C"></div><span class="cl-label">Low &lt;0.4</span></div>
+          <div class="cl-row" style="margin-top:3px"><div class="cl-swatch" style="background:rgba(168,85,247,0.6)"></div><span class="cl-label">DR uncertainty band</span></div>
+        </div>
       </div>
-      <!-- Cartosat road confidence legend -->
-      <div class="cartosat-legend" id="cartosat-legend">
-        <div class="cl-title">CARTOSAT-3 ROAD CONF</div>
-        <div class="cl-row"><div class="cl-swatch" style="background:#00ff9d"></div><span class="cl-label">High ≥ 0.7</span></div>
-        <div class="cl-row"><div class="cl-swatch" style="background:#fbbf24"></div><span class="cl-label">Med 0.4–0.7</span></div>
-        <div class="cl-row"><div class="cl-swatch" style="background:#E0231C"></div><span class="cl-label">Low &lt; 0.4</span></div>
-        <div class="cl-row" style="margin-top:3px"><div class="cl-swatch" style="background:rgba(168,85,247,0.6)"></div><span class="cl-label">DR uncertainty band</span></div>
+      <div id="sv-half">
+        <div id="sv-pano" style="width:100%;height:100%"></div>
+        <div id="sv-token-overlay">
+          <div style="font-family:var(--mono);font-size:.58rem;color:var(--t3);letter-spacing:.1em">GOOGLE MAPS API KEY</div>
+          <input id="sv-key-input" type="text" placeholder="Paste your API key…" />
+          <button onclick="svSubmitKey()">ACTIVATE STREET VIEW</button>
+          <div id="sv-key-err" style="font-family:var(--mono);font-size:.5rem;color:var(--red);display:none">Invalid key or load error</div>
+        </div>
       </div>
       <div id="route-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(139,26,26,0.88);color:var(--bone);font-size:.72rem;letter-spacing:.08em;padding:5px 14px;border-radius:3px;gap:6px;align-items:center;white-space:nowrap;">⚠ High uncertainty — alternate route suggested</div>
       <div class="hud tl"><div class="hbox">
@@ -1038,7 +1058,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     if(!window._map){
       window._map=L.map('map',{zoomControl:false,attributionControl:true});
       window._osmLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19});
-      window._satLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles © Esri — ISRO Cartosat-3 (prod: Bhuvan WMS)',maxZoom:18});
       window._osmLayer.addTo(window._map);
       const s=document.createElement('style');
       s.id='map-tile-filter';
@@ -1052,13 +1071,9 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         html:'<div style="width:16px;height:16px;border-radius:50%;background:#00fff5;box-shadow:0 0 12px #00fff5;border:2px solid #fff"></div>'})}).addTo(window._map);
       window._uc  =L.circle([st[0],st[1]],{radius:5,color:'#a855f7',fillColor:'#a855f7',fillOpacity:.1,weight:1}).addTo(window._map);
       window._sl  =L.layerGroup().addTo(window._map);
-      window._roadConfLayer=L.layerGroup().addTo(window._map);
-      window._uncBandLayer=L.layerGroup().addTo(window._map);
     } else {
       window._gt.setLatLngs([]);window._nd.setLatLngs([]);window._imu.setLatLngs([]);window._ekf.setLatLngs([]);
       window._sl.clearLayers();window._vm.setLatLng([st[0],st[1]]);window._uc.setLatLng([st[0],st[1]]);
-      if(window._roadConfLayer)window._roadConfLayer.clearLayers();
-      if(window._uncBandLayer)window._uncBandLayer.clearLayers();
     }
     window._map.setView([c.lat,c.lon],c.zoom,{animate:false});
     if(API_MODE)reinitAPI();
@@ -1225,7 +1240,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       window._vm.setLatLng([S.ndLa,S.ndLo]);window._uc.setLatLng([S.ndLa,S.ndLo]);
       window._uc.setRadius(Math.max(4,S.unc));
       drawCovEllipse(EKF.x,EKF.y,EKF.P);
-      // Refresh uncertainty band overlay every 15 steps (for performance)
       if(typeof window._renderUncBand==='function'&&S.step%15===0) window._renderUncBand();
       window._map.setView([S.ndLa,S.ndLo],window._map.getZoom(),{animate:false});
       // Uncertainty-aware routing banner
@@ -2421,178 +2435,189 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
     draw();
   })();
 
-  // ════════════════════════════════════════════════════════════════════
-  // CARTOSAT-3 SATELLITE OVERLAY + ROAD CONFIDENCE HEATMAP
-  // ════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════
+  // CARTOSAT-3 SATELLITE OVERLAY + ROAD CONFIDENCE + UNC BAND
+  // ══════════════════════════════════════════════════════════════════
   (function(){
     let satOn=false, roadConfOn=false, uncBandOn=false;
 
-    // ── Satellite tile toggle ──────────────────────────────────────
     window.toggleSatellite=function(){
       if(!window._map) return;
       satOn=!satOn;
       const btn=document.getElementById('sat-btn');
-      const filterEl=document.getElementById('map-tile-filter');
+      const fEl=document.getElementById('map-tile-filter');
       if(satOn){
-        window._map.removeLayer(window._osmLayer);
+        if(window._osmLayer) window._map.removeLayer(window._osmLayer);
+        if(!window._satLayer) window._satLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles © Esri | ISRO Cartosat-3 (prod: Bhuvan WMS)',maxZoom:18});
         window._satLayer.addTo(window._map);
-        // No color filter on satellite — real colours
-        if(filterEl) filterEl.textContent='.leaflet-tile-pane{filter:none}';
-        btn.classList.add('sat-active');
-        btn.textContent='🛰 OSM';
+        if(fEl) fEl.textContent='.leaflet-tile-pane{filter:none}';
+        btn.classList.add('sat-active'); btn.textContent='🛰 OSM';
       } else {
-        window._map.removeLayer(window._satLayer);
+        if(window._satLayer) window._map.removeLayer(window._satLayer);
+        if(!window._osmLayer) window._osmLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19});
         window._osmLayer.addTo(window._map);
-        if(filterEl) filterEl.textContent='.leaflet-tile-pane{filter:brightness(0.26) saturate(0.55) hue-rotate(172deg)}';
-        btn.classList.remove('sat-active');
-        btn.textContent='🛰 SAT';
+        if(fEl) fEl.textContent='.leaflet-tile-pane{filter:brightness(0.26) saturate(0.55) hue-rotate(172deg)}';
+        btn.classList.remove('sat-active'); btn.textContent='🛰 SAT';
       }
     };
 
-    // ── Cartosat-3 road confidence heatmap ───────────────────────
-    // Generates synthetic road skeleton matching Cartosat extraction output
-    // for the active city bounding box. In production, replace with:
-    //   fetch('/api/road-skeletons/{city}.geojson').then(r=>r.json()).then(renderGeoJSON)
-    function generateRoadSkeleton(cityKey){
-      const CITY_BBOX={
-        'delhi':     [28.580,77.170,28.700,77.280],
-        'mumbai':    [19.020,72.820,19.130,72.920],
-        'bengaluru': [12.920,77.570,13.030,77.660],
-        'chennai':   [13.020,80.230,13.120,80.290],
-        'hyderabad': [17.380,78.450,17.470,78.520],
-      };
-      const DEFAULT_BBOX=[28.580,77.170,28.700,77.280];
-      const bbox=CITY_BBOX[cityKey]||DEFAULT_BBOX;
-      const [latMin,lonMin,latMax,lonMax]=bbox;
-      const latSpan=latMax-latMin, lonSpan=lonMax-lonMin;
+    function confColor(c){ return c>=0.7?'#00ff9d':c>=0.4?'#fbbf24':'#E0231C'; }
 
-      // Pseudo-random seeded from city name
+    function generateRoadSkeleton(cityKey){
+      const BBOX={'delhi':[28.580,77.170,28.700,77.280],'mumbai':[19.020,72.820,19.130,72.920],'bengaluru':[12.920,77.570,13.030,77.660],'chennai':[13.020,80.230,13.120,80.290],'hyderabad':[17.380,78.450,17.470,78.520]};
+      const [latMin,lonMin,latMax,lonMax]=BBOX[cityKey]||BBOX['delhi'];
+      const latSpan=latMax-latMin, lonSpan=lonMax-lonMin;
       let seed=cityKey.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
       function rand(){seed=(seed*1664525+1013904223)&0xffffffff;return(seed>>>0)/4294967296;}
-
-      const segments=[];
-      // Horizontal roads
-      const nH=Math.floor(rand()*5)+6;
-      for(let i=0;i<nH;i++){
-        const lat=latMin+rand()*latSpan;
-        const conf=0.4+rand()*0.55;
-        const lonStart=lonMin+rand()*lonSpan*0.3;
-        const lonEnd=lonStart+lonSpan*(0.4+rand()*0.55);
-        const pts=[];
-        for(let t=0;t<=8;t++) pts.push([lat+rand()*0.0002-0.0001,lonStart+(lonEnd-lonStart)*t/8]);
-        segments.push({pts,conf});
-      }
-      // Vertical roads
-      const nV=Math.floor(rand()*5)+5;
-      for(let i=0;i<nV;i++){
-        const lon=lonMin+rand()*lonSpan;
-        const conf=0.35+rand()*0.6;
-        const latStart=latMin+rand()*latSpan*0.3;
-        const latEnd=latStart+latSpan*(0.35+rand()*0.55);
-        const pts=[];
-        for(let t=0;t<=8;t++) pts.push([latStart+(latEnd-latStart)*t/8,lon+rand()*0.0002-0.0001]);
-        segments.push({pts,conf});
-      }
-      // Diagonal arterials
-      const nD=Math.floor(rand()*3)+2;
-      for(let i=0;i<nD;i++){
-        const lat0=latMin+rand()*latSpan*0.5, lon0=lonMin+rand()*lonSpan*0.5;
-        const angle=(rand()-0.5)*Math.PI*0.6;
-        const len=0.04+rand()*0.06;
-        const conf=0.55+rand()*0.4;
-        const pts=[];
-        for(let t=0;t<=10;t++){
-          const frac=t/10;
-          pts.push([lat0+Math.cos(angle)*len*frac,lon0+Math.sin(angle)*len*frac*1.5]);
-        }
-        segments.push({pts,conf});
-      }
-      return segments;
-    }
-
-    function confColor(c){
-      if(c>=0.7) return '#00ff9d';       // green = high conf
-      if(c>=0.4) return '#fbbf24';       // yellow = medium
-      return '#E0231C';                  // red = low conf
+      const segs=[];
+      for(let i=0;i<8;i++){const lat=latMin+rand()*latSpan,conf=0.4+rand()*0.55,ls=lonMin+rand()*lonSpan*0.3,le=ls+lonSpan*(0.4+rand()*0.55);const pts=[];for(let t=0;t<=8;t++)pts.push([lat+rand()*0.0002-0.0001,ls+(le-ls)*t/8]);segs.push({pts,conf});}
+      for(let i=0;i<7;i++){const lon=lonMin+rand()*lonSpan,conf=0.35+rand()*0.6,ls=latMin+rand()*latSpan*0.3,le=ls+latSpan*(0.35+rand()*0.55);const pts=[];for(let t=0;t<=8;t++)pts.push([ls+(le-ls)*t/8,lon+rand()*0.0002-0.0001]);segs.push({pts,conf});}
+      for(let i=0;i<3;i++){const la0=latMin+rand()*latSpan*0.5,lo0=lonMin+rand()*lonSpan*0.5,ang=(rand()-.5)*Math.PI*0.6,len=0.04+rand()*0.06,conf=0.55+rand()*0.4;const pts=[];for(let t=0;t<=10;t++)pts.push([la0+Math.cos(ang)*len*t/10,lo0+Math.sin(ang)*len*1.5*t/10]);segs.push({pts,conf});}
+      return segs;
     }
 
     window.toggleRoadConf=function(){
-      if(!window._map||!window._roadConfLayer) return;
+      if(!window._map) return;
+      if(!window._roadConfLayer){window._roadConfLayer=L.layerGroup().addTo(window._map);}
       roadConfOn=!roadConfOn;
       const btn=document.getElementById('road-conf-btn');
       const legend=document.getElementById('cartosat-legend');
       if(roadConfOn){
         btn.classList.add('active');
-        legend.classList.add('visible');
-        // Determine active city from simulation state
+        if(legend) legend.classList.add('visible');
         const cityKey=(window.S&&window.S.city)||'delhi';
-        const segs=generateRoadSkeleton(cityKey);
-        segs.forEach(({pts,conf})=>{
-          const poly=L.polyline(pts,{
-            color:confColor(conf), weight:2.5, opacity:0.82,
-            dashArray: conf<0.4?'5,6':null
-          });
-          poly.bindTooltip(`Road conf: ${(conf*100).toFixed(0)}% · Cartosat-3 synthetic`,{className:'leaflet-tooltip',sticky:true});
-          window._roadConfLayer.addLayer(poly);
+        generateRoadSkeleton(cityKey).forEach(({pts,conf})=>{
+          L.polyline(pts,{color:confColor(conf),weight:2.5,opacity:.82,dashArray:conf<0.4?'5,6':null})
+           .bindTooltip('Road conf: '+(conf*100).toFixed(0)+'% · Cartosat-3',{sticky:true})
+           .addTo(window._roadConfLayer);
         });
       } else {
         btn.classList.remove('active');
-        legend.classList.remove('visible');
+        if(legend) legend.classList.remove('visible');
         window._roadConfLayer.clearLayers();
       }
     };
 
-    // ── Lane-level uncertainty band ───────────────────────────────
-    window.toggleUncBand=function(){
-      if(!window._map||!window._uncBandLayer) return;
-      uncBandOn=!uncBandOn;
-      const btn=document.getElementById('unc-band-btn');
-      if(uncBandOn){
-        btn.classList.add('active');
-        window._renderUncBand();
-      } else {
-        btn.classList.remove('active');
-        window._uncBandLayer.clearLayers();
-      }
-    };
-
-    window._renderUncBand=function _renderUncBand(){
+    window._renderUncBand=function(){
       if(!window._uncBandLayer||!window._nd) return;
       window._uncBandLayer.clearLayers();
       const pts=window._nd.getLatLngs();
       if(!pts||pts.length<2) return;
-      // Sigma from live state, fallback 5m
       const sigmaM=(window.S&&window.S.unc)||5;
       const sigDeg=sigmaM/111320;
-      // Build corridor as polygon pairs
-      const leftBand=[], rightBand=[];
+      const left=[],right=[];
       for(let i=0;i<pts.length;i++){
-        const p=pts[i];
-        const n=pts[Math.min(i+1,pts.length-1)];
-        const dLat=n.lat-p.lat, dLon=n.lng-p.lng;
-        const len=Math.hypot(dLat,dLon)||1e-9;
-        const perpLat=-dLon/len*sigDeg, perpLon=dLat/len*sigDeg;
-        leftBand.push([p.lat+perpLat,p.lng+perpLon]);
-        rightBand.push([p.lat-perpLat,p.lng-perpLon]);
+        const p=pts[i],n=pts[Math.min(i+1,pts.length-1)];
+        const dLa=n.lat-p.lat,dLo=n.lng-p.lng,len=Math.hypot(dLa,dLo)||1e-9;
+        left.push([p.lat-dLo/len*sigDeg,p.lng+dLa/len*sigDeg]);
+        right.push([p.lat+dLo/len*sigDeg,p.lng-dLa/len*sigDeg]);
       }
-      const poly=L.polygon([...leftBand,...rightBand.reverse()],{
-        color:'#a855f7', fillColor:'#a855f7',
-        fillOpacity:0.13, weight:1.2, opacity:0.5, dashArray:'4,5'
+      L.polygon([...left,...right.reverse()],{color:'#a855f7',fillColor:'#a855f7',fillOpacity:.13,weight:1.2,opacity:.5,dashArray:'4,5'})
+       .bindTooltip('1σ uncertainty: ±'+sigmaM.toFixed(1)+' m',{sticky:true})
+       .addTo(window._uncBandLayer);
+    };
+
+    window.toggleUncBand=function(){
+      if(!window._map) return;
+      if(!window._uncBandLayer){window._uncBandLayer=L.layerGroup().addTo(window._map);}
+      uncBandOn=!uncBandOn;
+      const btn=document.getElementById('unc-band-btn');
+      if(uncBandOn){btn.classList.add('active');window._renderUncBand();}
+      else{btn.classList.remove('active');window._uncBandLayer.clearLayers();}
+    };
+  })();
+
+  // ══════════════════════════════════════════════════════════════════
+  // GOOGLE STREET VIEW PANEL
+  // ══════════════════════════════════════════════════════════════════
+  (function(){
+    let panorama=null, svService=null, gmapsLoaded=false, svReady=false;
+    let svPanelOpen=false, loopId=null;
+    let lastLat=null, lastLon=null, lastUpdate=0;
+    const THROTTLE_MS=2500, MOVE_THRESH=0.0002, SNAP_RADIUS=80;
+
+    function _loadGmaps(key){
+      return new Promise((res,rej)=>{
+        if(window.google&&window.google.maps){res();return;}
+        const s=document.createElement('script');
+        s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=streetview';
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
       });
-      poly.bindTooltip(`1σ uncertainty: ±${sigmaM.toFixed(1)} m`,{className:'leaflet-tooltip',sticky:true});
-      window._uncBandLayer.addLayer(poly);
+    }
+
+    function _initPanorama(){
+      const el=document.getElementById('sv-pano');
+      if(!el) return;
+      svService=new google.maps.StreetViewService();
+      panorama=new google.maps.StreetViewPanorama(el,{
+        addressControl:false, linksControl:true, panControl:false,
+        zoomControl:false, fullscreenControl:false, motionTracking:false,
+        showRoadLabels:false
+      });
+      svReady=true;
+      if(window.S&&window.S.ndLa) _snapToRoad(window.S.ndLa,window.S.ndLo);
+    }
+
+    function _snapToRoad(lat,lon){
+      if(!svService||!panorama) return;
+      svService.getPanorama({
+        location:{lat:lat,lng:lon},
+        radius:SNAP_RADIUS,
+        source:google.maps.StreetViewSource.OUTDOOR,
+        preference:google.maps.StreetViewPreference.NEAREST
+      },function(data,status){
+        if(status===google.maps.StreetViewStatus.OK){
+          panorama.setPano(data.location.pano);
+          panorama.setPov({heading:34,pitch:0});
+        }
+      });
+    }
+
+    function _showKeyPrompt(){ document.getElementById('sv-token-overlay').style.display='flex'; }
+    function _hideKeyPrompt(){ document.getElementById('sv-token-overlay').style.display='none'; }
+
+    window.svSubmitKey=function(){
+      const k=(document.getElementById('sv-key-input').value||'').trim();
+      if(!k) return;
+      localStorage.setItem('gmaps_key',k);
+      document.getElementById('sv-key-err').style.display='none';
+      _loadGmaps(k).then(()=>{gmapsLoaded=true;_hideKeyPrompt();_initPanorama();})
+        .catch(()=>{document.getElementById('sv-key-err').style.display='block';});
     };
 
-    // Refresh uncertainty band each step if active
-    const _origStep=window._stepHook;
-    window._stepHook=function(){
-      if(typeof _origStep==='function') _origStep();
-      if(uncBandOn) window._renderUncBand();
+    window.svTogglePanel=function(){
+      svPanelOpen=!svPanelOpen;
+      const wrap=document.getElementById('map-wrap');
+      const btn=document.getElementById('sv-toggle-btn');
+      if(svPanelOpen){
+        wrap.classList.add('sv-open');
+        btn.classList.add('active'); btn.textContent='✕ CLOSE VIEW';
+        if(!svReady){
+          const saved=localStorage.getItem('gmaps_key');
+          if(saved){
+            _loadGmaps(saved).then(()=>{gmapsLoaded=true;_initPanorama();})
+              .catch(()=>_showKeyPrompt());
+          } else { _showKeyPrompt(); }
+        }
+        if(!loopId) loopId=setInterval(_loop,500);
+      } else {
+        wrap.classList.remove('sv-open');
+        btn.classList.remove('active'); btn.textContent='🛣 STREET VIEW';
+        if(loopId){clearInterval(loopId);loopId=null;}
+      }
     };
 
-    // Expose city on mission load (used by road conf generator)
-    window._currentMission=window._currentMission||0;
-
+    function _loop(){
+      if(!panorama||!svPanelOpen||!window.S||!window.S.ndLa) return;
+      const now=Date.now();
+      const dLa=Math.abs((window.S.ndLa||0)-(lastLat||0));
+      const dLo=Math.abs((window.S.ndLo||0)-(lastLon||0));
+      if(now-lastUpdate>THROTTLE_MS&&(dLa+dLo)>MOVE_THRESH){
+        lastUpdate=now; lastLat=window.S.ndLa; lastLon=window.S.ndLo;
+        _snapToRoad(window.S.ndLa,window.S.ndLo);
+      }
+    }
   })();
 </script>
 </body>
