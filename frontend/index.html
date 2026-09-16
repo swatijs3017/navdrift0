@@ -2985,7 +2985,10 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
         const order=['imu_denoiser','adaptive_ekf','tunnel_det','driftformer','navic_dop'];
         for(const k of order){
           log('[ONNX] Loading '+LABELS[k]+'...','sys');
-          sessions[k]=await ort.InferenceSession.create(MODEL_PATHS[k],{executionProviders:['wasm']});
+          const _resp=await fetch(MODEL_PATHS[k]);
+          if(!_resp.ok) throw new Error('HTTP '+_resp.status+' fetching '+MODEL_PATHS[k]);
+          const _buf=await _resp.arrayBuffer();
+          sessions[k]=await ort.InferenceSession.create(_buf,{executionProviders:['wasm']});
           log('[ONNX] '+LABELS[k]+' ready  in:'+sessions[k].inputNames+' out:'+sessions[k].outputNames,'sys');
         }
         loaded=true;_setBtnState('on');
