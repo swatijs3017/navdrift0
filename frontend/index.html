@@ -382,21 +382,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     .ptab-content.active::-webkit-scrollbar-track { background:transparent; }
     .ptab-content.active::-webkit-scrollbar-thumb { background:rgba(223,231,224,0.12); border-radius:2px; }
 
-    /* ── SCROLLABLE SECTIONS (replaces tabs) ── */
-    .panel-scroll { display:flex; flex-direction:column; gap:5px; flex:1; overflow-y:auto; overflow-x:hidden; min-height:0; padding-bottom:6px; }
-    .panel-scroll::-webkit-scrollbar { width:3px; }
-    .panel-scroll::-webkit-scrollbar-track { background:transparent; }
-    .panel-scroll::-webkit-scrollbar-thumb { background:rgba(223,231,224,0.12); border-radius:2px; }
-    .sec-hdr { font-size:.5rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); padding:5px 4px 3px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:5px; flex-shrink:0; margin-top:2px; }
-    .sec-hdr:first-child { margin-top:0; }
-    .sec-details { flex-shrink:0; }
-    .sec-details > summary { list-style:none; cursor:pointer; user-select:none; }
-    .sec-details > summary::-webkit-details-marker { display:none; }
-    .sec-details > summary.sec-hdr { color:var(--bone-dim); }
-    .sec-details > summary.sec-hdr::after { content:'▾'; margin-left:auto; }
-    .sec-details[open] > summary.sec-hdr::after { content:'▴'; }
-    .sec-details-body { display:flex; flex-direction:column; gap:5px; margin-top:5px; }
-
     /* ── FEATURE ADDITIONS ── */
     .city-tab.iovnbd{color:var(--yellow) !important;border-color:rgba(251,191,36,0.4) !important;}
     .city-tab.iovnbd.active{background:rgba(251,191,36,0.12) !important;border-color:rgba(251,191,36,0.45) !important;}
@@ -717,22 +702,24 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
     <!-- LEFT PANEL -->
     <div class="panel">
-      <div class="panel-scroll">
+      <div class="ptab-bar">
+        <button class="ptab active" onclick="switchPTab('left','live',this)" data-t="tab_live">LIVE</button>
+        <button class="ptab" onclick="switchPTab('left','modules',this)" data-t="tab_modules">MODULES</button>
+        <button class="ptab" onclick="switchPTab('left','sensors',this)" data-t="tab_sensors">SENSORS</button>
+        <button class="ptab" onclick="switchPTab('left','log',this)" data-t="tab_log">LOG</button>
+      </div>
 
-        <!-- ── 🛰 NAVIC CONSTELLATION ── -->
-        <div class="sec-hdr">🛰 NavIC Constellation</div>
+      <!-- LIVE TAB: NavIC + Controls -->
+      <div class="ptab-content active" data-panel="left" data-tab="live">
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Live Sky View</div><span id="navic-lock-badge" style="font-size:.52rem;font-weight:700;color:var(--green)">7 SAT LOCKED</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>NavIC Constellation</div><span id="navic-lock-badge" style="font-size:.52rem;font-weight:700;color:var(--green)">7 SAT LOCKED</span></div>
           <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:5px;line-height:1.5">India's own GPS system. Satellites shown in sky view — more visible = better signal.</div>
           <div style="font-size:.48rem;font-family:var(--mono);color:var(--t3);margin-bottom:4px">MET <b id="met-clock" style="color:var(--cyan)">00:00:00</b></div>
           <div class="sky-wrap"><canvas id="sky-cv"></canvas></div>
           <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px" id="sat-snr-bars"></div>
         </div>
-
-        <!-- ── 🎮 CONTROLS ── -->
-        <div class="sec-hdr">🎮 Controls</div>
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Simulation Controls</div></div>
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Controls</div></div>
           <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">Use GNSS Toggle to simulate losing satellite signal. The AI takes over navigation using only IMU + barometer.</div>
           <div class="btn-row">
             <button class="btn p" id="btn-play" onclick="toggleSim()">⏸ Pause</button>
@@ -746,6 +733,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             <button class="btn" onclick="openCalWizard()" style="background:rgba(0,255,157,0.1);color:var(--green);border-color:rgba(0,255,157,0.3)">🔧 IMU Cal Wizard</button>
             <button class="btn" id="rec-btn" onclick="toggleRecording()" style="background:rgba(255,34,85,0.1);color:var(--red);border-color:rgba(255,34,85,0.3)">⏺ Start Rec</button>
           </div>
+          <!-- Ground Truth Overlay -->
           <div class="gt-load-row" style="margin-top:6px">
             <span class="gt-label">Ground Truth:</span>
             <label style="cursor:pointer;font-size:.55rem;font-family:var(--mono);color:var(--violet);border:1px solid rgba(168,85,247,0.3);background:rgba(168,85,247,0.1);padding:2px 8px;border-radius:4px;">
@@ -756,9 +744,10 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <input type="file" id="gpx-input" accept=".gpx,.xml" style="display:none" onchange="loadGPX(event)">
           <div id="gpx-status" style="font-size:.55rem;font-family:var(--mono);color:var(--t3);margin-top:4px;display:none"></div>
         </div>
+      </div>
 
-        <!-- ── 🤖 AI MODULES ── -->
-        <div class="sec-hdr">🤖 AI Modules</div>
+      <!-- MODULES TAB -->
+      <div class="ptab-content" data-panel="left" data-tab="modules">
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot g"></span>IDR System Modules</div><span style="font-size:.55rem;color:var(--t3)">PS #26168</span></div>
           <div class="mods">
@@ -790,9 +779,10 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <div class="nhc-row"><span class="nhc-lbl">Corrections</span><span style="font-size:.78rem;font-weight:700;font-family:var(--mono);color:var(--violet)" id="nhc-cnt">0</span></div>
           <div class="nhc-row"><span class="nhc-lbl">Error removed</span><span style="font-size:.78rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="nhc-err">0.00 m</span></div>
         </div>
+      </div>
 
-        <!-- ── 📡 SENSORS ── -->
-        <div class="sec-hdr">📡 Sensors</div>
+      <!-- SENSORS TAB -->
+      <div class="ptab-content" data-panel="left" data-tab="sensors">
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot y"></span>Alignment &amp; Vibration Filter</div><span style="font-size:.55rem;color:var(--green)">✓ LOCKED</span></div>
           <div class="sbar-row"><span class="sbar-lbl">PITCH</span><div class="sbar-track"><div class="sbar-fill" id="cal-p" style="width:62%"></div></div><span class="sbar-val" id="cal-pv">+3.2°</span></div>
@@ -816,7 +806,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <div class="mrow"><span class="ml">MAG heading</span><span class="mv" style="color:var(--orange)" id="mag-hdg">—°</span></div>
           <div class="mrow"><span class="ml">AHRS confidence</span><span class="mv g" id="ahrs-conf">—%</span></div>
         </div>
-        <div class="card">
+        <!-- Raw IMU channels live readout -->
+        <div class="card" style="margin-top:0">
           <div class="ct"><div class="ct-l"><span class="cdot c"></span>IMU · Motion Sensor</div><span id="imu-temp-lbl" style="font-size:.5rem;color:var(--muted);font-family:var(--mono)">—°C</span></div>
           <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:6px;line-height:1.4">MPU-6050 / ICM-42688 chip. ax/ay/az = acceleration (m/s²). gx/gy/gz = rotation speed (rad/s). These feed the AI.</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;">
@@ -831,22 +822,47 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             <span>accel m/s²</span><span>gyro rad/s</span>
           </div>
         </div>
-        <div class="card">
+        <!-- OBD-II / vehicle CAN bus card -->
+        <div class="card" style="margin-top:0">
           <div class="ct"><div class="ct-l"><span class="cdot y"></span>OBD-II · CAN Bus</div><span style="font-size:.48rem;color:var(--t3);font-family:var(--mono)" id="obd-pid-lbl">PID 0x0D / 0x0C</span></div>
           <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:6px;line-height:1.4">Car's own ECU data via ELM327 dongle. Vehicle speed replaces wheel encoder. Engine RPM and throttle feed the dynamics model.</div>
           <div class="obd-grid">
-            <div class="obd-cell"><div class="obd-lbl">Vehicle Speed</div><div class="obd-val"><span id="obd-spd">—</span> <span style="font-size:.56rem;color:var(--t3)">km/h</span></div><div class="obd-bar"><div class="obd-bar-fill" id="obd-spd-bar" style="background:var(--cyan)"></div></div></div>
-            <div class="obd-cell"><div class="obd-lbl">Engine RPM</div><div class="obd-val"><span id="obd-rpm">—</span> <span style="font-size:.56rem;color:var(--t3)">rpm</span></div><div class="obd-bar"><div class="obd-bar-fill" id="obd-rpm-bar" style="background:var(--orange)"></div></div></div>
-            <div class="obd-cell"><div class="obd-lbl">Throttle</div><div class="obd-val"><span id="obd-thr">—</span> <span style="font-size:.56rem;color:var(--t3)">%</span></div><div class="obd-bar"><div class="obd-bar-fill" id="obd-thr-bar" style="background:var(--green)"></div></div></div>
-            <div class="obd-cell"><div class="obd-lbl">Engine Load</div><div class="obd-val"><span id="obd-load">—</span> <span style="font-size:.56rem;color:var(--t3)">%</span></div><div class="obd-bar"><div class="obd-bar-fill" id="obd-load-bar" style="background:var(--violet)"></div></div></div>
+            <div class="obd-cell">
+              <div class="obd-lbl">Vehicle Speed</div>
+              <div class="obd-val"><span id="obd-spd">—</span> <span style="font-size:.56rem;color:var(--t3)">km/h</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-spd-bar" style="background:var(--cyan)"></div></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl">Engine RPM</div>
+              <div class="obd-val"><span id="obd-rpm">—</span> <span style="font-size:.56rem;color:var(--t3)">rpm</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-rpm-bar" style="background:var(--orange)"></div></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl">Throttle</div>
+              <div class="obd-val"><span id="obd-thr">—</span> <span style="font-size:.56rem;color:var(--t3)">%</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-thr-bar" style="background:var(--green)"></div></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl">Engine Load</div>
+              <div class="obd-val"><span id="obd-load">—</span> <span style="font-size:.56rem;color:var(--t3)">%</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-load-bar" style="background:var(--violet)"></div></div>
+            </div>
           </div>
           <div style="height:1px;background:var(--b1);margin:6px 0"></div>
+          <!-- Barometer / pressure -->
           <div class="obd-grid">
-            <div class="obd-cell"><div class="obd-lbl">Baro Altitude</div><div class="obd-val"><span id="obd-alt">—</span> <span style="font-size:.56rem;color:var(--t3)">m</span></div></div>
-            <div class="obd-cell"><div class="obd-lbl">Pressure</div><div class="obd-val"><span id="obd-prs">—</span> <span style="font-size:.56rem;color:var(--t3)">hPa</span></div></div>
+            <div class="obd-cell">
+              <div class="obd-lbl">Baro Altitude</div>
+              <div class="obd-val"><span id="obd-alt">—</span> <span style="font-size:.56rem;color:var(--t3)">m</span></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl">Pressure</div>
+              <div class="obd-val"><span id="obd-prs">—</span> <span style="font-size:.56rem;color:var(--t3)">hPa</span></div>
+            </div>
           </div>
         </div>
-        <div class="card">
+        <!-- NavIC signal strength -->
+        <div class="card" style="margin-top:0">
           <div class="ct"><div class="ct-l"><span class="cdot g"></span>NavIC Signal</div></div>
           <div class="sig">
             <div class="sig-bars">
@@ -867,7 +883,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             <div class="dop-cell"><div class="dop-label">VDOP</div><div class="dop-value" id="dop-vdop">1.4</div></div>
           </div>
         </div>
-        <div class="card">
+        <!-- Live signal sparklines -->
+        <div class="card" style="margin-top:0">
           <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Signals</div></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
             <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--red);font-size:.52rem">Pos Error</span><span class="spark-num r" id="sp-err-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-err"></canvas></div></div>
@@ -876,9 +893,10 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--yellow);font-size:.52rem">Baro Alt</span><span class="spark-num y" id="sp-baro-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-baro"></canvas></div><div style="font-size:.46rem;font-family:var(--mono);color:var(--t3);display:flex;justify-content:space-between"><span>9th ch</span><span id="sp-baro-tun" style="font-size:.46rem">—</span></div></div>
           </div>
         </div>
+      </div>
 
-        <!-- ── 📋 EVENT LOG ── -->
-        <div class="sec-hdr">📋 Event Log</div>
+      <!-- LOG TAB -->
+      <div class="ptab-content" data-panel="left" data-tab="log">
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot y"></span>Event Timeline</div><span style="font-size:.52rem;color:var(--t3)" id="tl-steps">0 steps</span></div>
           <div class="tl-wrap" id="tl-wrap"></div>
@@ -893,8 +911,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <div class="ct"><div class="ct-l"><span class="cdot r"></span>Event Log</div></div>
           <div class="elog" id="elog"></div>
         </div>
-
       </div>
+
     </div>
 
     <!-- CENTER MAP -->
@@ -960,17 +978,25 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
     <!-- RIGHT PANEL -->
     <div class="panel">
-      <div class="panel-scroll">
+      <div class="ptab-bar">
+        <button class="ptab active" onclick="switchPTab('right','metrics',this)" data-t="tab_metrics">METRICS</button>
+        <button class="ptab" onclick="switchPTab('right','ai',this)" data-t="tab_ai">AI</button>
+        <button class="ptab" onclick="switchPTab('right','compliance',this)" data-t="tab_comply">COMPLY</button>
+        <button class="ptab" onclick="switchPTab('right','bench',this)" data-t="tab_bench">BENCH</button>
+        <button class="ptab" onclick="switchPTab('right','fleet',this)" data-t="tab_fleet">FLEET</button>
+        <button class="ptab" onclick="switchPTab('right','explain',this)" data-t="tab_explain">EXPLAIN</button>
+      </div>
 
-        <!-- ── 📍 AI NAVIGATION ERROR (HERO) ── -->
-        <div class="sec-hdr">📍 AI Navigation Error</div>
+      <!-- METRICS TAB -->
+      <div class="ptab-content active" data-panel="right" data-tab="metrics">
+        <!-- ── HERO CARD: primary AI accuracy number ── -->
         <div class="card" style="text-align:center;padding:14px 13px">
-          <div style="font-size:.5rem;font-family:var(--mono);letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:6px">NAVDRIFT-0 · Average Trajectory Error</div>
+          <div style="font-size:.5rem;font-family:var(--mono);letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:6px">AI Navigation Error</div>
           <div style="display:flex;align-items:baseline;justify-content:center;gap:5px">
             <span style="font-size:2.6rem;font-weight:700;font-family:var(--mono);line-height:1;color:var(--bone)" id="v-nd">—</span>
             <span style="font-size:.85rem;font-family:var(--mono);color:var(--muted);margin-bottom:2px">m</span>
           </div>
-          <div style="font-size:.46rem;color:var(--muted);font-family:var(--mono);margin-top:3px;letter-spacing:.05em">lower is better · ISRO target &lt; 50 m at 1 km</div>
+          <div style="font-size:.48rem;color:var(--muted);font-family:var(--mono);margin-top:4px;letter-spacing:.07em">NAVDRIFT-0 Average Trajectory Error · lower is better</div>
           <div style="display:flex;justify-content:space-around;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
             <div style="text-align:center">
               <div style="font-size:.42rem;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-bottom:2px">EKF BASELINE</div>
@@ -991,10 +1017,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <span id="v-imu" style="display:none"></span>
         </div>
 
-        <!-- ── 🏁 LIVE DRIFT RACE ── -->
-        <div class="sec-hdr">🏁 Live Drift Race</div>
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot r"></span>Algorithm Comparison</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)" id="dc-phase">NOMINAL</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot r"></span>Live Drift Race</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)" id="dc-phase">NOMINAL</span></div>
           <div style="font-size:.47rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">Cumulative position error for each method. NAVDRIFT (AI) should stay far below Raw IMU.</div>
           <div class="divclock-wrap">
             <div class="divclock-row">
@@ -1019,11 +1043,78 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           </div>
         </div>
 
-        <!-- ── ✅ ISRO COMPLIANCE ── -->
-        <div class="sec-hdr">✅ ISRO Compliance</div>
-        <div style="margin-bottom:0">
+      </div>
+
+      <!-- AI TAB -->
+      <div class="ptab-content" data-panel="right" data-tab="ai">
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot v"></span>DRIFTFormer Attention</div><span style="font-size:.52rem;color:var(--t3)">50-frame window</span></div>
+          <div class="attn-strip" id="attn-strip"></div>
+          <div style="display:flex;justify-content:space-between;margin-top:3px">
+            <span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">t-50</span>
+            <span style="font-size:.5rem;font-family:var(--mono);color:var(--cyan)">peak: <span id="attn-peak">—</span></span>
+            <span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">t-0</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Algorithm Race</div><span style="font-size:.52rem;color:var(--t3)">lower=better</span></div>
+          <div class="race-bar-wrap"><span class="race-lbl" style="color:var(--cyan)">NAVDRIFT</span><div class="race-track"><div class="race-fill" id="race-nd" style="background:var(--cyan);width:0%"></div></div><span class="race-val" style="color:var(--cyan)" id="race-ndv">—</span></div>
+          <div class="race-bar-wrap"><span class="race-lbl" style="color:var(--violet)">EKF</span><div class="race-track"><div class="race-fill" id="race-ekf" style="background:var(--violet);width:0%"></div></div><span class="race-val" style="color:var(--violet)" id="race-ekfv">—</span></div>
+          <div class="race-bar-wrap" style="border:none"><span class="race-lbl" style="color:var(--red)">RAW IMU</span><div class="race-track"><div class="race-fill" id="race-imu" style="background:var(--red);width:0%"></div></div><span class="race-val" style="color:var(--red)" id="race-imuv">—</span></div>
+        </div>
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Inference Engine</div></div>
+          <div class="infobox" id="engine-info"><b>Model:</b> DRIFT-Former FP32 ONNX (14MB)<br><b>Runtime:</b> ONNX Runtime 1.18 · CPU<br><b>Mode:</b> Simulation</div>
+          <div style="margin-top:7px;padding:5px 6px;background:rgba(0,0,0,0.25);border-radius:5px;border:1px solid var(--b2)">
+            <div style="font-size:.5rem;font-family:var(--mono);color:var(--t3);margin-bottom:4px">TRANSFORMER LAYERS · 4×8-HEAD · d=128</div>
+            <div id="inf-layers" style="display:flex;align-items:flex-end;gap:2px;height:20px"></div>
+          </div>
+        </div>
+
+        <!-- ── UKF State Vector ── -->
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot v"></span>UKF State Vector</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">Covariance P</span></div>
+          <div class="ukf-state">
+            <div class="ukf-cell"><div class="ukf-key">P[0][0] — Lat σ²</div><div class="ukf-val" id="ukf-p00">—</div></div>
+            <div class="ukf-cell"><div class="ukf-key">P[1][1] — Lon σ²</div><div class="ukf-val" id="ukf-p11">—</div></div>
+            <div class="ukf-cell"><div class="ukf-key">P[2][2] — Vel σ²</div><div class="ukf-val" id="ukf-p22">—</div></div>
+            <div class="ukf-cell"><div class="ukf-key">Trace(P)</div><div class="ukf-val" id="ukf-tr" style="color:var(--cyan)">—</div></div>
+          </div>
+          <div style="margin-top:5px;display:flex;gap:4px;align-items:center">
+            <span style="font-size:.5rem;color:var(--t3);font-family:var(--mono)">ZUPT corrections:</span>
+            <span style="font-size:.62rem;font-weight:700;font-family:var(--mono);color:var(--cyan)" id="zupt-cnt">0</span>
+            <span style="font-size:.48rem;color:var(--muted);margin-left:8px;font-family:var(--mono)">ZUPT active:</span>
+            <span style="font-size:.55rem;font-weight:700;font-family:var(--mono);color:var(--t3)" id="zupt-state">NO</span>
+          </div>
+        </div>
+
+        <!-- ── Edge Deployment Metrics ── -->
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Edge Deployment</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">FP32 ONNX · 4 models</span></div>
+          <div class="edge-grid">
+            <div class="edge-cell"><div class="edge-icon">💾</div><div class="edge-val" id="edge-mb">2.1</div><div class="edge-lbl">MB INT8</div></div>
+            <div class="edge-cell"><div class="edge-icon">⚡</div><div class="edge-val" id="edge-hz">48.3</div><div class="edge-lbl">Infer Hz</div></div>
+            <div class="edge-cell"><div class="edge-icon">🔧</div><div class="edge-val" id="edge-cpu">12.4</div><div class="edge-lbl">CPU %</div></div>
+          </div>
+          <div style="margin-top:5px;display:grid;grid-template-columns:1fr 1fr;gap:3px">
+            <div style="padding:3px 5px;background:rgba(0,0,0,0.2);border-radius:4px;border:1px solid var(--line-soft)">
+              <div style="font-size:.46rem;color:var(--t3);font-family:var(--mono)">RAM footprint</div>
+              <div style="font-size:.62rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="edge-ram">34 MB</div>
+            </div>
+            <div style="padding:3px 5px;background:rgba(0,0,0,0.2);border-radius:4px;border:1px solid var(--line-soft)">
+              <div style="font-size:.46rem;color:var(--t3);font-family:var(--mono)">Target platform</div>
+              <div style="font-size:.56rem;font-weight:700;font-family:var(--mono);color:var(--cyan)">ARM Cortex-A72</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMPLIANCE TAB -->
+      <div class="ptab-content" data-panel="right" data-tab="compliance">
+        <div style="margin-bottom:6px">
           <button onclick="exportComplianceReport()" style="width:100%;padding:7px;font-size:.62rem;font-weight:700;font-family:var(--mono);border-radius:7px;cursor:pointer;background:rgba(0,255,157,0.1);color:var(--green);border:1px solid rgba(0,255,157,0.3);letter-spacing:.06em;">📋 EXPORT ISRO COMPLIANCE PDF</button>
         </div>
+        <!-- Drift compliance gauge -->
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO Drift Compliance</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">Target &lt;10%</span></div>
           <div style="font-size:.48rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">How much the AI drifts as a % of total distance covered. ISRO PS #26168 requires under 10%.</div>
@@ -1058,7 +1149,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           </div>
         </div>
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO PS #26168 Checklist</div><span id="ps-overall" style="font-size:.53rem;font-weight:700;color:var(--t3)">WARMING…</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO PS #26168 Compliance</div><span id="ps-overall" style="font-size:.53rem;font-weight:700;color:var(--t3)">WARMING…</span></div>
           <div class="mrow"><span class="ml">50m blackout drift</span><span id="ps-50m" class="mv" style="color:var(--t3)">— warming up</span></div>
           <div class="mrow"><span class="ml">1km tunnel ATE</span><span id="ps-1km" class="mv" style="color:var(--t3)">— warming up</span></div>
           <div class="mrow"><span class="ml">Inference latency</span><span id="ps-lat" class="mv" style="color:var(--t3)">— warming up</span></div>
@@ -1069,7 +1160,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <span id="ps-trans" style="display:none"></span>
         </div>
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>GNSS+INS Fusion Score</div></div>
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>GNSS+INS Fusion</div></div>
           <div class="fbar-row"><span class="fbar-lbl" style="color:var(--cyan)">NavDrift</span><div class="fbar-track"><div class="fbar-fill" id="fb-nd" style="width:90%;background:var(--cyan)"></div></div><span class="fbar-val" id="fb-ndv" style="color:var(--cyan)">—</span></div>
           <div class="fbar-row"><span class="fbar-lbl" style="color:var(--violet)">EKF</span><div class="fbar-track"><div class="fbar-fill" id="fb-ekf" style="width:55%;background:var(--violet)"></div></div><span class="fbar-val" id="fb-ekfv" style="color:var(--violet)">—</span></div>
           <div class="fbar-row" style="margin-bottom:0"><span class="fbar-lbl" style="color:var(--red)">Raw IMU</span><div class="fbar-track"><div class="fbar-fill" id="fb-imu" style="width:8%;background:var(--red)"></div></div><span class="fbar-val" id="fb-imuv" style="color:var(--red)">low</span></div>
@@ -1077,114 +1168,63 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <span id="v-hmm" style="display:none">0</span>
           <span id="v-tun" style="display:none">0</span>
         </div>
-
-        <!-- ── 🔬 ADVANCED (collapsible) ── -->
-        <details class="sec-details">
-          <summary class="sec-hdr">🔬 Advanced Details</summary>
-          <div class="sec-details-body">
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot v"></span>DRIFTFormer Attention</div><span style="font-size:.52rem;color:var(--t3)">50-frame window</span></div>
-              <div class="attn-strip" id="attn-strip"></div>
-              <div style="display:flex;justify-content:space-between;margin-top:3px">
-                <span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">t-50</span>
-                <span style="font-size:.5rem;font-family:var(--mono);color:var(--cyan)">peak: <span id="attn-peak">—</span></span>
-                <span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">t-0</span>
-              </div>
-            </div>
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Algorithm Race</div><span style="font-size:.52rem;color:var(--t3)">lower=better</span></div>
-              <div class="race-bar-wrap"><span class="race-lbl" style="color:var(--cyan)">NAVDRIFT</span><div class="race-track"><div class="race-fill" id="race-nd" style="background:var(--cyan);width:0%"></div></div><span class="race-val" style="color:var(--cyan)" id="race-ndv">—</span></div>
-              <div class="race-bar-wrap"><span class="race-lbl" style="color:var(--violet)">EKF</span><div class="race-track"><div class="race-fill" id="race-ekf" style="background:var(--violet);width:0%"></div></div><span class="race-val" style="color:var(--violet)" id="race-ekfv">—</span></div>
-              <div class="race-bar-wrap" style="border:none"><span class="race-lbl" style="color:var(--red)">RAW IMU</span><div class="race-track"><div class="race-fill" id="race-imu" style="background:var(--red);width:0%"></div></div><span class="race-val" style="color:var(--red)" id="race-imuv">—</span></div>
-            </div>
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot g"></span>Inference Engine</div></div>
-              <div class="infobox" id="engine-info"><b>Model:</b> DRIFT-Former FP32 ONNX (14MB)<br><b>Runtime:</b> ONNX Runtime 1.18 · CPU<br><b>Mode:</b> Simulation</div>
-              <div style="margin-top:7px;padding:5px 6px;background:rgba(0,0,0,0.25);border-radius:5px;border:1px solid var(--b2)">
-                <div style="font-size:.5rem;font-family:var(--mono);color:var(--t3);margin-bottom:4px">TRANSFORMER LAYERS · 4×8-HEAD · d=128</div>
-                <div id="inf-layers" style="display:flex;align-items:flex-end;gap:2px;height:20px"></div>
-              </div>
-            </div>
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot v"></span>UKF State Vector</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">Covariance P</span></div>
-              <div class="ukf-state">
-                <div class="ukf-cell"><div class="ukf-key">P[0][0] — Lat σ²</div><div class="ukf-val" id="ukf-p00">—</div></div>
-                <div class="ukf-cell"><div class="ukf-key">P[1][1] — Lon σ²</div><div class="ukf-val" id="ukf-p11">—</div></div>
-                <div class="ukf-cell"><div class="ukf-key">P[2][2] — Vel σ²</div><div class="ukf-val" id="ukf-p22">—</div></div>
-                <div class="ukf-cell"><div class="ukf-key">Trace(P)</div><div class="ukf-val" id="ukf-tr" style="color:var(--cyan)">—</div></div>
-              </div>
-              <div style="margin-top:5px;display:flex;gap:4px;align-items:center">
-                <span style="font-size:.5rem;color:var(--t3);font-family:var(--mono)">ZUPT corrections:</span>
-                <span style="font-size:.62rem;font-weight:700;font-family:var(--mono);color:var(--cyan)" id="zupt-cnt">0</span>
-                <span style="font-size:.48rem;color:var(--muted);margin-left:8px;font-family:var(--mono)">ZUPT active:</span>
-                <span style="font-size:.55rem;font-weight:700;font-family:var(--mono);color:var(--t3)" id="zupt-state">NO</span>
-              </div>
-            </div>
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot g"></span>Edge Deployment</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">FP32 ONNX · 4 models</span></div>
-              <div class="edge-grid">
-                <div class="edge-cell"><div class="edge-icon">💾</div><div class="edge-val" id="edge-mb">2.1</div><div class="edge-lbl">MB INT8</div></div>
-                <div class="edge-cell"><div class="edge-icon">⚡</div><div class="edge-val" id="edge-hz">48.3</div><div class="edge-lbl">Infer Hz</div></div>
-                <div class="edge-cell"><div class="edge-icon">🔧</div><div class="edge-val" id="edge-cpu">12.4</div><div class="edge-lbl">CPU %</div></div>
-              </div>
-              <div style="margin-top:5px;display:grid;grid-template-columns:1fr 1fr;gap:3px">
-                <div style="padding:3px 5px;background:rgba(0,0,0,0.2);border-radius:4px;border:1px solid var(--line-soft)">
-                  <div style="font-size:.46rem;color:var(--t3);font-family:var(--mono)">RAM footprint</div>
-                  <div style="font-size:.62rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="edge-ram">34 MB</div>
-                </div>
-                <div style="padding:3px 5px;background:rgba(0,0,0,0.2);border-radius:4px;border:1px solid var(--line-soft)">
-                  <div style="font-size:.46rem;color:var(--t3);font-family:var(--mono)">Target platform</div>
-                  <div style="font-size:.56rem;font-weight:700;font-family:var(--mono);color:var(--cyan)">ARM Cortex-A72</div>
-                </div>
-              </div>
-            </div>
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot c"></span>Algorithm Benchmark</div></div>
-              <div class="mrow"><span class="ml">NAVDRIFT-0 ATE</span><span class="mv c" id="bk-nd">—<span class="mu">m</span></span></div>
-              <div class="mrow"><span class="ml">EKF Baseline ATE</span><span class="mv v" id="bk-ekf">—<span class="mu">m</span></span></div>
-              <div class="mrow"><span class="ml">Raw IMU ATE</span><span class="mv y" id="bk-imu">—<span class="mu">m</span></span></div>
-              <div style="margin-top:6px;display:grid;gap:3px" id="bench-bars"></div>
-            </div>
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot y"></span>Adaptive RL (Q/R tuning)</div></div>
-              <div class="mrow"><span class="ml">Process noise Q</span><span class="mv c" id="rl-q">—</span></div>
-              <div class="mrow"><span class="ml">Meas. noise R</span><span class="mv v" id="rl-r">—</span></div>
-              <div class="mrow"><span class="ml">Residual buf size</span><span class="mv" id="rl-buf">—</span></div>
-            </div>
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot r"></span>Sensor Fault Grid</div></div>
-              <div id="fault-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px"></div>
-            </div>
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot g"></span>Federated Learning</div><span style="font-size:.53rem;color:var(--muted)" id="fed-round">Round 0</span></div>
-              <div class="mrow"><span class="ml">Global ATE</span><span class="mv c" id="fed-gate">—<span class="mu">m</span></span></div>
-              <div class="mrow"><span class="ml">Fleet size</span><span class="mv">12 vehicles</span></div>
-              <div class="mrow"><span class="ml">TDP ETA</span><span class="mv y" id="tdp-eta">—</span></div>
-            </div>
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot v"></span>Fleet Log</div></div>
-              <div id="fleet-log" style="font-size:.6rem;font-family:var(--mono);color:var(--bone-dim);max-height:120px;overflow-y:auto;line-height:1.7"></div>
-            </div>
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot c"></span>DRIFTFormer Attention Map</div></div>
-              <canvas id="attn-cv" style="width:100%;height:110px;display:block;border-radius:4px"></canvas>
-              <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:.56rem;color:var(--muted);font-family:var(--mono)">
-                <span>ax</span><span>ay</span><span>az</span><span>gx</span><span>gy</span><span>gz</span><span>spd</span><span>baro</span><span>Δh</span>
-              </div>
-            </div>
-            <div class="card">
-              <div class="ct"><div class="ct-l"><span class="cdot y"></span>Attention Heatmap (4 heads)</div></div>
-              <canvas id="attn-hm" style="width:100%;height:80px;display:block;border-radius:4px"></canvas>
-            </div>
-          </div>
-        </details>
-
-        <!-- Hidden benchmark IDs for JS compatibility -->
-        <span id="tb-nd" style="display:none"></span><span id="tb-ndx" style="display:none"></span>
-        <span id="tb-ekf" style="display:none"></span><span id="tb-ekfx" style="display:none"></span>
-        <span id="tb-imu" style="display:none"></span><span id="tb-imux" style="display:none"></span>
-
       </div>
+
+      <!-- BENCH TAB -->
+      <div class="ptab-content" data-panel="right" data-tab="bench">
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Algorithm Benchmark</div></div>
+          <div class="mrow"><span class="ml">NAVDRIFT-0 ATE</span><span class="mv c" id="bk-nd">—<span class="mu">m</span></span></div>
+          <div class="mrow"><span class="ml">EKF Baseline ATE</span><span class="mv v" id="bk-ekf">—<span class="mu">m</span></span></div>
+          <div class="mrow"><span class="ml">Raw IMU ATE</span><span class="mv y" id="bk-imu">—<span class="mu">m</span></span></div>
+          <div style="margin-top:6px;display:grid;gap:3px" id="bench-bars"></div>
+        </div>
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Adaptive RL (Q/R tuning)</div></div>
+          <div class="mrow"><span class="ml">Process noise Q</span><span class="mv c" id="rl-q">—</span></div>
+          <div class="mrow"><span class="ml">Meas. noise R</span><span class="mv v" id="rl-r">—</span></div>
+          <div class="mrow"><span class="ml">Residual buf size</span><span class="mv" id="rl-buf">—</span></div>
+        </div>
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot r"></span>Sensor Fault Grid</div></div>
+          <div id="fault-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px"></div>
+        </div>
+      </div>
+
+      <!-- FLEET TAB -->
+      <div class="ptab-content" data-panel="right" data-tab="fleet">
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Federated Learning</div><span style="font-size:.53rem;color:var(--muted)" id="fed-round">Round 0</span></div>
+          <div class="mrow"><span class="ml">Global ATE</span><span class="mv c" id="fed-gate">—<span class="mu">m</span></span></div>
+          <div class="mrow"><span class="ml">Fleet size</span><span class="mv">12 vehicles</span></div>
+          <div class="mrow"><span class="ml">TDP ETA</span><span class="mv y" id="tdp-eta">—</span></div>
+        </div>
+        <div class="card" style="flex:1">
+          <div class="ct"><div class="ct-l"><span class="cdot v"></span>Fleet Log</div></div>
+          <div id="fleet-log" style="font-size:.6rem;font-family:var(--mono);color:var(--bone-dim);max-height:160px;overflow-y:auto;line-height:1.7"></div>
+        </div>
+      </div>
+
+      <!-- EXPLAIN TAB -->
+      <div class="ptab-content" data-panel="right" data-tab="explain">
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>DRIFTFormer Attention</div></div>
+          <canvas id="attn-cv" style="width:100%;height:110px;display:block;border-radius:4px"></canvas>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:.56rem;color:var(--muted);font-family:var(--mono)">
+            <span>ax</span><span>ay</span><span>az</span><span>gx</span><span>gy</span><span>gz</span><span>spd</span><span>baro</span><span>Δh</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Attention Heatmap (4 heads)</div></div>
+          <canvas id="attn-hm" style="width:100%;height:80px;display:block;border-radius:4px"></canvas>
+        </div>
+      </div>
+
+      <!-- Hidden benchmark IDs for JS compatibility -->
+      <span id="tb-nd" style="display:none"></span><span id="tb-ndx" style="display:none"></span>
+      <span id="tb-ekf" style="display:none"></span><span id="tb-ekfx" style="display:none"></span>
+      <span id="tb-imu" style="display:none"></span><span id="tb-imux" style="display:none"></span>
+
     </div>
   </div>
 
