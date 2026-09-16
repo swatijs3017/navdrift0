@@ -2986,8 +2986,11 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
         for(const k of order){
           log('[ONNX] Loading '+LABELS[k]+'...','sys');
           const _resp=await fetch(MODEL_PATHS[k]);
+          log('[ONNX] fetch '+k+' -> HTTP '+_resp.status+' '+_resp.statusText,'sys');
           if(!_resp.ok) throw new Error('HTTP '+_resp.status+' fetching '+MODEL_PATHS[k]);
           const _buf=await _resp.arrayBuffer();
+          const _hdr=new Uint8Array(_buf.slice(0,4));
+          log('[ONNX] '+k+' buf='+_buf.byteLength+' bytes, header=['+Array.from(_hdr).map(x=>x.toString(16).padStart(2,'0')).join(' ')+']','sys');
           sessions[k]=await ort.InferenceSession.create(_buf,{executionProviders:['wasm']});
           log('[ONNX] '+LABELS[k]+' ready  in:'+sessions[k].inputNames+' out:'+sessions[k].outputNames,'sys');
         }
