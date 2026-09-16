@@ -377,7 +377,10 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     .ptab.active { color:var(--bone-dim); background:rgba(223,231,224,0.06); border-color:var(--line); }
     .ptab:hover:not(.active) { color:var(--bone-dim); background:rgba(223,231,224,0.03); }
     .ptab-content { display:none; flex-direction:column; gap:5px; flex:1; min-height:0; overflow:hidden; }
-    .ptab-content.active { display:flex; }
+    .ptab-content.active { display:flex; overflow-y:auto; overflow-x:hidden; }
+    .ptab-content.active::-webkit-scrollbar { width:3px; }
+    .ptab-content.active::-webkit-scrollbar-track { background:transparent; }
+    .ptab-content.active::-webkit-scrollbar-thumb { background:rgba(223,231,224,0.12); border-radius:2px; }
 
     /* ── FEATURE ADDITIONS ── */
     .city-tab.iovnbd{color:var(--yellow) !important;border-color:rgba(251,191,36,0.4) !important;}
@@ -858,6 +861,38 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             </div>
           </div>
         </div>
+        <!-- NavIC signal strength -->
+        <div class="card" style="margin-top:0">
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>NavIC Signal</div></div>
+          <div class="sig">
+            <div class="sig-bars">
+              <div class="sig-bar" style="height:5px" id="sb1"></div>
+              <div class="sig-bar" style="height:9px" id="sb2"></div>
+              <div class="sig-bar" style="height:13px" id="sb3"></div>
+              <div class="sig-bar" style="height:17px" id="sb4"></div>
+              <div class="sig-bar" style="height:20px" id="sb5"></div>
+            </div>
+            <div>
+              <div style="font-size:.72rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="sig-state">NavIC L5 / S-Band</div>
+              <div style="font-size:.57rem;color:var(--t3);font-family:var(--mono)" id="sig-sub">7 Satellites locked</div>
+            </div>
+          </div>
+          <div class="dop-row">
+            <div class="dop-cell"><div class="dop-label">PDOP</div><div class="dop-value" id="dop-pdop">1.8</div></div>
+            <div class="dop-cell"><div class="dop-label">HDOP</div><div class="dop-value" id="dop-hdop">1.2</div></div>
+            <div class="dop-cell"><div class="dop-label">VDOP</div><div class="dop-value" id="dop-vdop">1.4</div></div>
+          </div>
+        </div>
+        <!-- Live signal sparklines -->
+        <div class="card" style="margin-top:0">
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Signals</div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--red);font-size:.52rem">Pos Error</span><span class="spark-num r" id="sp-err-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-err"></canvas></div></div>
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--violet);font-size:.52rem">Uncert σ</span><span class="spark-num v" id="sp-unc-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-unc"></canvas></div></div>
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--green);font-size:.52rem">Speed</span><span class="spark-num g" id="sp-spd-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-spd"></canvas></div></div>
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--yellow);font-size:.52rem">Baro Alt</span><span class="spark-num y" id="sp-baro-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-baro"></canvas></div><div style="font-size:.46rem;font-family:var(--mono);color:var(--t3);display:flex;justify-content:space-between"><span>9th ch</span><span id="sp-baro-tun" style="font-size:.46rem">—</span></div></div>
+          </div>
+        </div>
       </div>
       </div>
 
@@ -983,42 +1018,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <span id="v-imu" style="display:none"></span>
         </div>
 
-        <!-- ── DRIFT COMPLIANCE GAUGE (ISRO PS #26168: <10%) ── -->
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO Drift Compliance</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">Target &lt;10%</span></div>
-          <div style="font-size:.48rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">How much the AI drifts as a % of total distance covered. ISRO PS #26168 requires under 10%.</div>
-          <div class="drift-comply-wrap">
-            <div class="drift-gauge-ring">
-              <svg viewBox="0 0 60 60">
-                <circle class="drift-gauge-bg" cx="30" cy="30" r="24"/>
-                <circle class="drift-gauge-arc" cx="30" cy="30" r="24" id="drift-arc"
-                  stroke="var(--green)" stroke-dasharray="150.8" stroke-dashoffset="150.8"/>
-              </svg>
-              <div class="drift-gauge-val">
-                <span class="drift-gauge-pct" id="drift-pct-val" style="color:var(--green)">0.0</span>
-                <span class="drift-gauge-unit">%</span>
-              </div>
-            </div>
-            <div class="drift-comply-info">
-              <div class="drift-comply-lbl">Drift / Distance</div>
-              <div class="drift-comply-target">ISRO limit: error/dist &lt; 10%</div>
-              <div><span class="drift-comply-status ok" id="drift-comply-badge">✓ PASS</span></div>
-              <div style="font-size:.5rem;color:var(--t3);font-family:var(--mono);margin-top:3px">Dist: <span id="drift-dist-val">0m</span> · Err: <span id="drift-err-val">0.0m</span></div>
-            </div>
-          </div>
-          <!-- GNSS Transition Timer -->
-          <div class="trans-row">
-            <div>
-              <div class="trans-lbl">GNSS ↔ DR Transition</div>
-              <div class="trans-target">ISRO req: seamless &lt;100ms</div>
-            </div>
-            <div style="text-align:right">
-              <div class="trans-val"><span id="gnss-trans-ms">0.4</span> ms</div>
-              <div style="font-size:.46rem;font-family:var(--mono);color:var(--green)">✓ PASS</div>
-            </div>
-          </div>
-        </div>
-
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot r"></span>Live Drift Race</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)" id="dc-phase">NOMINAL</span></div>
           <div style="font-size:.47rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">Cumulative position error for each method. NAVDRIFT (AI) should stay far below Raw IMU.</div>
@@ -1045,37 +1044,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           </div>
         </div>
 
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>NavIC Signal</div></div>
-          <div class="sig">
-            <div class="sig-bars">
-              <div class="sig-bar" style="height:5px" id="sb1"></div>
-              <div class="sig-bar" style="height:9px" id="sb2"></div>
-              <div class="sig-bar" style="height:13px" id="sb3"></div>
-              <div class="sig-bar" style="height:17px" id="sb4"></div>
-              <div class="sig-bar" style="height:20px" id="sb5"></div>
-            </div>
-            <div>
-              <div style="font-size:.72rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="sig-state">NavIC L5 / S-Band</div>
-              <div style="font-size:.57rem;color:var(--t3);font-family:var(--mono)" id="sig-sub">7 Satellites locked</div>
-            </div>
-          </div>
-          <!-- NavIC DOP — Dilution of Precision (ISRO PDOP/HDOP/VDOP) -->
-          <div class="dop-row">
-            <div class="dop-cell"><div class="dop-label">PDOP</div><div class="dop-value" id="dop-pdop">1.8</div></div>
-            <div class="dop-cell"><div class="dop-label">HDOP</div><div class="dop-value" id="dop-hdop">1.2</div></div>
-            <div class="dop-cell"><div class="dop-label">VDOP</div><div class="dop-value" id="dop-vdop">1.4</div></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Signals</div></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--red);font-size:.52rem">Pos Error</span><span class="spark-num r" id="sp-err-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-err"></canvas></div></div>
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--violet);font-size:.52rem">Uncert σ</span><span class="spark-num v" id="sp-unc-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-unc"></canvas></div></div>
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--green);font-size:.52rem">Speed</span><span class="spark-num g" id="sp-spd-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-spd"></canvas></div></div>
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--yellow);font-size:.52rem">Baro Alt</span><span class="spark-num y" id="sp-baro-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-baro"></canvas></div><div style="font-size:.46rem;font-family:var(--mono);color:var(--t3);display:flex;justify-content:space-between"><span>9th ch</span><span id="sp-baro-tun" style="font-size:.46rem">—</span></div></div>
-          </div>
-        </div>
       </div>
 
       <!-- AI TAB -->
@@ -1146,6 +1114,40 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <div class="ptab-content" data-panel="right" data-tab="compliance">
         <div style="margin-bottom:6px">
           <button onclick="exportComplianceReport()" style="width:100%;padding:7px;font-size:.62rem;font-weight:700;font-family:var(--mono);border-radius:7px;cursor:pointer;background:rgba(0,255,157,0.1);color:var(--green);border:1px solid rgba(0,255,157,0.3);letter-spacing:.06em;">📋 EXPORT ISRO COMPLIANCE PDF</button>
+        </div>
+        <!-- Drift compliance gauge -->
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO Drift Compliance</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">Target &lt;10%</span></div>
+          <div style="font-size:.48rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">How much the AI drifts as a % of total distance covered. ISRO PS #26168 requires under 10%.</div>
+          <div class="drift-comply-wrap">
+            <div class="drift-gauge-ring">
+              <svg viewBox="0 0 60 60">
+                <circle class="drift-gauge-bg" cx="30" cy="30" r="24"/>
+                <circle class="drift-gauge-arc" cx="30" cy="30" r="24" id="drift-arc"
+                  stroke="var(--green)" stroke-dasharray="150.8" stroke-dashoffset="150.8"/>
+              </svg>
+              <div class="drift-gauge-val">
+                <span class="drift-gauge-pct" id="drift-pct-val" style="color:var(--green)">0.0</span>
+                <span class="drift-gauge-unit">%</span>
+              </div>
+            </div>
+            <div class="drift-comply-info">
+              <div class="drift-comply-lbl">Drift / Distance</div>
+              <div class="drift-comply-target">ISRO limit: error/dist &lt; 10%</div>
+              <div><span class="drift-comply-status ok" id="drift-comply-badge">✓ PASS</span></div>
+              <div style="font-size:.5rem;color:var(--t3);font-family:var(--mono);margin-top:3px">Dist: <span id="drift-dist-val">0m</span> · Err: <span id="drift-err-val">0.0m</span></div>
+            </div>
+          </div>
+          <div class="trans-row">
+            <div>
+              <div class="trans-lbl">GNSS ↔ DR Transition</div>
+              <div class="trans-target">ISRO req: seamless &lt;100ms</div>
+            </div>
+            <div style="text-align:right">
+              <div class="trans-val"><span id="gnss-trans-ms">0.4</span> ms</div>
+              <div style="font-size:.46rem;font-family:var(--mono);color:var(--green)">✓ PASS</div>
+            </div>
+          </div>
         </div>
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO PS #26168 Compliance</div><span id="ps-overall" style="font-size:.53rem;font-weight:700;color:var(--t3)">WARMING…</span></div>
