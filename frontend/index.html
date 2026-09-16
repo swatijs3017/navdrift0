@@ -372,7 +372,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 .inf-layer { display:inline-block; width:7px; height:7px; border-radius:1px; margin:0 1px; animation:inf-pulse 1.2s ease-in-out infinite; }
 
     /* ── PANEL TABS ── */
-    .ptab-bar { display:flex; gap:1px; margin-bottom:5px; background:rgba(5,7,10,0.5); padding:2px; border-radius:5px; border:1px solid var(--line); flex-shrink:0; }
+    .ptab-bar { display:flex; gap:1px; margin-bottom:5px; background:rgba(5,7,10,0.5); padding:2px; border-radius:5px; border:1px solid var(--line); flex-shrink:0; overflow-x:auto; }
+.panel:last-child .ptab { font-size:.6rem; padding:4px 2px; letter-spacing:0; min-width:0; }
     .ptab { flex:1; padding:4px 4px; font-size:.7rem; font-weight:500; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); background:transparent; border:1px solid transparent; border-radius:3px; cursor:pointer; transition:all .18s; font-family:var(--sans); text-align:center; white-space:nowrap; }
     .ptab.active { color:var(--bone-dim); background:rgba(223,231,224,0.06); border-color:var(--line); }
     .ptab:hover:not(.active) { color:var(--bone-dim); background:rgba(223,231,224,0.03); }
@@ -783,6 +784,39 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
       <!-- SENSORS TAB -->
       <div class="ptab-content" data-panel="left" data-tab="sensors">
+        <!-- NavIC signal strength -->
+        <div class="card" style="margin-top:0">
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span><span data-t="hdr_navic_sig">NavIC Signal</span></div></div>
+          <div class="sig">
+            <div class="sig-bars">
+              <div class="sig-bar" style="height:5px" id="sb1"></div>
+              <div class="sig-bar" style="height:9px" id="sb2"></div>
+              <div class="sig-bar" style="height:13px" id="sb3"></div>
+              <div class="sig-bar" style="height:17px" id="sb4"></div>
+              <div class="sig-bar" style="height:20px" id="sb5"></div>
+            </div>
+            <div>
+              <div style="font-size:.72rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="sig-state">NavIC L5 / S-Band</div>
+              <div style="font-size:.73rem;color:var(--t3);font-family:var(--mono)" id="sig-sub">7 Satellites locked</div>
+            </div>
+          </div>
+          <div class="dop-row">
+            <div class="dop-cell"><div class="dop-label">PDOP</div><div class="dop-value" id="dop-pdop">1.8</div></div>
+            <div class="dop-cell"><div class="dop-label">HDOP</div><div class="dop-value" id="dop-hdop">1.2</div></div>
+            <div class="dop-cell"><div class="dop-label">VDOP</div><div class="dop-value" id="dop-vdop">1.4</div></div>
+          </div>
+        </div>
+        <!-- Live signal sparklines -->
+        <div class="card" style="margin-top:0">
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span><span data-t="hdr_live_sig">Live Signals</span></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--red);font-size:.7rem">Pos Error</span><span class="spark-num r" id="sp-err-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-err"></canvas></div></div>
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--violet);font-size:.7rem">Uncert σ</span><span class="spark-num v" id="sp-unc-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-unc"></canvas></div></div>
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--green);font-size:.7rem">Speed</span><span class="spark-num g" id="sp-spd-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-spd"></canvas></div></div>
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--yellow);font-size:.7rem">Baro Alt</span><span class="spark-num y" id="sp-baro-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-baro"></canvas></div><div style="font-size:.63rem;font-family:var(--mono);color:var(--t3);display:flex;justify-content:space-between"><span>9th ch</span><span id="sp-baro-tun" style="font-size:.63rem">—</span></div></div>
+          </div>
+        </div>
+      </div>
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot y"></span>Alignment &amp; Vibration Filter</div><span style="font-size:.72rem;color:var(--green)">✓ LOCKED</span></div>
           <div class="sbar-row"><span class="sbar-lbl">PITCH</span><div class="sbar-track"><div class="sbar-fill" id="cal-p" style="width:62%"></div></div><span class="sbar-val" id="cal-pv">+3.2°</span></div>
@@ -861,38 +895,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             </div>
           </div>
         </div>
-        <!-- NavIC signal strength -->
-        <div class="card" style="margin-top:0">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span><span data-t="hdr_navic_sig">NavIC Signal</span></div></div>
-          <div class="sig">
-            <div class="sig-bars">
-              <div class="sig-bar" style="height:5px" id="sb1"></div>
-              <div class="sig-bar" style="height:9px" id="sb2"></div>
-              <div class="sig-bar" style="height:13px" id="sb3"></div>
-              <div class="sig-bar" style="height:17px" id="sb4"></div>
-              <div class="sig-bar" style="height:20px" id="sb5"></div>
-            </div>
-            <div>
-              <div style="font-size:.72rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="sig-state">NavIC L5 / S-Band</div>
-              <div style="font-size:.73rem;color:var(--t3);font-family:var(--mono)" id="sig-sub">7 Satellites locked</div>
-            </div>
-          </div>
-          <div class="dop-row">
-            <div class="dop-cell"><div class="dop-label">PDOP</div><div class="dop-value" id="dop-pdop">1.8</div></div>
-            <div class="dop-cell"><div class="dop-label">HDOP</div><div class="dop-value" id="dop-hdop">1.2</div></div>
-            <div class="dop-cell"><div class="dop-label">VDOP</div><div class="dop-value" id="dop-vdop">1.4</div></div>
-          </div>
-        </div>
-        <!-- Live signal sparklines -->
-        <div class="card" style="margin-top:0">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span><span data-t="hdr_live_sig">Live Signals</span></div></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--red);font-size:.7rem">Pos Error</span><span class="spark-num r" id="sp-err-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-err"></canvas></div></div>
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--violet);font-size:.7rem">Uncert σ</span><span class="spark-num v" id="sp-unc-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-unc"></canvas></div></div>
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--green);font-size:.7rem">Speed</span><span class="spark-num g" id="sp-spd-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-spd"></canvas></div></div>
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--yellow);font-size:.7rem">Baro Alt</span><span class="spark-num y" id="sp-baro-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-baro"></canvas></div><div style="font-size:.63rem;font-family:var(--mono);color:var(--t3);display:flex;justify-content:space-between"><span>9th ch</span><span id="sp-baro-tun" style="font-size:.63rem">—</span></div></div>
-          </div>
-        </div>
+
       </div>
 
       <!-- LOG TAB -->
