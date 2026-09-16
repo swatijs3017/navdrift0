@@ -44,7 +44,7 @@
     html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: var(--sans); user-select: none; }
 
     /* ── LAYOUT ── */
-    .app { display: grid; grid-template-rows: 52px auto 1fr 68px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
+    .app { display: grid; grid-template-rows: 52px 24px auto 1fr 68px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
     .body { display: grid; grid-template-columns: 272px 1fr 272px; gap: 7px; padding: 7px; min-height: 0; overflow: hidden; }
     .panel { display: flex; flex-direction: column; gap: 0; overflow: hidden; min-height: 0; }
 
@@ -114,9 +114,9 @@
     .btn.d { background: var(--red-d); color: var(--red); border-color: rgba(255,34,85,0.3); }
     .btn.d:hover { background: rgba(224,35,28,0.18); }
     /* ── LANGUAGE PICKER ── */
-    .lang-sel { background: rgba(223,231,224,0.04); border: 1px solid var(--line); color: var(--bone-dim); font-family: var(--mono); font-size: .58rem; padding: 4px 7px; border-radius: 6px; cursor: pointer; outline: none; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2378837c'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 6px center; padding-right: 20px; }
-    .lang-sel:focus { border-color: rgba(0,255,245,0.3); color: var(--cyan); }
-    .lang-sel option { background: #080c10; color: var(--bone); }
+    .lang-opt { font-size: .62rem; font-family: var(--mono); color: var(--bone-dim); padding: 5px 8px; border-radius: 5px; cursor: pointer; transition: all .15s; }
+    .lang-opt:hover { background: rgba(0,255,245,0.08); color: var(--cyan); }
+    .lang-opt.active { color: var(--cyan); background: rgba(0,255,245,0.06); }
 
     /* ── MODULE CHIPS — compact 3-col ── */
     .mods { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
@@ -656,23 +656,38 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <button class="navic-toggle" id="prod-btn" onclick="toggleProdModel()" title="Run all 5 trained ONNX models in-browser" style="background:rgba(168,85,247,0.12);color:var(--violet);border-color:rgba(168,85,247,0.35)">SIM MODE</button>
       <span id="onnx-lat" style="font-size:.52rem;font-family:var(--mono);color:var(--t3);min-width:40px"></span>
       <span class="badge badge-ps">PS #26168</span>
-      <select class="lang-sel" id="lang-sel" onchange="setLang(this.value)" title="भाषा / Language">
-        <option value="en">EN</option>
-        <option value="hi">हिंदी</option>
-        <option value="ta">தமிழ்</option>
-        <option value="te">తెలుగు</option>
-        <option value="kn">ಕನ್ನಡ</option>
-        <option value="bn">বাংলা</option>
-        <option value="mr">मराठी</option>
-        <option value="gu">ગુજરાતી</option>
-        <option value="ml">മലയാളം</option>
-        <option value="pa">ਪੰਜਾਬੀ</option>
-        <option value="od">ଓଡ଼ିଆ</option>
-      </select>
+      <div style="position:relative">
+        <button class="btn-icon" id="lang-btn" onclick="toggleLangMenu()" title="भाषा / Language" style="width:auto;padding:0 9px;gap:5px;font-size:.58rem;font-weight:600;font-family:var(--mono)">🌐 <span id="lang-cur">EN</span></button>
+        <div id="lang-menu" style="display:none;position:absolute;top:36px;right:0;background:#080c10;border:1px solid var(--line);border-radius:8px;padding:5px;z-index:999;width:120px;box-shadow:0 8px 24px rgba(0,0,0,0.7)">
+          <div style="font-size:.44rem;font-family:var(--mono);color:var(--muted);letter-spacing:.12em;padding:3px 6px 5px;border-bottom:1px solid var(--line);margin-bottom:3px">LANGUAGE / भाषा</div>
+          <div class="lang-opt" onclick="pickLang('en','EN')">English</div>
+          <div class="lang-opt" onclick="pickLang('hi','हिंदी')">हिंदी</div>
+          <div class="lang-opt" onclick="pickLang('ta','தமிழ்')">தமிழ்</div>
+          <div class="lang-opt" onclick="pickLang('te','తెలుగు')">తెలుగు</div>
+          <div class="lang-opt" onclick="pickLang('kn','ಕನ್ನಡ')">ಕನ್ನಡ</div>
+          <div class="lang-opt" onclick="pickLang('bn','বাংলা')">বাংলা</div>
+          <div class="lang-opt" onclick="pickLang('mr','मराठी')">मराठी</div>
+          <div class="lang-opt" onclick="pickLang('gu','ગુજરાતી')">ગુજરાતી</div>
+          <div class="lang-opt" onclick="pickLang('ml','മലയാളം')">മലയാളം</div>
+          <div class="lang-opt" onclick="pickLang('pa','ਪੰਜਾਬੀ')">ਪੰਜਾਬੀ</div>
+          <div class="lang-opt" onclick="pickLang('od','ଓଡ଼ିଆ')">ଓଡ଼ିଆ</div>
+        </div>
+      </div>
       <div class="btn-icon" onclick="openHelp()" title="How it works" style="color:var(--bone-dim);font-size:.75rem;font-weight:700;font-family:var(--mono);">?</div>
       <div class="btn-icon" onclick="openModal()" title="API Settings">⚙</div>
     </div>
   </header>
+
+  <!-- SYSTEM EXPLAIN BAR — always visible, one-liner -->
+  <div style="display:flex;align-items:center;justify-content:center;gap:20px;padding:0 16px;background:rgba(5,7,10,0.92);border-bottom:1px solid var(--line-soft);height:24px;font-size:.46rem;font-family:var(--mono);color:var(--muted);letter-spacing:.06em;flex-shrink:0">
+    <span>🛰 <b style="color:var(--bone-dim)">NavIC/GPS</b> → position when signal is available</span>
+    <span style="color:var(--line)">|</span>
+    <span>📡 <b style="color:var(--bone-dim)">IMU + OBD-II</b> → raw sensor data always collected</span>
+    <span style="color:var(--line)">|</span>
+    <span>🤖 <b style="color:var(--bone-dim)">NAVDRIFT-0 AI</b> → takes over when GPS is lost</span>
+    <span style="color:var(--line)">|</span>
+    <span>📍 <b style="color:var(--bone-dim)">PS #26168</b> → ISRO SIH 2026 dead reckoning challenge</span>
+  </div>
 
   <!-- IO-VNBD DATASET BANNER — grid row 2, height 0 when hidden, 26px when shown -->
   <div class="iovnbd-banner" id="iovnbd-banner">
@@ -695,12 +710,14 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <div class="ptab-content active" data-panel="left" data-tab="live">
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot g"></span>NavIC Constellation</div><span id="navic-lock-badge" style="font-size:.52rem;font-weight:700;color:var(--green)">7 SAT LOCKED</span></div>
+          <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:5px;line-height:1.5">India's own GPS system. Satellites shown in sky view — more visible = better signal.</div>
           <div style="font-size:.48rem;font-family:var(--mono);color:var(--t3);margin-bottom:4px">MET <b id="met-clock" style="color:var(--cyan)">00:00:00</b></div>
           <div class="sky-wrap"><canvas id="sky-cv"></canvas></div>
           <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px" id="sat-snr-bars"></div>
         </div>
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot c"></span>Controls</div></div>
+          <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">Use GNSS Toggle to simulate losing satellite signal. The AI takes over navigation using only IMU + barometer.</div>
           <div class="btn-row">
             <button class="btn p" id="btn-play" onclick="toggleSim()">⏸ Pause</button>
             <button class="btn d" onclick="toggleOutage()">📡 GNSS Toggle</button>
@@ -788,7 +805,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         </div>
         <!-- Raw IMU channels live readout -->
         <div class="card" style="margin-top:0">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Raw IMU Channels · live</div><span id="imu-temp-lbl" style="font-size:.5rem;color:var(--muted);font-family:var(--mono)">—°C</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>IMU · Motion Sensor</div><span id="imu-temp-lbl" style="font-size:.5rem;color:var(--muted);font-family:var(--mono)">—°C</span></div>
+          <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:6px;line-height:1.4">MPU-6050 / ICM-42688 chip. ax/ay/az = acceleration (m/s²). gx/gy/gz = rotation speed (rad/s). These feed the AI.</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;">
             <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#f87171">ax</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-ax" style="background:#f87171"></div></div><span class="imu-ch-val" id="imu-v-ax">0.00</span></div>
             <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#fb923c">gx</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-gx" style="background:#fb923c"></div></div><span class="imu-ch-val" id="imu-v-gx">0.00</span></div>
@@ -804,6 +822,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         <!-- OBD-II / vehicle CAN bus card -->
         <div class="card" style="margin-top:0">
           <div class="ct"><div class="ct-l"><span class="cdot y"></span>OBD-II · CAN Bus</div><span style="font-size:.48rem;color:var(--t3);font-family:var(--mono)" id="obd-pid-lbl">PID 0x0D / 0x0C</span></div>
+          <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:6px;line-height:1.4">Car's own ECU data via ELM327 dongle. Vehicle speed replaces wheel encoder. Engine RPM and throttle feed the dynamics model.</div>
           <div class="obd-grid">
             <div class="obd-cell">
               <div class="obd-lbl">Vehicle Speed</div>
@@ -936,19 +955,38 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
       <!-- METRICS TAB -->
       <div class="ptab-content active" data-panel="right" data-tab="metrics">
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Telemetry</div><span class="badge badge-mode" id="mode-chip">[SIM]</span></div>
-          <div class="mrow"><span class="ml">NAVDRIFT-0 ATE</span><span class="mv c" id="v-nd">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">EKF Baseline ATE</span><span class="mv v" id="v-ekf">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">Uncertainty σ</span><span class="mv y" id="v-unc">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">Inference latency</span><span class="mv g" id="v-lat">—<span class="mu">ms</span></span></div>
-          <div class="mrow"><span class="ml">Steps / Outages</span><span class="mv" style="color:var(--t2);font-size:.7rem"><span id="v-steps">0</span> / <span id="v-outs" style="color:var(--red)">0</span></span></div>
+        <!-- ── HERO CARD: primary AI accuracy number ── -->
+        <div class="card" style="text-align:center;padding:14px 13px">
+          <div style="font-size:.5rem;font-family:var(--mono);letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:6px">AI Navigation Error</div>
+          <div style="display:flex;align-items:baseline;justify-content:center;gap:5px">
+            <span style="font-size:2.6rem;font-weight:700;font-family:var(--mono);line-height:1;color:var(--bone)" id="v-nd">—</span>
+            <span style="font-size:.85rem;font-family:var(--mono);color:var(--muted);margin-bottom:2px">m</span>
+          </div>
+          <div style="font-size:.48rem;color:var(--muted);font-family:var(--mono);margin-top:4px;letter-spacing:.07em">NAVDRIFT-0 Average Trajectory Error · lower is better</div>
+          <div style="display:flex;justify-content:space-around;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+            <div style="text-align:center">
+              <div style="font-size:.42rem;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-bottom:2px">EKF BASELINE</div>
+              <div style="font-size:1rem;font-weight:700;font-family:var(--mono);color:#9b72d8"><span id="v-ekf">—</span><span style="font-size:.55rem;color:var(--muted);margin-left:2px">m</span></div>
+            </div>
+            <div style="width:1px;background:var(--line)"></div>
+            <div style="text-align:center">
+              <div style="font-size:.42rem;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-bottom:2px">UNCERTAINTY σ</div>
+              <div style="font-size:1rem;font-weight:700;font-family:var(--mono);color:var(--yellow)"><span id="v-unc">—</span><span style="font-size:.55rem;color:var(--muted);margin-left:2px">m</span></div>
+            </div>
+            <div style="width:1px;background:var(--line)"></div>
+            <div style="text-align:center">
+              <div style="font-size:.42rem;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-bottom:2px">AI LATENCY</div>
+              <div style="font-size:1rem;font-weight:700;font-family:var(--mono);color:#5fba95"><span id="v-lat">—</span><span style="font-size:.55rem;color:var(--muted);margin-left:2px">ms</span></div>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:.46rem;font-family:var(--mono);color:var(--muted)">Steps: <span id="v-steps" style="color:var(--bone-dim)">0</span> · Blackouts: <span id="v-outs" style="color:var(--red)">0</span> · Mode: <span class="badge badge-mode" id="mode-chip" style="font-size:.42rem;padding:1px 5px">[SIM]</span></div>
           <span id="v-imu" style="display:none"></span>
         </div>
 
         <!-- ── DRIFT COMPLIANCE GAUGE (ISRO PS #26168: <10%) ── -->
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO Drift Compliance</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">Target &lt;10%</span></div>
+          <div style="font-size:.48rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">How much the AI drifts as a % of total distance covered. ISRO PS #26168 requires under 10%.</div>
           <div class="drift-comply-wrap">
             <div class="drift-gauge-ring">
               <svg viewBox="0 0 60 60">
@@ -983,6 +1021,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot r"></span>Live Drift Race</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)" id="dc-phase">NOMINAL</span></div>
+          <div style="font-size:.47rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">Cumulative position error for each method. NAVDRIFT (AI) should stay far below Raw IMU.</div>
           <div class="divclock-wrap">
             <div class="divclock-row">
               <span class="divclock-lbl" style="color:var(--violet)">NAVDRIFT</span>
@@ -3659,22 +3698,39 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
       const key = el.getAttribute('data-t');
       if (dict[key] !== undefined) el.textContent = dict[key];
     });
-    // Update html lang attribute for accessibility
     document.documentElement.lang = code === 'od' ? 'or' : code;
-    // Persist choice
     try { localStorage.setItem('navdrift_lang', code); } catch(e) {}
   }
+  function toggleLangMenu() {
+    const m = document.getElementById('lang-menu');
+    m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  }
+  function pickLang(code, label) {
+    setLang(code);
+    const cur = document.getElementById('lang-cur');
+    if (cur) cur.textContent = label;
+    document.getElementById('lang-menu').style.display = 'none';
+    // mark active
+    document.querySelectorAll('.lang-opt').forEach(el => el.classList.remove('active'));
+    event && event.target && event.target.classList.add('active');
+  }
+  // Close lang menu on outside click
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#lang-btn') && !e.target.closest('#lang-menu')) {
+      const m = document.getElementById('lang-menu');
+      if (m) m.style.display = 'none';
+    }
+  });
   // Restore language on load
   try {
     const saved = localStorage.getItem('navdrift_lang');
     if (saved && T[saved]) {
-      document.getElementById('lang-sel').value = saved;
+      const labels = {en:'EN',hi:'हिंदी',ta:'தமிழ்',te:'తెలుగు',kn:'ಕನ್ನಡ',bn:'বাংলা',mr:'मराठी',gu:'ગુજરાતી',ml:'മലയാളം',pa:'ਪੰਜਾਬੀ',od:'ଓଡ଼ିଆ'};
+      const cur = document.getElementById('lang-cur');
+      if (cur) cur.textContent = labels[saved] || saved.toUpperCase();
       setLang(saved);
     }
   } catch(e) {}
-
-  // Wrap phase text update to respect language
-  const _origPhaseUpdate = window._phaseUpdate;
 
   // Wrap step() so each simulation tick feeds the ONNX pipeline
   (function(){
