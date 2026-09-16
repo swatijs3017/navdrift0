@@ -44,16 +44,16 @@
     html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: var(--sans); user-select: none; }
 
     /* ── LAYOUT ── */
-    .app { display: grid; grid-template-rows: 48px auto 1fr 68px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
-    .body { display: grid; grid-template-columns: 260px 1fr 260px; gap: 6px; padding: 6px; min-height: 0; overflow: hidden; }
+    .app { display: grid; grid-template-rows: 52px 24px auto 1fr 68px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
+    .body { display: grid; grid-template-columns: 272px 1fr 272px; gap: 7px; padding: 7px; min-height: 0; overflow: hidden; }
     .panel { display: flex; flex-direction: column; gap: 0; overflow: hidden; min-height: 0; }
 
     /* ── HEADER ── */
     header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 12px; background: rgba(5,7,10,0.97); backdrop-filter: blur(24px);
+      padding: 0 14px; background: rgba(5,7,10,0.97); backdrop-filter: blur(24px);
       border-bottom: 1px solid var(--line); position: relative; z-index: 20;
-      height: 48px;
+      height: 52px;
     }
     .brand { display: flex; align-items: center; gap: 10px; }
     .brand-logo { width: 30px; height: 30px; }
@@ -94,10 +94,10 @@
     .banner.snap { background: rgba(0,100,60,0.93); border-color: rgba(0,255,157,0.4); box-shadow: 0 4px 24px rgba(0,255,157,0.3); color: #d1fae5; }
 
     /* ── CARD ── */
-    .card { background: rgba(8,12,16,0.85); backdrop-filter: blur(16px); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; position: relative; overflow: hidden; }
+    .card { background: rgba(8,12,16,0.85); backdrop-filter: blur(16px); border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px; position: relative; overflow: hidden; }
     .card::before { content: ''; position: absolute; top: 0; left: 18%; right: 18%; height: 1px; background: linear-gradient(90deg, transparent, rgba(223,231,224,0.08), transparent); }
-    .ct { font-size: .56rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-family: var(--sans); }
-    .ct-l { display: flex; align-items: center; gap: 5px; }
+    .ct { font-size: .62rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--bone-dim); display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; font-family: var(--sans); }
+    .ct-l { display: flex; align-items: center; gap: 6px; }
     .cdot { width: 5px; height: 5px; border-radius: 50%; }
     .cdot.c { background: var(--cyan); box-shadow: 0 0 5px var(--cyan-g); }
     .cdot.v { background: var(--violet); box-shadow: 0 0 5px rgba(168,85,247,0.5); }
@@ -106,10 +106,17 @@
     .cdot.y { background: var(--yellow); box-shadow: 0 0 5px rgba(251,191,36,0.5); }
 
     /* ── BUTTONS ── */
-    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .btn { padding: 7px 10px; font-size: .68rem; font-weight: 600; border: 1px solid var(--b1); border-radius: 7px; cursor: pointer; background: var(--b2); color: var(--t2); transition: all .2s; font-family: var(--sans); }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .btn { padding: 8px 10px; font-size: .7rem; font-weight: 600; border: 1px solid var(--b1); border-radius: 8px; cursor: pointer; background: rgba(223,231,224,0.04); color: var(--t1); transition: all .2s; font-family: var(--sans); letter-spacing: .02em; }
+    .btn:hover { background: rgba(223,231,224,0.08); border-color: rgba(223,231,224,0.18); }
     .btn.p { background: var(--cyan-d); color: var(--cyan); border-color: rgba(0,255,245,0.3); }
+    .btn.p:hover { background: rgba(0,255,245,0.16); }
     .btn.d { background: var(--red-d); color: var(--red); border-color: rgba(255,34,85,0.3); }
+    .btn.d:hover { background: rgba(224,35,28,0.18); }
+    /* ── LANGUAGE PICKER ── */
+    .lang-opt { font-size: .62rem; font-family: var(--mono); color: var(--bone-dim); padding: 5px 8px; border-radius: 5px; cursor: pointer; transition: all .15s; }
+    .lang-opt:hover { background: rgba(0,255,245,0.08); color: var(--cyan); }
+    .lang-opt.active { color: var(--cyan); background: rgba(0,255,245,0.06); }
 
     /* ── MODULE CHIPS — compact 3-col ── */
     .mods { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
@@ -122,11 +129,15 @@
     .mod.full { grid-column: 1/-1; }
 
     /* ── METRIC ROWS ── */
-    .mrow { display: flex; align-items: center; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--b2); }
+    .mrow { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--b2); }
     .mrow:last-child { border-bottom: none; }
-    .ml { font-size: .61rem; color: var(--t2); font-family: var(--mono); }
-    .mv { font-size: .9rem; font-weight: 700; font-family: var(--mono); }
-    .mu { font-size: .58rem; color: var(--t3); margin-left: 2px; }
+    .ml { font-size: .65rem; color: var(--t2); font-family: var(--mono); }
+    .mv { font-size: 1.05rem; font-weight: 700; font-family: var(--mono); }
+    .mu { font-size: .6rem; color: var(--t3); margin-left: 3px; }
+    /* Hero metric — large display for most important number */
+    .metric-hero { display: flex; flex-direction: column; align-items: center; padding: 8px 0; }
+    .metric-hero-val { font-size: 2rem; font-weight: 700; font-family: var(--mono); line-height: 1; }
+    .metric-hero-lbl { font-size: .6rem; font-family: var(--mono); color: var(--t3); margin-top: 4px; letter-spacing: .08em; text-transform: uppercase; }
     .mv.c { color: var(--cyan); }
     .mv.g { color: var(--green); }
     .mv.r { color: var(--red); }
@@ -150,6 +161,19 @@
     /* ── NHC ── */
     .nhc-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; border-bottom: 1px solid var(--b2); }
     .nhc-row:last-child { border-bottom: none; }
+    /* ── IMU channel bars ── */
+    .imu-ch-row { display: flex; align-items: center; gap: 5px; padding: 2px 0; }
+    .imu-ch-lbl { font-size: .52rem; font-family: var(--mono); font-weight: 700; width: 14px; flex-shrink: 0; }
+    .imu-bar-track { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; position: relative; }
+    .imu-bar-fill { height: 100%; width: 0%; border-radius: 3px; transition: width .12s linear; }
+    .imu-ch-val { font-size: .5rem; font-family: var(--mono); color: var(--t2); width: 36px; text-align: right; flex-shrink: 0; }
+    /* ── OBD-II grid ── */
+    .obd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+    .obd-cell { display: flex; flex-direction: column; gap: 2px; }
+    .obd-lbl { font-size: .46rem; font-family: var(--mono); color: var(--t3); text-transform: uppercase; letter-spacing: .04em; }
+    .obd-val { font-size: .82rem; font-family: var(--mono); font-weight: 700; color: var(--cyan); }
+    .obd-bar { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; margin-top: 1px; }
+    .obd-bar-fill { height: 100%; border-radius: 2px; transition: width .15s linear; }
     .nhc-lbl { font-size: .58rem; font-family: var(--mono); color: var(--t2); width: 78px; flex-shrink: 0; }
     .nhc-track { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06); overflow: hidden; }
     .nhc-fill { height: 100%; border-radius: 2px; transition: width .3s; }
@@ -283,15 +307,15 @@
 
 /* ── DIVERGENCE CLOCK ── */
 .divclock-wrap{display:flex;flex-direction:column;gap:5px;}
-.divclock-row{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--b2);}
+.divclock-row{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--b2);}
 .divclock-row:last-child{border-bottom:none;}
-.divclock-lbl{font-size:.56rem;font-family:var(--mono);color:var(--t3);width:68px;flex-shrink:0;}
-.divclock-bar{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,0.05);overflow:hidden;position:relative;}
-.divclock-fill{height:100%;border-radius:3px;transition:width .4s;}
-.divclock-val{font-size:.68rem;font-weight:700;font-family:var(--mono);width:52px;text-align:right;}
-.drift-delta{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:6px;background:rgba(0,255,157,0.07);border:1px solid rgba(0,255,157,0.2);margin-top:4px;}
-.drift-delta-lbl{font-size:.56rem;font-family:var(--mono);color:var(--t2);}
-.drift-delta-val{font-size:.9rem;font-weight:700;font-family:var(--mono);color:var(--green);}
+.divclock-lbl{font-size:.54rem;font-family:var(--mono);color:var(--t3);width:56px;flex-shrink:0;white-space:nowrap;}
+.divclock-bar{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,0.05);overflow:hidden;position:relative;min-width:0;}
+.divclock-fill{height:100%;border-radius:4px;transition:width .4s;}
+.divclock-val{font-size:.66rem;font-weight:700;font-family:var(--mono);width:68px;min-width:68px;text-align:right;white-space:nowrap;flex-shrink:0;}
+.drift-delta{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:6px;background:rgba(0,255,157,0.07);border:1px solid rgba(0,255,157,0.2);margin-top:6px;gap:8px;}
+.drift-delta-lbl{font-size:.52rem;font-family:var(--mono);color:var(--t2);white-space:nowrap;}
+.drift-delta-val{font-size:.84rem;font-weight:700;font-family:var(--mono);color:var(--green);white-space:nowrap;}
 .drift-delta.bad .drift-delta-val{color:var(--red);}
 
 /* Kage vignette — very subtle depth */
@@ -632,10 +656,38 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <button class="navic-toggle" id="prod-btn" onclick="toggleProdModel()" title="Run all 5 trained ONNX models in-browser" style="background:rgba(168,85,247,0.12);color:var(--violet);border-color:rgba(168,85,247,0.35)">SIM MODE</button>
       <span id="onnx-lat" style="font-size:.52rem;font-family:var(--mono);color:var(--t3);min-width:40px"></span>
       <span class="badge badge-ps">PS #26168</span>
+      <div style="position:relative">
+        <button class="btn-icon" id="lang-btn" onclick="toggleLangMenu()" title="भाषा / Language" style="width:auto;padding:0 9px;gap:5px;font-size:.58rem;font-weight:600;font-family:var(--mono)">🌐 <span id="lang-cur">EN</span></button>
+        <div id="lang-menu" style="display:none;position:absolute;top:36px;right:0;background:#080c10;border:1px solid var(--line);border-radius:8px;padding:5px;z-index:999;width:120px;box-shadow:0 8px 24px rgba(0,0,0,0.7)">
+          <div style="font-size:.44rem;font-family:var(--mono);color:var(--muted);letter-spacing:.12em;padding:3px 6px 5px;border-bottom:1px solid var(--line);margin-bottom:3px">LANGUAGE / भाषा</div>
+          <div class="lang-opt" onclick="pickLang('en','EN')">English</div>
+          <div class="lang-opt" onclick="pickLang('hi','हिंदी')">हिंदी</div>
+          <div class="lang-opt" onclick="pickLang('ta','தமிழ்')">தமிழ்</div>
+          <div class="lang-opt" onclick="pickLang('te','తెలుగు')">తెలుగు</div>
+          <div class="lang-opt" onclick="pickLang('kn','ಕನ್ನಡ')">ಕನ್ನಡ</div>
+          <div class="lang-opt" onclick="pickLang('bn','বাংলা')">বাংলা</div>
+          <div class="lang-opt" onclick="pickLang('mr','मराठी')">मराठी</div>
+          <div class="lang-opt" onclick="pickLang('gu','ગુજરાતી')">ગુજરાતી</div>
+          <div class="lang-opt" onclick="pickLang('ml','മലയാളം')">മലയാളം</div>
+          <div class="lang-opt" onclick="pickLang('pa','ਪੰਜਾਬੀ')">ਪੰਜਾਬੀ</div>
+          <div class="lang-opt" onclick="pickLang('od','ଓଡ଼ିଆ')">ଓଡ଼ିଆ</div>
+        </div>
+      </div>
       <div class="btn-icon" onclick="openHelp()" title="How it works" style="color:var(--bone-dim);font-size:.75rem;font-weight:700;font-family:var(--mono);">?</div>
       <div class="btn-icon" onclick="openModal()" title="API Settings">⚙</div>
     </div>
   </header>
+
+  <!-- SYSTEM EXPLAIN BAR — always visible, one-liner -->
+  <div style="display:flex;align-items:center;justify-content:center;gap:20px;padding:0 16px;background:rgba(5,7,10,0.92);border-bottom:1px solid var(--line-soft);height:24px;font-size:.46rem;font-family:var(--mono);color:var(--muted);letter-spacing:.06em;flex-shrink:0">
+    <span>🛰 <b style="color:var(--bone-dim)">NavIC/GPS</b> → position when signal is available</span>
+    <span style="color:var(--line)">|</span>
+    <span>📡 <b style="color:var(--bone-dim)">IMU + OBD-II</b> → raw sensor data always collected</span>
+    <span style="color:var(--line)">|</span>
+    <span>🤖 <b style="color:var(--bone-dim)">NAVDRIFT-0 AI</b> → takes over when GPS is lost</span>
+    <span style="color:var(--line)">|</span>
+    <span>📍 <b style="color:var(--bone-dim)">PS #26168</b> → ISRO SIH 2026 dead reckoning challenge</span>
+  </div>
 
   <!-- IO-VNBD DATASET BANNER — grid row 2, height 0 when hidden, 26px when shown -->
   <div class="iovnbd-banner" id="iovnbd-banner">
@@ -648,22 +700,24 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     <!-- LEFT PANEL -->
     <div class="panel">
       <div class="ptab-bar">
-        <button class="ptab active" onclick="switchPTab('left','live',this)">LIVE</button>
-        <button class="ptab" onclick="switchPTab('left','modules',this)">MODULES</button>
-        <button class="ptab" onclick="switchPTab('left','sensors',this)">SENSORS</button>
-        <button class="ptab" onclick="switchPTab('left','log',this)">LOG</button>
+        <button class="ptab active" onclick="switchPTab('left','live',this)" data-t="tab_live">LIVE</button>
+        <button class="ptab" onclick="switchPTab('left','modules',this)" data-t="tab_modules">MODULES</button>
+        <button class="ptab" onclick="switchPTab('left','sensors',this)" data-t="tab_sensors">SENSORS</button>
+        <button class="ptab" onclick="switchPTab('left','log',this)" data-t="tab_log">LOG</button>
       </div>
 
       <!-- LIVE TAB: NavIC + Controls -->
       <div class="ptab-content active" data-panel="left" data-tab="live">
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot g"></span>NavIC Constellation</div><span id="navic-lock-badge" style="font-size:.52rem;font-weight:700;color:var(--green)">7 SAT LOCKED</span></div>
+          <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:5px;line-height:1.5">India's own GPS system. Satellites shown in sky view — more visible = better signal.</div>
           <div style="font-size:.48rem;font-family:var(--mono);color:var(--t3);margin-bottom:4px">MET <b id="met-clock" style="color:var(--cyan)">00:00:00</b></div>
           <div class="sky-wrap"><canvas id="sky-cv"></canvas></div>
           <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px" id="sat-snr-bars"></div>
         </div>
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot c"></span>Controls</div></div>
+          <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">Use GNSS Toggle to simulate losing satellite signal. The AI takes over navigation using only IMU + barometer.</div>
           <div class="btn-row">
             <button class="btn p" id="btn-play" onclick="toggleSim()">⏸ Pause</button>
             <button class="btn d" onclick="toggleOutage()">📡 GNSS Toggle</button>
@@ -749,6 +803,62 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <div class="mrow"><span class="ml">MAG heading</span><span class="mv" style="color:var(--orange)" id="mag-hdg">—°</span></div>
           <div class="mrow"><span class="ml">AHRS confidence</span><span class="mv g" id="ahrs-conf">—%</span></div>
         </div>
+        <!-- Raw IMU channels live readout -->
+        <div class="card" style="margin-top:0">
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>IMU · Motion Sensor</div><span id="imu-temp-lbl" style="font-size:.5rem;color:var(--muted);font-family:var(--mono)">—°C</span></div>
+          <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:6px;line-height:1.4">MPU-6050 / ICM-42688 chip. ax/ay/az = acceleration (m/s²). gx/gy/gz = rotation speed (rad/s). These feed the AI.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;">
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#f87171">ax</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-ax" style="background:#f87171"></div></div><span class="imu-ch-val" id="imu-v-ax">0.00</span></div>
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#fb923c">gx</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-gx" style="background:#fb923c"></div></div><span class="imu-ch-val" id="imu-v-gx">0.00</span></div>
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#4ade80">ay</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-ay" style="background:#4ade80"></div></div><span class="imu-ch-val" id="imu-v-ay">0.00</span></div>
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#a3e635">gy</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-gy" style="background:#a3e635"></div></div><span class="imu-ch-val" id="imu-v-gy">0.00</span></div>
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#60a5fa">az</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-az" style="background:#60a5fa"></div></div><span class="imu-ch-val" id="imu-v-az">-9.81</span></div>
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#c084fc">gz</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-gz" style="background:#c084fc"></div></div><span class="imu-ch-val" id="imu-v-gz">0.00</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:.46rem;font-family:var(--mono);color:var(--t3)">
+            <span>accel m/s²</span><span>gyro rad/s</span>
+          </div>
+        </div>
+        <!-- OBD-II / vehicle CAN bus card -->
+        <div class="card" style="margin-top:0">
+          <div class="ct"><div class="ct-l"><span class="cdot y"></span>OBD-II · CAN Bus</div><span style="font-size:.48rem;color:var(--t3);font-family:var(--mono)" id="obd-pid-lbl">PID 0x0D / 0x0C</span></div>
+          <div style="font-size:.46rem;font-family:var(--mono);color:var(--muted);margin-bottom:6px;line-height:1.4">Car's own ECU data via ELM327 dongle. Vehicle speed replaces wheel encoder. Engine RPM and throttle feed the dynamics model.</div>
+          <div class="obd-grid">
+            <div class="obd-cell">
+              <div class="obd-lbl">Vehicle Speed</div>
+              <div class="obd-val"><span id="obd-spd">—</span> <span style="font-size:.56rem;color:var(--t3)">km/h</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-spd-bar" style="background:var(--cyan)"></div></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl">Engine RPM</div>
+              <div class="obd-val"><span id="obd-rpm">—</span> <span style="font-size:.56rem;color:var(--t3)">rpm</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-rpm-bar" style="background:var(--orange)"></div></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl">Throttle</div>
+              <div class="obd-val"><span id="obd-thr">—</span> <span style="font-size:.56rem;color:var(--t3)">%</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-thr-bar" style="background:var(--green)"></div></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl">Engine Load</div>
+              <div class="obd-val"><span id="obd-load">—</span> <span style="font-size:.56rem;color:var(--t3)">%</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-load-bar" style="background:var(--violet)"></div></div>
+            </div>
+          </div>
+          <div style="height:1px;background:var(--b1);margin:6px 0"></div>
+          <!-- Barometer / pressure -->
+          <div class="obd-grid">
+            <div class="obd-cell">
+              <div class="obd-lbl">Baro Altitude</div>
+              <div class="obd-val"><span id="obd-alt">—</span> <span style="font-size:.56rem;color:var(--t3)">m</span></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl">Pressure</div>
+              <div class="obd-val"><span id="obd-prs">—</span> <span style="font-size:.56rem;color:var(--t3)">hPa</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
 
       <!-- LOG TAB -->
@@ -835,29 +945,48 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     <!-- RIGHT PANEL -->
     <div class="panel">
       <div class="ptab-bar">
-        <button class="ptab active" onclick="switchPTab('right','metrics',this)">METRICS</button>
-        <button class="ptab" onclick="switchPTab('right','ai',this)">AI</button>
-        <button class="ptab" onclick="switchPTab('right','compliance',this)">COMPLY</button>
-        <button class="ptab" onclick="switchPTab('right','bench',this)">BENCH</button>
-        <button class="ptab" onclick="switchPTab('right','fleet',this)">FLEET</button>
-        <button class="ptab" onclick="switchPTab('right','explain',this)">EXPLAIN</button>
+        <button class="ptab active" onclick="switchPTab('right','metrics',this)" data-t="tab_metrics">METRICS</button>
+        <button class="ptab" onclick="switchPTab('right','ai',this)" data-t="tab_ai">AI</button>
+        <button class="ptab" onclick="switchPTab('right','compliance',this)" data-t="tab_comply">COMPLY</button>
+        <button class="ptab" onclick="switchPTab('right','bench',this)" data-t="tab_bench">BENCH</button>
+        <button class="ptab" onclick="switchPTab('right','fleet',this)" data-t="tab_fleet">FLEET</button>
+        <button class="ptab" onclick="switchPTab('right','explain',this)" data-t="tab_explain">EXPLAIN</button>
       </div>
 
       <!-- METRICS TAB -->
       <div class="ptab-content active" data-panel="right" data-tab="metrics">
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Telemetry</div><span class="badge badge-mode" id="mode-chip">[SIM]</span></div>
-          <div class="mrow"><span class="ml">NAVDRIFT-0 ATE</span><span class="mv c" id="v-nd">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">EKF Baseline ATE</span><span class="mv v" id="v-ekf">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">Uncertainty σ</span><span class="mv y" id="v-unc">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">Inference latency</span><span class="mv g" id="v-lat">—<span class="mu">ms</span></span></div>
-          <div class="mrow"><span class="ml">Steps / Outages</span><span class="mv" style="color:var(--t2);font-size:.7rem"><span id="v-steps">0</span> / <span id="v-outs" style="color:var(--red)">0</span></span></div>
+        <!-- ── HERO CARD: primary AI accuracy number ── -->
+        <div class="card" style="text-align:center;padding:14px 13px">
+          <div style="font-size:.5rem;font-family:var(--mono);letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:6px">AI Navigation Error</div>
+          <div style="display:flex;align-items:baseline;justify-content:center;gap:5px">
+            <span style="font-size:2.6rem;font-weight:700;font-family:var(--mono);line-height:1;color:var(--bone)" id="v-nd">—</span>
+            <span style="font-size:.85rem;font-family:var(--mono);color:var(--muted);margin-bottom:2px">m</span>
+          </div>
+          <div style="font-size:.48rem;color:var(--muted);font-family:var(--mono);margin-top:4px;letter-spacing:.07em">NAVDRIFT-0 Average Trajectory Error · lower is better</div>
+          <div style="display:flex;justify-content:space-around;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+            <div style="text-align:center">
+              <div style="font-size:.42rem;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-bottom:2px">EKF BASELINE</div>
+              <div style="font-size:1rem;font-weight:700;font-family:var(--mono);color:#9b72d8"><span id="v-ekf">—</span><span style="font-size:.55rem;color:var(--muted);margin-left:2px">m</span></div>
+            </div>
+            <div style="width:1px;background:var(--line)"></div>
+            <div style="text-align:center">
+              <div style="font-size:.42rem;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-bottom:2px">UNCERTAINTY σ</div>
+              <div style="font-size:1rem;font-weight:700;font-family:var(--mono);color:var(--yellow)"><span id="v-unc">—</span><span style="font-size:.55rem;color:var(--muted);margin-left:2px">m</span></div>
+            </div>
+            <div style="width:1px;background:var(--line)"></div>
+            <div style="text-align:center">
+              <div style="font-size:.42rem;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-bottom:2px">AI LATENCY</div>
+              <div style="font-size:1rem;font-weight:700;font-family:var(--mono);color:#5fba95"><span id="v-lat">—</span><span style="font-size:.55rem;color:var(--muted);margin-left:2px">ms</span></div>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:.46rem;font-family:var(--mono);color:var(--muted)">Steps: <span id="v-steps" style="color:var(--bone-dim)">0</span> · Blackouts: <span id="v-outs" style="color:var(--red)">0</span> · Mode: <span class="badge badge-mode" id="mode-chip" style="font-size:.42rem;padding:1px 5px">[SIM]</span></div>
           <span id="v-imu" style="display:none"></span>
         </div>
 
         <!-- ── DRIFT COMPLIANCE GAUGE (ISRO PS #26168: <10%) ── -->
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO Drift Compliance</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">Target &lt;10%</span></div>
+          <div style="font-size:.48rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">How much the AI drifts as a % of total distance covered. ISRO PS #26168 requires under 10%.</div>
           <div class="drift-comply-wrap">
             <div class="drift-gauge-ring">
               <svg viewBox="0 0 60 60">
@@ -892,6 +1021,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot r"></span>Live Drift Race</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)" id="dc-phase">NOMINAL</span></div>
+          <div style="font-size:.47rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5">Cumulative position error for each method. NAVDRIFT (AI) should stay far below Raw IMU.</div>
           <div class="divclock-wrap">
             <div class="divclock-row">
               <span class="divclock-lbl" style="color:var(--violet)">NAVDRIFT</span>
@@ -1327,13 +1457,22 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     speedBuf:[],        // rolling speed buffer for ZUPT detection
     dop:{pdop:1.8,hdop:1.2,vdop:1.4}, // NavIC DOP values
     edgeHz:48.3,        // edge inference Hz (fluctuates slightly)
-    edgeCpu:12.4        // edge CPU % usage
+    edgeCpu:12.4,       // edge CPU % usage
+    // ── Vehicle dynamics (OBD-II simulation) ──
+    vSpd:0,             // smooth vehicle speed m/s
+    imuTemp:42.0,       // IMU die temperature °C (heats under load)
+    obdRpm:800,         // engine RPM
+    obdThr:0,           // throttle position %
+    obdLoad:15,         // engine load %
+    baroPrs:1013.25,    // barometric pressure hPa
+    // ── Live IMU channels (stored for updateUI) ──
+    imu:{ax:0,ay:0,az:-9.81,gx:0,gy:0,gz:0}
   };
 
   // ─── INIT ───
   function init(key){
     S.city=key;const c=CITIES[key];
-    S.route=interp(c.wp,300);S.ri=0;
+    S.route=interp(c.wp,2000);S.ri=0;
     const st=S.route[0];
     S.gtLa=S.ndLa=S.iLa=st[0];S.gtLo=S.ndLo=S.iLo=st[1];
     S.spkErr=new Array(60).fill(0.3);S.spkUnc=new Array(60).fill(0.45);S.spkSpd=new Array(60).fill(45);
@@ -1347,6 +1486,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     S.hmmProb=new Float32Array(S.route.length).fill(-Math.log(S.route.length));S.hmmCorrN=0;
     // Reset ODO·AI, MAG, compliance
     S.odoAI=0;S.odoWheel=0;S.magH=0;S.ahrsConf=94;S.blackoutPeakDrift=0;S.drTransMs=0.4;
+    S.vSpd=0;S.imuTemp=42.0;S.obdRpm=800;S.obdThr=0;S.obdLoad=15;S.baroPrs=1013.25;
+    S.imu={ax:0,ay:0,az:-9.81,gx:0,gy:0,gz:0};
     S.distTrav=0;S.driftPct=0;S.gnssTransMs=0.4;S.zupt=false;S.zuptN=0;S.speedBuf=[];
     S.dop={pdop:1.8,hdop:1.2,vdop:1.4};S.edgeHz=48.3;S.edgeCpu=12.4;
     // Reset WS
@@ -1401,8 +1542,29 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     S.gtLa=cur[0];S.gtLo=cur[1];S.gtH=Math.atan2(dLo,dLa);
 
     const dym=dLa*111000,dxm=dLo*111000*Math.cos(S.gtLa*Math.PI/180);
-    const dm=Math.hypot(dym,dxm),spdMs=dm/DT;
-    const spdKmh=Math.min(120,spdMs*3.6);
+    const dm=Math.hypot(dym,dxm);
+    // ── Vehicle dynamics: smooth speed with accel/decel limits ──────────────
+    const dH_=S.gtH-S.pH;  // heading change this step
+    const curvature=Math.abs(dH_);
+    const curvSpd=Math.max(12,75-curvature*420)/3.6;  // slow on curves, min 12 km/h
+    const targetSpd=Math.min(75/3.6,dm/DT);          // city speed limit 75 km/h
+    const tSpd=Math.min(targetSpd,curvSpd);
+    const maxAcc=2.5*DT, maxDec=4.5*DT;
+    S.vSpd = tSpd>S.vSpd ? Math.min(S.vSpd+maxAcc,tSpd) : Math.max(S.vSpd-maxDec,tSpd);
+    const spdMs=S.vSpd;
+    const spdKmh=spdMs*3.6;
+    // ── OBD-II derived values ─────────────────────────────────────────────────
+    const spdPct=spdKmh/120;
+    const accelDemand=Math.max(0,(tSpd-S.vSpd+maxAcc)/maxAcc);
+    S.obdThr=Math.min(100,Math.max(3, spdPct*45 + accelDemand*35 + (Math.random()-.5)*4));
+    S.obdLoad=Math.min(100,Math.max(8, spdPct*35 + accelDemand*30 + (Math.random()-.5)*3));
+    const idleRpm=800, peakRpm=6200;
+    S.obdRpm=Math.round(idleRpm+(peakRpm-idleRpm)*(S.obdThr/100)*0.75 + (Math.random()-.5)*60);
+    // ── IMU temperature: heats 0.01°C/step under load, cools slowly ──────────
+    S.imuTemp += S.obdLoad>40 ? 0.012 : -0.005;
+    S.imuTemp = Math.max(38,Math.min(72,S.imuTemp));
+    // ── Barometric pressure (inverse altitude): standard lapse rate ───────────
+    S.baroPrs = 1013.25*Math.pow(1-S.baroAlt/44330,5.255);
 
     // MODULE 1 — Calibration drift
     S.calP+=((Math.random()-.5)*.05);S.calR+=((Math.random()-.5)*.03);S.calY+=((Math.random()-.5)*.02);
@@ -1410,12 +1572,15 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const cSpd=spdMs*Math.cos(S.calP*Math.PI/180);
 
     // MODULE 2 — Vibration filter (EMA + pothole detection)
-    const noise=(Math.random()-.5)*8+(Math.random()<.02?(Math.random()-.5)*38:0);
+    // Noise is sensor vibration in m/s (IMU-integrated velocity perturbation)
+    const baseNoise=(Math.random()-.5)*3.0;  // normal road noise ±3 m/s equivalent
+    const potNoise=Math.random()<0.02?(Math.random()-.5)*12:0;  // pothole spike ±6 m/s
+    const noise=baseNoise+potNoise;
     const rawSpd=spdMs+noise;
-    if(Math.abs(noise)>16){S.pots++;log('Pothole detected ('+Math.abs(noise).toFixed(1)+' m/s²) — filtered','nhc');}
+    if(Math.abs(potNoise)>5){S.pots++;log('Pothole detected (Δv='+Math.abs(potNoise).toFixed(1)+' m/s) — filtered','nhc');}
     S.vibBuf.push(rawSpd);if(S.vibBuf.length>8)S.vibBuf.shift();
     const fSpd=S.vibBuf.reduce((a,b)=>a+b,0)/S.vibBuf.length;
-    S.vibRawSpd=rawSpd*3.6;S.vibFiltSpd=fSpd*3.6;
+    S.vibRawSpd=Math.max(0,rawSpd)*3.6;S.vibFiltSpd=Math.max(0,fSpd)*3.6;
     S.vibRaw.push(rawSpd);if(S.vibRaw.length>80)S.vibRaw.shift();
 
     // MODULE — ODO·AI: AI-based speed estimation from IMU alone (no OBD-II / wheel encoder)
@@ -1454,11 +1619,17 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     // IMU synthesis
     const dH=S.gtH-S.pH;
     const gz=clamp(dH/DT,-35,35),ax=clamp((cSpd-S.spd)/DT,-160,160),sa=clamp(dH*5,-1,1);
-    S.spd=cSpd;S.pH=S.gtH;
+    S.spd=spdMs;S.pH=S.gtH;
 
-    // Synthetic IMU channels for fault detection and RL
-    const _imu={ax:clamp((cSpd-S.spd)/DT,-160,160)+(Math.random()-.5)*.4,ay:(Math.random()-.5)*1.2,az:-9.81+(Math.random()-.5)*.15,
-                gx:(Math.random()-.5)*0.08,gy:(Math.random()-.5)*0.08,gz:clamp(dH/DT,-35,35)+(Math.random()-.5)*0.4};
+    // ── Synthetic IMU channels (realistic MPU-6050 / ICM-42688 output) ──────
+    const axVal=clamp((spdMs-ax*DT)/DT,-16,16)+(Math.random()-.5)*.18;  // forward accel m/s²
+    const ayVal=(Math.random()-.5)*0.9 + Math.sin(S.step*.04)*0.3;       // lateral m/s² (road banking + sway)
+    const azVal=-9.81+(Math.random()-.5)*.12+(S.inTunnel?0.05:0);        // vertical, dominated by gravity
+    const gxVal=(Math.random()-.5)*0.03;                                   // roll rate rad/s
+    const gyVal=(Math.random()-.5)*0.03;                                   // pitch rate rad/s
+    const gzVal=clamp(dH/DT,-3.5,3.5)+(Math.random()-.5)*0.05;          // yaw rate rad/s
+    S.imu={ax:axVal,ay:ayVal,az:azVal,gx:gxVal,gy:gyVal,gz:gzVal};
+    const _imu={ax:axVal,ay:ayVal,az:azVal,gx:gxVal,gy:gyVal,gz:gzVal};
     faultUpdate(_imu);
     ekfStep(fSpd,dH,DT,S.gnss,S.gtLa,S.gtLo);
     if(S.gnss){const res=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);rlUpdate(res);}
@@ -1733,6 +1904,34 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const odoa=$('odo-ai');if(odoa)odoa.textContent=S.odoAI.toFixed(1)+' km/h';
     const mhdg=$('mag-hdg');if(mhdg)mhdg.textContent=S.magH.toFixed(1)+'°';
     const ahrc=$('ahrs-conf');if(ahrc)ahrc.textContent=S.ahrsConf.toFixed(0)+'%';
+
+    // ── Live IMU channel bars ────────────────────────────────────────────────
+    const imu=S.imu;
+    function setBar(id,val,vid,max){
+      const b=$('imu-bar-'+id);const v=$('imu-v-'+id);
+      if(b)b.style.width=Math.min(100,Math.abs(val)/max*100)+'%';
+      if(v)v.textContent=(val>=0?'+':'')+val.toFixed(3);
+    }
+    setBar('ax',imu.ax,'imu-v-ax',16);   // ±16 m/s²
+    setBar('ay',imu.ay,'imu-v-ay',16);
+    setBar('az',imu.az+9.81,'imu-v-az',4); // show deviation from gravity
+    setBar('gx',imu.gx,'imu-v-gx',3.5);  // ±3.5 rad/s
+    setBar('gy',imu.gy,'imu-v-gy',3.5);
+    setBar('gz',imu.gz,'imu-v-gz',3.5);
+    const azEl=$('imu-v-az');if(azEl)azEl.textContent=imu.az.toFixed(3);
+    const imuT=$('imu-temp-lbl');if(imuT)imuT.textContent=S.imuTemp.toFixed(1)+'°C';
+
+    // ── OBD-II card ──────────────────────────────────────────────────────────
+    const ospd=$('obd-spd');if(ospd)ospd.textContent=spdKmh.toFixed(1);
+    const orpm=$('obd-rpm');if(orpm)orpm.textContent=S.obdRpm.toFixed(0);
+    const othr=$('obd-thr');if(othr)othr.textContent=S.obdThr.toFixed(1);
+    const oload=$('obd-load');if(oload)oload.textContent=S.obdLoad.toFixed(1);
+    const osb=$('obd-spd-bar');if(osb)osb.style.width=(spdKmh/80*100)+'%';
+    const obb=$('obd-rpm-bar');if(obb)obb.style.width=(S.obdRpm/6200*100)+'%';
+    const otb=$('obd-thr-bar');if(otb)otb.style.width=S.obdThr+'%';
+    const olb=$('obd-load-bar');if(olb)olb.style.width=S.obdLoad+'%';
+    const oalt=$('obd-alt');if(oalt)oalt.textContent=S.baroAlt.toFixed(1);
+    const oprs=$('obd-prs');if(oprs)oprs.textContent=S.baroPrs.toFixed(2);
 
     // ISRO PS Compliance card
     const liveATE=S.n>0?(S.totND/S.n):0;
@@ -3383,6 +3582,155 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   })();
 
   window.toggleProdModel=function(){NAVDRIFT_ONNX.toggle();};
+
+  // ══════════════════════════════════════════════════════
+  //  INDIAN LANGUAGE i18n SYSTEM
+  //  Covers all 10 major Indian languages + English
+  //  Usage: add data-t="key" to any HTML element
+  // ══════════════════════════════════════════════════════
+  const T = {
+    en: {
+      tab_live:'LIVE', tab_modules:'MODULES', tab_sensors:'SENSORS', tab_log:'LOG',
+      tab_metrics:'METRICS', tab_ai:'AI', tab_comply:'COMPLY', tab_bench:'BENCH',
+      tab_fleet:'FLEET', tab_explain:'EXPLAIN',
+      btn_start:'▶ START', btn_stop:'■ STOP', btn_blackout:'⚡ BLACKOUT', btn_snap:'📍 SNAP TO GPS',
+      btn_export:'⬇ EXPORT CSV', btn_reset:'↺ RESET',
+      lbl_gnss_lock:'GNSS LOCKED', lbl_gnss_lost:'GNSS LOST',
+      lbl_phase_nominal:'NOMINAL', lbl_phase_blackout:'BLACKOUT',
+    },
+    hi: {
+      tab_live:'लाइव', tab_modules:'मॉड्यूल', tab_sensors:'सेंसर', tab_log:'लॉग',
+      tab_metrics:'मेट्रिक्स', tab_ai:'एआई', tab_comply:'अनुपालन', tab_bench:'बेंच',
+      tab_fleet:'बेड़ा', tab_explain:'विवरण',
+      btn_start:'▶ शुरू', btn_stop:'■ रोकें', btn_blackout:'⚡ ब्लैकआउट', btn_snap:'📍 GPS स्नैप',
+      btn_export:'⬇ CSV निर्यात', btn_reset:'↺ रीसेट',
+      lbl_gnss_lock:'GNSS लॉक्ड', lbl_gnss_lost:'GNSS खोया',
+      lbl_phase_nominal:'सामान्य', lbl_phase_blackout:'ब्लैकआउट',
+    },
+    ta: {
+      tab_live:'நேரடி', tab_modules:'தொகுதிகள்', tab_sensors:'சென்சார்', tab_log:'பதிவு',
+      tab_metrics:'அளவீடுகள்', tab_ai:'AI', tab_comply:'இணக்கம்', tab_bench:'அளவு',
+      tab_fleet:'கூட்டம்', tab_explain:'விளக்கம்',
+      btn_start:'▶ தொடங்கு', btn_stop:'■ நிறுத்து', btn_blackout:'⚡ இருட்டடிப்பு', btn_snap:'📍 GPS பூட்டு',
+      btn_export:'⬇ CSV ஏற்றுமதி', btn_reset:'↺ மீட்டமை',
+      lbl_gnss_lock:'GNSS பூட்டப்பட்டது', lbl_gnss_lost:'GNSS இழந்தது',
+      lbl_phase_nominal:'சாதாரண', lbl_phase_blackout:'இருட்டடிப்பு',
+    },
+    te: {
+      tab_live:'లైవ్', tab_modules:'మాడ్యూల్స్', tab_sensors:'సెన్సర్లు', tab_log:'లాగ్',
+      tab_metrics:'కొలతలు', tab_ai:'AI', tab_comply:'సమ్మతి', tab_bench:'బెంచ్',
+      tab_fleet:'బేడా', tab_explain:'వివరణ',
+      btn_start:'▶ ప్రారంభించు', btn_stop:'■ ఆపు', btn_blackout:'⚡ బ్లాకవుట్', btn_snap:'📍 GPS స్నాప్',
+      btn_export:'⬇ CSV ఎగుమతి', btn_reset:'↺ రీసెట్',
+      lbl_gnss_lock:'GNSS లాక్', lbl_gnss_lost:'GNSS పోయింది',
+      lbl_phase_nominal:'సాధారణ', lbl_phase_blackout:'బ్లాకవుట్',
+    },
+    kn: {
+      tab_live:'ನೇರ', tab_modules:'ಮಾಡ್ಯೂಲ್', tab_sensors:'ಸೆನ್ಸರ್', tab_log:'ಲಾಗ್',
+      tab_metrics:'ಅಳತೆಗಳು', tab_ai:'AI', tab_comply:'ಅನುಪಾಲನೆ', tab_bench:'ಬೆಂಚ್',
+      tab_fleet:'ಫ್ಲೀಟ್', tab_explain:'ವಿವರಣೆ',
+      btn_start:'▶ ಪ್ರಾರಂಭ', btn_stop:'■ ನಿಲ್ಲಿಸು', btn_blackout:'⚡ ಬ್ಲ್ಯಾಕ್ಔಟ್', btn_snap:'📍 GPS ಸ್ನ್ಯಾಪ್',
+      btn_export:'⬇ CSV ರಫ್ತು', btn_reset:'↺ ರೀಸೆಟ್',
+      lbl_gnss_lock:'GNSS ಲಾಕ್', lbl_gnss_lost:'GNSS ಕಳೆದಿದೆ',
+      lbl_phase_nominal:'ಸಾಮಾನ್ಯ', lbl_phase_blackout:'ಬ್ಲ್ಯಾಕ್ಔಟ್',
+    },
+    bn: {
+      tab_live:'সরাসরি', tab_modules:'মডিউল', tab_sensors:'সেন্সর', tab_log:'লগ',
+      tab_metrics:'মেট্রিক্স', tab_ai:'AI', tab_comply:'সম্মতি', tab_bench:'বেঞ্চ',
+      tab_fleet:'বহর', tab_explain:'ব্যাখ্যা',
+      btn_start:'▶ শুরু', btn_stop:'■ থামো', btn_blackout:'⚡ ব্ল্যাকআউট', btn_snap:'📍 GPS স্ন্যাপ',
+      btn_export:'⬇ CSV রপ্তানি', btn_reset:'↺ রিসেট',
+      lbl_gnss_lock:'GNSS লকড', lbl_gnss_lost:'GNSS হারানো',
+      lbl_phase_nominal:'স্বাভাবিক', lbl_phase_blackout:'ব্ল্যাকআউট',
+    },
+    mr: {
+      tab_live:'थेट', tab_modules:'मॉड्युल', tab_sensors:'सेन्सर', tab_log:'नोंद',
+      tab_metrics:'मापदंड', tab_ai:'AI', tab_comply:'अनुपालन', tab_bench:'बेंच',
+      tab_fleet:'ताफा', tab_explain:'स्पष्टीकरण',
+      btn_start:'▶ सुरू', btn_stop:'■ थांबा', btn_blackout:'⚡ ब्लॅकआउट', btn_snap:'📍 GPS स्नॅप',
+      btn_export:'⬇ CSV निर्यात', btn_reset:'↺ रीसेट',
+      lbl_gnss_lock:'GNSS लॉक', lbl_gnss_lost:'GNSS हरवले',
+      lbl_phase_nominal:'सामान्य', lbl_phase_blackout:'ब्लॅकआउट',
+    },
+    gu: {
+      tab_live:'સીધુ', tab_modules:'મોડ્યુલ', tab_sensors:'સેન્સર', tab_log:'નોંધ',
+      tab_metrics:'માપ', tab_ai:'AI', tab_comply:'અનુપાલન', tab_bench:'બેન્ચ',
+      tab_fleet:'કાફલો', tab_explain:'સ્પષ્ટીકરણ',
+      btn_start:'▶ શરૂ', btn_stop:'■ અટકો', btn_blackout:'⚡ બ્લૅકઆઉટ', btn_snap:'📍 GPS સ્નૅપ',
+      btn_export:'⬇ CSV નિકાસ', btn_reset:'↺ રીસેટ',
+      lbl_gnss_lock:'GNSS લૉક', lbl_gnss_lost:'GNSS ખોવાઈ',
+      lbl_phase_nominal:'સામાન્ય', lbl_phase_blackout:'બ્લૅકઆઉટ',
+    },
+    ml: {
+      tab_live:'തത്സമയം', tab_modules:'മൊഡ്യൂൾ', tab_sensors:'സെൻസർ', tab_log:'ലോഗ്',
+      tab_metrics:'അളവ്', tab_ai:'AI', tab_comply:'അനുസരണം', tab_bench:'ബെഞ്ച്',
+      tab_fleet:'കൂട്ടം', tab_explain:'വിശദീകരണം',
+      btn_start:'▶ ആരംഭിക്കുക', btn_stop:'■ നിർത്തുക', btn_blackout:'⚡ ബ്ലാക്കൗട്ട്', btn_snap:'📍 GPS സ്നാപ്',
+      btn_export:'⬇ CSV കയറ്റുമതി', btn_reset:'↺ റീസെറ്റ്',
+      lbl_gnss_lock:'GNSS ലോക്ക്', lbl_gnss_lost:'GNSS നഷ്ടം',
+      lbl_phase_nominal:'സാധാരണ', lbl_phase_blackout:'ബ്ലാക്കൗട്ട്',
+    },
+    pa: {
+      tab_live:'ਲਾਈਵ', tab_modules:'ਮੋਡੀਊਲ', tab_sensors:'ਸੈਂਸਰ', tab_log:'ਲੌਗ',
+      tab_metrics:'ਮੈਟ੍ਰਿਕਸ', tab_ai:'AI', tab_comply:'ਪਾਲਣਾ', tab_bench:'ਬੈਂਚ',
+      tab_fleet:'ਬੇੜਾ', tab_explain:'ਵਿਆਖਿਆ',
+      btn_start:'▶ ਸ਼ੁਰੂ', btn_stop:'■ ਰੋਕੋ', btn_blackout:'⚡ ਬਲੈਕਆਊਟ', btn_snap:'📍 GPS ਸਨੈਪ',
+      btn_export:'⬇ CSV ਨਿਰਯਾਤ', btn_reset:'↺ ਰੀਸੈੱਟ',
+      lbl_gnss_lock:'GNSS ਲੌਕ', lbl_gnss_lost:'GNSS ਗੁਆਚਿਆ',
+      lbl_phase_nominal:'ਆਮ', lbl_phase_blackout:'ਬਲੈਕਆਊਟ',
+    },
+    od: {
+      tab_live:'ସିଧା', tab_modules:'ମଡ୍ୟୁଲ', tab_sensors:'ସେନ୍ସର', tab_log:'ଲଗ',
+      tab_metrics:'ମାପ', tab_ai:'AI', tab_comply:'ଅନୁପାଳନ', tab_bench:'ବେଞ୍ଚ',
+      tab_fleet:'ବହର', tab_explain:'ବ୍ୟାଖ୍ୟା',
+      btn_start:'▶ ଆରମ୍ଭ', btn_stop:'■ ରୋକ', btn_blackout:'⚡ ବ୍ଲ୍ୟାକ୍ଆଉଟ', btn_snap:'📍 GPS ସ୍ନ୍ୟାପ',
+      btn_export:'⬇ CSV ରପ୍ତାନି', btn_reset:'↺ ରିସେଟ',
+      lbl_gnss_lock:'GNSS ଲକ', lbl_gnss_lost:'GNSS ହଜିଲା',
+      lbl_phase_nominal:'ସ୍ୱାଭାବିକ', lbl_phase_blackout:'ବ୍ଲ୍ୟାକ୍ଆଉଟ',
+    },
+  };
+
+  let _lang = 'en';
+  function setLang(code) {
+    _lang = code;
+    const dict = T[code] || T.en;
+    document.querySelectorAll('[data-t]').forEach(el => {
+      const key = el.getAttribute('data-t');
+      if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+    document.documentElement.lang = code === 'od' ? 'or' : code;
+    try { localStorage.setItem('navdrift_lang', code); } catch(e) {}
+  }
+  function toggleLangMenu() {
+    const m = document.getElementById('lang-menu');
+    m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  }
+  function pickLang(code, label) {
+    setLang(code);
+    const cur = document.getElementById('lang-cur');
+    if (cur) cur.textContent = label;
+    document.getElementById('lang-menu').style.display = 'none';
+    // mark active
+    document.querySelectorAll('.lang-opt').forEach(el => el.classList.remove('active'));
+    event && event.target && event.target.classList.add('active');
+  }
+  // Close lang menu on outside click
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#lang-btn') && !e.target.closest('#lang-menu')) {
+      const m = document.getElementById('lang-menu');
+      if (m) m.style.display = 'none';
+    }
+  });
+  // Restore language on load
+  try {
+    const saved = localStorage.getItem('navdrift_lang');
+    if (saved && T[saved]) {
+      const labels = {en:'EN',hi:'हिंदी',ta:'தமிழ்',te:'తెలుగు',kn:'ಕನ್ನಡ',bn:'বাংলা',mr:'मराठी',gu:'ગુજરાતી',ml:'മലയാളം',pa:'ਪੰਜਾਬੀ',od:'ଓଡ଼ିଆ'};
+      const cur = document.getElementById('lang-cur');
+      if (cur) cur.textContent = labels[saved] || saved.toUpperCase();
+      setLang(saved);
+    }
+  } catch(e) {}
 
   // Wrap step() so each simulation tick feeds the ONNX pipeline
   (function(){
