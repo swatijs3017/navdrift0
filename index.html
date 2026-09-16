@@ -296,15 +296,15 @@
 
 /* ── DIVERGENCE CLOCK ── */
 .divclock-wrap{display:flex;flex-direction:column;gap:5px;}
-.divclock-row{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--b2);}
+.divclock-row{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--b2);}
 .divclock-row:last-child{border-bottom:none;}
-.divclock-lbl{font-size:.56rem;font-family:var(--mono);color:var(--t3);width:68px;flex-shrink:0;}
-.divclock-bar{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,0.05);overflow:hidden;position:relative;}
-.divclock-fill{height:100%;border-radius:3px;transition:width .4s;}
-.divclock-val{font-size:.68rem;font-weight:700;font-family:var(--mono);width:52px;text-align:right;}
-.drift-delta{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:6px;background:rgba(0,255,157,0.07);border:1px solid rgba(0,255,157,0.2);margin-top:4px;}
-.drift-delta-lbl{font-size:.56rem;font-family:var(--mono);color:var(--t2);}
-.drift-delta-val{font-size:.9rem;font-weight:700;font-family:var(--mono);color:var(--green);}
+.divclock-lbl{font-size:.54rem;font-family:var(--mono);color:var(--t3);width:56px;flex-shrink:0;white-space:nowrap;}
+.divclock-bar{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,0.05);overflow:hidden;position:relative;min-width:0;}
+.divclock-fill{height:100%;border-radius:4px;transition:width .4s;}
+.divclock-val{font-size:.66rem;font-weight:700;font-family:var(--mono);width:68px;min-width:68px;text-align:right;white-space:nowrap;flex-shrink:0;}
+.drift-delta{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:6px;background:rgba(0,255,157,0.07);border:1px solid rgba(0,255,157,0.2);margin-top:6px;gap:8px;}
+.drift-delta-lbl{font-size:.52rem;font-family:var(--mono);color:var(--t2);white-space:nowrap;}
+.drift-delta-val{font-size:.84rem;font-weight:700;font-family:var(--mono);color:var(--green);white-space:nowrap;}
 .drift-delta.bad .drift-delta-val{color:var(--red);}
 
 /* Kage vignette — very subtle depth */
