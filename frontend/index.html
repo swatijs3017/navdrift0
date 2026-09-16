@@ -16,7 +16,7 @@
   <meta name="apple-mobile-web-app-title" content="NAVDRIFT-0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
   <style>
     :root {
       /* ── Kage palette ── */
@@ -2980,6 +2980,7 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
         _setBtnState('err');loading=false;return;
       }
       ort.env.wasm.numThreads=1;
+      ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
       try{
         const order=['imu_denoiser','adaptive_ekf','tunnel_det','driftformer','navic_dop'];
         for(const k of order){
