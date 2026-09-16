@@ -603,6 +603,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <button class="navic-toggle" id="prod-btn" onclick="toggleProdModel()" title="Run all 5 trained ONNX models in-browser" style="background:rgba(168,85,247,0.12);color:var(--violet);border-color:rgba(168,85,247,0.35)">SIM MODE</button>
       <span id="onnx-lat" style="font-size:.52rem;font-family:var(--mono);color:var(--t3);min-width:40px"></span>
       <span class="badge badge-ps">PS #26168</span>
+      <div class="btn-icon" onclick="openHelp()" title="How it works" style="color:var(--bone-dim);font-size:.75rem;font-weight:700;font-family:var(--mono);">?</div>
       <div class="btn-icon" onclick="openModal()" title="API Settings">⚙</div>
     </div>
   </header>
@@ -1065,6 +1066,106 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     <div class="pmod" id="pm4"><span class="pico">🗺️</span><div class="pinf"><div class="pname">MAP MATCH + NHC</div><div class="psub">Viterbi HMM · Non-Holonomic</div></div></div>
     <div class="pmod" id="pm5"><span class="pico">⚡</span><div class="pinf"><div class="pname">GNSS+INS FUSION</div><div class="psub">EKF/UKF · SNAP · ODO·AI · 10Hz</div></div></div>
     <div class="pmod" id="pm6"><span class="pico">📍</span><div class="pinf"><div class="pname">POSITION OUTPUT</div><div class="psub">SE(2) + Covariance · 10Hz</div></div></div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS MODAL -->
+<div class="modal-ov" id="help-modal" onclick="if(event.target===this)closeHelp()">
+  <div class="modal" style="width:640px;max-height:82vh;overflow-y:auto;padding:24px 26px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <div style="font-size:1rem;font-weight:700;color:var(--cyan);letter-spacing:.04em;">HOW NAVDRIFT-0 WORKS</div>
+      <button onclick="closeHelp()" style="background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:2px 6px;">✕</button>
+    </div>
+
+    <div style="font-size:.62rem;color:var(--bone-dim);line-height:1.7;display:flex;flex-direction:column;gap:16px;">
+
+      <div>
+        <div style="font-size:.52rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:var(--mono);">What is NAVDRIFT-0?</div>
+        <p>NAVDRIFT-0 is an intelligent dead-reckoning navigation system built for ISRO Smart India Hackathon 2026, Problem Statement #26168. It keeps a vehicle's position accurate when GPS/NavIC signals are lost — inside tunnels, underpasses, urban canyons, or any GNSS blackout zone. It runs entirely in your browser using four real AI models.</p>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.52rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:var(--mono);">The 6-Stage AI Pipeline <span style="color:var(--t3)">(bottom bar)</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.58rem;">🎛 IMU DENOISER</span><span>Strips high-frequency vibration noise from the accelerometer and gyroscope readings using a lightweight 1D-CNN. Runs on-device (not in browser).</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.58rem;">🧠 DRIFT-FORMER</span><span>The core model — a causal Transformer that reads 8 sensor channels (accel XYZ, gyro XYZ, speed, steering) and predicts how far and in what direction the vehicle moved in the last time step. FP32 ONNX, ~14 MB.</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.58rem;">📡 ADAPTIVE EKF</span><span>An Extended Kalman Filter that fuses DRIFT-Former's pose predictions with any available NavIC signals, dynamically adjusting its noise model based on signal quality.</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.58rem;">🚇 TUNNEL DETECT</span><span>A binary classifier that detects tunnel entry/exit using barometric pressure drops and IMU vibration signatures — no camera or map needed.</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.58rem;">🛰 NAVIC DOP</span><span>Estimates the geometric dilution of precision of the NavIC constellation in real time so the EKF knows how much to trust satellite fixes.</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.58rem;">🗺 MAP MATCH</span><span>Snaps the dead-reckoned position onto the road network using a Hidden Markov Model, preventing drift from accumulating across turns.</span></div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.52rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:var(--mono);">Reading the Map</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div style="display:flex;gap:8px;align-items:center;"><span style="width:18px;height:3px;background:#00fff5;display:inline-block;border-radius:2px;flex-shrink:0;"></span><span><b style="color:var(--cyan)">Cyan track</b> — NAVDRIFT-0 dead-reckoned path. This is what the AI estimates when GPS is gone.</span></div>
+          <div style="display:flex;gap:8px;align-items:center;"><span style="width:18px;height:3px;background:#a855f7;display:inline-block;border-radius:2px;flex-shrink:0;"></span><span><b style="color:var(--violet)">Violet track</b> — Standard EKF baseline. Shows how a conventional filter drifts without the AI.</span></div>
+          <div style="display:flex;gap:8px;align-items:center;"><span style="width:18px;height:3px;background:#E0231C;display:inline-block;border-radius:2px;flex-shrink:0;"></span><span><b style="color:var(--red)">Red zone</b> — Active GNSS blackout. The system is navigating purely on sensor data — no satellite input.</span></div>
+          <div style="display:flex;gap:8px;align-items:center;"><span style="width:14px;height:14px;border-radius:50%;background:rgba(0,255,245,0.25);border:1px solid var(--cyan);display:inline-block;flex-shrink:0;"></span><span><b style="color:var(--cyan)">Uncertainty ellipse</b> — Grows the longer the blackout lasts. Shows the AI's confidence in its own position estimate.</span></div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.52rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:var(--mono);">Left Panel</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div><b style="color:var(--bone-dim)">LIVE</b> — Real-time position, speed, heading, signal strength, and IMU sensor readings.</div>
+          <div><b style="color:var(--bone-dim)">MODULES</b> — Which AI models and filters are active. Green dot = running. Shows precision and latency.</div>
+          <div><b style="color:var(--bone-dim)">SENSORS</b> — Raw barometer, magnetometer, and IMU health. NavIC sky plot shows which satellites are visible.</div>
+          <div><b style="color:var(--bone-dim)">LOG</b> — System event log. Records every GNSS blackout, tunnel detection, correction, and model inference event.</div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.52rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:var(--mono);">Right Panel</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div><b style="color:var(--bone-dim)">METRICS</b> — Live accuracy numbers. ATE = Average Trajectory Error in metres vs ground truth. Lower is better. NAVDRIFT-0 targets &lt;100m per km vs EKF's typical 9–29m drift.</div>
+          <div><b style="color:var(--bone-dim)">AI</b> — Inference engine status, DRIFT-Former attention heatmap, and SNAP corrector bias output.</div>
+          <div><b style="color:var(--bone-dim)">COMPLY</b> — Checks the system against ISRO PS #26168 requirements — accuracy, latency, model size, and NavIC compliance.</div>
+          <div><b style="color:var(--bone-dim)">BENCH</b> — Algorithm benchmark table comparing NAVDRIFT-0, EKF, and raw IMU across all tested routes.</div>
+          <div><b style="color:var(--bone-dim)">FLEET</b> — Federated learning dashboard — simulates how the model improves across a fleet of vehicles sharing anonymised gradients.</div>
+          <div><b style="color:var(--bone-dim)">EXPLAIN</b> — Full technical specification: architecture, dataset, training details, and ISRO compliance checklist.</div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.52rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:var(--mono);">Cities & IO-VNBD Dataset</div>
+        <p>The five city tabs (Delhi, Mumbai, Bengaluru, Chennai, Hyderabad) run simulated routes with injected GNSS blackouts — tap any to switch city and restart the simulation on that route. <b style="color:var(--yellow)">IO-VNBD ★</b> is different — it replays real sensor data from the IIT Bombay benchmark dataset required by ISRO, including a forced tunnel blackout at step 120.</p>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.52rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:var(--mono);">Map Overlay Buttons</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div><b style="color:var(--bone-dim)">TAP SAT</b> — Switches the map to satellite imagery so you can see the real road layout under the tracks.</div>
+          <div><b style="color:var(--bone-dim)">TAP ROAD CONF</b> — Toggles the road confidence overlay — shows how certain the map-matching algorithm is about which road the vehicle is on.</div>
+          <div><b style="color:var(--bone-dim)">TAP UNC BAND</b> — Toggles the uncertainty band around the NAVDRIFT-0 track — wider = less confident, tighter = model is sure.</div>
+          <div><b style="color:var(--bone-dim)">TAP STREET VIEW</b> — Links to a street-level view of the current position for visual reference.</div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.52rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:var(--mono);">Header Status Indicators</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div><span style="color:var(--red);font-weight:700;">BLACKOUT</span> — Pulses red when GNSS is lost. Dead reckoning is the only navigation source. Stops pulsing when signal returns.</div>
+          <div><span style="color:var(--bone-dim);font-weight:700;">GNSS BLACKOUT</span> — Shows how many blackouts have happened and their total cumulative duration this run.</div>
+          <div><span style="color:var(--bone-dim);font-weight:700;">SIMULATION</span> — System is running in browser mode with synthetic sensor data. Connect a real backend via ⚙ to switch to live hardware.</div>
+          <div><span style="color:var(--cyan);font-weight:700;">PROD ON</span> — All four FP32 ONNX models loaded and inference pipeline is running. If it says something else, the models failed to load.</div>
+          <div><span style="color:var(--bone-dim);font-weight:700;">7ms</span> — End-to-end inference latency per step. Under 20ms is the ISRO requirement.</div>
+          <div><b style="color:var(--bone-dim)">TAP ?</b> — Opens this guide. <b style="color:var(--bone-dim)">TAP ⚙</b> — Opens backend API settings to connect a live server instead of simulation.</div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.52rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:var(--mono);">What the Numbers Mean</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div><b style="color:var(--cyan)">NAVDRIFT-0 ATE</b> — Average Trajectory Error in metres. How far the AI's estimated path is from ground truth. ISRO target: under 100m per km. Typical result: 0.1–1.6m.</div>
+          <div><b style="color:var(--violet)">EKF Baseline ATE</b> — Same metric for a conventional Extended Kalman Filter with no AI. Typically 7–29m — shows how much NAVDRIFT-0 improves over the standard approach.</div>
+          <div><b style="color:var(--bone-dim)">Uncertainty σ</b> — The model's own estimate of how uncertain it is about its position. Goes up during long blackouts, down when GNSS returns or map-matching corrects the position.</div>
+          <div><b style="color:var(--bone-dim)">Inference latency</b> — How long the full 6-stage AI pipeline takes per navigation step. Target is under 20ms on CPU.</div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -1930,6 +2031,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
   function openModal(){$('modal').classList.add('on');$('api-url').value=localStorage.getItem('nd_url')||'';$('api-key').value=localStorage.getItem('nd_key')||'';$('conn-st').style.display='none';}
   function closeModal(){$('modal').classList.remove('on');}
+  function openHelp(){$('help-modal').classList.add('on');}
+  function closeHelp(){$('help-modal').classList.remove('on');}
   async function saveAPI(){const url=$('api-url').value.trim(),key=$('api-key').value.trim();localStorage.setItem('nd_url',url);localStorage.setItem('nd_key',key);API_URL=url;API_KEY=key;API_MODE=!!(url&&key);if(API_MODE){log('Backend: '+url,'sys');await reinitAPI();}else{if(S.ws){S.ws.close();S.ws=null;S.wsReady=false;}$('engine-info').innerHTML='<b>Mode:</b> Simulation';updBadge();}closeModal();}
   async function testConn(){const url=$('api-url').value.trim(),key=$('api-key').value.trim(),el=$('conn-st');el.style.display='block';el.className='cs ok';el.textContent='Testing...';try{const r=await fetch(url+'/status',{method:'GET',headers:{'X-API-Key':key}});el.className=r.ok?'cs ok':'cs err';el.textContent=r.ok?'✓ API Online (WS upgrade on save)':'✗ Status '+r.status;}catch(e){el.className='cs err';el.textContent='✗ Cannot reach endpoint';}}
 
