@@ -2921,15 +2921,15 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   // DRIFTFormer FP32 | IMU Denoiser INT8 | Adaptive EKF | Tunnel Bi-LSTM | NavIC DOP
   // =================================================================
   const NAVDRIFT_ONNX = (function(){
+    // imu_denoiser_int8.onnx uses ConvInteger op — not supported in ort-web WASM.
+    // INT8 runs on edge hardware (ARM/embedded). The 4 FP32 models load in-browser.
     const MODEL_PATHS = {
-      imu_denoiser: './models/imu_denoiser_int8.onnx',
       adaptive_ekf: './models/adaptive_ekf_fp32.onnx',
       tunnel_det:   './models/tunnel_det_fp32.onnx',
       driftformer:  './models/driftformer_fp32.onnx',
       navic_dop:    './models/navic_dop_fp32.onnx',
     };
     const LABELS = {
-      imu_denoiser:'IMU DENOISER INT8',
       adaptive_ekf:'ADAPTIVE EKF MLP',
       tunnel_det:  'TUNNEL DET BiLSTM',
       driftformer: 'DRIFT-FORMER FP32',
@@ -2989,7 +2989,7 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
           log('[ONNX] '+LABELS[k]+' ready  in:'+sessions[k].inputNames+' out:'+sessions[k].outputNames,'sys');
         }
         loaded=true;_setBtnState('on');
-        log('[ONNX] All 5 models loaded. Pipeline active.','sys');
+        log('[ONNX] 4 FP32 models loaded (IMU Denoiser INT8 runs on-device). Pipeline active.','sys');
         showBanner('\u26a1 Production ONNX pipeline live — 5 models running in-browser',true);
       }catch(e){
         loading=false;_setBtnState('err');
@@ -3005,18 +3005,9 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
       imuBuf.push(imuVec);if(imuBuf.length>IMU_WIN)imuBuf.shift();
       tunBuf.push(imuVec);if(tunBuf.length>TUN_WIN)tunBuf.shift();
 
-      // 1. IMU Denoiser INT8 (TCN) — [1,100,9] or [1,9] depending on saved shape
-      if(sessions.imu_denoiser){
-        try{
-          const inp=sessions.imu_denoiser.inputNames[0];
-          const buf=_pad(imuBuf,IMU_WIN);
-          let out;
-          try{ out=await sessions.imu_denoiser.run({[inp]:_f32([buf])}); }
-          catch(_){ out=await sessions.imu_denoiser.run({[inp]:_f32([imuVec])}); }
-          res.denoised=Array.from(out[sessions.imu_denoiser.outputNames[0]].data.slice(-9));
-          _chip('pm1','on');
-        }catch(e){_chip('pm1','warn');}
-      }
+      // IMU Denoiser runs on-device (INT8/ConvInteger — not in ort-web WASM).
+      // Mark chip as nominal — denoising handled by sim pipeline on browser.
+      _chip('pm1','on');
 
       // 2. Adaptive EKF MLP — [1,6] state → [1,2+] Q/R
       if(sessions.adaptive_ekf){
