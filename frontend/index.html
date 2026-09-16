@@ -249,6 +249,22 @@
     .pmod.active .pname { color: var(--cyan); }
     .psub { font-size: .5rem; font-family: var(--mono); color: var(--t3); }
 
+    /* Pipeline pulse animation */
+    @keyframes pipe-pulse {
+      0%   { left: -8%; opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      100% { left: 108%; opacity: 0; }
+    }
+    .pipe-dot {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--cyan); box-shadow: 0 0 8px var(--cyan);
+      animation: pipe-pulse 1.2s linear infinite;
+      pointer-events: none;
+    }
+    .pmod { position: relative; overflow: hidden; }
+
     /* ── MODAL ── */
     .modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .25s; }
     .modal-ov.on { opacity: 1; pointer-events: all; }
@@ -565,6 +581,20 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 </div>
 
 <div class="app" id="app-root">
+  <!-- Onboarding tour -->
+  <div id="onboard-overlay" style="display:none;position:fixed;inset:0;z-index:9000;pointer-events:none;">
+    <div id="onboard-card" style="position:absolute;background:rgba(5,7,10,0.97);border:1px solid rgba(0,255,245,0.4);border-radius:10px;padding:14px 18px;max-width:260px;font-family:'JetBrains Mono',monospace;pointer-events:all;box-shadow:0 0 32px rgba(0,255,245,0.15);">
+      <div style="font-size:.52rem;font-weight:700;letter-spacing:.12em;color:#00fff5;margin-bottom:6px;" id="ob-step-label">STEP 1 OF 3</div>
+      <div style="font-size:.65rem;color:#dfe7e0;line-height:1.6;" id="ob-text"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+        <div style="display:flex;gap:4px;" id="ob-dots"></div>
+        <div style="flex:1"></div>
+        <button id="ob-skip" onclick="endOnboard()" style="background:none;border:none;color:#78837c;font-size:.52rem;cursor:pointer;font-family:inherit;">Skip</button>
+        <button id="ob-next" onclick="nextOnboard()" style="background:rgba(0,255,245,0.1);border:1px solid rgba(0,255,245,0.3);color:#00fff5;font-size:.55rem;padding:4px 12px;border-radius:5px;cursor:pointer;font-family:inherit;">Next →</button>
+      </div>
+      <div id="ob-arrow" style="position:absolute;width:12px;height:12px;background:rgba(5,7,10,0.97);border:1px solid rgba(0,255,245,0.4);transform:rotate(45deg);"></div>
+    </div>
+  </div>
   <!-- HEADER -->
   <header>
     <div class="brand">
@@ -747,10 +777,12 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         <div id="map"></div>
         <!-- Map control strip -->
         <div class="map-ctrl-strip">
+          <button class="map-ctrl-btn" id="force-out-btn" onclick="forceBlackout()" title="Force a GNSS blackout now to see dead reckoning live" style="color:#E0231C;border-color:rgba(224,35,28,0.4);">&#x26A1; BLACKOUT</button>
           <button class="map-ctrl-btn" id="sat-btn" onclick="toggleSatellite()" title="Toggle satellite imagery">&#x1F6F0; SAT</button>
           <button class="map-ctrl-btn" id="road-conf-btn" onclick="toggleRoadConf()" title="Cartosat-3 road confidence heatmap">&#x1F5FA; ROAD CONF</button>
           <button class="map-ctrl-btn" id="unc-band-btn" onclick="toggleUncBand()" title="Lane-level uncertainty corridor">&#x1F4D0; UNC BAND</button>
           <button class="map-ctrl-btn" id="sv-toggle-btn" onclick="svTogglePanel()" title="Street View — road-level outdoor imagery">&#x1F6E3; STREET VIEW</button>
+          <button class="map-ctrl-btn" id="compare-btn" onclick="toggleCompare()" title="Show all three tracks for comparison">&#x1F4CA; COMPARE</button>
         </div>
         <!-- Cartosat road confidence legend -->
         <div class="cartosat-legend" id="cartosat-legend">
@@ -759,6 +791,14 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <div class="cl-row"><div class="cl-swatch" style="background:#fbbf24"></div><span class="cl-label">Med 0.4&ndash;0.7</span></div>
           <div class="cl-row"><div class="cl-swatch" style="background:#E0231C"></div><span class="cl-label">Low &lt;0.4</span></div>
           <div class="cl-row" style="margin-top:3px"><div class="cl-swatch" style="background:rgba(168,85,247,0.6)"></div><span class="cl-label">DR uncertainty band</span></div>
+        </div>
+        <!-- Blackout summary card -->
+        <div id="summary-card" style="display:none;position:absolute;bottom:52px;right:10px;z-index:500;background:rgba(5,7,10,0.96);border:1px solid rgba(0,255,157,0.4);border-radius:8px;padding:10px 14px;font-family:'JetBrains Mono',monospace;min-width:200px;backdrop-filter:blur(12px);">
+          <div style="font-size:.52rem;font-weight:700;letter-spacing:.12em;color:#00ff9d;margin-bottom:6px;">BLACKOUT SUMMARY</div>
+          <div id="sc-duration" style="font-size:.6rem;color:#dfe7e0;margin-bottom:3px;"></div>
+          <div id="sc-nd" style="font-size:.6rem;color:#00fff5;margin-bottom:2px;"></div>
+          <div id="sc-ekf" style="font-size:.6rem;color:#a855f7;margin-bottom:2px;"></div>
+          <div id="sc-ratio" style="font-size:.65rem;font-weight:700;color:#00ff9d;margin-top:4px;border-top:1px solid rgba(223,231,224,0.08);padding-top:4px;"></div>
         </div>
       </div>
       <div id="sv-half">
@@ -1060,7 +1100,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   <!-- PIPELINE BAR -->
   <div class="pipe">
     <div class="pmod active" id="pm1"><span class="pico">📡</span><div class="pinf"><div class="pname">IMU PREPROCESSOR</div><div class="psub">Calibration · VibFilter · Baro(9th)</div></div></div>
-    <div class="pmod" id="pm2"><span class="pico">🧠</span><div class="pinf"><div class="pname">DRIFT-FORMER</div><div class="psub">Causal Transformer · RoPE · FP32</div></div></div>
+    <div class="pmod" id="pm2"><div class="pipe-dot"></div><span class="pico">🧠</span><div class="pinf"><div class="pname">DRIFT-FORMER</div><div class="psub">Causal Transformer · RoPE · FP32</div></div></div>
     <div class="pmod" id="pm3"><span class="pico">🔷</span><div class="pinf"><div class="pname">NAVIC VAE</div><div class="psub">Motion Prior Encoder</div></div></div>
     <div class="pmod" id="pm4"><span class="pico">🗺️</span><div class="pinf"><div class="pname">MAP MATCH + NHC</div><div class="psub">Viterbi HMM · Non-Holonomic</div></div></div>
     <div class="pmod" id="pm5"><span class="pico">⚡</span><div class="pinf"><div class="pname">GNSS+INS FUSION</div><div class="psub">EKF/UKF · SNAP · ODO·AI · 10Hz</div></div></div>
@@ -1233,11 +1273,11 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
   // ── § 1  CITY ROUTES ─────────────────────────────────────────────────────
   const CITIES = {
-    delhi:    { name:'Delhi (Connaught Grid)',   lat:28.6315, lon:77.2167, zoom:14, wp:[[28.6315,77.2167],[28.6330,77.2210],[28.6350,77.2260],[28.6360,77.2310],[28.6340,77.2360],[28.6310,77.2400],[28.6270,77.2420],[28.6230,77.2410],[28.6190,77.2380],[28.6160,77.2330],[28.6150,77.2270],[28.6160,77.2210],[28.6190,77.2160],[28.6230,77.2130],[28.6270,77.2130],[28.6315,77.2167]] },
-    mumbai:   { name:'Mumbai (Marine Drive)',    lat:18.9322, lon:72.8264, zoom:14, wp:[[18.9322,72.8264],[18.9350,72.8240],[18.9380,72.8220],[18.9420,72.8215],[18.9460,72.8230],[18.9490,72.8260],[18.9510,72.8300],[18.9500,72.8340],[18.9470,72.8370],[18.9430,72.8380],[18.9390,72.8370],[18.9350,72.8340],[18.9320,72.8310],[18.9310,72.8280],[18.9322,72.8264]] },
-    bengaluru:{ name:'Bengaluru (Outer Ring)',   lat:12.9352, lon:77.6245, zoom:13, wp:[[12.9352,77.6245],[12.9400,77.6320],[12.9450,77.6390],[12.9480,77.6470],[12.9460,77.6560],[12.9410,77.6620],[12.9340,77.6650],[12.9270,77.6630],[12.9210,77.6580],[12.9180,77.6500],[12.9190,77.6410],[12.9230,77.6330],[12.9280,77.6270],[12.9320,77.6250],[12.9352,77.6245]] },
-    chennai:  { name:'Chennai (Anna Salai)',     lat:13.0524, lon:80.2580, zoom:14, wp:[[13.0524,80.2580],[13.0560,80.2560],[13.0600,80.2530],[13.0640,80.2500],[13.0680,80.2470],[13.0710,80.2440],[13.0730,80.2400],[13.0720,80.2360],[13.0690,80.2330],[13.0650,80.2310],[13.0610,80.2320],[13.0570,80.2340],[13.0540,80.2370],[13.0520,80.2410],[13.0510,80.2450],[13.0520,80.2510],[13.0524,80.2580]] },
-    hyderabad:{ name:'Hyderabad (ORR Loop)',     lat:17.4065, lon:78.4772, zoom:13, wp:[[17.4065,78.4772],[17.4120,78.4850],[17.4170,78.4940],[17.4180,78.5040],[17.4150,78.5130],[17.4090,78.5190],[17.4010,78.5210],[17.3930,78.5180],[17.3870,78.5110],[17.3840,78.5010],[17.3850,78.4910],[17.3900,78.4830],[17.3960,78.4780],[17.4010,78.4760],[17.4065,78.4772]] },
+    delhi:    { name:'Delhi (Connaught Grid)',   lat:28.6315, lon:77.2167, zoom:14, wp:[[28.6280,77.2220],[28.6320,77.2215],[28.6355,77.2245],[28.6365,77.2290],[28.6355,77.2335],[28.6330,77.2370],[28.6295,77.2395],[28.6255,77.2410],[28.6210,77.2395],[28.6175,77.2355],[28.6155,77.2305],[28.6145,77.2250],[28.6150,77.2195],[28.6175,77.2165],[28.6215,77.2150],[28.6250,77.2175],[28.6280,77.2220]] },
+    mumbai:   { name:'Mumbai (Marine Drive)',    lat:18.9322, lon:72.8264, zoom:14, wp:[[18.9232,72.8234],[18.9270,72.8218],[18.9315,72.8212],[18.9360,72.8215],[18.9410,72.8228],[18.9455,72.8252],[18.9510,72.8278],[18.9535,72.8318],[18.9510,72.8365],[18.9470,72.8385],[18.9420,72.8365],[18.9375,72.8320],[18.9330,72.8285],[18.9290,72.8255],[18.9250,72.8248],[18.9232,72.8234]] },
+    bengaluru:{ name:'Bengaluru (Outer Ring)',   lat:12.9352, lon:77.6245, zoom:13, wp:[[12.9550,77.6968],[12.9480,77.7010],[12.9370,77.7025],[12.9270,77.6990],[12.9180,77.6940],[12.9130,77.6850],[12.9115,77.6750],[12.9130,77.6650],[12.9175,77.6560],[12.9240,77.6490],[12.9330,77.6440],[12.9410,77.6430],[12.9490,77.6500],[12.9540,77.6620],[12.9560,77.6760],[12.9550,77.6968]] },
+    chennai:  { name:'Chennai (Anna Salai)',     lat:13.0524, lon:80.2580, zoom:14, wp:[[13.0700,80.2725],[13.0650,80.2685],[13.0600,80.2655],[13.0550,80.2618],[13.0500,80.2578],[13.0450,80.2542],[13.0400,80.2508],[13.0360,80.2478],[13.0338,80.2448],[13.0382,80.2378],[13.0435,80.2348],[13.0485,80.2378],[13.0535,80.2418],[13.0582,80.2468],[13.0635,80.2522],[13.0700,80.2725]] },
+    hyderabad:{ name:'Hyderabad (ORR Loop)',     lat:17.4065, lon:78.4772, zoom:13, wp:[[17.4065,78.4772],[17.4130,78.4855],[17.4185,78.4945],[17.4215,78.5048],[17.4195,78.5148],[17.4140,78.5215],[17.4060,78.5238],[17.3975,78.5205],[17.3908,78.5130],[17.3872,78.5025],[17.3878,78.4915],[17.3928,78.4832],[17.3988,78.4778],[17.4035,78.4758],[17.4065,78.4772]] },
     // IO-VNBD: Inertial & Odometry benchmark route — IIT Bombay campus & JVLR tunnel corridor
     // This is the required dataset for ISRO PS #26168 screening
     iovnbd:{ name:'IO-VNBD · IIT Bombay Benchmark Route', lat:19.1334, lon:72.9133, zoom:15, iovnbd:true,
@@ -1336,6 +1376,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       window._nd  =L.polyline([],{color:'#a855f7',weight:2.5,opacity:.9}).addTo(window._map);
       window._imu =L.polyline([],{color:'#ff2255',weight:1.5,dashArray:'7,5',opacity:.75}).addTo(window._map);
       window._ekf =L.polyline([],{color:'#fbbf24',weight:1.5,opacity:.7}).addTo(window._map);
+      window._imuLine=window._imu; window._ekfLine=window._ekf;
       window._vm  =L.marker([st[0],st[1]],{icon:L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],
         html:'<div style="width:16px;height:16px;border-radius:50%;background:#00fff5;box-shadow:0 0 12px #00fff5;border:2px solid #fff"></div>'})}).addTo(window._map);
       window._uc  =L.circle([st[0],st[1]],{radius:5,color:'#a855f7',fillColor:'#a855f7',fillOpacity:.1,weight:1}).addTo(window._map);
@@ -1346,6 +1387,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     }
     window._map.setView([c.lat,c.lon],c.zoom,{animate:false});
     if(API_MODE)reinitAPI();
+    setTimeout(startOnboard, 1800);
   }
 
   // ─── SIMULATION STEP ───
@@ -1603,6 +1645,12 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     document.getElementById('m-snap').className='mod warn';document.getElementById('m-mm').className='mod warn';
     document.getElementById('mm-badge').className='mm-badge on';
     log('GNSS blackout — dead reckoning, NHC, map-matching engaged','out');
+    // Drop a pin at blackout start
+    if(S.gtLa)dropMapPin(S.gtLa,S.gtLo,'#E0231C','GNSS LOST');
+    S._blkStartLa=S.gtLa;S._blkStartLo=S.gtLo;
+    S._blkNDStart=S.totND;S._blkEKFStart=EKF.te;S._blkEKFS=EKF.s;
+    // pulse pipeline bar
+    document.querySelectorAll('.pipe-dot').forEach(d=>d.style.animationPlayState='running');
   }
 
   function reacq(){
@@ -1627,6 +1675,14 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     document.getElementById('sig-sub').textContent='7 Satellites locked';
     document.getElementById('m-snap').className='mod on';document.getElementById('m-mm').className='mod on';
     log('SNAP reacquisition: -'+fe.toFixed(2)+'m fixed. DR lasted '+S.outt.toFixed(1)+'s','snap');
+    // Drop recovery pin
+    dropMapPin(S.gtLa,S.gtLo,'#00ff9d','GNSS ✓');
+    // Show summary card
+    const ndD=dist(S.ndLa,S.ndLo,S._blkStartLa||S.gtLa,S._blkStartLo||S.gtLo);
+    const ekfD=S._blkEKFS!=null&&EKF.s>S._blkEKFS?(EKF.te-S._blkEKFStart)/Math.max(EKF.s-S._blkEKFS,1)*S.outt:fe*4;
+    showSummaryCard(S.outt,ndD,ekfD);
+    // Reset force-blackout button
+    const fb=$('force-out-btn');if(fb){fb.style.color='#E0231C';fb.textContent='⚡ BLACKOUT';fb.onclick=forceBlackout;}
   }
 
   // ─── UI UPDATE ───
@@ -2030,6 +2086,105 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   function openModal(){$('modal').classList.add('on');$('api-url').value=localStorage.getItem('nd_url')||'';$('api-key').value=localStorage.getItem('nd_key')||'';$('conn-st').style.display='none';}
   function closeModal(){$('modal').classList.remove('on');}
   function openHelp(){$('help-modal').classList.add('on');}
+
+  // ── FORCE BLACKOUT ──
+  function forceBlackout(){
+    if(!S.gnss){log('Already in blackout','sys');return;}
+    triggerOut();
+    log('Manual GNSS blackout triggered','out');
+    const btn=$('force-out-btn');
+    if(btn){btn.style.color='#00ff9d';btn.textContent='⚡ RESTORE';btn.onclick=function(){reacq();btn.style.color='#E0231C';btn.textContent='⚡ BLACKOUT';btn.onclick=forceBlackout;};}
+  }
+
+  // ── COMPARE MODE ──
+  let _compareOn=false;
+  function toggleCompare(){
+    _compareOn=!_compareOn;
+    const btn=$('compare-btn');
+    if(btn){btn.style.background=_compareOn?'rgba(168,85,247,0.15)':'';btn.style.borderColor=_compareOn?'rgba(168,85,247,0.5)':'';}
+    // Show/hide EKF and IMU tracks by toggling their opacity
+    if(window._ekfLine)window._ekfLine.setStyle({opacity:_compareOn?1:0.55,weight:_compareOn?3:2});
+    if(window._imuLine)window._imuLine.setStyle({opacity:_compareOn?0.9:0.35,weight:_compareOn?2.5:1.5});
+    // Add labels on compare on
+    if(_compareOn){
+      if(!window._cmpLabel){
+        window._cmpLabel=L.control({position:'bottomleft'});
+        window._cmpLabel.onAdd=function(){
+          const d=L.DomUtil.create('div','');
+          d.innerHTML='<div style="background:rgba(5,7,10,0.92);border:1px solid rgba(223,231,224,0.1);border-radius:6px;padding:7px 11px;font-family:JetBrains Mono,monospace;font-size:.55rem;line-height:1.8;pointer-events:none;">'
+            +'<div><span style="color:#00fff5">─── NAVDRIFT-0</span> <span style="color:#78837c">AI dead reckoning</span></div>'
+            +'<div><span style="color:#a855f7">─── EKF Baseline</span> <span style="color:#78837c">conventional filter</span></div>'
+            +'<div><span style="color:#e0231c">─── Raw IMU</span> <span style="color:#78837c">no correction</span></div>'
+            +'</div>';
+          return d;
+        };
+        window._cmpLabel.addTo(window._map);
+      }
+    } else {
+      if(window._cmpLabel){window._cmpLabel.remove();window._cmpLabel=null;}
+    }
+  }
+
+  // ── BLACKOUT SUMMARY CARD ──
+  function showSummaryCard(durationS, ndDrift, ekfDrift){
+    const card=$('summary-card');
+    if(!card)return;
+    const ratio=ekfDrift>0?(ekfDrift/Math.max(ndDrift,0.01)).toFixed(1):'—';
+    $('sc-duration').textContent='Duration: '+durationS.toFixed(1)+'s blackout';
+    $('sc-nd').textContent='NAVDRIFT-0: '+ndDrift.toFixed(2)+'m drift';
+    $('sc-ekf').textContent='EKF Baseline: '+ekfDrift.toFixed(2)+'m drift';
+    $('sc-ratio').textContent=ratio+'x better than EKF ✓';
+    card.style.display='block';
+    clearTimeout(window._scTimer);
+    window._scTimer=setTimeout(()=>{card.style.display='none';},6000);
+  }
+
+  // ── MAP ANNOTATION PINS ──
+  function dropMapPin(lat,lon,color,label){
+    if(!window._map)return;
+    const icon=L.divIcon({className:'',html:'<div style="background:'+color+';color:#05070a;font-size:.42rem;font-weight:700;font-family:JetBrains Mono,monospace;padding:2px 5px;border-radius:3px;white-space:nowrap;box-shadow:0 0 8px '+color+'40;">'+label+'</div>',iconAnchor:[0,0]});
+    L.marker([lat,lon],{icon:icon,interactive:false}).addTo(window._map);
+  }
+
+  // ── ONBOARDING TOUR ──
+  const OB_STEPS=[
+    {text:'This is the live map. The <span style="color:#00fff5">cyan track</span> is NAVDRIFT-0 navigating without GPS. The <span style="color:#a855f7">violet track</span> is a conventional EKF — watch how much it drifts.',anchor:'map',pos:'center'},
+    {text:'GNSS blackouts trigger automatically. When the <span style="color:#E0231C">BLACKOUT</span> indicator flashes, the AI is navigating on sensor data alone — no satellite input at all. Tap ⚡ BLACKOUT to trigger one yourself.',anchor:'header-right',pos:'below'},
+    {text:'Check <b>METRICS</b> on the right to see the accuracy numbers live. NAVDRIFT-0 ATE stays under 2m while EKF drifts 7–29m during blackouts. Tap any right-panel tab to explore AI internals, compliance, and benchmarks.',anchor:'right-panel',pos:'left'},
+  ];
+  let _obStep=0;
+  function startOnboard(){
+    if(localStorage.getItem('nd_ob_done'))return;
+    _obStep=0;
+    showObStep();
+    $('onboard-overlay').style.display='block';
+  }
+  function showObStep(){
+    const s=OB_STEPS[_obStep];
+    $('ob-step-label').textContent='STEP '+(_obStep+1)+' OF '+OB_STEPS.length;
+    $('ob-text').innerHTML=s.text;
+    $('ob-next').textContent=_obStep===OB_STEPS.length-1?'Got it ✓':'Next →';
+    // dots
+    let dots='';for(let i=0;i<OB_STEPS.length;i++)dots+='<div style="width:5px;height:5px;border-radius:50%;background:'+( i===_obStep?'#00fff5':'rgba(120,131,124,0.4)')+';"></div>';
+    $('ob-dots').innerHTML=dots;
+    // position card near anchor
+    const card=$('onboard-card');
+    const ov=$('onboard-overlay');
+    card.style.top=''; card.style.left=''; card.style.bottom=''; card.style.right='';
+    const arr=$('ob-arrow');arr.style.top='';arr.style.left='';arr.style.bottom='';arr.style.right='';
+    if(s.anchor==='map'){card.style.top='50%';card.style.left='50%';card.style.transform='translate(-50%,-60%)';arr.style.display='none';}
+    else if(s.anchor==='header-right'){card.style.top='58px';card.style.right='60px';card.style.transform='none';arr.style.display='block';arr.style.top='-7px';arr.style.right='20px';}
+    else{card.style.top='50%';card.style.right='268px';card.style.transform='translateY(-50%)';arr.style.display='block';arr.style.right='-7px';arr.style.top='50%';}
+  }
+  function nextOnboard(){
+    _obStep++;
+    if(_obStep>=OB_STEPS.length){endOnboard();return;}
+    showObStep();
+  }
+  function endOnboard(){
+    $('onboard-overlay').style.display='none';
+    localStorage.setItem('nd_ob_done','1');
+  }
   function closeHelp(){$('help-modal').classList.remove('on');}
   async function saveAPI(){const url=$('api-url').value.trim(),key=$('api-key').value.trim();localStorage.setItem('nd_url',url);localStorage.setItem('nd_key',key);API_URL=url;API_KEY=key;API_MODE=!!(url&&key);if(API_MODE){log('Backend: '+url,'sys');await reinitAPI();}else{if(S.ws){S.ws.close();S.ws=null;S.wsReady=false;}$('engine-info').innerHTML='<b>Mode:</b> Simulation';updBadge();}closeModal();}
   async function testConn(){const url=$('api-url').value.trim(),key=$('api-key').value.trim(),el=$('conn-st');el.style.display='block';el.className='cs ok';el.textContent='Testing...';try{const r=await fetch(url+'/status',{method:'GET',headers:{'X-API-Key':key}});el.className=r.ok?'cs ok':'cs err';el.textContent=r.ok?'✓ API Online (WS upgrade on save)':'✗ Status '+r.status;}catch(e){el.className='cs err';el.textContent='✗ Cannot reach endpoint';}}
