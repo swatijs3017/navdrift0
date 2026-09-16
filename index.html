@@ -44,16 +44,16 @@
     html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: var(--sans); user-select: none; }
 
     /* ── LAYOUT ── */
-    .app { display: grid; grid-template-rows: 48px auto 1fr 68px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
-    .body { display: grid; grid-template-columns: 260px 1fr 260px; gap: 6px; padding: 6px; min-height: 0; overflow: hidden; }
+    .app { display: grid; grid-template-rows: 52px auto 1fr 68px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
+    .body { display: grid; grid-template-columns: 272px 1fr 272px; gap: 7px; padding: 7px; min-height: 0; overflow: hidden; }
     .panel { display: flex; flex-direction: column; gap: 0; overflow: hidden; min-height: 0; }
 
     /* ── HEADER ── */
     header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 12px; background: rgba(5,7,10,0.97); backdrop-filter: blur(24px);
+      padding: 0 14px; background: rgba(5,7,10,0.97); backdrop-filter: blur(24px);
       border-bottom: 1px solid var(--line); position: relative; z-index: 20;
-      height: 48px;
+      height: 52px;
     }
     .brand { display: flex; align-items: center; gap: 10px; }
     .brand-logo { width: 30px; height: 30px; }
@@ -94,10 +94,10 @@
     .banner.snap { background: rgba(0,100,60,0.93); border-color: rgba(0,255,157,0.4); box-shadow: 0 4px 24px rgba(0,255,157,0.3); color: #d1fae5; }
 
     /* ── CARD ── */
-    .card { background: rgba(8,12,16,0.85); backdrop-filter: blur(16px); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; position: relative; overflow: hidden; }
+    .card { background: rgba(8,12,16,0.85); backdrop-filter: blur(16px); border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px; position: relative; overflow: hidden; }
     .card::before { content: ''; position: absolute; top: 0; left: 18%; right: 18%; height: 1px; background: linear-gradient(90deg, transparent, rgba(223,231,224,0.08), transparent); }
-    .ct { font-size: .56rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-family: var(--sans); }
-    .ct-l { display: flex; align-items: center; gap: 5px; }
+    .ct { font-size: .62rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--bone-dim); display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; font-family: var(--sans); }
+    .ct-l { display: flex; align-items: center; gap: 6px; }
     .cdot { width: 5px; height: 5px; border-radius: 50%; }
     .cdot.c { background: var(--cyan); box-shadow: 0 0 5px var(--cyan-g); }
     .cdot.v { background: var(--violet); box-shadow: 0 0 5px rgba(168,85,247,0.5); }
@@ -106,10 +106,17 @@
     .cdot.y { background: var(--yellow); box-shadow: 0 0 5px rgba(251,191,36,0.5); }
 
     /* ── BUTTONS ── */
-    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .btn { padding: 7px 10px; font-size: .68rem; font-weight: 600; border: 1px solid var(--b1); border-radius: 7px; cursor: pointer; background: var(--b2); color: var(--t2); transition: all .2s; font-family: var(--sans); }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .btn { padding: 8px 10px; font-size: .7rem; font-weight: 600; border: 1px solid var(--b1); border-radius: 8px; cursor: pointer; background: rgba(223,231,224,0.04); color: var(--t1); transition: all .2s; font-family: var(--sans); letter-spacing: .02em; }
+    .btn:hover { background: rgba(223,231,224,0.08); border-color: rgba(223,231,224,0.18); }
     .btn.p { background: var(--cyan-d); color: var(--cyan); border-color: rgba(0,255,245,0.3); }
+    .btn.p:hover { background: rgba(0,255,245,0.16); }
     .btn.d { background: var(--red-d); color: var(--red); border-color: rgba(255,34,85,0.3); }
+    .btn.d:hover { background: rgba(224,35,28,0.18); }
+    /* ── LANGUAGE PICKER ── */
+    .lang-sel { background: rgba(223,231,224,0.04); border: 1px solid var(--line); color: var(--bone-dim); font-family: var(--mono); font-size: .58rem; padding: 4px 7px; border-radius: 6px; cursor: pointer; outline: none; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2378837c'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 6px center; padding-right: 20px; }
+    .lang-sel:focus { border-color: rgba(0,255,245,0.3); color: var(--cyan); }
+    .lang-sel option { background: #080c10; color: var(--bone); }
 
     /* ── MODULE CHIPS — compact 3-col ── */
     .mods { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
@@ -122,11 +129,15 @@
     .mod.full { grid-column: 1/-1; }
 
     /* ── METRIC ROWS ── */
-    .mrow { display: flex; align-items: center; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--b2); }
+    .mrow { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--b2); }
     .mrow:last-child { border-bottom: none; }
-    .ml { font-size: .61rem; color: var(--t2); font-family: var(--mono); }
-    .mv { font-size: .9rem; font-weight: 700; font-family: var(--mono); }
-    .mu { font-size: .58rem; color: var(--t3); margin-left: 2px; }
+    .ml { font-size: .65rem; color: var(--t2); font-family: var(--mono); }
+    .mv { font-size: 1.05rem; font-weight: 700; font-family: var(--mono); }
+    .mu { font-size: .6rem; color: var(--t3); margin-left: 3px; }
+    /* Hero metric — large display for most important number */
+    .metric-hero { display: flex; flex-direction: column; align-items: center; padding: 8px 0; }
+    .metric-hero-val { font-size: 2rem; font-weight: 700; font-family: var(--mono); line-height: 1; }
+    .metric-hero-lbl { font-size: .6rem; font-family: var(--mono); color: var(--t3); margin-top: 4px; letter-spacing: .08em; text-transform: uppercase; }
     .mv.c { color: var(--cyan); }
     .mv.g { color: var(--green); }
     .mv.r { color: var(--red); }
@@ -645,6 +656,19 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <button class="navic-toggle" id="prod-btn" onclick="toggleProdModel()" title="Run all 5 trained ONNX models in-browser" style="background:rgba(168,85,247,0.12);color:var(--violet);border-color:rgba(168,85,247,0.35)">SIM MODE</button>
       <span id="onnx-lat" style="font-size:.52rem;font-family:var(--mono);color:var(--t3);min-width:40px"></span>
       <span class="badge badge-ps">PS #26168</span>
+      <select class="lang-sel" id="lang-sel" onchange="setLang(this.value)" title="भाषा / Language">
+        <option value="en">EN</option>
+        <option value="hi">हिंदी</option>
+        <option value="ta">தமிழ்</option>
+        <option value="te">తెలుగు</option>
+        <option value="kn">ಕನ್ನಡ</option>
+        <option value="bn">বাংলা</option>
+        <option value="mr">मराठी</option>
+        <option value="gu">ગુજરાતી</option>
+        <option value="ml">മലയാളം</option>
+        <option value="pa">ਪੰਜਾਬੀ</option>
+        <option value="od">ଓଡ଼ିଆ</option>
+      </select>
       <div class="btn-icon" onclick="openHelp()" title="How it works" style="color:var(--bone-dim);font-size:.75rem;font-weight:700;font-family:var(--mono);">?</div>
       <div class="btn-icon" onclick="openModal()" title="API Settings">⚙</div>
     </div>
@@ -661,10 +685,10 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     <!-- LEFT PANEL -->
     <div class="panel">
       <div class="ptab-bar">
-        <button class="ptab active" onclick="switchPTab('left','live',this)">LIVE</button>
-        <button class="ptab" onclick="switchPTab('left','modules',this)">MODULES</button>
-        <button class="ptab" onclick="switchPTab('left','sensors',this)">SENSORS</button>
-        <button class="ptab" onclick="switchPTab('left','log',this)">LOG</button>
+        <button class="ptab active" onclick="switchPTab('left','live',this)" data-t="tab_live">LIVE</button>
+        <button class="ptab" onclick="switchPTab('left','modules',this)" data-t="tab_modules">MODULES</button>
+        <button class="ptab" onclick="switchPTab('left','sensors',this)" data-t="tab_sensors">SENSORS</button>
+        <button class="ptab" onclick="switchPTab('left','log',this)" data-t="tab_log">LOG</button>
       </div>
 
       <!-- LIVE TAB: NavIC + Controls -->
@@ -902,12 +926,12 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     <!-- RIGHT PANEL -->
     <div class="panel">
       <div class="ptab-bar">
-        <button class="ptab active" onclick="switchPTab('right','metrics',this)">METRICS</button>
-        <button class="ptab" onclick="switchPTab('right','ai',this)">AI</button>
-        <button class="ptab" onclick="switchPTab('right','compliance',this)">COMPLY</button>
-        <button class="ptab" onclick="switchPTab('right','bench',this)">BENCH</button>
-        <button class="ptab" onclick="switchPTab('right','fleet',this)">FLEET</button>
-        <button class="ptab" onclick="switchPTab('right','explain',this)">EXPLAIN</button>
+        <button class="ptab active" onclick="switchPTab('right','metrics',this)" data-t="tab_metrics">METRICS</button>
+        <button class="ptab" onclick="switchPTab('right','ai',this)" data-t="tab_ai">AI</button>
+        <button class="ptab" onclick="switchPTab('right','compliance',this)" data-t="tab_comply">COMPLY</button>
+        <button class="ptab" onclick="switchPTab('right','bench',this)" data-t="tab_bench">BENCH</button>
+        <button class="ptab" onclick="switchPTab('right','fleet',this)" data-t="tab_fleet">FLEET</button>
+        <button class="ptab" onclick="switchPTab('right','explain',this)" data-t="tab_explain">EXPLAIN</button>
       </div>
 
       <!-- METRICS TAB -->
@@ -3519,6 +3543,138 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   })();
 
   window.toggleProdModel=function(){NAVDRIFT_ONNX.toggle();};
+
+  // ══════════════════════════════════════════════════════
+  //  INDIAN LANGUAGE i18n SYSTEM
+  //  Covers all 10 major Indian languages + English
+  //  Usage: add data-t="key" to any HTML element
+  // ══════════════════════════════════════════════════════
+  const T = {
+    en: {
+      tab_live:'LIVE', tab_modules:'MODULES', tab_sensors:'SENSORS', tab_log:'LOG',
+      tab_metrics:'METRICS', tab_ai:'AI', tab_comply:'COMPLY', tab_bench:'BENCH',
+      tab_fleet:'FLEET', tab_explain:'EXPLAIN',
+      btn_start:'▶ START', btn_stop:'■ STOP', btn_blackout:'⚡ BLACKOUT', btn_snap:'📍 SNAP TO GPS',
+      btn_export:'⬇ EXPORT CSV', btn_reset:'↺ RESET',
+      lbl_gnss_lock:'GNSS LOCKED', lbl_gnss_lost:'GNSS LOST',
+      lbl_phase_nominal:'NOMINAL', lbl_phase_blackout:'BLACKOUT',
+    },
+    hi: {
+      tab_live:'लाइव', tab_modules:'मॉड्यूल', tab_sensors:'सेंसर', tab_log:'लॉग',
+      tab_metrics:'मेट्रिक्स', tab_ai:'एआई', tab_comply:'अनुपालन', tab_bench:'बेंच',
+      tab_fleet:'बेड़ा', tab_explain:'विवरण',
+      btn_start:'▶ शुरू', btn_stop:'■ रोकें', btn_blackout:'⚡ ब्लैकआउट', btn_snap:'📍 GPS स्नैप',
+      btn_export:'⬇ CSV निर्यात', btn_reset:'↺ रीसेट',
+      lbl_gnss_lock:'GNSS लॉक्ड', lbl_gnss_lost:'GNSS खोया',
+      lbl_phase_nominal:'सामान्य', lbl_phase_blackout:'ब्लैकआउट',
+    },
+    ta: {
+      tab_live:'நேரடி', tab_modules:'தொகுதிகள்', tab_sensors:'சென்சார்', tab_log:'பதிவு',
+      tab_metrics:'அளவீடுகள்', tab_ai:'AI', tab_comply:'இணக்கம்', tab_bench:'அளவு',
+      tab_fleet:'கூட்டம்', tab_explain:'விளக்கம்',
+      btn_start:'▶ தொடங்கு', btn_stop:'■ நிறுத்து', btn_blackout:'⚡ இருட்டடிப்பு', btn_snap:'📍 GPS பூட்டு',
+      btn_export:'⬇ CSV ஏற்றுமதி', btn_reset:'↺ மீட்டமை',
+      lbl_gnss_lock:'GNSS பூட்டப்பட்டது', lbl_gnss_lost:'GNSS இழந்தது',
+      lbl_phase_nominal:'சாதாரண', lbl_phase_blackout:'இருட்டடிப்பு',
+    },
+    te: {
+      tab_live:'లైవ్', tab_modules:'మాడ్యూల్స్', tab_sensors:'సెన్సర్లు', tab_log:'లాగ్',
+      tab_metrics:'కొలతలు', tab_ai:'AI', tab_comply:'సమ్మతి', tab_bench:'బెంచ్',
+      tab_fleet:'బేడా', tab_explain:'వివరణ',
+      btn_start:'▶ ప్రారంభించు', btn_stop:'■ ఆపు', btn_blackout:'⚡ బ్లాకవుట్', btn_snap:'📍 GPS స్నాప్',
+      btn_export:'⬇ CSV ఎగుమతి', btn_reset:'↺ రీసెట్',
+      lbl_gnss_lock:'GNSS లాక్', lbl_gnss_lost:'GNSS పోయింది',
+      lbl_phase_nominal:'సాధారణ', lbl_phase_blackout:'బ్లాకవుట్',
+    },
+    kn: {
+      tab_live:'ನೇರ', tab_modules:'ಮಾಡ್ಯೂಲ್', tab_sensors:'ಸೆನ್ಸರ್', tab_log:'ಲಾಗ್',
+      tab_metrics:'ಅಳತೆಗಳು', tab_ai:'AI', tab_comply:'ಅನುಪಾಲನೆ', tab_bench:'ಬೆಂಚ್',
+      tab_fleet:'ಫ್ಲೀಟ್', tab_explain:'ವಿವರಣೆ',
+      btn_start:'▶ ಪ್ರಾರಂಭ', btn_stop:'■ ನಿಲ್ಲಿಸು', btn_blackout:'⚡ ಬ್ಲ್ಯಾಕ್ಔಟ್', btn_snap:'📍 GPS ಸ್ನ್ಯಾಪ್',
+      btn_export:'⬇ CSV ರಫ್ತು', btn_reset:'↺ ರೀಸೆಟ್',
+      lbl_gnss_lock:'GNSS ಲಾಕ್', lbl_gnss_lost:'GNSS ಕಳೆದಿದೆ',
+      lbl_phase_nominal:'ಸಾಮಾನ್ಯ', lbl_phase_blackout:'ಬ್ಲ್ಯಾಕ್ಔಟ್',
+    },
+    bn: {
+      tab_live:'সরাসরি', tab_modules:'মডিউল', tab_sensors:'সেন্সর', tab_log:'লগ',
+      tab_metrics:'মেট্রিক্স', tab_ai:'AI', tab_comply:'সম্মতি', tab_bench:'বেঞ্চ',
+      tab_fleet:'বহর', tab_explain:'ব্যাখ্যা',
+      btn_start:'▶ শুরু', btn_stop:'■ থামো', btn_blackout:'⚡ ব্ল্যাকআউট', btn_snap:'📍 GPS স্ন্যাপ',
+      btn_export:'⬇ CSV রপ্তানি', btn_reset:'↺ রিসেট',
+      lbl_gnss_lock:'GNSS লকড', lbl_gnss_lost:'GNSS হারানো',
+      lbl_phase_nominal:'স্বাভাবিক', lbl_phase_blackout:'ব্ল্যাকআউট',
+    },
+    mr: {
+      tab_live:'थेट', tab_modules:'मॉड्युल', tab_sensors:'सेन्सर', tab_log:'नोंद',
+      tab_metrics:'मापदंड', tab_ai:'AI', tab_comply:'अनुपालन', tab_bench:'बेंच',
+      tab_fleet:'ताफा', tab_explain:'स्पष्टीकरण',
+      btn_start:'▶ सुरू', btn_stop:'■ थांबा', btn_blackout:'⚡ ब्लॅकआउट', btn_snap:'📍 GPS स्नॅप',
+      btn_export:'⬇ CSV निर्यात', btn_reset:'↺ रीसेट',
+      lbl_gnss_lock:'GNSS लॉक', lbl_gnss_lost:'GNSS हरवले',
+      lbl_phase_nominal:'सामान्य', lbl_phase_blackout:'ब्लॅकआउट',
+    },
+    gu: {
+      tab_live:'સીધુ', tab_modules:'મોડ્યુલ', tab_sensors:'સેન્સર', tab_log:'નોંધ',
+      tab_metrics:'માપ', tab_ai:'AI', tab_comply:'અનુપાલન', tab_bench:'બેન્ચ',
+      tab_fleet:'કાફલો', tab_explain:'સ્પષ્ટીકરણ',
+      btn_start:'▶ શરૂ', btn_stop:'■ અટકો', btn_blackout:'⚡ બ્લૅકઆઉટ', btn_snap:'📍 GPS સ્નૅપ',
+      btn_export:'⬇ CSV નિકાસ', btn_reset:'↺ રીસેટ',
+      lbl_gnss_lock:'GNSS લૉક', lbl_gnss_lost:'GNSS ખોવાઈ',
+      lbl_phase_nominal:'સામાન્ય', lbl_phase_blackout:'બ્લૅકઆઉટ',
+    },
+    ml: {
+      tab_live:'തത്സമയം', tab_modules:'മൊഡ്യൂൾ', tab_sensors:'സെൻസർ', tab_log:'ലോഗ്',
+      tab_metrics:'അളവ്', tab_ai:'AI', tab_comply:'അനുസരണം', tab_bench:'ബെഞ്ച്',
+      tab_fleet:'കൂട്ടം', tab_explain:'വിശദീകരണം',
+      btn_start:'▶ ആരംഭിക്കുക', btn_stop:'■ നിർത്തുക', btn_blackout:'⚡ ബ്ലാക്കൗട്ട്', btn_snap:'📍 GPS സ്നാപ്',
+      btn_export:'⬇ CSV കയറ്റുമതി', btn_reset:'↺ റീസെറ്റ്',
+      lbl_gnss_lock:'GNSS ലോക്ക്', lbl_gnss_lost:'GNSS നഷ്ടം',
+      lbl_phase_nominal:'സാധാരണ', lbl_phase_blackout:'ബ്ലാക്കൗട്ട്',
+    },
+    pa: {
+      tab_live:'ਲਾਈਵ', tab_modules:'ਮੋਡੀਊਲ', tab_sensors:'ਸੈਂਸਰ', tab_log:'ਲੌਗ',
+      tab_metrics:'ਮੈਟ੍ਰਿਕਸ', tab_ai:'AI', tab_comply:'ਪਾਲਣਾ', tab_bench:'ਬੈਂਚ',
+      tab_fleet:'ਬੇੜਾ', tab_explain:'ਵਿਆਖਿਆ',
+      btn_start:'▶ ਸ਼ੁਰੂ', btn_stop:'■ ਰੋਕੋ', btn_blackout:'⚡ ਬਲੈਕਆਊਟ', btn_snap:'📍 GPS ਸਨੈਪ',
+      btn_export:'⬇ CSV ਨਿਰਯਾਤ', btn_reset:'↺ ਰੀਸੈੱਟ',
+      lbl_gnss_lock:'GNSS ਲੌਕ', lbl_gnss_lost:'GNSS ਗੁਆਚਿਆ',
+      lbl_phase_nominal:'ਆਮ', lbl_phase_blackout:'ਬਲੈਕਆਊਟ',
+    },
+    od: {
+      tab_live:'ସିଧା', tab_modules:'ମଡ୍ୟୁଲ', tab_sensors:'ସେନ୍ସର', tab_log:'ଲଗ',
+      tab_metrics:'ମାପ', tab_ai:'AI', tab_comply:'ଅନୁପାଳନ', tab_bench:'ବେଞ୍ଚ',
+      tab_fleet:'ବହର', tab_explain:'ବ୍ୟାଖ୍ୟା',
+      btn_start:'▶ ଆରମ୍ଭ', btn_stop:'■ ରୋକ', btn_blackout:'⚡ ବ୍ଲ୍ୟାକ୍ଆଉଟ', btn_snap:'📍 GPS ସ୍ନ୍ୟାପ',
+      btn_export:'⬇ CSV ରପ୍ତାନି', btn_reset:'↺ ରିସେଟ',
+      lbl_gnss_lock:'GNSS ଲକ', lbl_gnss_lost:'GNSS ହଜିଲା',
+      lbl_phase_nominal:'ସ୍ୱାଭାବିକ', lbl_phase_blackout:'ବ୍ଲ୍ୟାକ୍ଆଉଟ',
+    },
+  };
+
+  let _lang = 'en';
+  function setLang(code) {
+    _lang = code;
+    const dict = T[code] || T.en;
+    document.querySelectorAll('[data-t]').forEach(el => {
+      const key = el.getAttribute('data-t');
+      if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+    // Update html lang attribute for accessibility
+    document.documentElement.lang = code === 'od' ? 'or' : code;
+    // Persist choice
+    try { localStorage.setItem('navdrift_lang', code); } catch(e) {}
+  }
+  // Restore language on load
+  try {
+    const saved = localStorage.getItem('navdrift_lang');
+    if (saved && T[saved]) {
+      document.getElementById('lang-sel').value = saved;
+      setLang(saved);
+    }
+  } catch(e) {}
+
+  // Wrap phase text update to respect language
+  const _origPhaseUpdate = window._phaseUpdate;
 
   // Wrap step() so each simulation tick feeds the ONNX pipeline
   (function(){
