@@ -2922,11 +2922,11 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   // =================================================================
   const NAVDRIFT_ONNX = (function(){
     const MODEL_PATHS = {
-      imu_denoiser: '../models/imu_denoiser_int8.onnx',
-      adaptive_ekf: '../models/adaptive_ekf_fp32.onnx',
-      tunnel_det:   '../models/tunnel_det_fp32.onnx',
-      driftformer:  '../models/driftformer_fp32.onnx',
-      navic_dop:    '../models/navic_dop_fp32.onnx',
+      imu_denoiser: './models/imu_denoiser_int8.onnx',
+      adaptive_ekf: './models/adaptive_ekf_fp32.onnx',
+      tunnel_det:   './models/tunnel_det_fp32.onnx',
+      driftformer:  './models/driftformer_fp32.onnx',
+      navic_dop:    './models/navic_dop_fp32.onnx',
     };
     const LABELS = {
       imu_denoiser:'IMU DENOISER INT8',
@@ -2994,7 +2994,7 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
       }catch(e){
         loading=false;_setBtnState('err');
         log('[ONNX] Load error: '+e.message,'sys');
-        showBanner('\u26a0 ONNX load failed — check ../models/ path: '+e.message,false);
+        showBanner('\u26a0 ONNX load failed — check ./models/ path: '+e.message,false);
       }
     }
 
