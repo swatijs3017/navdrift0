@@ -44,8 +44,7 @@
     html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: var(--sans); user-select: none; }
 
     /* ── LAYOUT ── */
-    .app { display: grid; grid-template-rows: 48px 0px 1fr 68px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
-    .app.banner-open { grid-template-rows: 48px 26px 1fr 68px; }
+    .app { display: grid; grid-template-rows: 48px auto 1fr 68px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
     .body { display: grid; grid-template-columns: 260px 1fr 260px; gap: 6px; padding: 6px; min-height: 0; overflow: hidden; }
     .panel { display: flex; flex-direction: column; gap: 0; overflow: hidden; min-height: 0; }
 
@@ -344,8 +343,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     .city-tab.iovnbd{color:var(--yellow) !important;border-color:rgba(251,191,36,0.4) !important;}
     .city-tab.iovnbd.active{background:rgba(251,191,36,0.12) !important;border-color:rgba(251,191,36,0.45) !important;}
     /* IO-VNBD banner: fixed overlay so it never participates in the .app grid and can't break layout */
-    .iovnbd-banner{display:none;align-items:center;gap:8px;padding:0 14px;background:rgba(14,10,4,0.96);border-bottom:1px solid rgba(251,191,36,0.35);font-size:.58rem;font-family:var(--mono);color:var(--yellow);font-weight:700;backdrop-filter:blur(8px);overflow:hidden;}
-    .iovnbd-banner.show{display:flex;}
+    .iovnbd-banner{display:flex;align-items:center;gap:8px;padding:0 14px;background:rgba(14,10,4,0.96);border-bottom:1px solid rgba(251,191,36,0.35);font-size:.58rem;font-family:var(--mono);color:var(--yellow);font-weight:700;backdrop-filter:blur(8px);overflow:hidden;height:0;opacity:0;pointer-events:none;transition:height .15s,opacity .15s;}
+    .iovnbd-banner.show{height:26px;opacity:1;pointer-events:all;}
     .navic-toggle{padding:0 8px;height:26px;font-size:.55rem;font-weight:700;font-family:var(--mono);border-radius:5px;cursor:pointer;border:1px solid rgba(0,255,245,0.3);background:var(--cyan-d);color:var(--cyan);letter-spacing:.06em;transition:all .2s;}
     .navic-toggle.navonly{color:var(--yellow);border-color:rgba(251,191,36,0.4);background:rgba(251,191,36,0.1);}
     .navic-toggle:hover{filter:brightness(1.2);}
@@ -1956,8 +1955,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     ev&&ev.target&&ev.target.classList.add('active');
     // Show/hide IO-VNBD banner
     const bnr=document.getElementById('iovnbd-banner');
-    const appRoot=document.getElementById('app-root');
-    if(bnr){if(k==='iovnbd'){bnr.classList.add('show');appRoot&&appRoot.classList.add('banner-open');}else{bnr.classList.remove('show');appRoot&&appRoot.classList.remove('banner-open');}}
+    if(bnr){if(k==='iovnbd')bnr.classList.add('show');else bnr.classList.remove('show');}
     init(k);
   }
 
