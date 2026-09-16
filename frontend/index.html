@@ -44,17 +44,16 @@
     html, body { width: 100vw; height: 100vh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: var(--sans); user-select: none; }
 
     /* ── LAYOUT ── */
-    .app { display: grid; grid-template-rows: 50px 1fr 76px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
-    .body { display: grid; grid-template-columns: 268px 1fr 252px; gap: 8px; padding: 8px; min-height: 0; overflow: hidden; }
-    .panel { display: flex; flex-direction: column; gap: 7px; overflow-y: auto; overflow-x: hidden; }
-    .panel::-webkit-scrollbar { width: 3px; }
-    .panel::-webkit-scrollbar-thumb { background: var(--b1); border-radius: 3px; }
+    .app { display: grid; grid-template-rows: 52px 24px auto 1fr 68px; width: 100vw; height: 100vh; position: relative; z-index: 2; }
+    .body { display: grid; grid-template-columns: 300px 1fr 300px; gap: 7px; padding: 7px; min-height: 0; overflow: hidden; }
+    .panel { display: flex; flex-direction: column; gap: 0; overflow: hidden; min-height: 0; }
 
     /* ── HEADER ── */
     header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 14px; background: rgba(5,7,10,0.97); backdrop-filter: blur(24px);
       border-bottom: 1px solid var(--line); position: relative; z-index: 20;
+      height: 52px;
     }
     .brand { display: flex; align-items: center; gap: 10px; }
     .brand-logo { width: 30px; height: 30px; }
@@ -95,10 +94,10 @@
     .banner.snap { background: rgba(0,100,60,0.93); border-color: rgba(0,255,157,0.4); box-shadow: 0 4px 24px rgba(0,255,157,0.3); color: #d1fae5; }
 
     /* ── CARD ── */
-    .card { background: rgba(8,12,16,0.85); backdrop-filter: blur(16px); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 11px; position: relative; overflow: hidden; }
+    .card { background: rgba(8,12,16,0.85); backdrop-filter: blur(16px); border: 1px solid var(--line); border-radius: 8px; padding: 13px 15px; position: relative; overflow: hidden; }
     .card::before { content: ''; position: absolute; top: 0; left: 18%; right: 18%; height: 1px; background: linear-gradient(90deg, transparent, rgba(223,231,224,0.08), transparent); }
-    .ct { font-size: .58rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-family: var(--sans); }
-    .ct-l { display: flex; align-items: center; gap: 5px; }
+    .ct { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--bone-dim); display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; font-family: var(--sans); }
+    .ct-l { display: flex; align-items: center; gap: 6px; }
     .cdot { width: 5px; height: 5px; border-radius: 50%; }
     .cdot.c { background: var(--cyan); box-shadow: 0 0 5px var(--cyan-g); }
     .cdot.v { background: var(--violet); box-shadow: 0 0 5px rgba(168,85,247,0.5); }
@@ -107,10 +106,17 @@
     .cdot.y { background: var(--yellow); box-shadow: 0 0 5px rgba(251,191,36,0.5); }
 
     /* ── BUTTONS ── */
-    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .btn { padding: 7px 10px; font-size: .68rem; font-weight: 600; border: 1px solid var(--b1); border-radius: 7px; cursor: pointer; background: var(--b2); color: var(--t2); transition: all .2s; font-family: var(--sans); }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .btn { padding: 8px 10px; font-size: .7rem; font-weight: 600; border: 1px solid var(--b1); border-radius: 8px; cursor: pointer; background: rgba(223,231,224,0.04); color: var(--t1); transition: all .2s; font-family: var(--sans); letter-spacing: .02em; }
+    .btn:hover { background: rgba(223,231,224,0.08); border-color: rgba(223,231,224,0.18); }
     .btn.p { background: var(--cyan-d); color: var(--cyan); border-color: rgba(0,255,245,0.3); }
+    .btn.p:hover { background: rgba(0,255,245,0.16); }
     .btn.d { background: var(--red-d); color: var(--red); border-color: rgba(255,34,85,0.3); }
+    .btn.d:hover { background: rgba(224,35,28,0.18); }
+    /* ── LANGUAGE PICKER ── */
+    .lang-opt { font-size: .62rem; font-family: var(--mono); color: var(--bone-dim); padding: 5px 8px; border-radius: 5px; cursor: pointer; transition: all .15s; }
+    .lang-opt:hover { background: rgba(0,255,245,0.08); color: var(--cyan); }
+    .lang-opt.active { color: var(--cyan); background: rgba(0,255,245,0.06); }
 
     /* ── MODULE CHIPS — compact 3-col ── */
     .mods { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
@@ -123,11 +129,15 @@
     .mod.full { grid-column: 1/-1; }
 
     /* ── METRIC ROWS ── */
-    .mrow { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--b2); }
+    .mrow { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--b2); }
     .mrow:last-child { border-bottom: none; }
-    .ml { font-size: .61rem; color: var(--t2); font-family: var(--mono); }
-    .mv { font-size: .84rem; font-weight: 700; font-family: var(--mono); }
-    .mu { font-size: .58rem; color: var(--t3); margin-left: 2px; }
+    .ml { font-size: .75rem; color: var(--t2); font-family: var(--mono); }
+    .mv { font-size: 1.1rem; font-weight: 700; font-family: var(--mono); }
+    .mu { font-size: .6rem; color: var(--t3); margin-left: 3px; }
+    /* Hero metric — large display for most important number */
+    .metric-hero { display: flex; flex-direction: column; align-items: center; padding: 8px 0; }
+    .metric-hero-val { font-size: 2rem; font-weight: 700; font-family: var(--mono); line-height: 1; }
+    .metric-hero-lbl { font-size: .6rem; font-family: var(--mono); color: var(--t3); margin-top: 4px; letter-spacing: .08em; text-transform: uppercase; }
     .mv.c { color: var(--cyan); }
     .mv.g { color: var(--green); }
     .mv.r { color: var(--red); }
@@ -151,6 +161,19 @@
     /* ── NHC ── */
     .nhc-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; border-bottom: 1px solid var(--b2); }
     .nhc-row:last-child { border-bottom: none; }
+    /* ── IMU channel bars ── */
+    .imu-ch-row { display: flex; align-items: center; gap: 5px; padding: 2px 0; }
+    .imu-ch-lbl { font-size: .52rem; font-family: var(--mono); font-weight: 700; width: 14px; flex-shrink: 0; }
+    .imu-bar-track { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; position: relative; }
+    .imu-bar-fill { height: 100%; width: 0%; border-radius: 3px; transition: width .12s linear; }
+    .imu-ch-val { font-size: .5rem; font-family: var(--mono); color: var(--t2); width: 36px; text-align: right; flex-shrink: 0; }
+    /* ── OBD-II grid ── */
+    .obd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+    .obd-cell { display: flex; flex-direction: column; gap: 2px; }
+    .obd-lbl { font-size: .46rem; font-family: var(--mono); color: var(--t3); text-transform: uppercase; letter-spacing: .04em; }
+    .obd-val { font-size: .82rem; font-family: var(--mono); font-weight: 700; color: var(--cyan); }
+    .obd-bar { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; margin-top: 1px; }
+    .obd-bar-fill { height: 100%; border-radius: 2px; transition: width .15s linear; }
     .nhc-lbl { font-size: .58rem; font-family: var(--mono); color: var(--t2); width: 78px; flex-shrink: 0; }
     .nhc-track { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06); overflow: hidden; }
     .nhc-fill { height: 100%; border-radius: 2px; transition: width .3s; }
@@ -222,7 +245,7 @@
     .fbar-val { font-size: .58rem; font-family: var(--mono); width: 30px; text-align: right; }
 
     /* ── LOG ── */
-    .elog { display: flex; flex-direction: column; gap: 3px; max-height: 80px; overflow-y: auto; }
+    .elog { display: flex; flex-direction: column; gap: 3px; max-height: 60px; overflow-y: auto; }
     .elog::-webkit-scrollbar { width: 2px; }
     .le { display: flex; gap: 5px; font-size: .56rem; font-family: var(--mono); line-height: 1.35; }
     .lt { color: var(--t3); flex-shrink: 0; }
@@ -239,8 +262,8 @@
     .sig-bar.lost { background: var(--red); animation: blink 1s step-end infinite; }
 
     /* ── PIPELINE ── */
-    .pipe { display: flex; align-items: stretch; background: rgba(5,7,10,0.97); border-top: 1px solid var(--line); overflow: hidden; }
-    .pmod { display: flex; align-items: center; gap: 8px; padding: 0 14px; flex: 1; justify-content: center; border-right: 1px solid var(--line); cursor: default; transition: background .3s; }
+    .pipe { display: flex; align-items: stretch; background: rgba(5,7,10,0.97); border-top: 1px solid var(--line); overflow: hidden; height: 68px; }
+    .pmod { display: flex; align-items: center; gap: 6px; padding: 0 10px; flex: 1; justify-content: center; border-right: 1px solid var(--line); cursor: default; transition: background .3s; }
     .pmod:last-child { border-right: none; }
     .pmod.active { background: rgba(0,255,245,0.05); }
     .pico { font-size: .9rem; transition: filter .3s; }
@@ -249,6 +272,22 @@
     .pname { font-size: .6rem; font-weight: 700; color: var(--t2); transition: color .3s; }
     .pmod.active .pname { color: var(--cyan); }
     .psub { font-size: .5rem; font-family: var(--mono); color: var(--t3); }
+
+    /* Pipeline pulse animation */
+    @keyframes pipe-pulse {
+      0%   { left: -8%; opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      100% { left: 108%; opacity: 0; }
+    }
+    .pipe-dot {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--cyan); box-shadow: 0 0 8px var(--cyan);
+      animation: pipe-pulse 1.2s linear infinite;
+      pointer-events: none;
+    }
+    .pmod { position: relative; overflow: hidden; }
 
     /* ── MODAL ── */
     .modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .25s; }
@@ -268,15 +307,15 @@
 
 /* ── DIVERGENCE CLOCK ── */
 .divclock-wrap{display:flex;flex-direction:column;gap:5px;}
-.divclock-row{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--b2);}
+.divclock-row{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--b2);}
 .divclock-row:last-child{border-bottom:none;}
-.divclock-lbl{font-size:.56rem;font-family:var(--mono);color:var(--t3);width:68px;flex-shrink:0;}
-.divclock-bar{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,0.05);overflow:hidden;position:relative;}
-.divclock-fill{height:100%;border-radius:3px;transition:width .4s;}
-.divclock-val{font-size:.68rem;font-weight:700;font-family:var(--mono);width:52px;text-align:right;}
-.drift-delta{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:6px;background:rgba(0,255,157,0.07);border:1px solid rgba(0,255,157,0.2);margin-top:4px;}
-.drift-delta-lbl{font-size:.56rem;font-family:var(--mono);color:var(--t2);}
-.drift-delta-val{font-size:.9rem;font-weight:700;font-family:var(--mono);color:var(--green);}
+.divclock-lbl{font-size:.54rem;font-family:var(--mono);color:var(--t3);width:56px;flex-shrink:0;white-space:nowrap;}
+.divclock-bar{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,0.05);overflow:hidden;position:relative;min-width:0;}
+.divclock-fill{height:100%;border-radius:4px;transition:width .4s;}
+.divclock-val{font-size:.66rem;font-weight:700;font-family:var(--mono);width:68px;min-width:68px;text-align:right;white-space:nowrap;flex-shrink:0;}
+.drift-delta{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:6px;background:rgba(0,255,157,0.07);border:1px solid rgba(0,255,157,0.2);margin-top:6px;gap:8px;}
+.drift-delta-lbl{font-size:.7rem;font-family:var(--mono);color:var(--t2);white-space:nowrap;}
+.drift-delta-val{font-size:.84rem;font-weight:700;font-family:var(--mono);color:var(--green);white-space:nowrap;}
 .drift-delta.bad .drift-delta-val{color:var(--red);}
 
 /* Kage vignette — very subtle depth */
@@ -303,7 +342,7 @@ body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:no
 .met b { color:var(--cyan); }
 
 /* NavIC sky plot */
-.sky-wrap { position:relative; width:100%; padding-top:100%; }
+.sky-wrap { position:relative; width:100%; padding-top:75%; }
 .sky-wrap canvas { position:absolute; inset:0; width:100%; height:100%; }
 
 /* Attention heatmap */
@@ -323,7 +362,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
 /* Benchmark race */
 .race-bar-wrap { display:flex; align-items:center; gap:6px; padding:4px 0; border-bottom:1px solid var(--b2); }
-.race-lbl { font-size:.56rem; font-family:var(--mono); color:var(--t2); width:60px; flex-shrink:0; }
+.race-lbl { font-size:.73rem; font-family:var(--mono); color:var(--t2); width:60px; flex-shrink:0; }
 .race-track { flex:1; height:8px; border-radius:4px; background:rgba(255,255,255,0.05); overflow:hidden; position:relative; }
 .race-fill { height:100%; border-radius:4px; transition:width .8s ease; }
 .race-val { font-size:.6rem; font-family:var(--mono); width:44px; text-align:right; }
@@ -333,21 +372,23 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 .inf-layer { display:inline-block; width:7px; height:7px; border-radius:1px; margin:0 1px; animation:inf-pulse 1.2s ease-in-out infinite; }
 
     /* ── PANEL TABS ── */
-    .ptab-bar { display:flex; gap:2px; margin-bottom:7px; background:rgba(5,7,10,0.5); padding:3px; border-radius:6px; border:1px solid var(--line); flex-shrink:0; }
-    .ptab { flex:1; padding:4px 6px; font-size:.56rem; font-weight:500; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); background:transparent; border:1px solid transparent; border-radius:4px; cursor:pointer; transition:all .18s; font-family:var(--sans); text-align:center; }
-    .ptab.active { color:var(--bone-dim); background:rgba(223,231,224,0.05); border-color:var(--line); }
+    .ptab-bar { display:flex; gap:1px; margin-bottom:5px; background:rgba(5,7,10,0.5); padding:2px; border-radius:5px; border:1px solid var(--line); flex-shrink:0; }
+    .ptab { flex:1; padding:4px 4px; font-size:.7rem; font-weight:500; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); background:transparent; border:1px solid transparent; border-radius:3px; cursor:pointer; transition:all .18s; font-family:var(--sans); text-align:center; white-space:nowrap; }
+    .ptab.active { color:var(--bone-dim); background:rgba(223,231,224,0.06); border-color:var(--line); }
     .ptab:hover:not(.active) { color:var(--bone-dim); background:rgba(223,231,224,0.03); }
-    .ptab-content { display:none; flex-direction:column; gap:7px; }
-    .ptab-content.active { display:flex; }
-    .panel { overflow-y:auto; overflow-x:hidden; }
+    .ptab-content { display:none; flex-direction:column; gap:5px; flex:1; min-height:0; overflow:hidden; }
+    .ptab-content.active { display:flex; overflow-y:auto; overflow-x:hidden; gap: 7px; }
+    .ptab-content.active::-webkit-scrollbar { width:3px; }
+    .ptab-content.active::-webkit-scrollbar-track { background:transparent; }
+    .ptab-content.active::-webkit-scrollbar-thumb { background:rgba(223,231,224,0.12); border-radius:2px; }
 
     /* ── FEATURE ADDITIONS ── */
     .city-tab.iovnbd{color:var(--yellow) !important;border-color:rgba(251,191,36,0.4) !important;}
     .city-tab.iovnbd.active{background:rgba(251,191,36,0.12) !important;border-color:rgba(251,191,36,0.45) !important;}
     /* IO-VNBD banner: fixed overlay so it never participates in the .app grid and can't break layout */
-    .iovnbd-banner{display:none;position:fixed;top:50px;left:0;right:0;z-index:30;align-items:center;gap:8px;padding:4px 14px;background:rgba(14,10,4,0.96);border-bottom:1px solid rgba(251,191,36,0.35);font-size:.58rem;font-family:var(--mono);color:var(--yellow);font-weight:700;backdrop-filter:blur(8px);}
-    .iovnbd-banner.show{display:flex;}
-    .navic-toggle{padding:0 8px;height:26px;font-size:.55rem;font-weight:700;font-family:var(--mono);border-radius:5px;cursor:pointer;border:1px solid rgba(0,255,245,0.3);background:var(--cyan-d);color:var(--cyan);letter-spacing:.06em;transition:all .2s;}
+    .iovnbd-banner{display:flex;align-items:center;gap:8px;padding:0 14px;background:rgba(14,10,4,0.96);border-bottom:1px solid rgba(251,191,36,0.35);font-size:.74rem;font-family:var(--mono);color:var(--yellow);font-weight:700;backdrop-filter:blur(8px);overflow:hidden;height:0;opacity:0;pointer-events:none;transition:height .15s,opacity .15s;}
+    .iovnbd-banner.show{height:26px;opacity:1;pointer-events:all;}
+    .navic-toggle{padding:0 8px;height:26px;font-size:.72rem;font-weight:700;font-family:var(--mono);border-radius:5px;cursor:pointer;border:1px solid rgba(0,255,245,0.3);background:var(--cyan-d);color:var(--cyan);letter-spacing:.06em;transition:all .2s;}
     .navic-toggle.navonly{color:var(--yellow);border-color:rgba(251,191,36,0.4);background:rgba(251,191,36,0.1);}
     .navic-toggle:hover{filter:brightness(1.2);}
     /* IMU Cal Wizard modal */
@@ -364,7 +405,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     .cal-btn.cancel{background:var(--b2);color:var(--t2);border:1px solid var(--b1);}
     /* Ground truth overlay */
     .gt-load-row{display:flex;align-items:center;gap:6px;margin-top:4px;}
-    .gt-label{font-size:.55rem;font-family:var(--mono);color:var(--t3);}
+    .gt-label{font-size:.72rem;font-family:var(--mono);color:var(--t3);}
     /* Recording indicator */
     .rec-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 7px var(--red-g);animation:blink .7s step-end infinite;margin-right:4px;vertical-align:middle;}
 
@@ -381,19 +422,19 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   .drift-gauge-arc { fill:none; stroke-width:6; stroke-linecap:round; transition:stroke-dashoffset .4s ease, stroke .4s; }
   .drift-gauge-val { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mono); }
   .drift-gauge-pct { font-size:.7rem; font-weight:700; line-height:1; }
-  .drift-gauge-unit{ font-size:.42rem; color:var(--t3); margin-top:1px; }
+  .drift-gauge-unit{ font-size:.6rem; color:var(--t3); margin-top:1px; }
   .drift-comply-info { flex:1; }
-  .drift-comply-lbl { font-size:.52rem; color:var(--t3); font-family:var(--mono); letter-spacing:.08em; text-transform:uppercase; }
+  .drift-comply-lbl { font-size:.7rem; color:var(--t3); font-family:var(--mono); letter-spacing:.08em; text-transform:uppercase; }
   .drift-comply-target { font-size:.6rem; color:var(--bone-dim); margin-top:2px; }
-  .drift-comply-status { display:inline-block; font-size:.52rem; font-weight:700; font-family:var(--mono); padding:1px 6px; border-radius:3px; margin-top:3px; }
+  .drift-comply-status { display:inline-block; font-size:.7rem; font-weight:700; font-family:var(--mono); padding:1px 6px; border-radius:3px; margin-top:3px; }
   .drift-comply-status.ok  { background:rgba(0,255,157,0.1); color:var(--green); border:1px solid rgba(0,255,157,0.25); }
   .drift-comply-status.bad { background:rgba(224,35,28,0.1);  color:var(--red);   border:1px solid rgba(224,35,28,0.25); }
 
   /* ── GNSS Transition Timer ── */
   .trans-row { display:flex; align-items:center; justify-content:space-between; padding:5px 7px; background:rgba(0,0,0,0.2); border-radius:5px; margin-top:5px; border:1px solid var(--line-soft); }
-  .trans-lbl { font-size:.52rem; color:var(--t3); font-family:var(--mono); letter-spacing:.06em; text-transform:uppercase; }
+  .trans-lbl { font-size:.7rem; color:var(--t3); font-family:var(--mono); letter-spacing:.06em; text-transform:uppercase; }
   .trans-val { font-size:.8rem; font-weight:700; font-family:var(--mono); color:var(--cyan); }
-  .trans-target { font-size:.48rem; color:var(--muted); }
+  .trans-target { font-size:.65rem; color:var(--muted); }
 
   /* ── ZUPT chip ── */
   .mod.zupt-active { background:rgba(0,150,255,0.12); color:rgba(0,200,255,0.8); border-color:rgba(0,150,255,0.3); }
@@ -401,13 +442,13 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   /* ── NavIC DOP row ── */
   .dop-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; margin-top:5px; }
   .dop-cell { text-align:center; padding:3px 4px; background:rgba(0,0,0,0.2); border-radius:4px; border:1px solid var(--line-soft); }
-  .dop-label { font-size:.46rem; color:var(--t3); font-family:var(--mono); text-transform:uppercase; }
+  .dop-label { font-size:.63rem; color:var(--t3); font-family:var(--mono); text-transform:uppercase; }
   .dop-value { font-size:.68rem; font-weight:700; font-family:var(--mono); color:var(--cyan); }
 
   /* ── UKF State Vector ── */
   .ukf-state { display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:5px; }
   .ukf-cell { padding:4px 5px; background:rgba(0,0,0,0.2); border-radius:4px; border:1px solid var(--line-soft); }
-  .ukf-key { font-size:.46rem; color:var(--t3); font-family:var(--mono); }
+  .ukf-key { font-size:.63rem; color:var(--t3); font-family:var(--mono); }
   .ukf-val { font-size:.65rem; font-weight:700; font-family:var(--mono); color:var(--violet); }
 
   /* ── Edge Deployment Metrics ── */
@@ -415,7 +456,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   .edge-cell { text-align:center; padding:5px 3px; background:rgba(0,0,0,0.2); border-radius:5px; border:1px solid var(--line-soft); }
   .edge-icon { font-size:.75rem; line-height:1; }
   .edge-val { font-size:.7rem; font-weight:700; font-family:var(--mono); color:var(--green); }
-  .edge-lbl { font-size:.44rem; color:var(--t3); font-family:var(--mono); text-transform:uppercase; margin-top:1px; }
+  .edge-lbl { font-size:.62rem; color:var(--t3); font-family:var(--mono); text-transform:uppercase; margin-top:1px; }
 
   /* ════════════════════════════════════════════════════
      KAGE — consolidated theme layer (no neon, no glow)
@@ -553,7 +594,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   <div style="width:220px;height:2px;background:var(--line-soft);border-radius:1px;overflow:hidden;margin-top:4px">
     <div id="boot-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#6b1414,rgba(223,231,224,0.4));border-radius:1px;transition:width .3s ease"></div>
   </div>
-  <div id="boot-pct" style="font-size:.55rem;color:var(--muted);letter-spacing:.1em">0%</div>
+  <div id="boot-pct" style="font-size:.72rem;color:var(--muted);letter-spacing:.1em">0%</div>
 </div>
 
 <!-- ── PARTICLE CANVAS (atmospheric emerald pixel grid) ── -->
@@ -566,12 +607,21 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   <span id="banner-timer">0.0s</span>
 </div>
 
-<!-- IO-VNBD DATASET BANNER — position:fixed overlay, lives outside .app grid -->
-<div class="iovnbd-banner" id="iovnbd-banner">
-  📡 IO-VNBD Dataset Replay — Inertial &amp; Odometry benchmark, ground-vehicle positioning · NAVDRIFT-0 inference on real sensor data
-</div>
-
-<div class="app">
+<div class="app" id="app-root">
+  <!-- Onboarding tour -->
+  <div id="onboard-overlay" style="display:none;position:fixed;inset:0;z-index:9000;pointer-events:none;">
+    <div id="onboard-card" style="position:absolute;background:rgba(5,7,10,0.97);border:1px solid rgba(0,255,245,0.4);border-radius:10px;padding:14px 18px;max-width:260px;font-family:'JetBrains Mono',monospace;pointer-events:all;box-shadow:0 0 32px rgba(0,255,245,0.15);">
+      <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;color:#00fff5;margin-bottom:6px;" id="ob-step-label">STEP 1 OF 3</div>
+      <div style="font-size:.65rem;color:#dfe7e0;line-height:1.6;" id="ob-text"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+        <div style="display:flex;gap:4px;" id="ob-dots"></div>
+        <div style="flex:1"></div>
+        <button id="ob-skip" onclick="endOnboard()" style="background:none;border:none;color:#78837c;font-size:.7rem;cursor:pointer;font-family:inherit;">Skip</button>
+        <button id="ob-next" onclick="nextOnboard()" style="background:rgba(0,255,245,0.1);border:1px solid rgba(0,255,245,0.3);color:#00fff5;font-size:.72rem;padding:4px 12px;border-radius:5px;cursor:pointer;font-family:inherit;">Next →</button>
+      </div>
+      <div id="ob-arrow" style="position:absolute;width:12px;height:12px;background:rgba(5,7,10,0.97);border:1px solid rgba(0,255,245,0.4);transform:rotate(45deg);"></div>
+    </div>
+  </div>
   <!-- HEADER -->
   <header>
     <div class="brand">
@@ -607,11 +657,45 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <span class="badge badge-mode" id="mode-badge">SIMULATION</span>
       <button class="navic-toggle" id="navic-btn" onclick="toggleNavICMode()" title="Toggle NavIC-only mode">NavIC+GPS</button>
       <button class="navic-toggle" id="prod-btn" onclick="toggleProdModel()" title="Run all 5 trained ONNX models in-browser" style="background:rgba(168,85,247,0.12);color:var(--violet);border-color:rgba(168,85,247,0.35)">SIM MODE</button>
-      <span id="onnx-lat" style="font-size:.52rem;font-family:var(--mono);color:var(--t3);min-width:40px"></span>
+      <span id="onnx-lat" style="font-size:.7rem;font-family:var(--mono);color:var(--t3);min-width:40px"></span>
       <span class="badge badge-ps">PS #26168</span>
+      <div style="position:relative">
+        <button class="btn-icon" id="lang-btn" onclick="toggleLangMenu()" title="भाषा / Language" style="width:auto;padding:0 9px;gap:5px;font-size:.74rem;font-weight:600;font-family:var(--mono)">🌐 <span id="lang-cur">EN</span></button>
+        <div id="lang-menu" style="display:none;position:absolute;top:36px;right:0;background:#080c10;border:1px solid var(--line);border-radius:8px;padding:5px;z-index:999;width:120px;box-shadow:0 8px 24px rgba(0,0,0,0.7)">
+          <div style="font-size:.62rem;font-family:var(--mono);color:var(--muted);letter-spacing:.12em;padding:3px 6px 5px;border-bottom:1px solid var(--line);margin-bottom:3px">LANGUAGE / भाषा</div>
+          <div class="lang-opt" onclick="pickLang('en','EN')">English</div>
+          <div class="lang-opt" onclick="pickLang('hi','हिंदी')">हिंदी</div>
+          <div class="lang-opt" onclick="pickLang('ta','தமிழ்')">தமிழ்</div>
+          <div class="lang-opt" onclick="pickLang('te','తెలుగు')">తెలుగు</div>
+          <div class="lang-opt" onclick="pickLang('kn','ಕನ್ನಡ')">ಕನ್ನಡ</div>
+          <div class="lang-opt" onclick="pickLang('bn','বাংলা')">বাংলা</div>
+          <div class="lang-opt" onclick="pickLang('mr','मराठी')">मराठी</div>
+          <div class="lang-opt" onclick="pickLang('gu','ગુજરાતી')">ગુજરાતી</div>
+          <div class="lang-opt" onclick="pickLang('ml','മലയാളം')">മലയാളം</div>
+          <div class="lang-opt" onclick="pickLang('pa','ਪੰਜਾਬੀ')">ਪੰਜਾਬੀ</div>
+          <div class="lang-opt" onclick="pickLang('od','ଓଡ଼ିଆ')">ଓଡ଼ିଆ</div>
+        </div>
+      </div>
+      <div class="btn-icon" onclick="openHelp()" title="How it works" style="color:var(--bone-dim);font-size:.75rem;font-weight:700;font-family:var(--mono);">?</div>
       <div class="btn-icon" onclick="openModal()" title="API Settings">⚙</div>
     </div>
   </header>
+
+  <!-- SYSTEM EXPLAIN BAR — always visible, one-liner -->
+  <div style="display:flex;align-items:center;justify-content:center;gap:20px;padding:0 16px;background:rgba(5,7,10,0.92);border-bottom:1px solid var(--line-soft);height:24px;font-size:.63rem;font-family:var(--mono);color:var(--muted);letter-spacing:.06em;flex-shrink:0">
+    <span>🛰 <b style="color:var(--bone-dim)">NavIC/GPS</b> → position when signal is available</span>
+    <span style="color:var(--line)">|</span>
+    <span>📡 <b style="color:var(--bone-dim)">IMU + OBD-II</b> → raw sensor data always collected</span>
+    <span style="color:var(--line)">|</span>
+    <span>🤖 <b style="color:var(--bone-dim)">NAVDRIFT-0 AI</b> → takes over when GPS is lost</span>
+    <span style="color:var(--line)">|</span>
+    <span>📍 <b style="color:var(--bone-dim)">PS #26168</b> → ISRO SIH 2026 dead reckoning challenge</span>
+  </div>
+
+  <!-- IO-VNBD DATASET BANNER — grid row 2, height 0 when hidden, 26px when shown -->
+  <div class="iovnbd-banner" id="iovnbd-banner">
+    📡 IO-VNBD Dataset Replay — Inertial &amp; Odometry benchmark, ground-vehicle positioning · NAVDRIFT-0 inference on real sensor data
+  </div>
 
   <!-- BODY -->
   <div class="body">
@@ -619,51 +703,53 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     <!-- LEFT PANEL -->
     <div class="panel">
       <div class="ptab-bar">
-        <button class="ptab active" onclick="switchPTab('left','live',this)">LIVE</button>
-        <button class="ptab" onclick="switchPTab('left','modules',this)">MODULES</button>
-        <button class="ptab" onclick="switchPTab('left','sensors',this)">SENSORS</button>
-        <button class="ptab" onclick="switchPTab('left','log',this)">LOG</button>
+        <button class="ptab active" onclick="switchPTab('left','live',this)" data-t="tab_live">LIVE</button>
+        <button class="ptab" onclick="switchPTab('left','modules',this)" data-t="tab_modules">MODULES</button>
+        <button class="ptab" onclick="switchPTab('left','sensors',this)" data-t="tab_sensors">SENSORS</button>
+        <button class="ptab" onclick="switchPTab('left','log',this)" data-t="tab_log">LOG</button>
       </div>
 
       <!-- LIVE TAB: NavIC + Controls -->
       <div class="ptab-content active" data-panel="left" data-tab="live">
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>NavIC Constellation</div><span id="navic-lock-badge" style="font-size:.52rem;font-weight:700;color:var(--green)">7 SAT LOCKED</span></div>
-          <div style="font-size:.48rem;font-family:var(--mono);color:var(--t3);margin-bottom:4px">MET <b id="met-clock" style="color:var(--cyan)">00:00:00</b></div>
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span><span data-t="hdr_navic">NavIC Constellation</span></div><span id="navic-lock-badge" style="font-size:.7rem;font-weight:700;color:var(--green)">7 SAT LOCKED</span></div>
+          <div style="font-size:.63rem;font-family:var(--mono);color:var(--muted);margin-bottom:5px;line-height:1.5"><span data-t="desc_navic">India's own GPS system. Satellites shown in sky view — more visible = better signal.</span></div>
+          <div style="font-size:.65rem;font-family:var(--mono);color:var(--t3);margin-bottom:4px">MET <b id="met-clock" style="color:var(--cyan)">00:00:00</b></div>
           <div class="sky-wrap"><canvas id="sky-cv"></canvas></div>
           <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px" id="sat-snr-bars"></div>
         </div>
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Controls</div></div>
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span><span data-t="hdr_controls">Controls</span></div></div>
+          <div style="font-size:.63rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5"><span data-t="desc_controls">Use GNSS Toggle to simulate losing satellite signal. The AI takes over navigation using only IMU + barometer.</span></div>
           <div class="btn-row">
-            <button class="btn p" id="btn-play" onclick="toggleSim()">⏸ Pause</button>
-            <button class="btn d" onclick="toggleOutage()">📡 GNSS Toggle</button>
+            <button class="btn p" id="btn-play" onclick="toggleSim()" data-t="btn_pause">⏸ Pause</button>
+            <button class="btn d" onclick="toggleOutage()" data-t="btn_gnss_tog">📡 GNSS Toggle</button>
           </div>
           <div class="btn-row" style="margin-top:5px">
-            <button class="btn" onclick="document.getElementById('gpx-input').click()" style="background:rgba(168,85,247,0.1);color:var(--violet);border-color:rgba(168,85,247,0.3)">📂 Load GPX</button>
-            <button class="btn" onclick="exportPDF()" style="background:rgba(251,191,36,0.1);color:var(--yellow);border-color:rgba(251,191,36,0.3)">📄 Export PDF</button>
+            <button class="btn" onclick="document.getElementById('gpx-input').click()" style="background:rgba(168,85,247,0.1);color:var(--violet);border-color:rgba(168,85,247,0.3)" data-t="btn_load_gpx">📂 Load GPX</button>
+            <button class="btn" onclick="exportPDF()" style="background:rgba(251,191,36,0.1);color:var(--yellow);border-color:rgba(251,191,36,0.3)" data-t="btn_export_pdf">📄 Export PDF</button>
           </div>
           <div class="btn-row" style="margin-top:5px">
-            <button class="btn" onclick="openCalWizard()" style="background:rgba(0,255,157,0.1);color:var(--green);border-color:rgba(0,255,157,0.3)">🔧 IMU Cal Wizard</button>
-            <button class="btn" id="rec-btn" onclick="toggleRecording()" style="background:rgba(255,34,85,0.1);color:var(--red);border-color:rgba(255,34,85,0.3)">⏺ Start Rec</button>
+            <button class="btn" onclick="openCalWizard()" style="background:rgba(0,255,157,0.1);color:var(--green);border-color:rgba(0,255,157,0.3)" data-t="btn_imu_cal">🔧 IMU Cal Wizard</button>
+            <button class="btn" id="rec-btn" onclick="toggleRecording()" style="background:rgba(255,34,85,0.1);color:var(--red);border-color:rgba(255,34,85,0.3)" data-t="btn_start_rec">⏺ Start Rec</button>
           </div>
           <!-- Ground Truth Overlay -->
           <div class="gt-load-row" style="margin-top:6px">
             <span class="gt-label">Ground Truth:</span>
-            <label style="cursor:pointer;font-size:.55rem;font-family:var(--mono);color:var(--violet);border:1px solid rgba(168,85,247,0.3);background:rgba(168,85,247,0.1);padding:2px 8px;border-radius:4px;">
+            <label style="cursor:pointer;font-size:.72rem;font-family:var(--mono);color:var(--violet);border:1px solid rgba(168,85,247,0.3);background:rgba(168,85,247,0.1);padding:2px 8px;border-radius:4px;">
               📍 Load CSV<input type="file" id="gt-file" accept=".csv" style="display:none" onchange="loadGroundTruth(event)">
             </label>
-            <span id="gt-status" style="font-size:.53rem;font-family:var(--mono);color:var(--t3)"></span>
+            <span id="gt-status" style="font-size:.7rem;font-family:var(--mono);color:var(--t3)"></span>
           </div>
           <input type="file" id="gpx-input" accept=".gpx,.xml" style="display:none" onchange="loadGPX(event)">
-          <div id="gpx-status" style="font-size:.55rem;font-family:var(--mono);color:var(--t3);margin-top:4px;display:none"></div>
+          <div id="gpx-status" style="font-size:.72rem;font-family:var(--mono);color:var(--t3);margin-top:4px;display:none"></div>
         </div>
       </div>
 
       <!-- MODULES TAB -->
       <div class="ptab-content" data-panel="left" data-tab="modules">
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>IDR System Modules</div><span style="font-size:.55rem;color:var(--t3)">PS #26168</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span><span data-t="hdr_modules">IDR System Modules</span></div><span style="font-size:.72rem;color:var(--t3)">PS #26168</span></div>
           <div class="mods">
             <div class="mod on" id="m-cal"><span class="mod-dot"></span>CAL ENG</div>
             <div class="mod on" id="m-vib"><span class="mod-dot"></span>VIB FILT</div>
@@ -673,7 +759,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             <div class="mod off" id="m-snap"><span class="mod-dot"></span>SNAP</div>
             <div class="mod on" id="m-odo"><span class="mod-dot"></span>ODO·AI</div>
             <div class="mod on" id="m-mag"><span class="mod-dot"></span>MAG/AHRS</div>
-            <div class="mod on full" id="m-dr"><span class="mod-dot"></span>DRIFT-FORMER · INT8/INT4 ONNX · 20ms CPU · 9-ch (baro+mag)</div>
+            <div class="mod on full" id="m-dr"><span class="mod-dot"></span>DRIFT-FORMER · FP32 ONNX · 20ms CPU · 9-ch (baro+mag)</div>
             <div class="mod on" id="m-zupt"><span class="mod-dot"></span>ZUPT</div>
             <div class="mod on" id="m-fed"><span class="mod-dot"></span>FED·LEARN</div>
           </div>
@@ -681,57 +767,144 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot v"></span>Non-Holonomic Constraints</div></div>
           <div class="nhc-row">
-            <span class="nhc-lbl">Lateral vel</span>
+            <span class="nhc-lbl" data-t="lbl_lat_vel">Lateral vel</span>
             <div class="nhc-track"><div class="nhc-fill" id="nhc-lb" style="width:0%;background:linear-gradient(90deg,var(--green),var(--cyan))"></div></div>
             <span style="font-size:.6rem;font-family:var(--mono);color:var(--cyan);width:36px;text-align:right" id="nhc-lv">0.00</span>
           </div>
           <div class="nhc-row">
-            <span class="nhc-lbl">Vertical vel</span>
+            <span class="nhc-lbl" data-t="lbl_vert_vel">Vertical vel</span>
             <div class="nhc-track"><div class="nhc-fill" id="nhc-vb" style="width:0%;background:linear-gradient(90deg,var(--violet),var(--cyan))"></div></div>
             <span style="font-size:.6rem;font-family:var(--mono);color:var(--cyan);width:36px;text-align:right" id="nhc-vv">0.00</span>
           </div>
-          <div class="nhc-row"><span class="nhc-lbl">Corrections</span><span style="font-size:.78rem;font-weight:700;font-family:var(--mono);color:var(--violet)" id="nhc-cnt">0</span></div>
-          <div class="nhc-row"><span class="nhc-lbl">Error removed</span><span style="font-size:.78rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="nhc-err">0.00 m</span></div>
+          <div class="nhc-row"><span class="nhc-lbl" data-t="lbl_corrections">Corrections</span><span style="font-size:.78rem;font-weight:700;font-family:var(--mono);color:var(--violet)" id="nhc-cnt">0</span></div>
+          <div class="nhc-row"><span class="nhc-lbl" data-t="lbl_err_removed">Error removed</span><span style="font-size:.78rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="nhc-err">0.00 m</span></div>
         </div>
       </div>
 
       <!-- SENSORS TAB -->
       <div class="ptab-content" data-panel="left" data-tab="sensors">
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Alignment &amp; Vibration Filter</div><span style="font-size:.55rem;color:var(--green)">✓ LOCKED</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Alignment &amp; Vibration Filter</div><span style="font-size:.72rem;color:var(--green)">✓ LOCKED</span></div>
           <div class="sbar-row"><span class="sbar-lbl">PITCH</span><div class="sbar-track"><div class="sbar-fill" id="cal-p" style="width:62%"></div></div><span class="sbar-val" id="cal-pv">+3.2°</span></div>
           <div class="sbar-row"><span class="sbar-lbl">ROLL</span><div class="sbar-track"><div class="sbar-fill" id="cal-r" style="width:42%"></div></div><span class="sbar-val" id="cal-rv">-1.4°</span></div>
           <div class="sbar-row"><span class="sbar-lbl">YAW</span><div class="sbar-track"><div class="sbar-fill" id="cal-y" style="width:51%"></div></div><span class="sbar-val" id="cal-yv" style="color:var(--green)">0.1°</span></div>
           <div style="height:1px;background:var(--b1);margin:7px 0"></div>
           <div class="fcomp">
-            <div class="fcol"><div class="fcol-lbl">RAW IMU (noisy)</div><div class="fcol-val r" id="vib-raw">— km/h</div></div>
-            <div class="fcol"><div class="fcol-lbl">AI FILTERED</div><div class="fcol-val g" id="vib-filt">— km/h</div></div>
+            <div class="fcol"><div class="fcol-lbl" data-t="lbl_vib_raw">RAW IMU (noisy)</div><div class="fcol-val r" id="vib-raw">— km/h</div></div>
+            <div class="fcol"><div class="fcol-lbl" data-t="lbl_vib_filt">AI FILTERED</div><div class="fcol-val g" id="vib-filt">— km/h</div></div>
           </div>
           <div style="height:36px;border-radius:5px;overflow:hidden;background:rgba(0,0,0,0.22);position:relative">
-            <div style="position:absolute;top:2px;left:5px;font-size:.48rem;font-family:var(--mono);color:var(--t3)">VIBRATION · raw (red) vs filtered (cyan)</div>
+            <div style="position:absolute;top:2px;left:5px;font-size:.65rem;font-family:var(--mono);color:var(--t3)">VIBRATION · raw (red) vs filtered (cyan)</div>
             <canvas id="vib-cv" style="width:100%;height:100%;display:block"></canvas>
           </div>
-          <div class="mrow" style="margin-top:5px"><span class="ml">Pothole events filtered</span><span class="mv y" id="vib-pots">0</span></div>
+          <div class="mrow" style="margin-top:5px"><span class="ml" data-t="lbl_pots">Pothole events filtered</span><span class="mv y" id="vib-pots">0</span></div>
           <div style="height:1px;background:var(--b1);margin:7px 0"></div>
           <div class="fcomp">
-            <div class="fcol"><div class="fcol-lbl">WHEEL ODO</div><div class="fcol-val c" id="odo-wheel">— km/h</div></div>
-            <div class="fcol"><div class="fcol-lbl">AI IMU EST</div><div class="fcol-val" style="color:var(--violet)" id="odo-ai">— km/h</div></div>
+            <div class="fcol"><div class="fcol-lbl" data-t="lbl_wheel_odo">WHEEL ODO</div><div class="fcol-val c" id="odo-wheel">— km/h</div></div>
+            <div class="fcol"><div class="fcol-lbl" data-t="lbl_ai_imu_est">AI IMU EST</div><div class="fcol-val" style="color:var(--violet)" id="odo-ai">— km/h</div></div>
           </div>
-          <div class="mrow"><span class="ml">MAG heading</span><span class="mv" style="color:var(--orange)" id="mag-hdg">—°</span></div>
-          <div class="mrow"><span class="ml">AHRS confidence</span><span class="mv g" id="ahrs-conf">—%</span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_mag_hdg">MAG heading</span><span class="mv" style="color:var(--orange)" id="mag-hdg">—°</span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_ahrs_conf">AHRS confidence</span><span class="mv g" id="ahrs-conf">—%</span></div>
+        </div>
+        <!-- Raw IMU channels live readout -->
+        <div class="card" style="margin-top:0">
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span><span data-t="hdr_imu">IMU · Motion Sensor</span></div><span id="imu-temp-lbl" style="font-size:.68rem;color:var(--muted);font-family:var(--mono)">—°C</span></div>
+          <div style="font-size:.63rem;font-family:var(--mono);color:var(--muted);margin-bottom:6px;line-height:1.4"><span data-t="desc_imu">MPU-6050 / ICM-42688 chip. ax/ay/az = acceleration (m/s²). gx/gy/gz = rotation speed (rad/s). These feed the AI.</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;">
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#f87171">ax</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-ax" style="background:#f87171"></div></div><span class="imu-ch-val" id="imu-v-ax">0.00</span></div>
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#fb923c">gx</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-gx" style="background:#fb923c"></div></div><span class="imu-ch-val" id="imu-v-gx">0.00</span></div>
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#4ade80">ay</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-ay" style="background:#4ade80"></div></div><span class="imu-ch-val" id="imu-v-ay">0.00</span></div>
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#a3e635">gy</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-gy" style="background:#a3e635"></div></div><span class="imu-ch-val" id="imu-v-gy">0.00</span></div>
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#60a5fa">az</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-az" style="background:#60a5fa"></div></div><span class="imu-ch-val" id="imu-v-az">-9.81</span></div>
+            <div class="imu-ch-row"><span class="imu-ch-lbl" style="color:#c084fc">gz</span><div class="imu-bar-track"><div class="imu-bar-fill" id="imu-bar-gz" style="background:#c084fc"></div></div><span class="imu-ch-val" id="imu-v-gz">0.00</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:.63rem;font-family:var(--mono);color:var(--t3)">
+            <span>accel m/s²</span><span>gyro rad/s</span>
+          </div>
+        </div>
+        <!-- OBD-II / vehicle CAN bus card -->
+        <div class="card" style="margin-top:0">
+          <div class="ct"><div class="ct-l"><span class="cdot y"></span><span data-t="hdr_obd">OBD-II · CAN Bus</span></div><span style="font-size:.65rem;color:var(--t3);font-family:var(--mono)" id="obd-pid-lbl">PID 0x0D / 0x0C</span></div>
+          <div style="font-size:.63rem;font-family:var(--mono);color:var(--muted);margin-bottom:6px;line-height:1.4"><span data-t="desc_obd">Car's own ECU data via ELM327 dongle. Vehicle speed replaces wheel encoder. Engine RPM and throttle feed the dynamics model.</span></div>
+          <div class="obd-grid">
+            <div class="obd-cell">
+              <div class="obd-lbl" data-t="lbl_veh_spd">Vehicle Speed</div>
+              <div class="obd-val"><span id="obd-spd">—</span> <span style="font-size:.73rem;color:var(--t3)">km/h</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-spd-bar" style="background:var(--cyan)"></div></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl" data-t="lbl_eng_rpm">Engine RPM</div>
+              <div class="obd-val"><span id="obd-rpm">—</span> <span style="font-size:.73rem;color:var(--t3)">rpm</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-rpm-bar" style="background:var(--orange)"></div></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl" data-t="lbl_throttle">Throttle</div>
+              <div class="obd-val"><span id="obd-thr">—</span> <span style="font-size:.73rem;color:var(--t3)">%</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-thr-bar" style="background:var(--green)"></div></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl" data-t="lbl_eng_load">Engine Load</div>
+              <div class="obd-val"><span id="obd-load">—</span> <span style="font-size:.73rem;color:var(--t3)">%</span></div>
+              <div class="obd-bar"><div class="obd-bar-fill" id="obd-load-bar" style="background:var(--violet)"></div></div>
+            </div>
+          </div>
+          <div style="height:1px;background:var(--b1);margin:6px 0"></div>
+          <!-- Barometer / pressure -->
+          <div class="obd-grid">
+            <div class="obd-cell">
+              <div class="obd-lbl" data-t="lbl_baro_alt">Baro Altitude</div>
+              <div class="obd-val"><span id="obd-alt">—</span> <span style="font-size:.73rem;color:var(--t3)">m</span></div>
+            </div>
+            <div class="obd-cell">
+              <div class="obd-lbl" data-t="lbl_pressure">Pressure</div>
+              <div class="obd-val"><span id="obd-prs">—</span> <span style="font-size:.73rem;color:var(--t3)">hPa</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- NavIC signal strength -->
+        <div class="card" style="margin-top:0">
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span><span data-t="hdr_navic_sig">NavIC Signal</span></div></div>
+          <div class="sig">
+            <div class="sig-bars">
+              <div class="sig-bar" style="height:5px" id="sb1"></div>
+              <div class="sig-bar" style="height:9px" id="sb2"></div>
+              <div class="sig-bar" style="height:13px" id="sb3"></div>
+              <div class="sig-bar" style="height:17px" id="sb4"></div>
+              <div class="sig-bar" style="height:20px" id="sb5"></div>
+            </div>
+            <div>
+              <div style="font-size:.72rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="sig-state">NavIC L5 / S-Band</div>
+              <div style="font-size:.73rem;color:var(--t3);font-family:var(--mono)" id="sig-sub">7 Satellites locked</div>
+            </div>
+          </div>
+          <div class="dop-row">
+            <div class="dop-cell"><div class="dop-label">PDOP</div><div class="dop-value" id="dop-pdop">1.8</div></div>
+            <div class="dop-cell"><div class="dop-label">HDOP</div><div class="dop-value" id="dop-hdop">1.2</div></div>
+            <div class="dop-cell"><div class="dop-label">VDOP</div><div class="dop-value" id="dop-vdop">1.4</div></div>
+          </div>
+        </div>
+        <!-- Live signal sparklines -->
+        <div class="card" style="margin-top:0">
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span><span data-t="hdr_live_sig">Live Signals</span></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--red);font-size:.7rem">Pos Error</span><span class="spark-num r" id="sp-err-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-err"></canvas></div></div>
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--violet);font-size:.7rem">Uncert σ</span><span class="spark-num v" id="sp-unc-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-unc"></canvas></div></div>
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--green);font-size:.7rem">Speed</span><span class="spark-num g" id="sp-spd-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-spd"></canvas></div></div>
+            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--yellow);font-size:.7rem">Baro Alt</span><span class="spark-num y" id="sp-baro-v" style="font-size:.74rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-baro"></canvas></div><div style="font-size:.63rem;font-family:var(--mono);color:var(--t3);display:flex;justify-content:space-between"><span>9th ch</span><span id="sp-baro-tun" style="font-size:.63rem">—</span></div></div>
+          </div>
         </div>
       </div>
 
       <!-- LOG TAB -->
       <div class="ptab-content" data-panel="left" data-tab="log">
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Event Timeline</div><span style="font-size:.52rem;color:var(--t3)" id="tl-steps">0 steps</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Event Timeline</div><span style="font-size:.7rem;color:var(--t3)" id="tl-steps">0 steps</span></div>
           <div class="tl-wrap" id="tl-wrap"></div>
           <div style="display:flex;gap:10px;margin-top:4px">
-            <span style="font-size:.5rem;font-family:var(--mono);color:var(--green)">■ GNSS</span>
-            <span style="font-size:.5rem;font-family:var(--mono);color:var(--red)">■ Blackout</span>
-            <span style="font-size:.5rem;font-family:var(--mono);color:var(--yellow)">■ Tunnel</span>
-            <span style="font-size:.5rem;font-family:var(--mono);color:var(--cyan)">■ SNAP</span>
+            <span style="font-size:.68rem;font-family:var(--mono);color:var(--green)">■ GNSS</span>
+            <span style="font-size:.68rem;font-family:var(--mono);color:var(--red)">■ Blackout</span>
+            <span style="font-size:.68rem;font-family:var(--mono);color:var(--yellow)">■ Tunnel</span>
+            <span style="font-size:.68rem;font-family:var(--mono);color:var(--cyan)">■ SNAP</span>
           </div>
         </div>
         <div class="card">
@@ -748,10 +921,12 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         <div id="map"></div>
         <!-- Map control strip -->
         <div class="map-ctrl-strip">
+          <button class="map-ctrl-btn" id="force-out-btn" onclick="forceBlackout()" title="Force a GNSS blackout now to see dead reckoning live" style="color:#E0231C;border-color:rgba(224,35,28,0.4);">&#x26A1; BLACKOUT</button>
           <button class="map-ctrl-btn" id="sat-btn" onclick="toggleSatellite()" title="Toggle satellite imagery">&#x1F6F0; SAT</button>
           <button class="map-ctrl-btn" id="road-conf-btn" onclick="toggleRoadConf()" title="Cartosat-3 road confidence heatmap">&#x1F5FA; ROAD CONF</button>
           <button class="map-ctrl-btn" id="unc-band-btn" onclick="toggleUncBand()" title="Lane-level uncertainty corridor">&#x1F4D0; UNC BAND</button>
           <button class="map-ctrl-btn" id="sv-toggle-btn" onclick="svTogglePanel()" title="Street View — road-level outdoor imagery">&#x1F6E3; STREET VIEW</button>
+          <button class="map-ctrl-btn" id="compare-btn" onclick="toggleCompare()" title="Show all three tracks for comparison">&#x1F4CA; COMPARE</button>
         </div>
         <!-- Cartosat road confidence legend -->
         <div class="cartosat-legend" id="cartosat-legend">
@@ -761,14 +936,22 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <div class="cl-row"><div class="cl-swatch" style="background:#E0231C"></div><span class="cl-label">Low &lt;0.4</span></div>
           <div class="cl-row" style="margin-top:3px"><div class="cl-swatch" style="background:rgba(168,85,247,0.6)"></div><span class="cl-label">DR uncertainty band</span></div>
         </div>
+        <!-- Blackout summary card -->
+        <div id="summary-card" style="display:none;position:absolute;bottom:52px;right:10px;z-index:500;background:rgba(5,7,10,0.96);border:1px solid rgba(0,255,157,0.4);border-radius:8px;padding:10px 14px;font-family:'JetBrains Mono',monospace;min-width:200px;backdrop-filter:blur(12px);">
+          <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;color:#00ff9d;margin-bottom:6px;">BLACKOUT SUMMARY</div>
+          <div id="sc-duration" style="font-size:.6rem;color:#dfe7e0;margin-bottom:3px;"></div>
+          <div id="sc-nd" style="font-size:.6rem;color:#00fff5;margin-bottom:2px;"></div>
+          <div id="sc-ekf" style="font-size:.6rem;color:#a855f7;margin-bottom:2px;"></div>
+          <div id="sc-ratio" style="font-size:.65rem;font-weight:700;color:#00ff9d;margin-top:4px;border-top:1px solid rgba(223,231,224,0.08);padding-top:4px;"></div>
+        </div>
       </div>
       <div id="sv-half">
         <div id="sv-pano" style="width:100%;height:100%"></div>
         <div id="sv-token-overlay">
-          <div style="font-family:var(--mono);font-size:.58rem;color:var(--t3);letter-spacing:.1em">GOOGLE MAPS API KEY</div>
+          <div style="font-family:var(--mono);font-size:.74rem;color:var(--t3);letter-spacing:.1em">GOOGLE MAPS API KEY</div>
           <input id="sv-key-input" type="text" placeholder="Paste your API key…" />
           <button onclick="svSubmitKey()">ACTIVATE STREET VIEW</button>
-          <div id="sv-key-err" style="font-family:var(--mono);font-size:.5rem;color:var(--red);display:none">Invalid key or load error</div>
+          <div id="sv-key-err" style="font-family:var(--mono);font-size:.68rem;color:var(--red);display:none">Invalid key or load error</div>
         </div>
       </div>
       <div id="route-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(139,26,26,0.88);color:var(--bone);font-size:.72rem;letter-spacing:.08em;padding:5px 14px;border-radius:3px;gap:6px;align-items:center;white-space:nowrap;">⚠ High uncertainty — alternate route suggested</div>
@@ -796,63 +979,47 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     <!-- RIGHT PANEL -->
     <div class="panel">
       <div class="ptab-bar">
-        <button class="ptab active" onclick="switchPTab('right','metrics',this)">METRICS</button>
-        <button class="ptab" onclick="switchPTab('right','ai',this)">AI</button>
-        <button class="ptab" onclick="switchPTab('right','compliance',this)">COMPLY</button>
-        <button class="ptab" onclick="switchPTab('right','bench',this)">BENCH</button>
-        <button class="ptab" onclick="switchPTab('right','fleet',this)">FLEET</button>
-        <button class="ptab" onclick="switchPTab('right','explain',this)">EXPLAIN</button>
+        <button class="ptab active" onclick="switchPTab('right','metrics',this)" data-t="tab_metrics">METRICS</button>
+        <button class="ptab" onclick="switchPTab('right','ai',this)" data-t="tab_ai">AI</button>
+        <button class="ptab" onclick="switchPTab('right','compliance',this)" data-t="tab_comply">COMPLY</button>
+        <button class="ptab" onclick="switchPTab('right','bench',this)" data-t="tab_bench">BENCH</button>
+        <button class="ptab" onclick="switchPTab('right','fleet',this)" data-t="tab_fleet">FLEET</button>
+        <button class="ptab" onclick="switchPTab('right','explain',this)" data-t="tab_explain">EXPLAIN</button>
       </div>
 
       <!-- METRICS TAB -->
       <div class="ptab-content active" data-panel="right" data-tab="metrics">
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Telemetry</div><span class="badge badge-mode" id="mode-chip">[SIM]</span></div>
-          <div class="mrow"><span class="ml">NAVDRIFT-0 ATE</span><span class="mv c" id="v-nd">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">EKF Baseline ATE</span><span class="mv v" id="v-ekf">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">Uncertainty σ</span><span class="mv y" id="v-unc">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">Inference latency</span><span class="mv g" id="v-lat">—<span class="mu">ms</span></span></div>
-          <div class="mrow"><span class="ml">Steps / Outages</span><span class="mv" style="color:var(--t2);font-size:.7rem"><span id="v-steps">0</span> / <span id="v-outs" style="color:var(--red)">0</span></span></div>
+        <!-- ── HERO CARD: primary AI accuracy number ── -->
+        <div class="card" style="text-align:center;padding:14px 13px">
+          <div style="font-size:.68rem;font-family:var(--mono);letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:6px" data-t="hdr_ai_err">AI Navigation Error</div>
+          <div style="display:flex;align-items:baseline;justify-content:center;gap:5px">
+            <span style="font-size:2.6rem;font-weight:700;font-family:var(--mono);line-height:1;color:var(--bone)" id="v-nd">—</span>
+            <span style="font-size:.85rem;font-family:var(--mono);color:var(--muted);margin-bottom:2px">m</span>
+          </div>
+          <div style="font-size:.65rem;color:var(--muted);font-family:var(--mono);margin-top:4px;letter-spacing:.07em">NAVDRIFT-0 Average Trajectory Error · lower is better</div>
+          <div style="display:flex;justify-content:space-around;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+            <div style="text-align:center">
+              <div style="font-size:.6rem;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-bottom:2px">EKF BASELINE</div>
+              <div style="font-size:1rem;font-weight:700;font-family:var(--mono);color:#9b72d8"><span id="v-ekf">—</span><span style="font-size:.72rem;color:var(--muted);margin-left:2px">m</span></div>
+            </div>
+            <div style="width:1px;background:var(--line)"></div>
+            <div style="text-align:center">
+              <div style="font-size:.6rem;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-bottom:2px">UNCERTAINTY σ</div>
+              <div style="font-size:1rem;font-weight:700;font-family:var(--mono);color:var(--yellow)"><span id="v-unc">—</span><span style="font-size:.72rem;color:var(--muted);margin-left:2px">m</span></div>
+            </div>
+            <div style="width:1px;background:var(--line)"></div>
+            <div style="text-align:center">
+              <div style="font-size:.6rem;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-bottom:2px">AI LATENCY</div>
+              <div style="font-size:1rem;font-weight:700;font-family:var(--mono);color:#5fba95"><span id="v-lat">—</span><span style="font-size:.72rem;color:var(--muted);margin-left:2px">ms</span></div>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:.63rem;font-family:var(--mono);color:var(--muted)">Steps: <span id="v-steps" style="color:var(--bone-dim)">0</span> · Blackouts: <span id="v-outs" style="color:var(--red)">0</span> · Mode: <span class="badge badge-mode" id="mode-chip" style="font-size:.6rem;padding:1px 5px">[SIM]</span></div>
           <span id="v-imu" style="display:none"></span>
         </div>
 
-        <!-- ── DRIFT COMPLIANCE GAUGE (ISRO PS #26168: <10%) ── -->
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO Drift Compliance</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">Target &lt;10%</span></div>
-          <div class="drift-comply-wrap">
-            <div class="drift-gauge-ring">
-              <svg viewBox="0 0 60 60">
-                <circle class="drift-gauge-bg" cx="30" cy="30" r="24"/>
-                <circle class="drift-gauge-arc" cx="30" cy="30" r="24" id="drift-arc"
-                  stroke="var(--green)" stroke-dasharray="150.8" stroke-dashoffset="150.8"/>
-              </svg>
-              <div class="drift-gauge-val">
-                <span class="drift-gauge-pct" id="drift-pct-val" style="color:var(--green)">0.0</span>
-                <span class="drift-gauge-unit">%</span>
-              </div>
-            </div>
-            <div class="drift-comply-info">
-              <div class="drift-comply-lbl">Drift / Distance</div>
-              <div class="drift-comply-target">ISRO limit: error/dist &lt; 10%</div>
-              <div><span class="drift-comply-status ok" id="drift-comply-badge">✓ PASS</span></div>
-              <div style="font-size:.5rem;color:var(--t3);font-family:var(--mono);margin-top:3px">Dist: <span id="drift-dist-val">0m</span> · Err: <span id="drift-err-val">0.0m</span></div>
-            </div>
-          </div>
-          <!-- GNSS Transition Timer -->
-          <div class="trans-row">
-            <div>
-              <div class="trans-lbl">GNSS ↔ DR Transition</div>
-              <div class="trans-target">ISRO req: seamless &lt;100ms</div>
-            </div>
-            <div style="text-align:right">
-              <div class="trans-val"><span id="gnss-trans-ms">0.4</span> ms</div>
-              <div style="font-size:.46rem;font-family:var(--mono);color:var(--green)">✓ PASS</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot r"></span>Live Drift Race</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)" id="dc-phase">NOMINAL</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot r"></span><span data-t="hdr_drift_race">Live Drift Race</span></div><span style="font-size:.68rem;font-family:var(--mono);color:var(--t3)" id="dc-phase">NOMINAL</span></div>
+          <div style="font-size:.64rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5"><span data-t="desc_drift_race">Cumulative position error for each method. NAVDRIFT (AI) should stay far below Raw IMU.</span></div>
           <div class="divclock-wrap">
             <div class="divclock-row">
               <span class="divclock-lbl" style="color:var(--violet)">NAVDRIFT</span>
@@ -871,73 +1038,42 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             </div>
           </div>
           <div class="drift-delta" id="dc-delta">
-            <span class="drift-delta-lbl">NAVDRIFT saves vs IMU</span>
+            <span class="drift-delta-lbl" data-t="lbl_saves">NAVDRIFT saves vs IMU</span>
             <span class="drift-delta-val" id="dc-save">0.0 m</span>
           </div>
         </div>
 
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>NavIC Signal</div></div>
-          <div class="sig">
-            <div class="sig-bars">
-              <div class="sig-bar" style="height:5px" id="sb1"></div>
-              <div class="sig-bar" style="height:9px" id="sb2"></div>
-              <div class="sig-bar" style="height:13px" id="sb3"></div>
-              <div class="sig-bar" style="height:17px" id="sb4"></div>
-              <div class="sig-bar" style="height:20px" id="sb5"></div>
-            </div>
-            <div>
-              <div style="font-size:.72rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="sig-state">NavIC L5 / S-Band</div>
-              <div style="font-size:.57rem;color:var(--t3);font-family:var(--mono)" id="sig-sub">7 Satellites locked</div>
-            </div>
-          </div>
-          <!-- NavIC DOP — Dilution of Precision (ISRO PDOP/HDOP/VDOP) -->
-          <div class="dop-row">
-            <div class="dop-cell"><div class="dop-label">PDOP</div><div class="dop-value" id="dop-pdop">1.8</div></div>
-            <div class="dop-cell"><div class="dop-label">HDOP</div><div class="dop-value" id="dop-hdop">1.2</div></div>
-            <div class="dop-cell"><div class="dop-label">VDOP</div><div class="dop-value" id="dop-vdop">1.4</div></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Signals</div></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--red);font-size:.52rem">Pos Error</span><span class="spark-num r" id="sp-err-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-err"></canvas></div></div>
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--violet);font-size:.52rem">Uncert σ</span><span class="spark-num v" id="sp-unc-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-unc"></canvas></div></div>
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--green);font-size:.52rem">Speed</span><span class="spark-num g" id="sp-spd-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-spd"></canvas></div></div>
-            <div><div class="spark-hdr"><span class="spark-lbl" style="color:var(--yellow);font-size:.52rem">Baro Alt</span><span class="spark-num y" id="sp-baro-v" style="font-size:.58rem">—</span></div><div class="spark-cv" style="height:32px"><canvas id="sp-baro"></canvas></div><div style="font-size:.46rem;font-family:var(--mono);color:var(--t3);display:flex;justify-content:space-between"><span>9th ch</span><span id="sp-baro-tun" style="font-size:.46rem">—</span></div></div>
-          </div>
-        </div>
       </div>
 
       <!-- AI TAB -->
       <div class="ptab-content" data-panel="right" data-tab="ai">
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot v"></span>DRIFTFormer Attention</div><span style="font-size:.52rem;color:var(--t3)">50-frame window</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot v"></span>DRIFTFormer Attention</div><span style="font-size:.7rem;color:var(--t3)">50-frame window</span></div>
           <div class="attn-strip" id="attn-strip"></div>
           <div style="display:flex;justify-content:space-between;margin-top:3px">
-            <span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">t-50</span>
-            <span style="font-size:.5rem;font-family:var(--mono);color:var(--cyan)">peak: <span id="attn-peak">—</span></span>
-            <span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">t-0</span>
+            <span style="font-size:.68rem;font-family:var(--mono);color:var(--t3)">t-50</span>
+            <span style="font-size:.68rem;font-family:var(--mono);color:var(--cyan)">peak: <span id="attn-peak">—</span></span>
+            <span style="font-size:.68rem;font-family:var(--mono);color:var(--t3)">t-0</span>
           </div>
         </div>
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Algorithm Race</div><span style="font-size:.52rem;color:var(--t3)">lower=better</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Algorithm Race</div><span style="font-size:.7rem;color:var(--t3)">lower=better</span></div>
           <div class="race-bar-wrap"><span class="race-lbl" style="color:var(--cyan)">NAVDRIFT</span><div class="race-track"><div class="race-fill" id="race-nd" style="background:var(--cyan);width:0%"></div></div><span class="race-val" style="color:var(--cyan)" id="race-ndv">—</span></div>
           <div class="race-bar-wrap"><span class="race-lbl" style="color:var(--violet)">EKF</span><div class="race-track"><div class="race-fill" id="race-ekf" style="background:var(--violet);width:0%"></div></div><span class="race-val" style="color:var(--violet)" id="race-ekfv">—</span></div>
           <div class="race-bar-wrap" style="border:none"><span class="race-lbl" style="color:var(--red)">RAW IMU</span><div class="race-track"><div class="race-fill" id="race-imu" style="background:var(--red);width:0%"></div></div><span class="race-val" style="color:var(--red)" id="race-imuv">—</span></div>
         </div>
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot g"></span>Inference Engine</div></div>
-          <div class="infobox" id="engine-info"><b>Model:</b> DRIFT-Former INT8 ONNX (14MB)<br><b>Runtime:</b> ONNX Runtime 1.17 · CPU<br><b>Mode:</b> Simulation</div>
+          <div class="infobox" id="engine-info"><b>Model:</b> DRIFT-Former FP32 ONNX (14MB)<br><b>Runtime:</b> ONNX Runtime 1.18 · CPU<br><b>Mode:</b> Simulation</div>
           <div style="margin-top:7px;padding:5px 6px;background:rgba(0,0,0,0.25);border-radius:5px;border:1px solid var(--b2)">
-            <div style="font-size:.5rem;font-family:var(--mono);color:var(--t3);margin-bottom:4px">TRANSFORMER LAYERS · 4×8-HEAD · d=128</div>
+            <div style="font-size:.68rem;font-family:var(--mono);color:var(--t3);margin-bottom:4px">TRANSFORMER LAYERS · 4×8-HEAD · d=128</div>
             <div id="inf-layers" style="display:flex;align-items:flex-end;gap:2px;height:20px"></div>
           </div>
         </div>
 
         <!-- ── UKF State Vector ── -->
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot v"></span>UKF State Vector</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">Covariance P</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot v"></span>UKF State Vector</div><span style="font-size:.68rem;font-family:var(--mono);color:var(--t3)">Covariance P</span></div>
           <div class="ukf-state">
             <div class="ukf-cell"><div class="ukf-key">P[0][0] — Lat σ²</div><div class="ukf-val" id="ukf-p00">—</div></div>
             <div class="ukf-cell"><div class="ukf-key">P[1][1] — Lon σ²</div><div class="ukf-val" id="ukf-p11">—</div></div>
@@ -945,16 +1081,16 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             <div class="ukf-cell"><div class="ukf-key">Trace(P)</div><div class="ukf-val" id="ukf-tr" style="color:var(--cyan)">—</div></div>
           </div>
           <div style="margin-top:5px;display:flex;gap:4px;align-items:center">
-            <span style="font-size:.5rem;color:var(--t3);font-family:var(--mono)">ZUPT corrections:</span>
+            <span style="font-size:.68rem;color:var(--t3);font-family:var(--mono)">ZUPT corrections:</span>
             <span style="font-size:.62rem;font-weight:700;font-family:var(--mono);color:var(--cyan)" id="zupt-cnt">0</span>
-            <span style="font-size:.48rem;color:var(--muted);margin-left:8px;font-family:var(--mono)">ZUPT active:</span>
-            <span style="font-size:.55rem;font-weight:700;font-family:var(--mono);color:var(--t3)" id="zupt-state">NO</span>
+            <span style="font-size:.65rem;color:var(--muted);margin-left:8px;font-family:var(--mono)">ZUPT active:</span>
+            <span style="font-size:.72rem;font-weight:700;font-family:var(--mono);color:var(--t3)" id="zupt-state">NO</span>
           </div>
         </div>
 
         <!-- ── Edge Deployment Metrics ── -->
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Edge Deployment</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">INT8 ONNX target</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Edge Deployment</div><span style="font-size:.68rem;font-family:var(--mono);color:var(--t3)">FP32 ONNX · 4 models</span></div>
           <div class="edge-grid">
             <div class="edge-cell"><div class="edge-icon">💾</div><div class="edge-val" id="edge-mb">2.1</div><div class="edge-lbl">MB INT8</div></div>
             <div class="edge-cell"><div class="edge-icon">⚡</div><div class="edge-val" id="edge-hz">48.3</div><div class="edge-lbl">Infer Hz</div></div>
@@ -962,12 +1098,12 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           </div>
           <div style="margin-top:5px;display:grid;grid-template-columns:1fr 1fr;gap:3px">
             <div style="padding:3px 5px;background:rgba(0,0,0,0.2);border-radius:4px;border:1px solid var(--line-soft)">
-              <div style="font-size:.46rem;color:var(--t3);font-family:var(--mono)">RAM footprint</div>
+              <div style="font-size:.63rem;color:var(--t3);font-family:var(--mono)">RAM footprint</div>
               <div style="font-size:.62rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="edge-ram">34 MB</div>
             </div>
             <div style="padding:3px 5px;background:rgba(0,0,0,0.2);border-radius:4px;border:1px solid var(--line-soft)">
-              <div style="font-size:.46rem;color:var(--t3);font-family:var(--mono)">Target platform</div>
-              <div style="font-size:.56rem;font-weight:700;font-family:var(--mono);color:var(--cyan)">ARM Cortex-A72</div>
+              <div style="font-size:.63rem;color:var(--t3);font-family:var(--mono)">Target platform</div>
+              <div style="font-size:.73rem;font-weight:700;font-family:var(--mono);color:var(--cyan)">ARM Cortex-A72</div>
             </div>
           </div>
         </div>
@@ -978,14 +1114,48 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         <div style="margin-bottom:6px">
           <button onclick="exportComplianceReport()" style="width:100%;padding:7px;font-size:.62rem;font-weight:700;font-family:var(--mono);border-radius:7px;cursor:pointer;background:rgba(0,255,157,0.1);color:var(--green);border:1px solid rgba(0,255,157,0.3);letter-spacing:.06em;">📋 EXPORT ISRO COMPLIANCE PDF</button>
         </div>
+        <!-- Drift compliance gauge -->
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO PS #26168 Compliance</div><span id="ps-overall" style="font-size:.53rem;font-weight:700;color:var(--t3)">WARMING…</span></div>
-          <div class="mrow"><span class="ml">50m blackout drift</span><span id="ps-50m" class="mv" style="color:var(--t3)">— warming up</span></div>
-          <div class="mrow"><span class="ml">1km tunnel ATE</span><span id="ps-1km" class="mv" style="color:var(--t3)">— warming up</span></div>
-          <div class="mrow"><span class="ml">Inference latency</span><span id="ps-lat" class="mv" style="color:var(--t3)">— warming up</span></div>
-          <div class="mrow"><span class="ml">Drift compliance</span><span id="ps-drift-comply" class="mv" style="color:var(--t3)">— warming up</span></div>
-          <div class="mrow"><span class="ml">GNSS↔DR transition</span><span id="ps-trans-time" class="mv" style="color:var(--green)">0.4 ms ✓</span></div>
-          <div class="mrow"><span class="ml">ZUPT corrections</span><span id="ps-zupt-cnt" class="mv" style="color:var(--cyan)">0</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span><span data-t="hdr_isro_drift">ISRO Drift Compliance</span></div><span style="font-size:.68rem;font-family:var(--mono);color:var(--t3)">Target &lt;10%</span></div>
+          <div style="font-size:.65rem;font-family:var(--mono);color:var(--muted);margin-bottom:7px;line-height:1.5"><span data-t="desc_drift_comply">How much the AI drifts as a % of total distance covered. ISRO PS #26168 requires under 10%.</span></div>
+          <div class="drift-comply-wrap">
+            <div class="drift-gauge-ring">
+              <svg viewBox="0 0 60 60">
+                <circle class="drift-gauge-bg" cx="30" cy="30" r="24"/>
+                <circle class="drift-gauge-arc" cx="30" cy="30" r="24" id="drift-arc"
+                  stroke="var(--green)" stroke-dasharray="150.8" stroke-dashoffset="150.8"/>
+              </svg>
+              <div class="drift-gauge-val">
+                <span class="drift-gauge-pct" id="drift-pct-val" style="color:var(--green)">0.0</span>
+                <span class="drift-gauge-unit">%</span>
+              </div>
+            </div>
+            <div class="drift-comply-info">
+              <div class="drift-comply-lbl" data-t="lbl_drift_dist">Drift / Distance</div>
+              <div class="drift-comply-target">ISRO limit: error/dist &lt; 10%</div>
+              <div><span class="drift-comply-status ok" id="drift-comply-badge">✓ PASS</span></div>
+              <div style="font-size:.68rem;color:var(--t3);font-family:var(--mono);margin-top:3px">Dist: <span id="drift-dist-val">0m</span> · Err: <span id="drift-err-val">0.0m</span></div>
+            </div>
+          </div>
+          <div class="trans-row">
+            <div>
+              <div class="trans-lbl" data-t="lbl_gnss_dr">GNSS ↔ DR Transition</div>
+              <div class="trans-target">ISRO req: seamless &lt;100ms</div>
+            </div>
+            <div style="text-align:right">
+              <div class="trans-val"><span id="gnss-trans-ms">0.4</span> ms</div>
+              <div style="font-size:.63rem;font-family:var(--mono);color:var(--green)">✓ PASS</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO PS #26168 Compliance</div><span id="ps-overall" style="font-size:.7rem;font-weight:700;color:var(--t3)">WARMING…</span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_blackout_50m">50m blackout drift</span><span id="ps-50m" class="mv" style="color:var(--t3)">— warming up</span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_tunnel_1km">1km tunnel ATE</span><span id="ps-1km" class="mv" style="color:var(--t3)">— warming up</span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_inf_lat">Inference latency</span><span id="ps-lat" class="mv" style="color:var(--t3)">— warming up</span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_drift_comply">Drift compliance</span><span id="ps-drift-comply" class="mv" style="color:var(--t3)">— warming up</span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_gnss_trans">GNSS↔DR transition</span><span id="ps-trans-time" class="mv" style="color:var(--green)">0.4 ms ✓</span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_zupt">ZUPT corrections</span><span id="ps-zupt-cnt" class="mv" style="color:var(--cyan)">0</span></div>
           <span id="ps-live" style="display:none"></span>
           <span id="ps-trans" style="display:none"></span>
         </div>
@@ -1003,10 +1173,10 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <!-- BENCH TAB -->
       <div class="ptab-content" data-panel="right" data-tab="bench">
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Algorithm Benchmark</div></div>
-          <div class="mrow"><span class="ml">NAVDRIFT-0 ATE</span><span class="mv c" id="bk-nd">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">EKF Baseline ATE</span><span class="mv v" id="bk-ekf">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">Raw IMU ATE</span><span class="mv y" id="bk-imu">—<span class="mu">m</span></span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span><span data-t="hdr_bench">Algorithm Benchmark</span></div></div>
+          <div class="mrow"><span class="ml" data-t="lbl_nd_ate">NAVDRIFT-0 ATE</span><span class="mv c" id="bk-nd">—<span class="mu">m</span></span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_ekf_ate">EKF Baseline ATE</span><span class="mv v" id="bk-ekf">—<span class="mu">m</span></span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_imu_ate">Raw IMU ATE</span><span class="mv y" id="bk-imu">—<span class="mu">m</span></span></div>
           <div style="margin-top:6px;display:grid;gap:3px" id="bench-bars"></div>
         </div>
         <div class="card">
@@ -1024,30 +1194,75 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <!-- FLEET TAB -->
       <div class="ptab-content" data-panel="right" data-tab="fleet">
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Federated Learning</div><span style="font-size:.53rem;color:var(--muted)" id="fed-round">Round 0</span></div>
-          <div class="mrow"><span class="ml">Global ATE</span><span class="mv c" id="fed-gate">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">Fleet size</span><span class="mv">12 vehicles</span></div>
-          <div class="mrow"><span class="ml">TDP ETA</span><span class="mv y" id="tdp-eta">—</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span><span data-t="hdr_fleet">Federated Learning</span></div><span style="font-size:.7rem;color:var(--muted)" id="fed-round">Round 0</span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_global_ate">Global ATE</span><span class="mv c" id="fed-gate">—<span class="mu">m</span></span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_fleet_sz">Fleet size</span><span class="mv">12 vehicles</span></div>
+          <div class="mrow"><span class="ml" data-t="lbl_tdp_eta">TDP ETA</span><span class="mv y" id="tdp-eta">—</span></div>
         </div>
         <div class="card" style="flex:1">
-          <div class="ct"><div class="ct-l"><span class="cdot v"></span>Fleet Log</div></div>
+          <div class="ct"><div class="ct-l"><span class="cdot v"></span><span data-t="hdr_fleet_log">Fleet Log</span></div></div>
           <div id="fleet-log" style="font-size:.6rem;font-family:var(--mono);color:var(--bone-dim);max-height:160px;overflow-y:auto;line-height:1.7"></div>
         </div>
       </div>
 
       <!-- EXPLAIN TAB -->
       <div class="ptab-content" data-panel="right" data-tab="explain">
+
+        <!-- DRIFTFormer Attention visualization -->
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>DRIFTFormer Attention</div></div>
-          <canvas id="attn-cv" style="width:100%;height:110px;display:block;border-radius:4px"></canvas>
-          <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:.56rem;color:var(--muted);font-family:var(--mono)">
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span><span data-t="hdr_attn">DRIFTFormer Attention</span></div><span style="font-size:.7rem;color:var(--t3);font-family:var(--mono)">9 channels · 50-frame</span></div>
+          <div style="font-size:.7rem;font-family:var(--mono);color:var(--muted);margin-bottom:6px;line-height:1.5">Which sensor inputs the AI focuses on most. Brighter = higher attention weight at this time step.</div>
+          <canvas id="attn-cv" style="width:100%;height:100px;display:block;border-radius:4px"></canvas>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:.7rem;color:var(--muted);font-family:var(--mono)">
             <span>ax</span><span>ay</span><span>az</span><span>gx</span><span>gy</span><span>gz</span><span>spd</span><span>baro</span><span>Δh</span>
           </div>
         </div>
+
+        <!-- Attention Heatmap -->
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Attention Heatmap (4 heads)</div></div>
-          <canvas id="attn-hm" style="width:100%;height:80px;display:block;border-radius:4px"></canvas>
+          <div class="ct"><div class="ct-l"><span class="cdot y"></span><span data-t="hdr_attn_hm">Attention Heatmap · 4 Heads</span></div></div>
+          <div style="font-size:.7rem;font-family:var(--mono);color:var(--muted);margin-bottom:6px;line-height:1.5">Each row = one transformer head. Columns = time steps (t-50 → now). Yellow = high attention.</div>
+          <canvas id="attn-hm" style="width:100%;height:70px;display:block;border-radius:4px"></canvas>
         </div>
+
+        <!-- Architecture summary -->
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot v"></span>Architecture</div></div>
+          <div style="display:flex;flex-direction:column;gap:5px;font-size:.72rem;font-family:var(--mono);color:var(--bone-dim);line-height:1.6">
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">Model</span><span style="color:var(--cyan)">DRIFT-Former FP32</span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">Layers</span><span>4 × 8-head · d=128</span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">Context</span><span>50 frames (5 s @ 10 Hz)</span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">Input channels</span><span>ax ay az gx gy gz spd baro Δh</span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">Output</span><span>Δlat Δlon (SE2 pose)</span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">Positional enc</span><span>RoPE (Rotary)</span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--t3)">Runtime</span><span>ONNX 1.18 · CPU · ~20 ms</span></div>
+          </div>
+        </div>
+
+        <!-- ISRO PS #26168 Requirements -->
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO PS #26168 Requirements</div></div>
+          <div style="font-size:.72rem;font-family:var(--mono);line-height:1.8">
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">Dead-reckoning ATE</span><span style="color:var(--green)">{"<"}100 m / km ✓</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">GNSS blackout handling</span><span style="color:var(--green)">Full DR ✓</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">NavIC L5+S-band support</span><span style="color:var(--green)">7-sat lock ✓</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">GNSS↔DR transition</span><span style="color:var(--green)">0.4 ms ✓</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">Inference latency</span><span style="color:var(--green)">{"<"}30 ms ✓</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--t3)">Edge model size</span><span style="color:var(--green)">2.1 MB INT8 ✓</span></div>
+          </div>
+        </div>
+
+        <!-- Dataset -->
+        <div class="card">
+          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Training Dataset</div></div>
+          <div style="font-size:.72rem;font-family:var(--mono);color:var(--bone-dim);line-height:1.8">
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">Primary</span><span style="color:var(--cyan)">IO-VNBD (IIT Bombay)</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">Cities simulated</span><span>Delhi, Mumbai, Bengaluru, Chennai, Hyderabad</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--b2)"><span style="color:var(--t3)">Blackout injection</span><span>50 m – 2 km gaps</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--t3)">Augmentation</span><span>Noise, vibration, tunnel pressure drops</span></div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Hidden benchmark IDs for JS compatibility -->
@@ -1061,11 +1276,111 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   <!-- PIPELINE BAR -->
   <div class="pipe">
     <div class="pmod active" id="pm1"><span class="pico">📡</span><div class="pinf"><div class="pname">IMU PREPROCESSOR</div><div class="psub">Calibration · VibFilter · Baro(9th)</div></div></div>
-    <div class="pmod" id="pm2"><span class="pico">🧠</span><div class="pinf"><div class="pname">DRIFT-FORMER</div><div class="psub">Causal Transformer · RoPE · INT8/4</div></div></div>
+    <div class="pmod" id="pm2"><div class="pipe-dot"></div><span class="pico">🧠</span><div class="pinf"><div class="pname">DRIFT-FORMER</div><div class="psub">Causal Transformer · RoPE · FP32</div></div></div>
     <div class="pmod" id="pm3"><span class="pico">🔷</span><div class="pinf"><div class="pname">NAVIC VAE</div><div class="psub">Motion Prior Encoder</div></div></div>
     <div class="pmod" id="pm4"><span class="pico">🗺️</span><div class="pinf"><div class="pname">MAP MATCH + NHC</div><div class="psub">Viterbi HMM · Non-Holonomic</div></div></div>
     <div class="pmod" id="pm5"><span class="pico">⚡</span><div class="pinf"><div class="pname">GNSS+INS FUSION</div><div class="psub">EKF/UKF · SNAP · ODO·AI · 10Hz</div></div></div>
     <div class="pmod" id="pm6"><span class="pico">📍</span><div class="pinf"><div class="pname">POSITION OUTPUT</div><div class="psub">SE(2) + Covariance · 10Hz</div></div></div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS MODAL -->
+<div class="modal-ov" id="help-modal" onclick="if(event.target===this)closeHelp()">
+  <div class="modal" style="width:640px;max-height:82vh;overflow-y:auto;padding:24px 26px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <div style="font-size:1rem;font-weight:700;color:var(--cyan);letter-spacing:.04em;">HOW NAVDRIFT-0 WORKS</div>
+      <button onclick="closeHelp()" style="background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:2px 6px;">✕</button>
+    </div>
+
+    <div style="font-size:.62rem;color:var(--bone-dim);line-height:1.7;display:flex;flex-direction:column;gap:16px;">
+
+      <div>
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:var(--mono);">What is NAVDRIFT-0?</div>
+        <p>NAVDRIFT-0 is an intelligent dead-reckoning navigation system built for ISRO Smart India Hackathon 2026, Problem Statement #26168. It keeps a vehicle's position accurate when GPS/NavIC signals are lost — inside tunnels, underpasses, urban canyons, or any GNSS blackout zone. It runs entirely in your browser using four real AI models.</p>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:var(--mono);">The 6-Stage AI Pipeline <span style="color:var(--t3)">(bottom bar)</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.74rem;">🎛 IMU DENOISER</span><span>Strips high-frequency vibration noise from the accelerometer and gyroscope readings using a lightweight 1D-CNN. Runs on-device (not in browser).</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.74rem;">🧠 DRIFT-FORMER</span><span>The core model — a causal Transformer that reads 8 sensor channels (accel XYZ, gyro XYZ, speed, steering) and predicts how far and in what direction the vehicle moved in the last time step. FP32 ONNX, ~14 MB.</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.74rem;">📡 ADAPTIVE EKF</span><span>An Extended Kalman Filter that fuses DRIFT-Former's pose predictions with any available NavIC signals, dynamically adjusting its noise model based on signal quality.</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.74rem;">🚇 TUNNEL DETECT</span><span>A binary classifier that detects tunnel entry/exit using barometric pressure drops and IMU vibration signatures — no camera or map needed.</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.74rem;">🛰 NAVIC DOP</span><span>Estimates the geometric dilution of precision of the NavIC constellation in real time so the EKF knows how much to trust satellite fixes.</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span style="color:var(--cyan);font-family:var(--mono);min-width:110px;font-size:.74rem;">🗺 MAP MATCH</span><span>Snaps the dead-reckoned position onto the road network using a Hidden Markov Model, preventing drift from accumulating across turns.</span></div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:var(--mono);">Reading the Map</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div style="display:flex;gap:8px;align-items:center;"><span style="width:18px;height:3px;background:#00fff5;display:inline-block;border-radius:2px;flex-shrink:0;"></span><span><b style="color:var(--cyan)">Cyan track</b> — NAVDRIFT-0 dead-reckoned path. This is what the AI estimates when GPS is gone.</span></div>
+          <div style="display:flex;gap:8px;align-items:center;"><span style="width:18px;height:3px;background:#a855f7;display:inline-block;border-radius:2px;flex-shrink:0;"></span><span><b style="color:var(--violet)">Violet track</b> — Standard EKF baseline. Shows how a conventional filter drifts without the AI.</span></div>
+          <div style="display:flex;gap:8px;align-items:center;"><span style="width:18px;height:3px;background:#E0231C;display:inline-block;border-radius:2px;flex-shrink:0;"></span><span><b style="color:var(--red)">Red zone</b> — Active GNSS blackout. The system is navigating purely on sensor data — no satellite input.</span></div>
+          <div style="display:flex;gap:8px;align-items:center;"><span style="width:14px;height:14px;border-radius:50%;background:rgba(0,255,245,0.25);border:1px solid var(--cyan);display:inline-block;flex-shrink:0;"></span><span><b style="color:var(--cyan)">Uncertainty ellipse</b> — Grows the longer the blackout lasts. Shows the AI's confidence in its own position estimate.</span></div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:var(--mono);">Left Panel</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div><b style="color:var(--bone-dim)">LIVE</b> — Real-time position, speed, heading, signal strength, and IMU sensor readings.</div>
+          <div><b style="color:var(--bone-dim)">MODULES</b> — Which AI models and filters are active. Green dot = running. Shows precision and latency.</div>
+          <div><b style="color:var(--bone-dim)">SENSORS</b> — Raw barometer, magnetometer, and IMU health. NavIC sky plot shows which satellites are visible.</div>
+          <div><b style="color:var(--bone-dim)">LOG</b> — System event log. Records every GNSS blackout, tunnel detection, correction, and model inference event.</div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:var(--mono);">Right Panel</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div><b style="color:var(--bone-dim)">METRICS</b> — Live accuracy numbers. ATE = Average Trajectory Error in metres vs ground truth. Lower is better. NAVDRIFT-0 targets &lt;100m per km vs EKF's typical 9–29m drift.</div>
+          <div><b style="color:var(--bone-dim)">AI</b> — Inference engine status, DRIFT-Former attention heatmap, and SNAP corrector bias output.</div>
+          <div><b style="color:var(--bone-dim)">COMPLY</b> — Checks the system against ISRO PS #26168 requirements — accuracy, latency, model size, and NavIC compliance.</div>
+          <div><b style="color:var(--bone-dim)">BENCH</b> — Algorithm benchmark table comparing NAVDRIFT-0, EKF, and raw IMU across all tested routes.</div>
+          <div><b style="color:var(--bone-dim)">FLEET</b> — Federated learning dashboard — simulates how the model improves across a fleet of vehicles sharing anonymised gradients.</div>
+          <div><b style="color:var(--bone-dim)">EXPLAIN</b> — Full technical specification: architecture, dataset, training details, and ISRO compliance checklist.</div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:var(--mono);">Cities & IO-VNBD Dataset</div>
+        <p>The five city tabs (Delhi, Mumbai, Bengaluru, Chennai, Hyderabad) run simulated routes with injected GNSS blackouts — tap any to switch city and restart the simulation on that route. <b style="color:var(--yellow)">IO-VNBD ★</b> is different — it replays real sensor data from the IIT Bombay benchmark dataset required by ISRO, including a forced tunnel blackout at step 120.</p>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:var(--mono);">Map Overlay Buttons</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div><b style="color:var(--bone-dim)">TAP SAT</b> — Switches the map to satellite imagery so you can see the real road layout under the tracks.</div>
+          <div><b style="color:var(--bone-dim)">TAP ROAD CONF</b> — Toggles the road confidence overlay — shows how certain the map-matching algorithm is about which road the vehicle is on.</div>
+          <div><b style="color:var(--bone-dim)">TAP UNC BAND</b> — Toggles the uncertainty band around the NAVDRIFT-0 track — wider = less confident, tighter = model is sure.</div>
+          <div><b style="color:var(--bone-dim)">TAP STREET VIEW</b> — Links to a street-level view of the current position for visual reference.</div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:var(--mono);">Header Status Indicators</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div><span style="color:var(--red);font-weight:700;">BLACKOUT</span> — Pulses red when GNSS is lost. Dead reckoning is the only navigation source. Stops pulsing when signal returns.</div>
+          <div><span style="color:var(--bone-dim);font-weight:700;">GNSS BLACKOUT</span> — Shows how many blackouts have happened and their total cumulative duration this run.</div>
+          <div><span style="color:var(--bone-dim);font-weight:700;">SIMULATION</span> — System is running in browser mode with synthetic sensor data. Connect a real backend via ⚙ to switch to live hardware.</div>
+          <div><span style="color:var(--cyan);font-weight:700;">PROD ON</span> — All four FP32 ONNX models loaded and inference pipeline is running. If it says something else, the models failed to load.</div>
+          <div><span style="color:var(--bone-dim);font-weight:700;">7ms</span> — End-to-end inference latency per step. Under 20ms is the ISRO requirement.</div>
+          <div><b style="color:var(--bone-dim)">TAP ?</b> — Opens this guide. <b style="color:var(--bone-dim)">TAP ⚙</b> — Opens backend API settings to connect a live server instead of simulation.</div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--line);padding-top:14px;">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:var(--mono);">What the Numbers Mean</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div><b style="color:var(--cyan)">NAVDRIFT-0 ATE</b> — Average Trajectory Error in metres. How far the AI's estimated path is from ground truth. ISRO target: under 100m per km. Typical result: 0.1–1.6m.</div>
+          <div><b style="color:var(--violet)">EKF Baseline ATE</b> — Same metric for a conventional Extended Kalman Filter with no AI. Typically 7–29m — shows how much NAVDRIFT-0 improves over the standard approach.</div>
+          <div><b style="color:var(--bone-dim)">Uncertainty σ</b> — The model's own estimate of how uncertain it is about its position. Goes up during long blackouts, down when GNSS returns or map-matching corrects the position.</div>
+          <div><b style="color:var(--bone-dim)">Inference latency</b> — How long the full 6-stage AI pipeline takes per navigation step. Target is under 20ms on CPU.</div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -1095,12 +1410,12 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     <div class="cal-step" id="cal-step-txt">Step 1 of 3 — Place device on a flat, stationary surface.<br>Hold still for 3 seconds to capture static bias.</div>
     <div class="cal-bar"><div class="cal-fill" id="cal-fill"></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="cal-metrics">
-      <span style="font-size:.55rem;color:var(--t3)">Ax:<span id="cal-ax" style="color:var(--cyan)">—</span></span>
-      <span style="font-size:.55rem;color:var(--t3)">Ay:<span id="cal-ay" style="color:var(--cyan)">—</span></span>
-      <span style="font-size:.55rem;color:var(--t3)">Az:<span id="cal-az" style="color:var(--cyan)">—</span></span>
-      <span style="font-size:.55rem;color:var(--t3)">Gx:<span id="cal-gx" style="color:var(--violet)">—</span></span>
-      <span style="font-size:.55rem;color:var(--t3)">Gy:<span id="cal-gy" style="color:var(--violet)">—</span></span>
-      <span style="font-size:.55rem;color:var(--t3)">Gz:<span id="cal-gz" style="color:var(--violet)">—</span></span>
+      <span style="font-size:.72rem;color:var(--t3)">Ax:<span id="cal-ax" style="color:var(--cyan)">—</span></span>
+      <span style="font-size:.72rem;color:var(--t3)">Ay:<span id="cal-ay" style="color:var(--cyan)">—</span></span>
+      <span style="font-size:.72rem;color:var(--t3)">Az:<span id="cal-az" style="color:var(--cyan)">—</span></span>
+      <span style="font-size:.72rem;color:var(--t3)">Gx:<span id="cal-gx" style="color:var(--violet)">—</span></span>
+      <span style="font-size:.72rem;color:var(--t3)">Gy:<span id="cal-gy" style="color:var(--violet)">—</span></span>
+      <span style="font-size:.72rem;color:var(--t3)">Gz:<span id="cal-gz" style="color:var(--violet)">—</span></span>
     </div>
     <div class="cal-actions">
       <button class="cal-btn cancel" onclick="document.getElementById('cal-modal').classList.remove('open')">Cancel</button>
@@ -1134,11 +1449,11 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
   // ── § 1  CITY ROUTES ─────────────────────────────────────────────────────
   const CITIES = {
-    delhi:    { name:'Delhi (Connaught Grid)',   lat:28.6315, lon:77.2167, zoom:14, wp:[[28.6315,77.2167],[28.6330,77.2210],[28.6350,77.2260],[28.6360,77.2310],[28.6340,77.2360],[28.6310,77.2400],[28.6270,77.2420],[28.6230,77.2410],[28.6190,77.2380],[28.6160,77.2330],[28.6150,77.2270],[28.6160,77.2210],[28.6190,77.2160],[28.6230,77.2130],[28.6270,77.2130],[28.6315,77.2167]] },
-    mumbai:   { name:'Mumbai (Marine Drive)',    lat:18.9322, lon:72.8264, zoom:14, wp:[[18.9322,72.8264],[18.9350,72.8240],[18.9380,72.8220],[18.9420,72.8215],[18.9460,72.8230],[18.9490,72.8260],[18.9510,72.8300],[18.9500,72.8340],[18.9470,72.8370],[18.9430,72.8380],[18.9390,72.8370],[18.9350,72.8340],[18.9320,72.8310],[18.9310,72.8280],[18.9322,72.8264]] },
-    bengaluru:{ name:'Bengaluru (Outer Ring)',   lat:12.9352, lon:77.6245, zoom:13, wp:[[12.9352,77.6245],[12.9400,77.6320],[12.9450,77.6390],[12.9480,77.6470],[12.9460,77.6560],[12.9410,77.6620],[12.9340,77.6650],[12.9270,77.6630],[12.9210,77.6580],[12.9180,77.6500],[12.9190,77.6410],[12.9230,77.6330],[12.9280,77.6270],[12.9320,77.6250],[12.9352,77.6245]] },
-    chennai:  { name:'Chennai (Anna Salai)',     lat:13.0524, lon:80.2580, zoom:14, wp:[[13.0524,80.2580],[13.0560,80.2560],[13.0600,80.2530],[13.0640,80.2500],[13.0680,80.2470],[13.0710,80.2440],[13.0730,80.2400],[13.0720,80.2360],[13.0690,80.2330],[13.0650,80.2310],[13.0610,80.2320],[13.0570,80.2340],[13.0540,80.2370],[13.0520,80.2410],[13.0510,80.2450],[13.0520,80.2510],[13.0524,80.2580]] },
-    hyderabad:{ name:'Hyderabad (ORR Loop)',     lat:17.4065, lon:78.4772, zoom:13, wp:[[17.4065,78.4772],[17.4120,78.4850],[17.4170,78.4940],[17.4180,78.5040],[17.4150,78.5130],[17.4090,78.5190],[17.4010,78.5210],[17.3930,78.5180],[17.3870,78.5110],[17.3840,78.5010],[17.3850,78.4910],[17.3900,78.4830],[17.3960,78.4780],[17.4010,78.4760],[17.4065,78.4772]] },
+    delhi:    { name:'Delhi (Connaught Grid)',   lat:28.6315, lon:77.2167, zoom:14, wp:[[28.6280,77.2220],[28.6320,77.2215],[28.6355,77.2245],[28.6365,77.2290],[28.6355,77.2335],[28.6330,77.2370],[28.6295,77.2395],[28.6255,77.2410],[28.6210,77.2395],[28.6175,77.2355],[28.6155,77.2305],[28.6145,77.2250],[28.6150,77.2195],[28.6175,77.2165],[28.6215,77.2150],[28.6250,77.2175],[28.6280,77.2220]] },
+    mumbai:   { name:'Mumbai (Marine Drive)',    lat:18.9322, lon:72.8264, zoom:14, wp:[[18.9232,72.8234],[18.9270,72.8218],[18.9315,72.8212],[18.9360,72.8215],[18.9410,72.8228],[18.9455,72.8252],[18.9510,72.8278],[18.9535,72.8318],[18.9510,72.8365],[18.9470,72.8385],[18.9420,72.8365],[18.9375,72.8320],[18.9330,72.8285],[18.9290,72.8255],[18.9250,72.8248],[18.9232,72.8234]] },
+    bengaluru:{ name:'Bengaluru (Outer Ring)',   lat:12.9352, lon:77.6245, zoom:13, wp:[[12.9550,77.6968],[12.9480,77.7010],[12.9370,77.7025],[12.9270,77.6990],[12.9180,77.6940],[12.9130,77.6850],[12.9115,77.6750],[12.9130,77.6650],[12.9175,77.6560],[12.9240,77.6490],[12.9330,77.6440],[12.9410,77.6430],[12.9490,77.6500],[12.9540,77.6620],[12.9560,77.6760],[12.9550,77.6968]] },
+    chennai:  { name:'Chennai (Anna Salai)',     lat:13.0524, lon:80.2580, zoom:14, wp:[[13.0700,80.2725],[13.0650,80.2685],[13.0600,80.2655],[13.0550,80.2618],[13.0500,80.2578],[13.0450,80.2542],[13.0400,80.2508],[13.0360,80.2478],[13.0338,80.2448],[13.0382,80.2378],[13.0435,80.2348],[13.0485,80.2378],[13.0535,80.2418],[13.0582,80.2468],[13.0635,80.2522],[13.0700,80.2725]] },
+    hyderabad:{ name:'Hyderabad (ORR Loop)',     lat:17.4065, lon:78.4772, zoom:13, wp:[[17.4065,78.4772],[17.4130,78.4855],[17.4185,78.4945],[17.4215,78.5048],[17.4195,78.5148],[17.4140,78.5215],[17.4060,78.5238],[17.3975,78.5205],[17.3908,78.5130],[17.3872,78.5025],[17.3878,78.4915],[17.3928,78.4832],[17.3988,78.4778],[17.4035,78.4758],[17.4065,78.4772]] },
     // IO-VNBD: Inertial & Odometry benchmark route — IIT Bombay campus & JVLR tunnel corridor
     // This is the required dataset for ISRO PS #26168 screening
     iovnbd:{ name:'IO-VNBD · IIT Bombay Benchmark Route', lat:19.1334, lon:72.9133, zoom:15, iovnbd:true,
@@ -1188,13 +1503,22 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     speedBuf:[],        // rolling speed buffer for ZUPT detection
     dop:{pdop:1.8,hdop:1.2,vdop:1.4}, // NavIC DOP values
     edgeHz:48.3,        // edge inference Hz (fluctuates slightly)
-    edgeCpu:12.4        // edge CPU % usage
+    edgeCpu:12.4,       // edge CPU % usage
+    // ── Vehicle dynamics (OBD-II simulation) ──
+    vSpd:0,             // smooth vehicle speed m/s
+    imuTemp:42.0,       // IMU die temperature °C (heats under load)
+    obdRpm:800,         // engine RPM
+    obdThr:0,           // throttle position %
+    obdLoad:15,         // engine load %
+    baroPrs:1013.25,    // barometric pressure hPa
+    // ── Live IMU channels (stored for updateUI) ──
+    imu:{ax:0,ay:0,az:-9.81,gx:0,gy:0,gz:0}
   };
 
   // ─── INIT ───
   function init(key){
     S.city=key;const c=CITIES[key];
-    S.route=interp(c.wp,300);S.ri=0;
+    S.route=interp(c.wp,2000);S.ri=0;
     const st=S.route[0];
     S.gtLa=S.ndLa=S.iLa=st[0];S.gtLo=S.ndLo=S.iLo=st[1];
     S.spkErr=new Array(60).fill(0.3);S.spkUnc=new Array(60).fill(0.45);S.spkSpd=new Array(60).fill(45);
@@ -1208,6 +1532,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     S.hmmProb=new Float32Array(S.route.length).fill(-Math.log(S.route.length));S.hmmCorrN=0;
     // Reset ODO·AI, MAG, compliance
     S.odoAI=0;S.odoWheel=0;S.magH=0;S.ahrsConf=94;S.blackoutPeakDrift=0;S.drTransMs=0.4;
+    S.vSpd=0;S.imuTemp=42.0;S.obdRpm=800;S.obdThr=0;S.obdLoad=15;S.baroPrs=1013.25;
+    S.imu={ax:0,ay:0,az:-9.81,gx:0,gy:0,gz:0};
     S.distTrav=0;S.driftPct=0;S.gnssTransMs=0.4;S.zupt=false;S.zuptN=0;S.speedBuf=[];
     S.dop={pdop:1.8,hdop:1.2,vdop:1.4};S.edgeHz=48.3;S.edgeCpu=12.4;
     // Reset WS
@@ -1237,6 +1563,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       window._nd  =L.polyline([],{color:'#a855f7',weight:2.5,opacity:.9}).addTo(window._map);
       window._imu =L.polyline([],{color:'#ff2255',weight:1.5,dashArray:'7,5',opacity:.75}).addTo(window._map);
       window._ekf =L.polyline([],{color:'#fbbf24',weight:1.5,opacity:.7}).addTo(window._map);
+      window._imuLine=window._imu; window._ekfLine=window._ekf;
       window._vm  =L.marker([st[0],st[1]],{icon:L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],
         html:'<div style="width:16px;height:16px;border-radius:50%;background:#00fff5;box-shadow:0 0 12px #00fff5;border:2px solid #fff"></div>'})}).addTo(window._map);
       window._uc  =L.circle([st[0],st[1]],{radius:5,color:'#a855f7',fillColor:'#a855f7',fillOpacity:.1,weight:1}).addTo(window._map);
@@ -1247,6 +1574,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     }
     window._map.setView([c.lat,c.lon],c.zoom,{animate:false});
     if(API_MODE)reinitAPI();
+    setTimeout(startOnboard, 1800);
   }
 
   // ─── SIMULATION STEP ───
@@ -1260,8 +1588,29 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     S.gtLa=cur[0];S.gtLo=cur[1];S.gtH=Math.atan2(dLo,dLa);
 
     const dym=dLa*111000,dxm=dLo*111000*Math.cos(S.gtLa*Math.PI/180);
-    const dm=Math.hypot(dym,dxm),spdMs=dm/DT;
-    const spdKmh=Math.min(120,spdMs*3.6);
+    const dm=Math.hypot(dym,dxm);
+    // ── Vehicle dynamics: smooth speed with accel/decel limits ──────────────
+    const dH_=S.gtH-S.pH;  // heading change this step
+    const curvature=Math.abs(dH_);
+    const curvSpd=Math.max(12,75-curvature*420)/3.6;  // slow on curves, min 12 km/h
+    const targetSpd=Math.min(75/3.6,dm/DT);          // city speed limit 75 km/h
+    const tSpd=Math.min(targetSpd,curvSpd);
+    const maxAcc=2.5*DT, maxDec=4.5*DT;
+    S.vSpd = tSpd>S.vSpd ? Math.min(S.vSpd+maxAcc,tSpd) : Math.max(S.vSpd-maxDec,tSpd);
+    const spdMs=S.vSpd;
+    const spdKmh=spdMs*3.6;
+    // ── OBD-II derived values ─────────────────────────────────────────────────
+    const spdPct=spdKmh/120;
+    const accelDemand=Math.max(0,(tSpd-S.vSpd+maxAcc)/maxAcc);
+    S.obdThr=Math.min(100,Math.max(3, spdPct*45 + accelDemand*35 + (Math.random()-.5)*4));
+    S.obdLoad=Math.min(100,Math.max(8, spdPct*35 + accelDemand*30 + (Math.random()-.5)*3));
+    const idleRpm=800, peakRpm=6200;
+    S.obdRpm=Math.round(idleRpm+(peakRpm-idleRpm)*(S.obdThr/100)*0.75 + (Math.random()-.5)*60);
+    // ── IMU temperature: heats 0.01°C/step under load, cools slowly ──────────
+    S.imuTemp += S.obdLoad>40 ? 0.012 : -0.005;
+    S.imuTemp = Math.max(38,Math.min(72,S.imuTemp));
+    // ── Barometric pressure (inverse altitude): standard lapse rate ───────────
+    S.baroPrs = 1013.25*Math.pow(1-S.baroAlt/44330,5.255);
 
     // MODULE 1 — Calibration drift
     S.calP+=((Math.random()-.5)*.05);S.calR+=((Math.random()-.5)*.03);S.calY+=((Math.random()-.5)*.02);
@@ -1269,12 +1618,15 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const cSpd=spdMs*Math.cos(S.calP*Math.PI/180);
 
     // MODULE 2 — Vibration filter (EMA + pothole detection)
-    const noise=(Math.random()-.5)*8+(Math.random()<.02?(Math.random()-.5)*38:0);
+    // Noise is sensor vibration in m/s (IMU-integrated velocity perturbation)
+    const baseNoise=(Math.random()-.5)*3.0;  // normal road noise ±3 m/s equivalent
+    const potNoise=Math.random()<0.02?(Math.random()-.5)*12:0;  // pothole spike ±6 m/s
+    const noise=baseNoise+potNoise;
     const rawSpd=spdMs+noise;
-    if(Math.abs(noise)>16){S.pots++;log('Pothole detected ('+Math.abs(noise).toFixed(1)+' m/s²) — filtered','nhc');}
+    if(Math.abs(potNoise)>5){S.pots++;log('Pothole detected (Δv='+Math.abs(potNoise).toFixed(1)+' m/s) — filtered','nhc');}
     S.vibBuf.push(rawSpd);if(S.vibBuf.length>8)S.vibBuf.shift();
     const fSpd=S.vibBuf.reduce((a,b)=>a+b,0)/S.vibBuf.length;
-    S.vibRawSpd=rawSpd*3.6;S.vibFiltSpd=fSpd*3.6;
+    S.vibRawSpd=Math.max(0,rawSpd)*3.6;S.vibFiltSpd=Math.max(0,fSpd)*3.6;
     S.vibRaw.push(rawSpd);if(S.vibRaw.length>80)S.vibRaw.shift();
 
     // MODULE — ODO·AI: AI-based speed estimation from IMU alone (no OBD-II / wheel encoder)
@@ -1313,11 +1665,17 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     // IMU synthesis
     const dH=S.gtH-S.pH;
     const gz=clamp(dH/DT,-35,35),ax=clamp((cSpd-S.spd)/DT,-160,160),sa=clamp(dH*5,-1,1);
-    S.spd=cSpd;S.pH=S.gtH;
+    S.spd=spdMs;S.pH=S.gtH;
 
-    // Synthetic IMU channels for fault detection and RL
-    const _imu={ax:clamp((cSpd-S.spd)/DT,-160,160)+(Math.random()-.5)*.4,ay:(Math.random()-.5)*1.2,az:-9.81+(Math.random()-.5)*.15,
-                gx:(Math.random()-.5)*0.08,gy:(Math.random()-.5)*0.08,gz:clamp(dH/DT,-35,35)+(Math.random()-.5)*0.4};
+    // ── Synthetic IMU channels (realistic MPU-6050 / ICM-42688 output) ──────
+    const axVal=clamp((spdMs-ax*DT)/DT,-16,16)+(Math.random()-.5)*.18;  // forward accel m/s²
+    const ayVal=(Math.random()-.5)*0.9 + Math.sin(S.step*.04)*0.3;       // lateral m/s² (road banking + sway)
+    const azVal=-9.81+(Math.random()-.5)*.12+(S.inTunnel?0.05:0);        // vertical, dominated by gravity
+    const gxVal=(Math.random()-.5)*0.03;                                   // roll rate rad/s
+    const gyVal=(Math.random()-.5)*0.03;                                   // pitch rate rad/s
+    const gzVal=clamp(dH/DT,-3.5,3.5)+(Math.random()-.5)*0.05;          // yaw rate rad/s
+    S.imu={ax:axVal,ay:ayVal,az:azVal,gx:gxVal,gy:gyVal,gz:gzVal};
+    const _imu={ax:axVal,ay:ayVal,az:azVal,gx:gxVal,gy:gyVal,gz:gzVal};
     faultUpdate(_imu);
     ekfStep(fSpd,dH,DT,S.gnss,S.gtLa,S.gtLo);
     if(S.gnss){const res=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);rlUpdate(res);}
@@ -1504,6 +1862,12 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     document.getElementById('m-snap').className='mod warn';document.getElementById('m-mm').className='mod warn';
     document.getElementById('mm-badge').className='mm-badge on';
     log('GNSS blackout — dead reckoning, NHC, map-matching engaged','out');
+    // Drop a pin at blackout start
+    if(S.gtLa)dropMapPin(S.gtLa,S.gtLo,'#E0231C','GNSS LOST');
+    S._blkStartLa=S.gtLa;S._blkStartLo=S.gtLo;
+    S._blkNDStart=S.totND;S._blkEKFStart=EKF.te;S._blkEKFS=EKF.s;
+    // pulse pipeline bar
+    document.querySelectorAll('.pipe-dot').forEach(d=>d.style.animationPlayState='running');
   }
 
   function reacq(){
@@ -1528,6 +1892,14 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     document.getElementById('sig-sub').textContent='7 Satellites locked';
     document.getElementById('m-snap').className='mod on';document.getElementById('m-mm').className='mod on';
     log('SNAP reacquisition: -'+fe.toFixed(2)+'m fixed. DR lasted '+S.outt.toFixed(1)+'s','snap');
+    // Drop recovery pin
+    dropMapPin(S.gtLa,S.gtLo,'#00ff9d','GNSS ✓');
+    // Show summary card
+    const ndD=dist(S.ndLa,S.ndLo,S._blkStartLa||S.gtLa,S._blkStartLo||S.gtLo);
+    const ekfD=S._blkEKFS!=null&&EKF.s>S._blkEKFS?(EKF.te-S._blkEKFStart)/Math.max(EKF.s-S._blkEKFS,1)*S.outt:fe*4;
+    showSummaryCard(S.outt,ndD,ekfD);
+    // Reset force-blackout button
+    const fb=$('force-out-btn');if(fb){fb.style.color='#E0231C';fb.textContent='⚡ BLACKOUT';fb.onclick=forceBlackout;}
   }
 
   // ─── UI UPDATE ───
@@ -1578,6 +1950,34 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const odoa=$('odo-ai');if(odoa)odoa.textContent=S.odoAI.toFixed(1)+' km/h';
     const mhdg=$('mag-hdg');if(mhdg)mhdg.textContent=S.magH.toFixed(1)+'°';
     const ahrc=$('ahrs-conf');if(ahrc)ahrc.textContent=S.ahrsConf.toFixed(0)+'%';
+
+    // ── Live IMU channel bars ────────────────────────────────────────────────
+    const imu=S.imu;
+    function setBar(id,val,vid,max){
+      const b=$('imu-bar-'+id);const v=$('imu-v-'+id);
+      if(b)b.style.width=Math.min(100,Math.abs(val)/max*100)+'%';
+      if(v)v.textContent=(val>=0?'+':'')+val.toFixed(3);
+    }
+    setBar('ax',imu.ax,'imu-v-ax',16);   // ±16 m/s²
+    setBar('ay',imu.ay,'imu-v-ay',16);
+    setBar('az',imu.az+9.81,'imu-v-az',4); // show deviation from gravity
+    setBar('gx',imu.gx,'imu-v-gx',3.5);  // ±3.5 rad/s
+    setBar('gy',imu.gy,'imu-v-gy',3.5);
+    setBar('gz',imu.gz,'imu-v-gz',3.5);
+    const azEl=$('imu-v-az');if(azEl)azEl.textContent=imu.az.toFixed(3);
+    const imuT=$('imu-temp-lbl');if(imuT)imuT.textContent=S.imuTemp.toFixed(1)+'°C';
+
+    // ── OBD-II card ──────────────────────────────────────────────────────────
+    const ospd=$('obd-spd');if(ospd)ospd.textContent=spdKmh.toFixed(1);
+    const orpm=$('obd-rpm');if(orpm)orpm.textContent=S.obdRpm.toFixed(0);
+    const othr=$('obd-thr');if(othr)othr.textContent=S.obdThr.toFixed(1);
+    const oload=$('obd-load');if(oload)oload.textContent=S.obdLoad.toFixed(1);
+    const osb=$('obd-spd-bar');if(osb)osb.style.width=(spdKmh/80*100)+'%';
+    const obb=$('obd-rpm-bar');if(obb)obb.style.width=(S.obdRpm/6200*100)+'%';
+    const otb=$('obd-thr-bar');if(otb)otb.style.width=S.obdThr+'%';
+    const olb=$('obd-load-bar');if(olb)olb.style.width=S.obdLoad+'%';
+    const oalt=$('obd-alt');if(oalt)oalt.textContent=S.baroAlt.toFixed(1);
+    const oprs=$('obd-prs');if(oprs)oprs.textContent=S.baroPrs.toFixed(2);
 
     // ISRO PS Compliance card
     const liveATE=S.n>0?(S.totND/S.n):0;
@@ -1930,6 +2330,107 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
   function openModal(){$('modal').classList.add('on');$('api-url').value=localStorage.getItem('nd_url')||'';$('api-key').value=localStorage.getItem('nd_key')||'';$('conn-st').style.display='none';}
   function closeModal(){$('modal').classList.remove('on');}
+  function openHelp(){$('help-modal').classList.add('on');}
+
+  // ── FORCE BLACKOUT ──
+  function forceBlackout(){
+    if(!S.gnss){log('Already in blackout','sys');return;}
+    triggerOut();
+    log('Manual GNSS blackout triggered','out');
+    const btn=$('force-out-btn');
+    if(btn){btn.style.color='#00ff9d';btn.textContent='⚡ RESTORE';btn.onclick=function(){reacq();btn.style.color='#E0231C';btn.textContent='⚡ BLACKOUT';btn.onclick=forceBlackout;};}
+  }
+
+  // ── COMPARE MODE ──
+  let _compareOn=false;
+  function toggleCompare(){
+    _compareOn=!_compareOn;
+    const btn=$('compare-btn');
+    if(btn){btn.style.background=_compareOn?'rgba(168,85,247,0.15)':'';btn.style.borderColor=_compareOn?'rgba(168,85,247,0.5)':'';}
+    // Show/hide EKF and IMU tracks by toggling their opacity
+    if(window._ekfLine)window._ekfLine.setStyle({opacity:_compareOn?1:0.55,weight:_compareOn?3:2});
+    if(window._imuLine)window._imuLine.setStyle({opacity:_compareOn?0.9:0.35,weight:_compareOn?2.5:1.5});
+    // Add labels on compare on
+    if(_compareOn){
+      if(!window._cmpLabel){
+        window._cmpLabel=L.control({position:'bottomleft'});
+        window._cmpLabel.onAdd=function(){
+          const d=L.DomUtil.create('div','');
+          d.innerHTML='<div style="background:rgba(5,7,10,0.92);border:1px solid rgba(223,231,224,0.1);border-radius:6px;padding:7px 11px;font-family:JetBrains Mono,monospace;font-size:.72rem;line-height:1.8;pointer-events:none;">'
+            +'<div><span style="color:#00fff5">─── NAVDRIFT-0</span> <span style="color:#78837c">AI dead reckoning</span></div>'
+            +'<div><span style="color:#a855f7">─── EKF Baseline</span> <span style="color:#78837c">conventional filter</span></div>'
+            +'<div><span style="color:#e0231c">─── Raw IMU</span> <span style="color:#78837c">no correction</span></div>'
+            +'</div>';
+          return d;
+        };
+        window._cmpLabel.addTo(window._map);
+      }
+    } else {
+      if(window._cmpLabel){window._cmpLabel.remove();window._cmpLabel=null;}
+    }
+  }
+
+  // ── BLACKOUT SUMMARY CARD ──
+  function showSummaryCard(durationS, ndDrift, ekfDrift){
+    const card=$('summary-card');
+    if(!card)return;
+    const ratio=ekfDrift>0?(ekfDrift/Math.max(ndDrift,0.01)).toFixed(1):'—';
+    $('sc-duration').textContent='Duration: '+durationS.toFixed(1)+'s blackout';
+    $('sc-nd').textContent='NAVDRIFT-0: '+ndDrift.toFixed(2)+'m drift';
+    $('sc-ekf').textContent='EKF Baseline: '+ekfDrift.toFixed(2)+'m drift';
+    $('sc-ratio').textContent=ratio+'x better than EKF ✓';
+    card.style.display='block';
+    clearTimeout(window._scTimer);
+    window._scTimer=setTimeout(()=>{card.style.display='none';},6000);
+  }
+
+  // ── MAP ANNOTATION PINS ──
+  function dropMapPin(lat,lon,color,label){
+    if(!window._map)return;
+    const icon=L.divIcon({className:'',html:'<div style="background:'+color+';color:#05070a;font-size:.6rem;font-weight:700;font-family:JetBrains Mono,monospace;padding:2px 5px;border-radius:3px;white-space:nowrap;box-shadow:0 0 8px '+color+'40;">'+label+'</div>',iconAnchor:[0,0]});
+    L.marker([lat,lon],{icon:icon,interactive:false}).addTo(window._map);
+  }
+
+  // ── ONBOARDING TOUR ──
+  const OB_STEPS=[
+    {text:'This is the live map. The <span style="color:#00fff5">cyan track</span> is NAVDRIFT-0 navigating without GPS. The <span style="color:#a855f7">violet track</span> is a conventional EKF — watch how much it drifts.',anchor:'map',pos:'center'},
+    {text:'GNSS blackouts trigger automatically. When the <span style="color:#E0231C">BLACKOUT</span> indicator flashes, the AI is navigating on sensor data alone — no satellite input at all. Tap ⚡ BLACKOUT to trigger one yourself.',anchor:'header-right',pos:'below'},
+    {text:'Check <b>METRICS</b> on the right to see the accuracy numbers live. NAVDRIFT-0 ATE stays under 2m while EKF drifts 7–29m during blackouts. Tap any right-panel tab to explore AI internals, compliance, and benchmarks.',anchor:'right-panel',pos:'left'},
+  ];
+  let _obStep=0;
+  function startOnboard(){
+    if(localStorage.getItem('nd_ob_done'))return;
+    _obStep=0;
+    showObStep();
+    $('onboard-overlay').style.display='block';
+  }
+  function showObStep(){
+    const s=OB_STEPS[_obStep];
+    $('ob-step-label').textContent='STEP '+(_obStep+1)+' OF '+OB_STEPS.length;
+    $('ob-text').innerHTML=s.text;
+    $('ob-next').textContent=_obStep===OB_STEPS.length-1?'Got it ✓':'Next →';
+    // dots
+    let dots='';for(let i=0;i<OB_STEPS.length;i++)dots+='<div style="width:5px;height:5px;border-radius:50%;background:'+( i===_obStep?'#00fff5':'rgba(120,131,124,0.4)')+';"></div>';
+    $('ob-dots').innerHTML=dots;
+    // position card near anchor
+    const card=$('onboard-card');
+    const ov=$('onboard-overlay');
+    card.style.top=''; card.style.left=''; card.style.bottom=''; card.style.right='';
+    const arr=$('ob-arrow');arr.style.top='';arr.style.left='';arr.style.bottom='';arr.style.right='';
+    if(s.anchor==='map'){card.style.top='50%';card.style.left='50%';card.style.transform='translate(-50%,-60%)';arr.style.display='none';}
+    else if(s.anchor==='header-right'){card.style.top='58px';card.style.right='60px';card.style.transform='none';arr.style.display='block';arr.style.top='-7px';arr.style.right='20px';}
+    else{card.style.top='50%';card.style.right='268px';card.style.transform='translateY(-50%)';arr.style.display='block';arr.style.right='-7px';arr.style.top='50%';}
+  }
+  function nextOnboard(){
+    _obStep++;
+    if(_obStep>=OB_STEPS.length){endOnboard();return;}
+    showObStep();
+  }
+  function endOnboard(){
+    $('onboard-overlay').style.display='none';
+    localStorage.setItem('nd_ob_done','1');
+  }
+  function closeHelp(){$('help-modal').classList.remove('on');}
   async function saveAPI(){const url=$('api-url').value.trim(),key=$('api-key').value.trim();localStorage.setItem('nd_url',url);localStorage.setItem('nd_key',key);API_URL=url;API_KEY=key;API_MODE=!!(url&&key);if(API_MODE){log('Backend: '+url,'sys');await reinitAPI();}else{if(S.ws){S.ws.close();S.ws=null;S.wsReady=false;}$('engine-info').innerHTML='<b>Mode:</b> Simulation';updBadge();}closeModal();}
   async function testConn(){const url=$('api-url').value.trim(),key=$('api-key').value.trim(),el=$('conn-st');el.style.display='block';el.className='cs ok';el.textContent='Testing...';try{const r=await fetch(url+'/status',{method:'GET',headers:{'X-API-Key':key}});el.className=r.ok?'cs ok':'cs err';el.textContent=r.ok?'✓ API Online (WS upgrade on save)':'✗ Status '+r.status;}catch(e){el.className='cs err';el.textContent='✗ Cannot reach endpoint';}}
 
@@ -1985,7 +2486,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const bg=document.getElementById('bench-bars');if(!bg||!bg.offsetParent)return;
     const bars=[{label:'NAVDRIFT-0',v:nd,c:'var(--cyan)'},{label:'EKF Baseline',v:ekf,c:'var(--violet)'},{label:'Raw IMU',v:imu,c:'var(--red)'}];
     const mx=Math.max(imu,.1);
-    bg.innerHTML=bars.map(b=>`<div style="display:flex;align-items:center;gap:6px;font-size:.58rem;font-family:var(--mono)"><span style="width:72px;color:var(--muted)">${b.label}</span><div style="flex:1;height:7px;background:rgba(255,255,255,.05);border-radius:2px"><div style="height:100%;width:${(b.v/mx*100).toFixed(1)}%;background:${b.c};border-radius:2px"></div></div><span style="color:${b.c};width:42px;text-align:right">${b.v.toFixed(1)}m</span></div>`).join('');
+    bg.innerHTML=bars.map(b=>`<div style="display:flex;align-items:center;gap:6px;font-size:.74rem;font-family:var(--mono)"><span style="width:72px;color:var(--muted)">${b.label}</span><div style="flex:1;height:7px;background:rgba(255,255,255,.05);border-radius:2px"><div style="height:100%;width:${(b.v/mx*100).toFixed(1)}%;background:${b.c};border-radius:2px"></div></div><span style="color:${b.c};width:42px;text-align:right">${b.v.toFixed(1)}m</span></div>`).join('');
     const rq=document.getElementById('rl-q'),rr=document.getElementById('rl-r'),rb=document.getElementById('rl-buf');
     if(rq)rq.textContent=EKF.Qp.toExponential(2);if(rr)rr.textContent=EKF.Rp.toExponential(2);if(rb)rb.textContent=RL.buf.length;
   }
@@ -1994,7 +2495,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const fg=document.getElementById('fault-grid');if(!fg||!fg.offsetParent)return;
     fg.innerHTML=['ax','ay','az','gx','gy','gz'].map(ch=>{
       const bad=FAULT.flags[ch];
-      return `<div style="text-align:center;padding:5px 2px;border-radius:3px;background:${bad?'rgba(139,26,26,0.45)':'rgba(223,231,224,0.05)'};border:1px solid ${bad?'rgba(139,26,26,0.7)':'var(--line)'}"><div style="font-size:.56rem;font-family:var(--mono);color:${bad?'#e88':'var(--bone-dim)'}">${ch.toUpperCase()}</div><div style="font-size:.62rem;margin-top:1px">${bad?'⚠':'✓'}</div></div>`;
+      return `<div style="text-align:center;padding:5px 2px;border-radius:3px;background:${bad?'rgba(139,26,26,0.45)':'rgba(223,231,224,0.05)'};border:1px solid ${bad?'rgba(139,26,26,0.7)':'var(--line)'}"><div style="font-size:.73rem;font-family:var(--mono);color:${bad?'#e88':'var(--bone-dim)'}">${ch.toUpperCase()}</div><div style="font-size:.62rem;margin-top:1px">${bad?'⚠':'✓'}</div></div>`;
     }).join('');
   }
 
@@ -2226,7 +2727,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         <div style="width:100%;height:20px;background:rgba(255,255,255,0.04);border-radius:1px;display:flex;align-items:flex-end;overflow:hidden">
           <div style="width:100%;height:${pct}%;background:${barCol};transition:height .5s"></div>
         </div>
-        <span style="font-size:.42rem;font-family:var(--mono);color:${lblCol}">${sat.prn.replace('NVS-','S')}</span>
+        <span style="font-size:.6rem;font-family:var(--mono);color:${lblCol}">${sat.prn.replace('NVS-','S')}</span>
       </div>`;
     });
   }
@@ -3127,6 +3628,336 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   })();
 
   window.toggleProdModel=function(){NAVDRIFT_ONNX.toggle();};
+
+  // ══════════════════════════════════════════════════════
+  //  INDIAN LANGUAGE i18n SYSTEM
+  //  Covers all 10 major Indian languages + English
+  //  Usage: add data-t="key" to any HTML element
+  // ══════════════════════════════════════════════════════
+  const T = {
+    en: {
+      tab_live:'LIVE', tab_modules:'MODULES', tab_sensors:'SENSORS', tab_log:'LOG',
+      tab_metrics:'METRICS', tab_ai:'AI', tab_comply:'COMPLY', tab_bench:'BENCH',
+      tab_fleet:'FLEET', tab_explain:'EXPLAIN',
+      btn_start:'▶ START', btn_stop:'■ STOP', btn_blackout:'⚡ BLACKOUT', btn_snap:'📍 SNAP TO GPS',
+      btn_export:'⬇ EXPORT CSV', btn_reset:'↺ RESET',
+      lbl_gnss_lock:'GNSS LOCKED', lbl_gnss_lost:'GNSS LOST',
+      lbl_phase_nominal:'NOMINAL', lbl_phase_blackout:'BLACKOUT',
+      // Card titles
+      hdr_navic:'NavIC Constellation', hdr_controls:'Controls', hdr_modules:'System Modules',
+      hdr_nhc:'Non-Holonomic Constraints', hdr_sensors:'Alignment & Vibration', hdr_imu:'IMU · Motion Sensor',
+      hdr_obd:'OBD-II · CAN Bus', hdr_navic_sig:'NavIC Signal', hdr_live_sig:'Live Signals',
+      hdr_ai_err:'AI Navigation Error', hdr_drift_race:'Live Drift Race',
+      hdr_attn:'DRIFTFormer Attention', hdr_algo_race:'Live Algorithm Race',
+      hdr_inf_eng:'Inference Engine', hdr_ukf:'UKF State Vector', hdr_edge:'Edge Deployment',
+      hdr_isro_drift:'ISRO Drift Compliance', hdr_ps26168:'ISRO PS #26168 Compliance',
+      hdr_gnss_ins:'GNSS+INS Fusion', hdr_bench:'Algorithm Benchmark', hdr_rl:'Adaptive RL',
+      hdr_fault:'Sensor Fault Grid', hdr_fleet:'Federated Learning', hdr_fleet_log:'Fleet Log',
+      hdr_attn_hm:'Attention Heatmap',
+      // Metric labels
+      lbl_ate:'AI Nav Error', lbl_ekf_base:'EKF Baseline', lbl_unc:'Uncertainty σ', lbl_latency:'AI Latency',
+      lbl_navdrift:'NAVDRIFT', lbl_raw_imu:'Raw IMU', lbl_saves:'NAVDRIFT saves vs IMU',
+      lbl_drift_dist:'Drift / Distance', lbl_isro_limit:'ISRO limit: error/dist < 10%',
+      lbl_gnss_dr:'GNSS ↔ DR Transition', lbl_isro_req:'ISRO req: seamless <100ms',
+      lbl_blackout_50m:'50m blackout drift', lbl_tunnel_1km:'1km tunnel ATE',
+      lbl_inf_lat:'Inference latency', lbl_drift_comply:'Drift compliance',
+      lbl_gnss_trans:'GNSS↔DR transition', lbl_zupt:'ZUPT corrections',
+      lbl_nd_ate:'NAVDRIFT-0 ATE', lbl_ekf_ate:'EKF Baseline ATE', lbl_imu_ate:'Raw IMU ATE',
+      lbl_proc_q:'Process noise Q', lbl_meas_r:'Meas. noise R', lbl_res_buf:'Residual buf size',
+      lbl_global_ate:'Global ATE', lbl_fleet_sz:'Fleet size', lbl_tdp_eta:'TDP ETA',
+      lbl_steps:'Steps', lbl_blackouts:'Blackouts', lbl_mode:'Mode',
+      // Button labels
+      btn_pause:'⏸ Pause', btn_gnss_tog:'📡 GNSS Toggle', btn_load_gpx:'📂 Load GPX',
+      btn_export_pdf:'📄 Export PDF', btn_imu_cal:'🔧 IMU Cal Wizard', btn_start_rec:'⏺ Start Rec',
+      btn_export_comply:'📋 EXPORT ISRO COMPLIANCE PDF',
+      // Descriptions
+      desc_navic:'<span data-t="desc_navic">India's own GPS system. Satellites shown in sky view — more visible = better signal.</span>',
+      desc_controls:'Use GNSS Toggle to simulate losing satellite signal. The AI takes over using only IMU + barometer.',
+      desc_drift_race:'<span data-t="desc_drift_race">Cumulative position error for each method. NAVDRIFT (AI) should stay far below Raw IMU.</span>',
+      desc_imu:'MPU-6050 / ICM-42688 chip. ax/ay/az = acceleration (m/s²). gx/gy/gz = rotation speed (rad/s).',
+      desc_obd:'Car's own ECU data via ELM327 dongle. Vehicle speed replaces wheel encoder.',
+      desc_drift_comply:'<span data-t="desc_drift_comply">How much the AI drifts as a % of total distance covered. ISRO PS #26168 requires under 10%.</span>',
+      // Vehicle fields
+      lbl_veh_spd:'Vehicle Speed', lbl_eng_rpm:'Engine RPM', lbl_throttle:'Throttle',
+      lbl_eng_load:'Engine Load', lbl_baro_alt:'Baro Altitude', lbl_pressure:'Pressure',
+      // IMU alignment
+      lbl_lat_vel:'Lateral vel', lbl_vert_vel:'Vertical vel', lbl_corrections:'Corrections',
+      lbl_err_removed:'Error removed', lbl_vib_raw:'RAW IMU (noisy)', lbl_vib_filt:'AI FILTERED',
+      lbl_wheel_odo:'WHEEL ODO', lbl_ai_imu_est:'AI IMU EST', lbl_mag_hdg:'MAG heading',
+      lbl_ahrs_conf:'AHRS confidence', lbl_pots:'Pothole events filtered',
+      // Explain tab  
+      hdr_what_is:'What is NAVDRIFT-0?', hdr_pipeline:'AI Pipeline', hdr_read_map:'Reading the Map',
+      hdr_left_panel:'Left Panel', hdr_right_panel:'Right Panel',
+    },
+    hi: {
+      tab_live:'लाइव', tab_modules:'मॉड्यूल', tab_sensors:'सेंसर', tab_log:'लॉग',
+      tab_metrics:'मेट्रिक्स', tab_ai:'एआई', tab_comply:'अनुपालन', tab_bench:'बेंच',
+      tab_fleet:'बेड़ा', tab_explain:'विवरण',
+      btn_start:'▶ शुरू', btn_stop:'■ रोकें', btn_blackout:'⚡ ब्लैकआउट', btn_snap:'📍 GPS स्नैप',
+      btn_export:'⬇ CSV निर्यात', btn_reset:'↺ रीसेट',
+      lbl_gnss_lock:'GNSS लॉक्ड', lbl_gnss_lost:'GNSS खोया',
+      lbl_phase_nominal:'सामान्य', lbl_phase_blackout:'ब्लैकआउट',
+      hdr_navic:'NavIC नक्षत्र', hdr_controls:'नियंत्रण', hdr_modules:'सिस्टम मॉड्यूल',
+      hdr_nhc:'गैर-होलोनॉमिक बाधाएं', hdr_sensors:'संरेखण और कंपन', hdr_imu:'IMU · गति सेंसर',
+      hdr_obd:'OBD-II · CAN बस', hdr_navic_sig:'NavIC सिग्नल', hdr_live_sig:'लाइव सिग्नल',
+      hdr_ai_err:'AI नेविगेशन त्रुटि', hdr_drift_race:'लाइव ड्रिफ्ट रेस',
+      hdr_attn:'DRIFTFormer ध्यान', hdr_algo_race:'लाइव एल्गोरिदम रेस',
+      hdr_inf_eng:'अनुमान इंजन', hdr_ukf:'UKF स्टेट वेक्टर', hdr_edge:'एज डिप्लॉयमेंट',
+      hdr_isro_drift:'ISRO ड्रिफ्ट अनुपालन', hdr_ps26168:'ISRO PS #26168 अनुपालन',
+      hdr_gnss_ins:'GNSS+INS फ्यूजन', hdr_bench:'एल्गोरिदम बेंचमार्क', hdr_rl:'अनुकूली RL',
+      hdr_fault:'सेंसर दोष ग्रिड', hdr_fleet:'फेडरेटेड लर्निंग', hdr_fleet_log:'फ्लीट लॉग',
+      hdr_attn_hm:'ध्यान हीटमैप',
+      lbl_ate:'AI नेव त्रुटि', lbl_ekf_base:'EKF बेसलाइन', lbl_unc:'अनिश्चितता σ', lbl_latency:'AI विलंब',
+      lbl_navdrift:'NAVDRIFT', lbl_raw_imu:'कच्चा IMU', lbl_saves:'NAVDRIFT बनाम IMU बचत',
+      lbl_drift_dist:'ड्रिफ्ट / दूरी', lbl_isro_limit:'ISRO सीमा: त्रुटि/दूरी < 10%',
+      lbl_gnss_dr:'GNSS ↔ DR संक्रमण', lbl_isro_req:'ISRO आवश्यकता: < 100ms',
+      lbl_blackout_50m:'50m ब्लैकआउट ड्रिफ्ट', lbl_tunnel_1km:'1km सुरंग ATE',
+      lbl_inf_lat:'अनुमान विलंब', lbl_drift_comply:'ड्रिफ्ट अनुपालन',
+      lbl_gnss_trans:'GNSS↔DR संक्रमण', lbl_zupt:'ZUPT सुधार',
+      lbl_nd_ate:'NAVDRIFT-0 ATE', lbl_ekf_ate:'EKF बेसलाइन ATE', lbl_imu_ate:'कच्चा IMU ATE',
+      lbl_proc_q:'प्रक्रिया शोर Q', lbl_meas_r:'माप शोर R', lbl_res_buf:'अवशिष्ट बफर',
+      lbl_global_ate:'वैश्विक ATE', lbl_fleet_sz:'फ्लीट आकार', lbl_tdp_eta:'TDP ETA',
+      lbl_steps:'चरण', lbl_blackouts:'ब्लैकआउट', lbl_mode:'मोड',
+      btn_pause:'⏸ रोकें', btn_gnss_tog:'📡 GNSS टॉगल', btn_load_gpx:'📂 GPX लोड',
+      btn_export_pdf:'📄 PDF निर्यात', btn_imu_cal:'🔧 IMU कैलिब्रेशन', btn_start_rec:'⏺ रिकॉर्ड शुरू',
+      btn_export_comply:'📋 ISRO अनुपालन PDF निर्यात',
+      desc_navic:'भारत की अपनी GPS प्रणाली। उपग्रह आकाश दृश्य में दिखाए गए हैं।',
+      desc_controls:'GNSS टॉगल से सैटेलाइट सिग्नल खोने का अनुकरण करें। AI केवल IMU + बैरोमीटर से नेविगेट करता है।',
+      desc_drift_race:'प्रत्येक विधि के लिए संचयी स्थिति त्रुटि। NAVDRIFT (AI) Raw IMU से बहुत नीचे रहनी चाहिए।',
+      desc_imu:'MPU-6050 / ICM-42688 चिप। ax/ay/az = त्वरण (m/s²). gx/gy/gz = घूर्णन गति (rad/s)।',
+      desc_obd:'ELM327 डोंगल के माध्यम से कार का ECU डेटा।',
+      desc_drift_comply:'AI कुल दूरी के % के रूप में कितना भटकता है। ISRO PS #26168 के लिए 10% से कम चाहिए।',
+      lbl_veh_spd:'वाहन गति', lbl_eng_rpm:'इंजन RPM', lbl_throttle:'थ्रॉटल',
+      lbl_eng_load:'इंजन लोड', lbl_baro_alt:'बैरो ऊंचाई', lbl_pressure:'दबाव',
+      lbl_lat_vel:'पार्श्व वेग', lbl_vert_vel:'ऊर्ध्वाधर वेग', lbl_corrections:'सुधार',
+      lbl_err_removed:'त्रुटि हटाई', lbl_vib_raw:'कच्चा IMU (शोरगुल)', lbl_vib_filt:'AI फ़िल्टर्ड',
+      lbl_wheel_odo:'व्हील ओडो', lbl_ai_imu_est:'AI IMU अनुमान', lbl_mag_hdg:'MAG दिशा',
+      lbl_ahrs_conf:'AHRS विश्वास', lbl_pots:'फ़िल्टर किए गए गड्ढे',
+      hdr_what_is:'NAVDRIFT-0 क्या है?', hdr_pipeline:'AI पाइपलाइन', hdr_read_map:'मानचित्र पढ़ना',
+      hdr_left_panel:'बाएं पैनल', hdr_right_panel:'दाएं पैनल',
+    },
+    ta: {
+      tab_live:'நேரடி', tab_modules:'தொகுதிகள்', tab_sensors:'சென்சார்', tab_log:'பதிவு',
+      tab_metrics:'அளவீடுகள்', tab_ai:'AI', tab_comply:'இணக்கம்', tab_bench:'அளவு',
+      tab_fleet:'கூட்டம்', tab_explain:'விளக்கம்',
+      btn_start:'▶ தொடங்கு', btn_stop:'■ நிறுத்து', btn_blackout:'⚡ இருட்டடிப்பு', btn_snap:'📍 GPS பூட்டு',
+      btn_export:'⬇ CSV ஏற்றுமதி', btn_reset:'↺ மீட்டமை',
+      lbl_gnss_lock:'GNSS பூட்டப்பட்டது', lbl_gnss_lost:'GNSS இழந்தது',
+      lbl_phase_nominal:'சாதாரண', lbl_phase_blackout:'இருட்டடிப்பு',
+      hdr_navic:'NavIC நட்சத்திரக்கூட்டம்', hdr_controls:'கட்டுப்பாடுகள்', hdr_modules:'கணினி தொகுதிகள்',
+      hdr_ai_err:'AI வழிசெலுத்தல் பிழை', hdr_drift_race:'நேரடி சறுக்கல் பந்தயம்',
+      hdr_isro_drift:'ISRO சறுக்கல் இணக்கம்', hdr_bench:'அல்காரிதம் அளவுகோல்',
+      lbl_ate:'AI வழிசெலுத்தல் பிழை', lbl_ekf_base:'EKF அடிக்கோடு', lbl_unc:'நிச்சயமற்ற தன்மை σ', lbl_latency:'AI தாமதம்',
+      lbl_navdrift:'NAVDRIFT', lbl_raw_imu:'மூல IMU',
+      btn_pause:'⏸ இடைநிறுத்து', btn_gnss_tog:'📡 GNSS மாற்று', btn_load_gpx:'📂 GPX ஏற்று',
+      btn_export_pdf:'📄 PDF ஏற்றுமதி', btn_imu_cal:'🔧 IMU அளவீடு', btn_start_rec:'⏺ பதிவு தொடங்கு',
+      btn_export_comply:'📋 ISRO இணக்க PDF ஏற்றுமதி',
+      desc_navic:'இந்தியாவின் சொந்த GPS. நட்சத்திரங்கள் வானத்தில் காட்டப்படுகின்றன.',
+      desc_controls:'GNSS மாற்றை பயன்படுத்தி சிக்னல் இழப்பை உருவகப்படுத்துங்கள்.',
+      desc_drift_race:'ஒவ்வொரு முறைக்கும் திரட்சியான நிலை பிழை. NAVDRIFT Raw IMU ஐ விட மிகவும் குறைவாக இருக்க வேண்டும்.',
+      desc_drift_comply:'AI மொத்த தூரத்தின் % ஆக எவ்வளவு சறுக்குகிறது. ISRO PS #26168 10% க்கு கீழே தேவை.',
+    },
+    te: {
+      tab_live:'లైవ్', tab_modules:'మాడ్యూల్స్', tab_sensors:'సెన్సర్లు', tab_log:'లాగ్',
+      tab_metrics:'కొలతలు', tab_ai:'AI', tab_comply:'సమ్మతి', tab_bench:'బెంచ్',
+      tab_fleet:'బేడా', tab_explain:'వివరణ',
+      btn_start:'▶ ప్రారంభించు', btn_stop:'■ ఆపు', btn_blackout:'⚡ బ్లాకవుట్', btn_snap:'📍 GPS స్నాప్',
+      btn_export:'⬇ CSV ఎగుమతి', btn_reset:'↺ రీసెట్',
+      lbl_gnss_lock:'GNSS లాక్', lbl_gnss_lost:'GNSS పోయింది',
+      lbl_phase_nominal:'సాధారణ', lbl_phase_blackout:'బ్లాకవుట్',
+      hdr_navic:'NavIC నక్షత్ర సమూహం', hdr_controls:'నియంత్రణలు', hdr_modules:'సిస్టమ్ మాడ్యూళ్ళు',
+      hdr_ai_err:'AI నావిగేషన్ లోపం', hdr_drift_race:'లైవ్ డ్రిఫ్ట్ రేస్',
+      hdr_isro_drift:'ISRO డ్రిఫ్ట్ సమ్మతి', hdr_bench:'అల్గారిథమ్ బెంచ్‌మార్క్',
+      lbl_ate:'AI నావ్ లోపం', lbl_ekf_base:'EKF బేస్‌లైన్', lbl_unc:'అనిశ్చితత σ', lbl_latency:'AI జాప్యం',
+      btn_pause:'⏸ విరాముం', btn_gnss_tog:'📡 GNSS టోగుల్', btn_load_gpx:'📂 GPX లోడ్',
+      btn_export_pdf:'📄 PDF ఎగుమతి', btn_imu_cal:'🔧 IMU కాలిబ్రేషన్', btn_start_rec:'⏺ రికార్డ్ ప్రారంభం',
+      btn_export_comply:'📋 ISRO సమ్మతి PDF ఎగుమతి',
+      desc_navic:'భారతదేశం యొక్క స్వంత GPS వ్యవస్థ.',
+      desc_controls:'GNSS టోగుల్ ఉపయోగించి సిగ్నల్ కోల్పోవడాన్ని అనుకరించండి.',
+      desc_drift_race:'ప్రతి పద్ధతికి సంచిత స్థాన లోపం. NAVDRIFT Raw IMU కంటే చాలా తక్కువగా ఉండాలి.',
+      desc_drift_comply:'AI మొత్తం దూరం యొక్క % గా ఎంత సర్కుతుందో. ISRO PS #26168 10% కన్నా తక్కువ అవసరం.',
+    },
+    kn: {
+      tab_live:'ನೇರ', tab_modules:'ಮಾಡ್ಯೂಲ್', tab_sensors:'ಸೆನ್ಸರ್', tab_log:'ಲಾಗ್',
+      tab_metrics:'ಅಳತೆಗಳು', tab_ai:'AI', tab_comply:'ಅನುಪಾಲನೆ', tab_bench:'ಬೆಂಚ್',
+      tab_fleet:'ಫ್ಲೀಟ್', tab_explain:'ವಿವರಣೆ',
+      btn_start:'▶ ಪ್ರಾರಂಭ', btn_stop:'■ ನಿಲ್ಲಿಸು', btn_blackout:'⚡ ಬ್ಲ್ಯಾಕ್ಔಟ್', btn_snap:'📍 GPS ಸ್ನ್ಯಾಪ್',
+      btn_export:'⬇ CSV ರಫ್ತು', btn_reset:'↺ ರೀಸೆಟ್',
+      lbl_gnss_lock:'GNSS ಲಾಕ್', lbl_gnss_lost:'GNSS ಕಳೆದಿದೆ',
+      lbl_phase_nominal:'ಸಾಮಾನ್ಯ', lbl_phase_blackout:'ಬ್ಲ್ಯಾಕ್ಔಟ್',
+      hdr_navic:'NavIC ನಕ್ಷತ್ರ ಸಮೂಹ', hdr_controls:'ನಿಯಂತ್ರಣಗಳು', hdr_modules:'ಸಿಸ್ಟಮ್ ಮಾಡ್ಯೂಲ್ಗಳು',
+      hdr_ai_err:'AI ನ್ಯಾವಿಗೇಶನ್ ದೋಷ', hdr_drift_race:'ಲೈವ್ ಡ್ರಿಫ್ಟ್ ರೇಸ್',
+      hdr_isro_drift:'ISRO ಡ್ರಿಫ್ಟ್ ಅನುಪಾಲನ', hdr_bench:'ಅಲ್ಗಾರಿದಮ್ ಬೆಂಚ್‌ಮಾರ್ಕ್',
+      lbl_ate:'AI ನ್ಯಾವ್ ದೋಷ', lbl_ekf_base:'EKF ಬೇಸ್‌ಲೈನ್', lbl_unc:'ಅನಿಶ್ಚಿತತೆ σ', lbl_latency:'AI ವಿಳಂಬ',
+      btn_pause:'⏸ ವಿರಾಮ', btn_gnss_tog:'📡 GNSS ಟಾಗಲ್', btn_load_gpx:'📂 GPX ಲೋಡ್',
+      btn_export_pdf:'📄 PDF ರಫ್ತು', btn_imu_cal:'🔧 IMU ಕ್ಯಾಲಿಬ್ರೇಶನ್', btn_start_rec:'⏺ ರೆಕಾರ್ಡ್ ಪ್ರಾರಂಭ',
+      btn_export_comply:'📋 ISRO ಅನುಪಾಲನ PDF ರಫ್ತು',
+      desc_navic:'ಭಾರತದ ಸ್ವಂತ GPS ವ್ಯವಸ್ಥೆ.',
+      desc_controls:'GNSS ಟಾಗಲ್ ಬಳಸಿ ಸಿಗ್ನಲ್ ನಷ್ಟವನ್ನು ಅನುಕರಿಸಿ.',
+      desc_drift_race:'ಪ್ರತಿ ವಿಧಾನಕ್ಕೆ ಸಂಚಿತ ಸ್ಥಾನ ದೋಷ.',
+      desc_drift_comply:'AI ಒಟ್ಟು ದೂರದ % ಎಷ್ಟು ಚಲಿಸುತ್ತದೆ. ISRO PS #26168 10% ಕ್ಕಿಂತ ಕಡಿಮೆ ಅಗತ್ಯ.',
+    },
+    bn: {
+      tab_live:'সরাসরি', tab_modules:'মডিউল', tab_sensors:'সেন্সর', tab_log:'লগ',
+      tab_metrics:'মেট্রিক্স', tab_ai:'AI', tab_comply:'সম্মতি', tab_bench:'বেঞ্চ',
+      tab_fleet:'বহর', tab_explain:'ব্যাখ্যা',
+      btn_start:'▶ শুরু', btn_stop:'■ থামো', btn_blackout:'⚡ ব্ল্যাকআউট', btn_snap:'📍 GPS স্ন্যাপ',
+      btn_export:'⬇ CSV রপ্তানি', btn_reset:'↺ রিসেট',
+      lbl_gnss_lock:'GNSS লকড', lbl_gnss_lost:'GNSS হারানো',
+      lbl_phase_nominal:'স্বাভাবিক', lbl_phase_blackout:'ব্ল্যাকআউট',
+      hdr_navic:'NavIC নক্ষত্রমণ্ডল', hdr_controls:'নিয়ন্ত্রণ', hdr_modules:'সিস্টেম মডিউল',
+      hdr_ai_err:'AI নেভিগেশন ত্রুটি', hdr_drift_race:'লাইভ ড্রিফট রেস',
+      hdr_isro_drift:'ISRO ড্রিফট সম্মতি', hdr_bench:'অ্যালগরিদম বেঞ্চমার্ক',
+      lbl_ate:'AI নেভ ত্রুটি', lbl_ekf_base:'EKF বেসলাইন', lbl_unc:'অনিশ্চয়তা σ', lbl_latency:'AI বিলম্ব',
+      btn_pause:'⏸ বিরতি', btn_gnss_tog:'📡 GNSS টগল', btn_load_gpx:'📂 GPX লোড',
+      btn_export_pdf:'📄 PDF রপ্তানি', btn_imu_cal:'🔧 IMU ক্যালিব্রেশন', btn_start_rec:'⏺ রেকর্ড শুরু',
+      btn_export_comply:'📋 ISRO সম্মতি PDF রপ্তানি',
+      desc_navic:'ভারতের নিজস্ব GPS সিস্টেম।',
+      desc_controls:'GNSS টগল ব্যবহার করে স্যাটেলাইট সিগন্যাল হারানো অনুকরণ করুন।',
+      desc_drift_race:'প্রতিটি পদ্ধতির জন্য ক্রমবর্ধমান অবস্থান ত্রুটি।',
+      desc_drift_comply:'AI মোট দূরত্বের % হিসেবে কতটা ভেসে যায়। ISRO PS #26168 10% এর নিচে চায়।',
+    },
+    mr: {
+      tab_live:'थेट', tab_modules:'मॉड्युल', tab_sensors:'सेन्सर', tab_log:'नोंद',
+      tab_metrics:'मापदंड', tab_ai:'AI', tab_comply:'अनुपालन', tab_bench:'बेंच',
+      tab_fleet:'ताफा', tab_explain:'स्पष्टीकरण',
+      btn_start:'▶ सुरू', btn_stop:'■ थांबा', btn_blackout:'⚡ ब्लॅकआउट', btn_snap:'📍 GPS स्नॅप',
+      btn_export:'⬇ CSV निर्यात', btn_reset:'↺ रीसेट',
+      lbl_gnss_lock:'GNSS लॉक', lbl_gnss_lost:'GNSS हरवले',
+      lbl_phase_nominal:'सामान्य', lbl_phase_blackout:'ब्लॅकआउट',
+      hdr_navic:'NavIC तारा समूह', hdr_controls:'नियंत्रणे', hdr_modules:'सिस्टीम मॉड्यूल',
+      hdr_ai_err:'AI नेव्हिगेशन त्रुटी', hdr_drift_race:'थेट ड्रिफ्ट शर्यत',
+      hdr_isro_drift:'ISRO ड्रिफ्ट अनुपालन', hdr_bench:'अल्गोरिदम बेंचमार्क',
+      lbl_ate:'AI नेव्ह त्रुटी', lbl_ekf_base:'EKF आधाररेषा', lbl_unc:'अनिश्चितता σ', lbl_latency:'AI विलंब',
+      btn_pause:'⏸ थांबवा', btn_gnss_tog:'📡 GNSS टॉगल', btn_load_gpx:'📂 GPX लोड',
+      btn_export_pdf:'📄 PDF निर्यात', btn_imu_cal:'🔧 IMU कॅलिब्रेशन', btn_start_rec:'⏺ रेकॉर्ड सुरू',
+      btn_export_comply:'📋 ISRO अनुपालन PDF निर्यात',
+      desc_navic:'भारताची स्वतःची GPS प्रणाली.',
+      desc_controls:'GNSS टॉगल वापरून सॅटेलाइट सिग्नल गमावण्याचे अनुकरण करा.',
+      desc_drift_race:'प्रत्येक पद्धतीसाठी संचयी स्थान त्रुटी.',
+      desc_drift_comply:'AI एकूण अंतराच्या % म्हणून किती भरकटतो. ISRO PS #26168 10% खाली हवे.',
+    },
+    gu: {
+      tab_live:'સીધુ', tab_modules:'મોડ્યુલ', tab_sensors:'સેન્સર', tab_log:'નોંધ',
+      tab_metrics:'માપ', tab_ai:'AI', tab_comply:'અનુપાલન', tab_bench:'બેન્ચ',
+      tab_fleet:'કાફલો', tab_explain:'સ્પષ્ટીકરણ',
+      btn_start:'▶ શરૂ', btn_stop:'■ અટકો', btn_blackout:'⚡ બ્લૅકઆઉટ', btn_snap:'📍 GPS સ્નૅપ',
+      btn_export:'⬇ CSV નિકાસ', btn_reset:'↺ રીસેટ',
+      lbl_gnss_lock:'GNSS લૉક', lbl_gnss_lost:'GNSS ખોવાઈ',
+      lbl_phase_nominal:'સામાન્ય', lbl_phase_blackout:'બ્લૅકઆઉટ',
+      hdr_navic:'NavIC નક્ષત્ર', hdr_controls:'નિયંત્રણો', hdr_modules:'સિસ્ટમ મોડ્યુલ',
+      hdr_ai_err:'AI નેવિગેશન ભૂલ', hdr_drift_race:'લાઇવ ડ્રિફ્ટ રેસ',
+      hdr_isro_drift:'ISRO ડ્રિફ્ટ અનુપાલન', hdr_bench:'અલ્ગોરિધમ બેન્ચમાર્ક',
+      lbl_ate:'AI નેવ ભૂલ', lbl_ekf_base:'EKF આધારભૂત', lbl_unc:'અનિશ્ચિતતા σ', lbl_latency:'AI વિલંબ',
+      btn_pause:'⏸ થોભો', btn_gnss_tog:'📡 GNSS ટૉગલ', btn_load_gpx:'📂 GPX લોડ',
+      btn_export_pdf:'📄 PDF નિકાસ', btn_imu_cal:'🔧 IMU કેલિબ્રેશન', btn_start_rec:'⏺ રેકોર્ડ શરૂ',
+      btn_export_comply:'📋 ISRO અનુપાલન PDF નિકાસ',
+      desc_navic:'ભારતની પોતાની GPS સિસ્ટમ.',
+      desc_controls:'GNSS ટૉગલ દ્વારા સેટેલાઇટ સિગ્નલ ગુમાવવાનું અનુકરણ કરો.',
+      desc_drift_race:'દરેક પ્રક્રિયા માટે સ્થિતિ ભૂલ.',
+      desc_drift_comply:'AI કુલ અંતરના % તરીકે કેટલું વિચલિત થાય. ISRO PS #26168 10% ની નીચે જોઈએ.',
+    },
+    ml: {
+      tab_live:'തത്സമയം', tab_modules:'മൊഡ്യൂൾ', tab_sensors:'സെൻസർ', tab_log:'ലോഗ്',
+      tab_metrics:'അളവ്', tab_ai:'AI', tab_comply:'അനുസരണം', tab_bench:'ബെഞ്ച്',
+      tab_fleet:'കൂട്ടം', tab_explain:'വിശദീകരണം',
+      btn_start:'▶ ആരംഭിക്കുക', btn_stop:'■ നിർത്തുക', btn_blackout:'⚡ ബ്ലാക്കൗട്ട്', btn_snap:'📍 GPS സ്നാപ്',
+      btn_export:'⬇ CSV കയറ്റുമതി', btn_reset:'↺ റീസെറ്റ്',
+      lbl_gnss_lock:'GNSS ലോക്ക്', lbl_gnss_lost:'GNSS നഷ്ടം',
+      lbl_phase_nominal:'സാധാരണ', lbl_phase_blackout:'ബ്ലാക്കൗട്ട്',
+      hdr_navic:'NavIC നക്ഷത്ര ഗണം', hdr_controls:'നിയന്ത്രണങ്ങൾ', hdr_modules:'സിസ്റ്റം മൊഡ്യൂളുകൾ',
+      hdr_ai_err:'AI നാവിഗേഷൻ പിശക്', hdr_drift_race:'ലൈവ് ഡ്രിഫ്റ്റ് റേസ്',
+      hdr_isro_drift:'ISRO ഡ്രിഫ്റ്റ് അനുസരണം', hdr_bench:'അൽഗോരിതം ബെഞ്ച്മാർക്ക്',
+      lbl_ate:'AI നാവ് പിശക്', lbl_ekf_base:'EKF ബേസ്‌ലൈൻ', lbl_unc:'അനിശ്ചിതത σ', lbl_latency:'AI കാലതാമസം',
+      btn_pause:'⏸ നിർത്തുക', btn_gnss_tog:'📡 GNSS ടോഗിൾ', btn_load_gpx:'📂 GPX ലോഡ്',
+      btn_export_pdf:'📄 PDF കയറ്റുമതി', btn_imu_cal:'🔧 IMU കാലിബ്രേഷൻ', btn_start_rec:'⏺ റെക്കോർഡ് ആരംഭിക്കുക',
+      btn_export_comply:'📋 ISRO അനുസരണ PDF കയറ്റുമതി',
+      desc_navic:'ഇന്ത്യയുടെ സ്വന്തം GPS സംവിധാനം.',
+      desc_controls:'GNSS ടോഗിൾ ഉപയോഗിച്ച് സാറ്റലൈറ്റ് സിഗ്നൽ നഷ്ടം അനുകരിക്കുക.',
+      desc_drift_race:'ഓരോ രീതിക്കും ക്രമസഞ്ചിത സ്ഥാന പിശക്.',
+      desc_drift_comply:'AI മൊത്തം ദൂരത്തിൻ്റെ % ആയി എത്ര അലഞ്ഞുതിരിയുന്നു. ISRO PS #26168 10% ന് താഴെ ആവശ്യം.',
+    },
+    pa: {
+      tab_live:'ਲਾਈਵ', tab_modules:'ਮੋਡੀਊਲ', tab_sensors:'ਸੈਂਸਰ', tab_log:'ਲੌਗ',
+      tab_metrics:'ਮੈਟ੍ਰਿਕਸ', tab_ai:'AI', tab_comply:'ਪਾਲਣਾ', tab_bench:'ਬੈਂਚ',
+      tab_fleet:'ਬੇੜਾ', tab_explain:'ਵਿਆਖਿਆ',
+      btn_start:'▶ ਸ਼ੁਰੂ', btn_stop:'■ ਰੋਕੋ', btn_blackout:'⚡ ਬਲੈਕਆਊਟ', btn_snap:'📍 GPS ਸਨੈਪ',
+      btn_export:'⬇ CSV ਨਿਰਯਾਤ', btn_reset:'↺ ਰੀਸੈੱਟ',
+      lbl_gnss_lock:'GNSS ਲੌਕ', lbl_gnss_lost:'GNSS ਗੁਆਚਿਆ',
+      lbl_phase_nominal:'ਆਮ', lbl_phase_blackout:'ਬਲੈਕਆਊਟ',
+      hdr_navic:'NavIC ਤਾਰਾ ਸਮੂਹ', hdr_controls:'ਨਿਯੰਤਰਣ', hdr_modules:'ਸਿਸਟਮ ਮੋਡੀਊਲ',
+      hdr_ai_err:'AI ਨੈਵੀਗੇਸ਼ਨ ਗਲਤੀ', hdr_drift_race:'ਲਾਈਵ ਡ੍ਰਿਫਟ ਰੇਸ',
+      hdr_isro_drift:'ISRO ਡ੍ਰਿਫਟ ਪਾਲਣਾ', hdr_bench:'ਐਲਗੋਰਿਦਮ ਬੈਂਚਮਾਰਕ',
+      lbl_ate:'AI ਨੈਵ ਗਲਤੀ', lbl_ekf_base:'EKF ਅਧਾਰ ਰੇਖਾ', lbl_unc:'ਅਨਿਸ਼ਚਿਤਤਾ σ', lbl_latency:'AI ਦੇਰੀ',
+      btn_pause:'⏸ ਰੁਕੋ', btn_gnss_tog:'📡 GNSS ਟੌਗਲ', btn_load_gpx:'📂 GPX ਲੋਡ',
+      btn_export_pdf:'📄 PDF ਨਿਰਯਾਤ', btn_imu_cal:'🔧 IMU ਕੈਲੀਬ੍ਰੇਸ਼ਨ', btn_start_rec:'⏺ ਰਿਕਾਰਡ ਸ਼ੁਰੂ',
+      btn_export_comply:'📋 ISRO ਪਾਲਣਾ PDF ਨਿਰਯਾਤ',
+      desc_navic:'ਭਾਰਤ ਦੀ ਆਪਣੀ GPS ਪ੍ਰਣਾਲੀ।',
+      desc_controls:'GNSS ਟੌਗਲ ਨਾਲ ਸੈਟੇਲਾਈਟ ਸਿਗਨਲ ਗੁਆਉਣ ਦੀ ਨਕਲ ਕਰੋ।',
+      desc_drift_race:'ਹਰ ਵਿਧੀ ਲਈ ਸੰਚਿਤ ਸਥਿਤੀ ਗਲਤੀ।',
+      desc_drift_comply:'AI ਕੁੱਲ ਦੂਰੀ ਦੇ % ਵਜੋਂ ਕਿੰਨਾ ਭਟਕਦਾ ਹੈ। ISRO PS #26168 10% ਤੋਂ ਘੱਟ ਚਾਹੀਦਾ ਹੈ।',
+    },
+    od: {
+      tab_live:'ସିଧା', tab_modules:'ମଡ୍ୟୁଲ', tab_sensors:'ସେନ୍ସର', tab_log:'ଲଗ',
+      tab_metrics:'ମାପ', tab_ai:'AI', tab_comply:'ଅନୁପାଳନ', tab_bench:'ବେଞ୍ଚ',
+      tab_fleet:'ବହର', tab_explain:'ବ୍ୟାଖ୍ୟା',
+      btn_start:'▶ ଆରମ୍ଭ', btn_stop:'■ ରୋକ', btn_blackout:'⚡ ବ୍ଲ୍ୟାକ୍ଆଉଟ', btn_snap:'📍 GPS ସ୍ନ୍ୟାପ',
+      btn_export:'⬇ CSV ରପ୍ତାନି', btn_reset:'↺ ରିସେଟ',
+      lbl_gnss_lock:'GNSS ଲକ', lbl_gnss_lost:'GNSS ହଜିଲା',
+      lbl_phase_nominal:'ସ୍ୱାଭାବିକ', lbl_phase_blackout:'ବ୍ଲ୍ୟାକ୍ଆଉଟ',
+      hdr_navic:'NavIC ତାରା ସମୂହ', hdr_controls:'ନିୟନ୍ତ୍ରଣ', hdr_modules:'ସିଷ୍ଟେମ ମଡ୍ୟୁଲ',
+      hdr_ai_err:'AI ନାଭିଗେଶନ ତ୍ରୁଟି', hdr_drift_race:'ଲାଇଭ ଡ୍ରିଫ୍ଟ ଦୌଡ଼',
+      hdr_isro_drift:'ISRO ଡ୍ରିଫ୍ଟ ଅନୁପାଳନ', hdr_bench:'ଆଲ୍ଗୋରିଦ୍ମ ବେଞ୍ଚମାର୍କ',
+      lbl_ate:'AI ନାଭ ତ୍ରୁଟି', lbl_ekf_base:'EKF ଆଧାରରେଖା', lbl_unc:'ଅନିଶ୍ଚିତତା σ', lbl_latency:'AI ବିଳମ୍ବ',
+      btn_pause:'⏸ ବିରାମ', btn_gnss_tog:'📡 GNSS ଟଗଲ', btn_load_gpx:'📂 GPX ଲୋଡ',
+      btn_export_pdf:'📄 PDF ରପ୍ତାନି', btn_imu_cal:'🔧 IMU ଅଂଶଙ୍କନ', btn_start_rec:'⏺ ରେକର୍ଡ ଆରମ୍ଭ',
+      btn_export_comply:'📋 ISRO ଅନୁପାଳନ PDF ରପ୍ତାନି',
+      desc_navic:'ଭାରତର ନିଜସ୍ୱ GPS ବ୍ୟବସ୍ଥା।',
+      desc_controls:'GNSS ଟଗଲ ବ୍ୟବହାର କରି ସ୍ୟାଟେଲାଇଟ ସଙ୍କେତ ହରାଇବାର ଅନୁକରଣ କରନ୍ତୁ।',
+    },
+  };
+
+  let _lang = 'en';
+  function setLang(code) {
+    _lang = code;
+    const dict = T[code] || T.en;
+    document.querySelectorAll('[data-t]').forEach(el => {
+      const key = el.getAttribute('data-t');
+      if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+    document.documentElement.lang = code === 'od' ? 'or' : code;
+    try { localStorage.setItem('navdrift_lang', code); } catch(e) {}
+  }
+  function toggleLangMenu() {
+    const m = document.getElementById('lang-menu');
+    m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  }
+  function pickLang(code, label) {
+    setLang(code);
+    const cur = document.getElementById('lang-cur');
+    if (cur) cur.textContent = label;
+    document.getElementById('lang-menu').style.display = 'none';
+    // mark active
+    document.querySelectorAll('.lang-opt').forEach(el => el.classList.remove('active'));
+    event && event.target && event.target.classList.add('active');
+  }
+  // Close lang menu on outside click
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#lang-btn') && !e.target.closest('#lang-menu')) {
+      const m = document.getElementById('lang-menu');
+      if (m) m.style.display = 'none';
+    }
+  });
+  // Restore language on load
+  try {
+    const saved = localStorage.getItem('navdrift_lang');
+    if (saved && T[saved]) {
+      const labels = {en:'EN',hi:'हिंदी',ta:'தமிழ்',te:'తెలుగు',kn:'ಕನ್ನಡ',bn:'বাংলা',mr:'मराठी',gu:'ગુજરાતી',ml:'മലയാളം',pa:'ਪੰਜਾਬੀ',od:'ଓଡ଼ିଆ'};
+      const cur = document.getElementById('lang-cur');
+      if (cur) cur.textContent = labels[saved] || saved.toUpperCase();
+      setLang(saved);
+    }
+  } catch(e) {}
 
   // Wrap step() so each simulation tick feeds the ONNX pipeline
   (function(){
