@@ -1409,7 +1409,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   // ─── INIT ───
   function init(key){
     S.city=key;const c=CITIES[key];
-    S.route=interp(c.wp,300);S.ri=0;
+    S.route=interp(c.wp,2000);S.ri=0;
     const st=S.route[0];
     S.gtLa=S.ndLa=S.iLa=st[0];S.gtLo=S.ndLo=S.iLo=st[1];
     S.spkErr=new Array(60).fill(0.3);S.spkUnc=new Array(60).fill(0.45);S.spkSpd=new Array(60).fill(45);
@@ -1483,8 +1483,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     // ── Vehicle dynamics: smooth speed with accel/decel limits ──────────────
     const dH_=S.gtH-S.pH;  // heading change this step
     const curvature=Math.abs(dH_);
-    const curvSpd=Math.max(4,35-curvature*160)/3.6;  // slow on curves
-    const targetSpd=Math.min(35/3.6,dm/DT);          // route geometry limit
+    const curvSpd=Math.max(12,75-curvature*420)/3.6;  // slow on curves, min 12 km/h
+    const targetSpd=Math.min(75/3.6,dm/DT);          // city speed limit 75 km/h
     const tSpd=Math.min(targetSpd,curvSpd);
     const maxAcc=2.5*DT, maxDec=4.5*DT;
     S.vSpd = tSpd>S.vSpd ? Math.min(S.vSpd+maxAcc,tSpd) : Math.max(S.vSpd-maxDec,tSpd);
@@ -1509,12 +1509,15 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const cSpd=spdMs*Math.cos(S.calP*Math.PI/180);
 
     // MODULE 2 — Vibration filter (EMA + pothole detection)
-    const noise=(Math.random()-.5)*8+(Math.random()<.02?(Math.random()-.5)*38:0);
+    // Noise is sensor vibration in m/s (IMU-integrated velocity perturbation)
+    const baseNoise=(Math.random()-.5)*3.0;  // normal road noise ±3 m/s equivalent
+    const potNoise=Math.random()<0.02?(Math.random()-.5)*12:0;  // pothole spike ±6 m/s
+    const noise=baseNoise+potNoise;
     const rawSpd=spdMs+noise;
-    if(Math.abs(noise)>16){S.pots++;log('Pothole detected ('+Math.abs(noise).toFixed(1)+' m/s²) — filtered','nhc');}
+    if(Math.abs(potNoise)>5){S.pots++;log('Pothole detected (Δv='+Math.abs(potNoise).toFixed(1)+' m/s) — filtered','nhc');}
     S.vibBuf.push(rawSpd);if(S.vibBuf.length>8)S.vibBuf.shift();
     const fSpd=S.vibBuf.reduce((a,b)=>a+b,0)/S.vibBuf.length;
-    S.vibRawSpd=rawSpd*3.6;S.vibFiltSpd=fSpd*3.6;
+    S.vibRawSpd=Math.max(0,rawSpd)*3.6;S.vibFiltSpd=Math.max(0,fSpd)*3.6;
     S.vibRaw.push(rawSpd);if(S.vibRaw.length>80)S.vibRaw.shift();
 
     // MODULE — ODO·AI: AI-based speed estimation from IMU alone (no OBD-II / wheel encoder)
@@ -1860,7 +1863,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const orpm=$('obd-rpm');if(orpm)orpm.textContent=S.obdRpm.toFixed(0);
     const othr=$('obd-thr');if(othr)othr.textContent=S.obdThr.toFixed(1);
     const oload=$('obd-load');if(oload)oload.textContent=S.obdLoad.toFixed(1);
-    const osb=$('obd-spd-bar');if(osb)osb.style.width=(spdKmh/120*100)+'%';
+    const osb=$('obd-spd-bar');if(osb)osb.style.width=(spdKmh/80*100)+'%';
     const obb=$('obd-rpm-bar');if(obb)obb.style.width=(S.obdRpm/6200*100)+'%';
     const otb=$('obd-thr-bar');if(otb)otb.style.width=S.obdThr+'%';
     const olb=$('obd-load-bar');if(olb)olb.style.width=S.obdLoad+'%';
