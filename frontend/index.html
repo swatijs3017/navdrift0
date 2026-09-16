@@ -2982,7 +2982,7 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
       ort.env.wasm.numThreads=1;
       ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
       try{
-        const order=['imu_denoiser','adaptive_ekf','tunnel_det','driftformer','navic_dop'];
+        const order=Object.keys(MODEL_PATHS);
         for(const k of order){
           log('[ONNX] Loading '+LABELS[k]+'...','sys');
           const _resp=await fetch(MODEL_PATHS[k]);
