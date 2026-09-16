@@ -16,6 +16,7 @@
   <meta name="apple-mobile-web-app-title" content="NAVDRIFT-0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
   <style>
     :root {
       /* ── Kage palette ── */
@@ -605,6 +606,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <div class="pill"><div class="dot" id="hdr-dot"></div><span id="hdr-status">GNSS LOCKED</span></div>
       <span class="badge badge-mode" id="mode-badge">SIMULATION</span>
       <button class="navic-toggle" id="navic-btn" onclick="toggleNavICMode()" title="Toggle NavIC-only mode">NavIC+GPS</button>
+      <button class="navic-toggle" id="prod-btn" onclick="toggleProdModel()" title="Run all 5 trained ONNX models in-browser" style="background:rgba(168,85,247,0.12);color:var(--violet);border-color:rgba(168,85,247,0.35)">SIM MODE</button>
+      <span id="onnx-lat" style="font-size:.52rem;font-family:var(--mono);color:var(--t3);min-width:40px"></span>
       <span class="badge badge-ps">PS #26168</span>
       <div class="btn-icon" onclick="openModal()" title="API Settings">⚙</div>
     </div>
@@ -2912,6 +2915,229 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
       }
     }
   })();
+
+  // =================================================================
+  // NAVDRIFT_ONNX — Production Model Pipeline (5 trained ONNX models)
+  // DRIFTFormer FP32 | IMU Denoiser INT8 | Adaptive EKF | Tunnel Bi-LSTM | NavIC DOP
+  // =================================================================
+  const NAVDRIFT_ONNX = (function(){
+    const MODEL_PATHS = {
+      imu_denoiser: '../models/imu_denoiser_int8.onnx',
+      adaptive_ekf: '../models/adaptive_ekf_fp32.onnx',
+      tunnel_det:   '../models/tunnel_det_fp32.onnx',
+      driftformer:  '../models/driftformer_fp32.onnx',
+      navic_dop:    '../models/navic_dop_fp32.onnx',
+    };
+    const LABELS = {
+      imu_denoiser:'IMU DENOISER INT8',
+      adaptive_ekf:'ADAPTIVE EKF MLP',
+      tunnel_det:  'TUNNEL DET BiLSTM',
+      driftformer: 'DRIFT-FORMER FP32',
+      navic_dop:   'NAVIC DOP MLP',
+    };
+    let sessions={}, loaded=false, loading=false, _on=false;
+    const IMU_WIN=100, TUN_WIN=10;
+    let imuBuf=[], tunBuf=[];
+
+    function _f32(arr){
+      const flat=arr.flat(Infinity);
+      const shape=[];let x=arr;
+      while(Array.isArray(x)){shape.push(x.length);x=x[0];}
+      return new ort.Tensor('float32',Float32Array.from(flat.map(Number)),shape);
+    }
+    function _pad(buf,n){
+      return buf.length>=n?buf.slice(-n):
+        [...Array(n-buf.length).fill(buf[0]||Array(9).fill(0)),...buf];
+    }
+    function _btn(){ return document.getElementById('prod-btn'); }
+    function _lat(){ return document.getElementById('onnx-lat'); }
+
+    function _setBtnState(state){
+      const b=_btn();if(!b)return;
+      const styles={
+        loading:{text:'LOADING…',opacity:'0.55',color:'var(--yellow)',bg:'rgba(251,191,36,0.10)',border:'rgba(251,191,36,0.3)'},
+        on:     {text:'PROD ON',    opacity:'1',   color:'var(--cyan)',   bg:'rgba(0,255,245,0.10)',  border:'rgba(0,255,245,0.45)'},
+        off:    {text:'SIM MODE',   opacity:'1',   color:'var(--violet)', bg:'rgba(168,85,247,0.12)', border:'rgba(168,85,247,0.35)'},
+        err:    {text:'ONNX ERR',   opacity:'1',   color:'var(--red)',    bg:'rgba(255,34,85,0.10)',  border:'rgba(255,34,85,0.35)'},
+      }[state]||{};
+      b.textContent=styles.text||state;
+      b.style.opacity=styles.opacity||'1';
+      b.style.color=styles.color||'';
+      b.style.background=styles.bg||'';
+      b.style.borderColor=styles.border||'';
+    }
+
+    function _chip(id,cls){
+      const el=document.getElementById(id);if(!el)return;
+      el.className=el.className.replace(/\b(on|warn|off)\b/g,'').trim()+' '+cls;
+    }
+
+    async function load(){
+      if(loading||loaded)return;
+      loading=true;_setBtnState('loading');
+      if(typeof ort==='undefined'){
+        log('[ONNX] onnxruntime-web not loaded','sys');
+        _setBtnState('err');loading=false;return;
+      }
+      ort.env.wasm.numThreads=1;
+      try{
+        const order=['imu_denoiser','adaptive_ekf','tunnel_det','driftformer','navic_dop'];
+        for(const k of order){
+          log('[ONNX] Loading '+LABELS[k]+'...','sys');
+          sessions[k]=await ort.InferenceSession.create(MODEL_PATHS[k],{executionProviders:['wasm']});
+          log('[ONNX] '+LABELS[k]+' ready  in:'+sessions[k].inputNames+' out:'+sessions[k].outputNames,'sys');
+        }
+        loaded=true;_setBtnState('on');
+        log('[ONNX] All 5 models loaded. Pipeline active.','sys');
+        showBanner('\u26a1 Production ONNX pipeline live — 5 models running in-browser',true);
+      }catch(e){
+        loading=false;_setBtnState('err');
+        log('[ONNX] Load error: '+e.message,'sys');
+        showBanner('\u26a0 ONNX load failed — check ../models/ path: '+e.message,false);
+      }
+    }
+
+    async function runStep(imuVec){
+      if(!loaded||!_on)return null;
+      const t0=performance.now();
+      const res={};
+      imuBuf.push(imuVec);if(imuBuf.length>IMU_WIN)imuBuf.shift();
+      tunBuf.push(imuVec);if(tunBuf.length>TUN_WIN)tunBuf.shift();
+
+      // 1. IMU Denoiser INT8 (TCN) — [1,100,9] or [1,9] depending on saved shape
+      if(sessions.imu_denoiser){
+        try{
+          const inp=sessions.imu_denoiser.inputNames[0];
+          const buf=_pad(imuBuf,IMU_WIN);
+          let out;
+          try{ out=await sessions.imu_denoiser.run({[inp]:_f32([buf])}); }
+          catch(_){ out=await sessions.imu_denoiser.run({[inp]:_f32([imuVec])}); }
+          res.denoised=Array.from(out[sessions.imu_denoiser.outputNames[0]].data.slice(-9));
+          _chip('pm1','on');
+        }catch(e){_chip('pm1','warn');}
+      }
+
+      // 2. Adaptive EKF MLP — [1,6] state → [1,2+] Q/R
+      if(sessions.adaptive_ekf){
+        try{
+          const inp=sessions.adaptive_ekf.inputNames[0];
+          const feat=[EKF.Qp||1e-3,EKF.Rp||1e-2,(S.spd||0)/30,(S.unc||1)/20,(S.step%1000)/1000,S.gnss?1:0];
+          const out=await sessions.adaptive_ekf.run({[inp]:_f32([feat])});
+          const d=out[sessions.adaptive_ekf.outputNames[0]].data;
+          res.ekfQ=Math.max(1e-7,Math.abs(d[0]));
+          res.ekfR=Math.max(1e-7,Math.abs(d[1]||d[0]));
+          _chip('pm2','on');
+        }catch(e){_chip('pm2','warn');}
+      }
+
+      // 3. Tunnel Detector BiLSTM — [1,10,9] → [1,1] prob
+      if(sessions.tunnel_det){
+        try{
+          const inp=sessions.tunnel_det.inputNames[0];
+          const buf=_pad(tunBuf,TUN_WIN);
+          const out=await sessions.tunnel_det.run({[inp]:_f32([buf])});
+          res.tunnelProb=out[sessions.tunnel_det.outputNames[0]].data[0];
+          _chip('pm3','on');
+        }catch(e){_chip('pm3','warn');}
+      }
+
+      // 4. DRIFTFormer FP32 — [1,100,9] → [1,2] every 100 steps
+      if(sessions.driftformer&&imuBuf.length>=IMU_WIN&&S.step%100===0){
+        try{
+          const inp=sessions.driftformer.inputNames[0];
+          const out=await sessions.driftformer.run({[inp]:_f32([_pad(imuBuf,IMU_WIN)])});
+          const d=out[sessions.driftformer.outputNames[0]].data;
+          res.driftCorr={dLat:d[0],dLon:d[1]};
+          _chip('pm4','on');
+        }catch(e){_chip('pm4','warn');}
+      }
+
+      // 5. NavIC DOP MLP — [1,7] SNRs → [1,1] DOP
+      if(sessions.navic_dop&&window.SATS){
+        try{
+          const inp=sessions.navic_dop.inputNames[0];
+          const snrs=window.SATS.slice(0,7).map(s=>(s.snr||0)/50);
+          const out=await sessions.navic_dop.run({[inp]:_f32([snrs])});
+          res.dop=out[sessions.navic_dop.outputNames[0]].data[0];
+          _chip('pm5','on');
+        }catch(e){_chip('pm5','warn');}
+      }
+
+      res.ms=performance.now()-t0;
+      return res;
+    }
+
+    async function applyToSim(imuVec){
+      if(!_on)return;
+      if(!loaded){if(!loading)load();return;}
+      const res=await runStep(imuVec);
+      if(!res)return;
+
+      // Tunnel Bi-LSTM override (high confidence only — don't fight baro on edge cases)
+      if(res.tunnelProb!==undefined){
+        if(res.tunnelProb>0.68&&!S.inTunnel){
+          S.inTunnel=true;S.tunN++;
+          log('[ONNX] BiLSTM: tunnel entry p='+res.tunnelProb.toFixed(3),'sys');
+        }else if(res.tunnelProb<0.22&&S.inTunnel){
+          S.inTunnel=false;
+          log('[ONNX] BiLSTM: tunnel exit p='+res.tunnelProb.toFixed(3),'sys');
+        }
+      }
+
+      // Adaptive EKF: update Q/R for next ekfStep
+      if(res.ekfQ!==undefined){EKF.Qp=res.ekfQ;EKF.Rp=res.ekfR;}
+
+      // DRIFTFormer position correction
+      if(res.driftCorr){
+        const sc=1e-6; // raw model output scaled to degrees
+        S.ndLa+=res.driftCorr.dLat*sc;
+        S.ndLo+=res.driftCorr.dLon*sc;
+        if(S.step%500===0)log('[ONNX] DRIFTFormer corr \u0394='+
+          (res.driftCorr.dLat*sc).toExponential(2)+','+
+          (res.driftCorr.dLon*sc).toExponential(2),'snap');
+      }
+
+      // NavIC DOP -> position uncertainty
+      if(res.dop!==undefined&&S.gnss){
+        S.unc=Math.max(0.35,Math.min(25,Math.abs(res.dop)*3.5));
+      }
+
+      // Latency displays
+      const ms=res.ms.toFixed(1);
+      const latEl=_lat();if(latEl)latEl.textContent=ms+'ms';
+      const engMs=document.getElementById('eng-ms');if(engMs&&_on)engMs.textContent=ms;
+      const engLabel=document.getElementById('eng-label');
+      if(engLabel&&_on)engLabel.textContent='ONNX';
+    }
+
+    function toggle(){
+      _on=!_on;
+      if(_on){ _setBtnState('loading');load(); }
+      else   { _setBtnState('off');
+               const latEl=_lat();if(latEl)latEl.textContent='';
+               const engLabel=document.getElementById('eng-label');
+               if(engLabel)engLabel.textContent='SIM'; }
+    }
+
+    return{toggle,applyToSim,get on(){return _on;}};
+  })();
+
+  window.toggleProdModel=function(){NAVDRIFT_ONNX.toggle();};
+
+  // Wrap step() so each simulation tick feeds the ONNX pipeline
+  (function(){
+    const _orig=step;
+    window.step=function(){
+      _orig();
+      if(!NAVDRIFT_ONNX.on)return;
+      // 9-channel IMU vector: [ax,ay,az,gx,gy,gz,wheel_spd,yaw_rate,baro_alt]
+      const gz=clamp(S.gtH/DT,-35,35);
+      const ax=clamp((S.spd-(S._onnxPrvSpd||S.spd))/DT,-160,160);
+      S._onnxPrvSpd=S.spd;
+      NAVDRIFT_ONNX.applyToSim([ax,0,-9.81,0,0,gz,S.spd||0,S.gtH||0,S.baroAlt||0]);
+    };
+  })();
+
 </script>
 </body>
 </html>
