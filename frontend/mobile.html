@@ -1120,8 +1120,6 @@ function exitSimMode(){
   lb.style.background = 'rgba(184,144,64,0.08)';
   lb.classList.remove('on');
   startLiveGPS();
-  // Auto-request IMU permission in same user gesture (iOS requires direct tap)
-  if(!IMU.active) openSensorModal();
 }
 
 function startLiveGPS(){
@@ -1227,11 +1225,11 @@ function startLiveGPS(){
 let lt=0;
 function loop(t){requestAnimationFrame(loop);if(t-lt>65){step();lt=t;}}
 
-// Boot: start in Live GPS mode, India overview until fix arrives
+// Boot: India overview, wait for user to tap ◉ Live
 document.getElementById('city-buttons').style.display = 'none';
-init('delhi'); // sets up route/state; map view overridden to India overview in initMap
+init('delhi'); // sets up route/state; map stays at India overview
 requestAnimationFrame(loop);
-startLiveGPS(); // auto-request location — map flyTo on first fix
+// GPS starts only when user taps ◉ Live (exitSimMode → startLiveGPS)
 </script>
 </body>
 </html>
