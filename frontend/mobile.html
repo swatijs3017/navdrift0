@@ -640,7 +640,7 @@ function initMap(c){
   const cfg=CITIES[c];
   if(!_map){
     _map=L.map('map',{zoomControl:false,attributionControl:false});
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:''}).addTo(_map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:''}).addTo(_map);
     const s=document.createElement('style');
     s.textContent='.leaflet-tile-pane{filter:brightness(0.24) saturate(0.5) hue-rotate(175deg)}';
     document.head.appendChild(s);
