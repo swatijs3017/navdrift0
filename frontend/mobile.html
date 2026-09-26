@@ -236,7 +236,8 @@
 
   <!-- CITY STRIP -->
   <div class="city-bar">
-    <button class="cbtn on" onclick="switchCity('delhi',this)">Delhi</button>
+    <button class="cbtn" id="btn-livegps" onclick="toggleLiveGPS(this)" style="border-color:rgba(80,150,120,0.4);color:rgba(80,150,120,0.7);">◉ Live GPS</button>
+    <button class="cbtn on" id="cbtn-delhi" onclick="switchCity('delhi',this)">Delhi</button>
     <button class="cbtn" onclick="switchCity('mumbai',this)">Mumbai</button>
     <button class="cbtn" onclick="switchCity('bengaluru',this)">Bengaluru</button>
     <button class="cbtn" onclick="switchCity('chennai',this)">Chennai</button>
@@ -875,6 +876,100 @@ if('serviceWorker' in navigator){
 }
 
 /* ── MAIN LOOP ── */
+/* ── LIVE GPS ── */
+const GPS = {active:false, watchId:null, lat:null, lon:null, acc:null, lastLat:null, lastLon:null};
+
+function toggleLiveGPS(btn){
+  if(GPS.active){
+    stopLiveGPS(btn);
+  } else {
+    startLiveGPS(btn);
+  }
+}
+
+function startLiveGPS(btn){
+  if(!navigator.geolocation){
+    alert('Geolocation not supported on this browser/device.');
+    return;
+  }
+  btn.textContent = '⟳ Locating…';
+  btn.style.color = 'rgba(184,144,64,0.9)';
+  btn.style.borderColor = 'rgba(184,144,64,0.4)';
+
+  GPS.watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      GPS.lat = pos.coords.latitude;
+      GPS.lon = pos.coords.longitude;
+      GPS.acc = pos.coords.accuracy;
+      if(!GPS.active){
+        // First fix: reinitialise simulation at real location
+        GPS.active = true;
+        btn.textContent = '◉ Live GPS';
+        btn.style.color = 'rgba(80,150,120,0.95)';
+        btn.style.borderColor = 'rgba(80,150,120,0.5)';
+        btn.style.background = 'rgba(80,150,120,0.1)';
+        // Clear city selection highlight
+        document.querySelectorAll('.cbtn').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+        // Anchor sim to real location
+        S.gtLa = S.ndLa = S.iLa = GPS.lat;
+        S.gtLo = S.ndLo = S.iLo = GPS.lon;
+        GPS.lastLat = GPS.lat; GPS.lastLon = GPS.lon;
+        EKF.x = GPS.lat; EKF.y = GPS.lon;
+        // Clear old polyline trails
+        if(_gt)_gt.setLatLngs([]);if(_nd)_nd.setLatLngs([]);
+        if(_imu)_imu.setLatLngs([]);if(_ekf)_ekf.setLatLngs([]);
+        if(_map) _map.setView([GPS.lat, GPS.lon], 17);
+        document.getElementById('hud-mode').textContent = 'NavIC L5 Locked · Real GPS';
+      }
+      // While GNSS is on: keep ground truth on real position
+      if(S.gnss && GPS.active){
+        GPS.lastLat = GPS.lat; GPS.lastLon = GPS.lon;
+        S.gtLa = GPS.lat; S.gtLo = GPS.lon;
+        // Gently nudge NAVDRIFT-0 estimate toward real GPS (GNSS fusion)
+        S.ndLa += (GPS.lat - S.ndLa) * 0.4;
+        S.ndLo += (GPS.lon - S.ndLo) * 0.4;
+        EKF.x += (GPS.lat - EKF.x) * 0.5;
+        EKF.y += (GPS.lon - EKF.y) * 0.5;
+        if(_map) _map.setView([GPS.lat, GPS.lon], _map.getZoom(), {animate:false});
+      }
+    },
+    (err) => {
+      btn.textContent = '✗ GPS Error';
+      btn.style.color = 'rgba(160,50,50,0.8)';
+      console.warn('GPS error', err.code, err.message);
+    },
+    {enableHighAccuracy: true, maximumAge: 0, timeout: 15000}
+  );
+}
+
+function stopLiveGPS(btn){
+  if(GPS.watchId !== null){ navigator.geolocation.clearWatch(GPS.watchId); GPS.watchId = null; }
+  GPS.active = false;
+  btn.textContent = '◉ Live GPS';
+  btn.style.color = 'rgba(80,150,120,0.7)';
+  btn.style.borderColor = 'rgba(80,150,120,0.4)';
+  btn.style.background = 'transparent';
+  btn.classList.remove('on');
+  // Re-select delhi
+  const db = document.getElementById('cbtn-delhi');
+  if(db){ db.classList.add('on'); }
+  init('delhi');
+}
+
+/* Patch reacq to snap back to real GPS if active */
+const _origReacq = reacq;
+reacq = function(){
+  _origReacq();
+  if(GPS.active && GPS.lat !== null){
+    S.gtLa = GPS.lat; S.gtLo = GPS.lon;
+    S.ndLa = GPS.lat; S.ndLo = GPS.lon;
+    S.iLa = GPS.lat; S.iLo = GPS.lon;
+    EKF.x = GPS.lat; EKF.y = GPS.lon;
+    if(_map) _map.setView([GPS.lat, GPS.lon], _map.getZoom(), {animate:false});
+  }
+};
+
 let lt=0;
 function loop(t){requestAnimationFrame(loop);if(t-lt>65){step();lt=t;}}
 init('delhi');
