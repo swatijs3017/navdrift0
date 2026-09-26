@@ -647,6 +647,21 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             <button class="btn" onclick="openCalWizard()" style="background:rgba(0,255,157,0.1);color:var(--green);border-color:rgba(0,255,157,0.3)">🔧 IMU Cal Wizard</button>
             <button class="btn" id="rec-btn" onclick="toggleRecording()" style="background:rgba(255,34,85,0.1);color:var(--red);border-color:rgba(255,34,85,0.3)">⏺ Start Rec</button>
           </div>
+          <div class="btn-row" style="margin-top:5px">
+            <button class="btn" id="btn-real-imu" onclick="openSensorModal()" style="background:rgba(0,200,255,0.08);color:#00c8ff;border-color:rgba(0,200,255,0.3)">◈ Enable Real IMU</button>
+            <button class="btn" onclick="exportIMULog()" style="background:rgba(168,85,247,0.08);color:var(--violet);border-color:rgba(168,85,247,0.3)">↓ Export IMU Log</button>
+          </div>
+          <!-- Live sensor strip (hidden until IMU active) -->
+          <div id="sensor-strip" style="display:none;flex-wrap:wrap;gap:4px;margin-top:6px;padding:5px 4px;background:rgba(0,200,255,0.05);border:1px solid rgba(0,200,255,0.15);border-radius:5px;">
+            <span style="font-size:.5rem;font-family:var(--mono);color:var(--muted);width:100%;margin-bottom:2px;">LIVE IMU</span>
+            <span class="sv-val">Ax <b id="sv-ax">0.00</b></span>
+            <span class="sv-val">Ay <b id="sv-ay">0.00</b></span>
+            <span class="sv-val">Az <b id="sv-az">0.00</b></span>
+            <span class="sv-val">Gx <b id="sv-gx">0.00</b></span>
+            <span class="sv-val">Gy <b id="sv-gy">0.00</b></span>
+            <span class="sv-val">Gz <b id="sv-gz">0.00</b></span>
+            <span class="sv-val">Hz <b id="sv-hz">--</b></span>
+          </div>
           <!-- Ground Truth Overlay -->
           <div class="gt-load-row" style="margin-top:6px">
             <span class="gt-label">Ground Truth:</span>
@@ -3142,6 +3157,234 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
     };
   })();
 
+/* ── REAL IMU STATE ── */
+const IMU = {
+  active: false,
+  ax:0, ay:0, az:9.81,
+  gx:0, gy:0, gz:0,
+  alpha:0, beta:0, gamma:0,
+  axOff:0, ayOff:0, azOff:0,
+  gxOff:0, gyOff:0, gzOff:0,
+  axFilt:0, ayFilt:0, azFilt:0,
+  axPrev:0, ayPrev:0, azPrev:0,
+  lastT:0, sampleN:0, hz:0,
+  log: [],
+  fwdAccel:0,
+  intSpeed:0,
+  intHeading:0,
+  calibrated: false,
+  fwdAccelBias: 0,
+  _gravFree: false,
+  fwdAxisIdx: 1,
+  fwdAxisSign: 1,
+  alignDone: false,
+  _alignBuf: []
+};
+
+function bw2_imu(x, xp, yp1, yp2){
+  const b0=0.0177,b1=0.0354,b2=0.0177,a1=-1.4462,a2=0.5557;
+  return b0*x + b1*xp + b2*0 - a1*yp1 - a2*yp2;
+}
+
+let _dmPrev={ax:0,ay:0,az:0};
+let _bw_xp=[0,0,0],_bw_yp1=[0,0,0],_bw_yp2=[0,0,0];
+let _lastDMT=0,_dmCount=0,_hzInterval=null;
+
+function onDeviceMotion(e){
+  const accLin=e.acceleration, accGrav=e.accelerationIncludingGravity;
+  const linMag=accLin?Math.abs(accLin.x||0)+Math.abs(accLin.y||0)+Math.abs(accLin.z||0):0;
+  const useLinear=linMag>0.01;
+  IMU._gravFree=useLinear;
+  const acc=useLinear?accLin:accGrav;
+  if(!acc)return;
+  const now=performance.now();
+  const rawAx=(acc.x||0)-IMU.axOff;
+  const rawAy=(acc.y||0)-IMU.ayOff;
+  const rawAz=(acc.z||0)-(useLinear?IMU.azOff:(IMU.azOff+9.81));
+  const fax=bw2_imu(rawAx,_bw_xp[0],_bw_yp1[0],_bw_yp2[0]);
+  const fay=bw2_imu(rawAy,_bw_xp[1],_bw_yp1[1],_bw_yp2[1]);
+  const faz=bw2_imu(rawAz,_bw_xp[2],_bw_yp1[2],_bw_yp2[2]);
+  _bw_yp2=[_bw_yp1[0],_bw_yp1[1],_bw_yp1[2]];
+  _bw_yp1=[fax,fay,faz];
+  _bw_xp=[rawAx,rawAy,rawAz];
+  IMU.ax=fax; IMU.ay=fay; IMU.az=faz;
+  const rot=e.rotationRate;
+  if(rot){ IMU.gx=(rot.alpha||0)*Math.PI/180-IMU.gxOff; IMU.gy=(rot.beta||0)*Math.PI/180-IMU.gyOff; IMU.gz=(rot.gamma||0)*Math.PI/180-IMU.gzOff; }
+  const dt=_lastDMT>0?(now-_lastDMT)/1000:0;
+  _lastDMT=now;
+  if(!IMU.alignDone&&IMU.calibrated){
+    IMU._alignBuf.push([fax,fay,faz]);
+    if(IMU._alignBuf.length>=150){
+      const buf=IMU._alignBuf;
+      const means=[0,1,2].map(i=>Math.abs(buf.reduce((s,r)=>s+r[i],0)/buf.length));
+      const gravIdx=means.indexOf(Math.max(...means));
+      const cands=[0,1,2].filter(i=>i!==gravIdx);
+      const vars=cands.map(i=>{const mn=buf.reduce((s,r)=>s+r[i],0)/buf.length;return buf.reduce((s,r)=>s+(r[i]-mn)**2,0)/buf.length;});
+      IMU.fwdAxisIdx=cands[vars.indexOf(Math.max(...vars))];
+      const netFwd=buf.reduce((s,r)=>s+r[IMU.fwdAxisIdx],0);
+      IMU.fwdAxisSign=netFwd>=0?1:-1;
+      IMU.alignDone=true; IMU._alignBuf=[];
+    }
+  }
+  let rawFwd;
+  if(useLinear){
+    rawFwd=[fax,fay,faz][IMU.fwdAxisIdx]*IMU.fwdAxisSign;
+  } else {
+    const beta=IMU.beta*Math.PI/180, gamma=IMU.gamma*Math.PI/180;
+    const gravY=9.81*Math.sin(beta)*Math.cos(gamma);
+    const gravZ=-9.81*Math.cos(beta)*Math.cos(gamma);
+    rawFwd=[fax-(-9.81*Math.sin(gamma)),fay-gravY,faz-gravZ][IMU.fwdAxisIdx]*IMU.fwdAxisSign;
+  }
+  const biasedFwd=rawFwd-IMU.fwdAccelBias;
+  const deadFwd=Math.abs(biasedFwd)<0.25?0:biasedFwd;
+  IMU.fwdAccel=Math.max(-15,Math.min(15,deadFwd));
+  if(dt>0&&dt<0.5){
+    IMU.intSpeed=Math.max(0,Math.min(40,IMU.intSpeed+IMU.fwdAccel*dt));
+    IMU.intHeading+=IMU.gz*dt;
+  }
+  _dmCount++;
+  if(_dmCount%3===0){
+    IMU.log.push({t:now.toFixed(1),ax:rawAx.toFixed(3),ay:rawAy.toFixed(3),az:rawAz.toFixed(3),gx:IMU.gx.toFixed(4),gy:IMU.gy.toFixed(4),gz:IMU.gz.toFixed(4),fwd_accel:IMU.fwdAccel.toFixed(3),speed_mps:IMU.intSpeed.toFixed(2),heading_rad:IMU.intHeading.toFixed(4)});
+    if(IMU.log.length>3000)IMU.log.shift();
+  }
+  try{
+    document.getElementById('sv-ax').textContent=fax.toFixed(2);
+    document.getElementById('sv-ay').textContent=fay.toFixed(2);
+    document.getElementById('sv-az').textContent=faz.toFixed(2);
+    document.getElementById('sv-gx').textContent=IMU.gx.toFixed(3);
+    document.getElementById('sv-gy').textContent=IMU.gy.toFixed(3);
+    document.getElementById('sv-gz').textContent=IMU.gz.toFixed(3);
+  }catch(e){}
+  // Feed live IMU speed into simulation when active
+  if(IMU.active&&S.useLiveIMU&&!S.gnss){
+    S.spd=IMU.intSpeed;
+  }
+}
+
+function onDeviceOrientation(e){
+  IMU.alpha=e.alpha||0; IMU.beta=e.beta||0; IMU.gamma=e.gamma||0;
+}
+
+function startHzTracker(){
+  _hzInterval=setInterval(()=>{
+    IMU.hz=_dmCount; _dmCount=0;
+    try{document.getElementById('sv-hz').textContent=IMU.hz;}catch(e){}
+  },1000);
+}
+
+function openSensorModal(){
+  document.getElementById('imu-sensor-modal').style.display='flex';
+  document.getElementById('imu-modal-status').textContent='';
+}
+function closeSensorModal(){
+  document.getElementById('imu-sensor-modal').style.display='none';
+}
+
+async function requestSensorAccess(){
+  const status=document.getElementById('imu-modal-status');
+  const btn=document.getElementById('imu-grant-btn');
+  btn.disabled=true; btn.textContent='REQUESTING…'; status.textContent='';
+  try{
+    if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
+      status.textContent='Requesting iOS motion permission…';
+      const res=await DeviceMotionEvent.requestPermission();
+      if(res!=='granted'){status.textContent='✗ Permission denied.';btn.disabled=false;btn.textContent='GRANT ACCESS';return;}
+      if(typeof DeviceOrientationEvent.requestPermission==='function') await DeviceOrientationEvent.requestPermission().catch(()=>{});
+    } else if(typeof DeviceMotionEvent==='undefined'){
+      status.textContent='✗ No IMU detected on this device.';btn.disabled=false;btn.textContent='GRANT ACCESS';return;
+    }
+    window.addEventListener('devicemotion',onDeviceMotion,{passive:true});
+    window.addEventListener('deviceorientation',onDeviceOrientation,{passive:true});
+    startHzTracker();
+    status.textContent='Calibrating… hold device still (2 s).';
+    let _calSamples=[];
+    const _calH=(ev)=>{
+      const a=(ev.acceleration&&(Math.abs(ev.acceleration.x||0)+Math.abs(ev.acceleration.y||0)+Math.abs(ev.acceleration.z||0))>0.01)?ev.acceleration:ev.accelerationIncludingGravity;
+      if(a)_calSamples.push({ax:a.x||0,ay:a.y||0,az:a.z||0,gz:(ev.rotationRate?.gamma||0)*Math.PI/180,fwd:IMU.fwdAccel});
+    };
+    window.addEventListener('devicemotion',_calH,{passive:true});
+    IMU.active=true;
+    setTimeout(()=>{
+      window.removeEventListener('devicemotion',_calH);
+      if(_calSamples.length>5){
+        const n=_calSamples.length;
+        IMU.axOff=_calSamples.reduce((s,r)=>s+r.ax,0)/n;
+        IMU.ayOff=_calSamples.reduce((s,r)=>s+r.ay,0)/n;
+        const maz=_calSamples.reduce((s,r)=>s+r.az,0)/n;
+        IMU.azOff=IMU._gravFree?maz:(maz-9.81);
+        IMU.gzOff=_calSamples.reduce((s,r)=>s+r.gz,0)/n;
+        IMU.fwdAccelBias=_calSamples.reduce((s,r)=>s+r.fwd,0)/n;
+        _bw_xp=[0,0,0];_bw_yp1=[0,0,0];_bw_yp2=[0,0,0];
+      }
+      IMU.calibrated=true;
+      status.textContent='✓ Calibrated. Live IMU active at ~'+(IMU.hz||30)+' Hz.';
+      activateSensorMode();
+      setTimeout(closeSensorModal,1200);
+    },2000);
+  }catch(err){status.textContent='✗ Error: '+(err.message||err);btn.disabled=false;btn.textContent='GRANT ACCESS';}
+}
+
+function activateSensorMode(){
+  const b=document.getElementById('btn-real-imu');
+  b.textContent='◉ Real IMU Active';
+  b.style.background='rgba(0,200,255,0.15)';
+  b.style.color='#00c8ff';
+  b.style.borderColor='rgba(0,200,255,0.5)';
+  document.getElementById('sensor-strip').style.display='flex';
+  S.useLiveIMU=true;
+}
+
+function exportIMULog(){
+  if(IMU.log.length===0){alert('No IMU data yet. Enable Real IMU first.');return;}
+  const header='t_ms,ax_mps2,ay_mps2,az_mps2,gx_rps,gy_rps,gz_rps,fwd_accel_mps2,speed_mps,heading_rad\n';
+  const rows=IMU.log.map(r=>`${r.t},${r.ax},${r.ay},${r.az},${r.gx},${r.gy},${r.gz},${r.fwd_accel},${r.speed_mps},${r.heading_rad}`).join('\n');
+  const blob=new Blob([header+rows],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='navdrift0_imu_'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.csv';
+  a.click();
+}
 </script>
+
+<!-- SENSOR PERMISSION MODAL -->
+<div id="imu-sensor-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#0d1117;border:1px solid rgba(0,200,255,0.25);border-radius:10px;padding:28px 24px;max-width:340px;width:90%;font-family:var(--mono);">
+    <div style="font-size:.75rem;font-weight:700;color:#00c8ff;letter-spacing:.12em;margin-bottom:6px;">REAL-TIME IMU ACCESS</div>
+    <div style="font-size:.55rem;color:var(--muted);margin-bottom:16px;line-height:1.6;">Grant access to this device's onboard sensors. The dead reckoning engine will use live accelerometer and gyroscope data in place of simulation, demonstrating true on-device IDR per ISRO PS #26168.</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span>📡</span>
+        <div>
+          <div style="font-size:.6rem;color:var(--fg);">ACCELEROMETER</div>
+          <div style="font-size:.52rem;color:var(--muted);">Linear acceleration Ax/Ay/Az in m/s²</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span>🔄</span>
+        <div>
+          <div style="font-size:.6rem;color:var(--fg);">GYROSCOPE</div>
+          <div style="font-size:.52rem;color:var(--muted);">Angular velocity Gx/Gy/Gz in rad/s</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span>🧭</span>
+        <div>
+          <div style="font-size:.6rem;color:var(--fg);">ORIENTATION (α β γ)</div>
+          <div style="font-size:.52rem;color:var(--muted);">Device attitude for calibration alignment</div>
+        </div>
+      </div>
+    </div>
+    <div id="imu-modal-status" style="font-size:.52rem;color:var(--muted);margin-bottom:12px;min-height:14px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeSensorModal()" style="flex:1;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:var(--muted);font-family:var(--mono);font-size:.6rem;cursor:pointer;">CANCEL</button>
+      <button id="imu-grant-btn" onclick="requestSensorAccess()" style="flex:1;padding:8px;background:rgba(0,200,255,0.15);border:1px solid rgba(0,200,255,0.4);border-radius:5px;color:#00c8ff;font-family:var(--mono);font-size:.6rem;font-weight:700;cursor:pointer;">GRANT ACCESS</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.sv-val{font-size:.5rem;font-family:var(--mono);color:var(--muted);background:rgba(0,200,255,0.08);border:1px solid rgba(0,200,255,0.15);border-radius:3px;padding:2px 5px;}
+.sv-val b{color:#00c8ff;margin-left:3px;}
+</style>
 </body>
 </html>
