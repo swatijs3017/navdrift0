@@ -45,3 +45,12 @@ runs/
 *.swp
 commit_push.py
 push.py
+Claude outputs/
+README-1.md
+commit_push.py
+push.py
+patch_imu.py
+navdrift_engine.py
+frontend/index-1.html
+frontend/index_backup_kage2.html
+frontend/mobile-1.html
