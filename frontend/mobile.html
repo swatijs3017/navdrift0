@@ -981,6 +981,8 @@ function exitSimMode(){
   lb.style.background = 'rgba(184,144,64,0.08)';
   lb.classList.remove('on');
   startLiveGPS();
+  // Auto-request IMU in same gesture
+  if(!IMU.active) setTimeout(openSensorModal, 400);
 }
 
 function startLiveGPS(){
