@@ -454,6 +454,8 @@ Primary training dataset is the **IO-VNBD (Inertial and Odometry benchmark datas
 | IO-VNBD | Primary training | 144 CSV files, 2,141,490 rows | 847 km | RTK-GPS |
 | EuRoC MAV (MH_01-03) | Cross-validation | 3 sequences | -- | Vicon motion capture |
 | NavIC DOP synthetic | NavIC DOP model only | 972,000 records | -- | Computed DOP distributions |
+| KITTI Odometry + Oxford RobotCar | Early prototyping only | -- | -- | Velodyne LiDAR + stereo |
+KITTI and Oxford RobotCar were used during early architecture prototyping to validate the training loop before IO-VNBD was confirmed as the PS 26168 dataset. They are not part of the final training pipeline.
 
 **IO-VNBD data characteristics:**
 - 144 smartphone CSV files, Latin-1 encoding
