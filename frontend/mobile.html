@@ -961,58 +961,89 @@ function toggleLiveGPS(btn){
 
 function startLiveGPS(btn){
   if(!navigator.geolocation){
-    alert('Geolocation not supported on this browser/device.');
+    btn.textContent = '✗ No Geo API';
+    btn.style.color = 'rgba(160,50,50,0.8)';
     return;
   }
-  btn.textContent = '⟳ Locating…';
+  btn.textContent = '⟳ Acquiring…';
   btn.style.color = 'rgba(184,144,64,0.9)';
-  btn.style.borderColor = 'rgba(184,144,64,0.4)';
+  btn.style.borderColor = 'rgba(184,144,64,0.5)';
+  btn.style.background = 'rgba(184,144,64,0.08)';
 
-  GPS.watchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      GPS.lat = pos.coords.latitude;
-      GPS.lon = pos.coords.longitude;
-      GPS.acc = pos.coords.accuracy;
-      if(!GPS.active){
-        // First fix: reinitialise simulation at real location
-        GPS.active = true;
-        btn.textContent = '◉ Live GPS';
-        btn.style.color = 'rgba(80,150,120,0.95)';
-        btn.style.borderColor = 'rgba(80,150,120,0.5)';
-        btn.style.background = 'rgba(80,150,120,0.1)';
-        // Clear city selection highlight
-        document.querySelectorAll('.cbtn').forEach(b => b.classList.remove('on'));
-        btn.classList.add('on');
-        // Anchor sim to real location
-        S.gtLa = S.ndLa = S.iLa = GPS.lat;
-        S.gtLo = S.ndLo = S.iLo = GPS.lon;
-        GPS.lastLat = GPS.lat; GPS.lastLon = GPS.lon;
-        EKF.x = GPS.lat; EKF.y = GPS.lon;
-        // Clear old polyline trails
-        if(_gt)_gt.setLatLngs([]);if(_nd)_nd.setLatLngs([]);
-        if(_imu)_imu.setLatLngs([]);if(_ekf)_ekf.setLatLngs([]);
-        if(_map) _map.setView([GPS.lat, GPS.lon], 17);
-        document.getElementById('hud-mode').textContent = 'NavIC L5 Locked · Real GPS';
-      }
-      // While GNSS is on: keep ground truth on real position
-      if(S.gnss && GPS.active){
-        GPS.lastLat = GPS.lat; GPS.lastLon = GPS.lon;
-        S.gtLa = GPS.lat; S.gtLo = GPS.lon;
-        // Gently nudge NAVDRIFT-0 estimate toward real GPS (GNSS fusion)
-        S.ndLa += (GPS.lat - S.ndLa) * 0.4;
-        S.ndLo += (GPS.lon - S.ndLo) * 0.4;
-        EKF.x += (GPS.lat - EKF.x) * 0.5;
-        EKF.y += (GPS.lon - EKF.y) * 0.5;
-        if(_map) _map.setView([GPS.lat, GPS.lon], _map.getZoom(), {animate:false});
-      }
-    },
-    (err) => {
-      btn.textContent = '✗ GPS Error';
-      btn.style.color = 'rgba(160,50,50,0.8)';
-      console.warn('GPS error', err.code, err.message);
-    },
-    {enableHighAccuracy: true, maximumAge: 0, timeout: 15000}
-  );
+  // Show GPS debug strip
+  let dbg = document.getElementById('gps-dbg');
+  if(!dbg){
+    dbg = document.createElement('div');
+    dbg.id = 'gps-dbg';
+    dbg.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(5,7,10,0.95);color:#5fba95;font-family:monospace;font-size:10px;padding:4px 8px;border-top:1px solid rgba(95,186,149,0.3);pointer-events:none;';
+    document.body.appendChild(dbg);
+  }
+  dbg.textContent = 'GPS: requesting permission…';
+
+  function onFix(pos){
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    const acc = pos.coords.accuracy;
+    GPS.lat = lat; GPS.lon = lon; GPS.acc = acc;
+
+    dbg.textContent = `GPS: ${lat.toFixed(5)}°N ${lon.toFixed(5)}°E  acc:${acc.toFixed(0)}m`;
+
+    if(!GPS.active){
+      GPS.active = true;
+      btn.textContent = '◉ Live GPS';
+      btn.style.color = 'rgba(95,186,149,1)';
+      btn.style.borderColor = 'rgba(95,186,149,0.6)';
+      btn.style.background = 'rgba(95,186,149,0.12)';
+      document.querySelectorAll('.cbtn').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+    }
+
+    // Always anchor ground truth to real GPS every fix
+    GPS.lastLat = GPS.lat; GPS.lastLon = GPS.lon;
+    S.gtLa = lat; S.gtLo = lon;
+
+    // First time or after very large jump: reset all estimates to real position
+    const jumpDeg = Math.abs(S.ndLa - lat) + Math.abs(S.ndLo - lon);
+    if(jumpDeg > 0.01){
+      S.ndLa = S.iLa = lat;
+      S.ndLo = S.iLo = lon;
+      EKF.x = lat; EKF.y = lon;
+      if(_gt)_gt.setLatLngs([]);if(_nd)_nd.setLatLngs([]);
+      if(_imu)_imu.setLatLngs([]);if(_ekf)_ekf.setLatLngs([]);
+      if(_map) _map.setView([lat, lon], 17);
+    }
+
+    if(S.gnss){
+      S.ndLa += (lat - S.ndLa) * 0.4;
+      S.ndLo += (lon - S.ndLo) * 0.4;
+      EKF.x += (lat - EKF.x) * 0.5;
+      EKF.y += (lon - EKF.y) * 0.5;
+      if(_map) _map.setView([lat, lon], _map.getZoom(), {animate:false});
+    }
+    try{ document.getElementById('hud-mode').textContent = `NavIC L5 Locked · acc ${acc.toFixed(0)}m`; }catch(e){}
+  }
+
+  function onErr(err){
+    const msgs = {1:'Permission denied — check iOS Settings > Safari > Location',2:'Position unavailable',3:'Timeout — retrying…'};
+    const msg = msgs[err.code] || err.message;
+    dbg.style.color = '#c04040';
+    dbg.textContent = `GPS ERROR ${err.code}: ${msg}`;
+    btn.textContent = err.code===1 ? '✗ Location Denied' : '⟳ Retrying…';
+    btn.style.color = err.code===1 ? 'rgba(192,64,64,0.9)' : 'rgba(184,144,64,0.9)';
+    btn.style.background = 'transparent';
+    console.warn('GPS', err.code, err.message);
+  }
+
+  // First try coarse (fast), then upgrade to high accuracy
+  GPS.watchId = navigator.geolocation.watchPosition(onFix, onErr,
+    {enableHighAccuracy: false, maximumAge: 3000, timeout: 10000});
+  // Also kick a one-shot high-accuracy request so first fix is precise when available
+  setTimeout(()=>{
+    if(!GPS.active) return;
+    navigator.geolocation.clearWatch(GPS.watchId);
+    GPS.watchId = navigator.geolocation.watchPosition(onFix, onErr,
+      {enableHighAccuracy: true, maximumAge: 0, timeout: 30000});
+  }, 3000);
 }
 
 function stopLiveGPS(btn){
