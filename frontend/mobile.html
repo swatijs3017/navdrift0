@@ -1175,10 +1175,10 @@ function startLiveGPS(){
       if(_gt)_gt.setLatLngs([]);if(_nd)_nd.setLatLngs([]);
       if(_imu)_imu.setLatLngs([]);if(_ekf)_ekf.setLatLngs([]);
       GPS.zoomed = false;
-      // AUTO-ZOOM: fly to user's real location on first fix
+      // AUTO-ZOOM: jump to user's real location on first fix (setView is reliable on iOS)
       if(_map){
-        _map.flyTo([lat, lon], 17, {duration:1.5, easeLinearity:0.35});
-        setTimeout(()=>{ GPS.zoomed=true; }, 1800);
+        _map.setView([lat, lon], 17, {animate:true, duration:0.8});
+        GPS.zoomed = true; // step() will keep tracking from here
       }
       // Show "GPS Located" toast
       (function(){
