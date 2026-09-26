@@ -413,7 +413,11 @@ const IMU = {
   intSpeed:0,
   intHeading:0,
   /* calibration status */
-  calibrated: false
+  calibrated: false,
+  /* forward-accel residual bias (captured during still calibration) */
+  fwdAccelBias: 0,
+  /* true when device provides gravity-free e.acceleration */
+  _gravFree: false
 };
 
 /* Butterworth 2nd-order low-pass (fc=2 Hz at fs=30 Hz) */
@@ -429,14 +433,21 @@ let _bw_xp=[0,0,0], _bw_yp1=[0,0,0], _bw_yp2=[0,0,0];
 let _lastDMT = 0, _dmCount = 0, _hzInterval = null;
 
 function onDeviceMotion(e){
-  const acc = e.accelerationIncludingGravity || e.acceleration;
+  // Prefer gravity-free acceleration (e.acceleration) — already has gravity subtracted
+  // Fall back to gravity-included only if gravity-free is unavailable/zero
+  const accLin  = e.acceleration;
+  const accGrav = e.accelerationIncludingGravity;
+  const linMag = accLin ? Math.abs(accLin.x||0)+Math.abs(accLin.y||0)+Math.abs(accLin.z||0) : 0;
+  const useLinear = linMag > 0.01;   // gravity-free available and non-trivial
+  IMU._gravFree = useLinear;
+  const acc = useLinear ? accLin : accGrav;
   if(!acc) return;
   const now = performance.now();
 
-  // Raw readings (m/s² on Android; iOS same)
+  // Raw readings (m/s²)
   const rawAx = (acc.x || 0) - IMU.axOff;
   const rawAy = (acc.y || 0) - IMU.ayOff;
-  const rawAz = (acc.z || 0) - IMU.azOff;
+  const rawAz = (acc.z || 0) - (useLinear ? IMU.azOff : (IMU.azOff + 9.81));
 
   // Butterworth low-pass filter (vibration removal)
   const fax = bw2(rawAx, _bw_xp[0], _bw_yp1[0], _bw_yp2[0]);
@@ -456,14 +467,37 @@ function onDeviceMotion(e){
     IMU.gz = (rot.gamma||0) * Math.PI/180 - IMU.gzOff;
   }
 
-  // Speed estimation: project filtered accel onto forward axis (phone lying flat: fwd = +Y)
-  // Simple forward accel integration with gravity removal
+  // Speed estimation: project filtered accel onto forward axis
   const dt = _lastDMT>0 ? (now-_lastDMT)/1000 : 0;
   _lastDMT = now;
-  const cosB = Math.cos(IMU.beta*Math.PI/180);
-  const sinB = Math.sin(IMU.beta*Math.PI/180);
-  // forward acceleration = ay*cosB - az*sinB (phone held portrait, tilted)
-  IMU.fwdAccel = clamp(fay*cosB - (faz - 9.81*Math.cos(IMU.beta*Math.PI/180))*sinB, -15, 15);
+
+  let rawFwd;
+  if(useLinear){
+    // Gravity already removed by the OS — Y axis = phone's long axis = forward direction
+    rawFwd = fay;
+  } else {
+    // Manual gravity removal using beta (front-back tilt) and gamma (left-right tilt)
+    const beta  = IMU.beta  * Math.PI/180;
+    const gamma = IMU.gamma * Math.PI/180;
+    const cosB = Math.cos(beta), sinB = Math.sin(beta);
+    const cosG = Math.cos(gamma), sinG = Math.sin(gamma);
+    // Gravity projected onto device Y and Z axes (iPhone convention):
+    //   gy_grav =  9.81 * sinB * cosG   (tilting forward puts gravity on +Y)
+    //   gz_grav = -9.81 * cosB * cosG   (face-up: -9.81 on Z)
+    const gravY =  9.81 * sinB * cosG;
+    const gravZ = -9.81 * cosB * cosG;
+    const linY = fay - gravY;
+    const linZ = faz - gravZ;
+    // Project onto car-forward axis: rotate by tilt angle beta
+    rawFwd = linY * cosB - linZ * sinB;
+  }
+
+  // Subtract residual bias captured during stationary calibration
+  const biasedFwd = rawFwd - IMU.fwdAccelBias;
+  // Dead-band: small accel below 0.25 m/s² is noise (smooth road rolling)
+  const deadFwd = Math.abs(biasedFwd) < 0.25 ? 0 : biasedFwd;
+  IMU.fwdAccel = clamp(deadFwd, -15, 15);
+
   if(dt>0 && dt<0.5){
     IMU.intSpeed = Math.max(0, IMU.intSpeed + IMU.fwdAccel*dt);
     IMU.intSpeed = Math.min(IMU.intSpeed, 40); // cap at 40 m/s (~144 km/h)
@@ -559,16 +593,38 @@ async function requestSensorAccess(){
     window.addEventListener('deviceorientation', onDeviceOrientation, {passive:true});
     startHzTracker();
 
-    // Auto-calibrate: capture bias for 1 second then mark calibrated
-    status.textContent = 'Calibrating bias… hold device still.';
+    // Auto-calibrate: accumulate samples for 2 seconds then compute mean bias
+    status.textContent = 'Calibrating bias… hold device still (2 s).';
+    let _calSamples = [];
+    const _calHandler = (ev)=>{
+      const a = (ev.acceleration && (Math.abs(ev.acceleration.x||0)+Math.abs(ev.acceleration.y||0)+Math.abs(ev.acceleration.z||0))>0.01)
+                ? ev.acceleration : ev.accelerationIncludingGravity;
+      if(a) _calSamples.push({ax:a.x||0,ay:a.y||0,az:a.z||0,gz:(ev.rotationRate?.gamma||0)*Math.PI/180,fwd:IMU.fwdAccel});
+    };
+    window.addEventListener('devicemotion', _calHandler, {passive:true});
     setTimeout(()=>{
-      IMU.axOff = IMU.ax; IMU.ayOff = IMU.ay; IMU.azOff = (IMU.az - 9.81);
-      IMU.gxOff = IMU.gx; IMU.gyOff = IMU.gy; IMU.gzOff = IMU.gz;
+      window.removeEventListener('devicemotion', _calHandler);
+      if(_calSamples.length > 5){
+        const n = _calSamples.length;
+        const meanAx = _calSamples.reduce((s,r)=>s+r.ax,0)/n;
+        const meanAy = _calSamples.reduce((s,r)=>s+r.ay,0)/n;
+        const meanAz = _calSamples.reduce((s,r)=>s+r.az,0)/n;
+        const meanGz = _calSamples.reduce((s,r)=>s+r.gz,0)/n;
+        const meanFwd= _calSamples.reduce((s,r)=>s+r.fwd,0)/n;
+        IMU.axOff = meanAx; IMU.ayOff = meanAy;
+        // For gravity-free, azOff ≈ meanAz; for gravity-included, remove expected gravity
+        IMU.azOff = IMU._gravFree ? meanAz : (meanAz - 9.81);
+        IMU.gxOff = IMU.gx; IMU.gyOff = IMU.gy; IMU.gzOff = meanGz;
+        // Capture forward-accel bias (residual after gravity removal while stationary)
+        IMU.fwdAccelBias = meanFwd;
+        // Reset Butterworth filter state after calibration
+        _bw_xp=[0,0,0]; _bw_yp1=[0,0,0]; _bw_yp2=[0,0,0];
+      }
       IMU.calibrated = true;
       status.textContent = '✓ Calibrated. Live IMU active at ~' + (IMU.hz||30) + ' Hz.';
       activateSensorMode();
       setTimeout(closeSensorModal, 1200);
-    }, 1200);
+    }, 2000);
 
     IMU.active = true;
 
@@ -640,10 +696,8 @@ function initMap(c){
   const cfg=CITIES[c];
   if(!_map){
     _map=L.map('map',{zoomControl:false,attributionControl:false});
+    // OSM standard — light map, no API key, no watermark
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:''}).addTo(_map);
-    const s=document.createElement('style');
-    s.textContent='.leaflet-tile-pane{filter:brightness(0.24) saturate(0.5) hue-rotate(175deg)}';
-    document.head.appendChild(s);
     _gt=L.polyline([],{color:'#00d4cc',weight:2,opacity:.75}).addTo(_map);
     _nd=L.polyline([],{color:'#9b72d8',weight:2.5,opacity:.8}).addTo(_map);
     _imu=L.polyline([],{color:'rgba(160,60,60,0.7)',weight:1.5,dashArray:'6,4',opacity:.6}).addTo(_map);
@@ -981,8 +1035,8 @@ function exitSimMode(){
   lb.style.background = 'rgba(184,144,64,0.08)';
   lb.classList.remove('on');
   startLiveGPS();
-  // Auto-request IMU in same gesture
-  if(!IMU.active) setTimeout(openSensorModal, 400);
+  // Auto-request IMU permission in same user gesture (iOS requires direct tap)
+  if(!IMU.active) openSensorModal();
 }
 
 function startLiveGPS(){
@@ -1032,6 +1086,19 @@ function startLiveGPS(){
       if(_map){ _map.flyTo([lat, lon], 18, {duration:1.8}); setTimeout(()=>{GPS.zoomed=true;},2000); }
       setBtnGnss(true);
       try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){}
+      // Show IMU prompt banner if not yet enabled (user must tap it for iOS gesture)
+      if(!IMU.active){
+        let imuBanner = document.getElementById('imu-banner');
+        if(!imuBanner){
+          imuBanner = document.createElement('div');
+          imuBanner.id = 'imu-banner';
+          imuBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9998;background:rgba(155,114,216,0.95);color:#fff;font-family:monospace;font-size:12px;padding:10px 16px;text-align:center;cursor:pointer;letter-spacing:.05em;';
+          imuBanner.textContent = '⊕ TAP HERE to enable Real IMU for accurate dead reckoning';
+          imuBanner.onclick = () => { imuBanner.remove(); openSensorModal(); };
+          document.body.appendChild(imuBanner);
+          setTimeout(()=>{ if(imuBanner.parentNode) imuBanner.remove(); }, 15000);
+        }
+      }
     } else {
       // On subsequent fixes: jump if moved significantly (or if returning from Delhi sim)
       const jumpDeg = Math.abs(S.gtLa - lat) + Math.abs(S.gtLo - lon);
