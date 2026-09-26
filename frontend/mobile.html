@@ -728,8 +728,10 @@ function step(){
       _imu.addLatLng([S.iLa,S.iLo]);_ekf.addLatLng([EKF.x,EKF.y]);
       _vm.setLatLng([S.ndLa,S.ndLo]);_uc.setLatLng([S.ndLa,S.ndLo]);
       _uc.setRadius(Math.max(4,S.unc));
-      if(S.gnss) _map.setView([S.gtLa,S.gtLo],_map.getZoom(),{animate:false});
-      else _map.setView([S.ndLa,S.ndLo],_map.getZoom(),{animate:false});
+      if(GPS.zoomed){
+        if(S.gnss) _map.setView([S.gtLa,S.gtLo],_map.getZoom(),{animate:false});
+        else _map.setView([S.ndLa,S.ndLo],_map.getZoom(),{animate:false});
+      }
     }
     const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.totND+=eND;S.n++;
     const eEKF=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);S.totEKF+=eEKF;
@@ -1024,7 +1026,8 @@ function startLiveGPS(){
       S.totND=0; S.n=0; S.totEKF=0; S.outN=0; S.nhcN=0; S.outt=0;
       if(_gt)_gt.setLatLngs([]);if(_nd)_nd.setLatLngs([]);
       if(_imu)_imu.setLatLngs([]);if(_ekf)_ekf.setLatLngs([]);
-      if(_map) _map.flyTo([lat, lon], 17, {duration:1.4}); // animate zoom from India view
+      GPS.zoomed = false;
+      if(_map){ _map.flyTo([lat, lon], 17, {duration:1.8}); setTimeout(()=>{GPS.zoomed=true;},2000); }
       setBtnGnss(true);
       try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){}
     } else {
