@@ -1016,7 +1016,8 @@ function step(){
     _imu.addLatLng([S.iLa,S.iLo]);_ekf.addLatLng([EKF.x,EKF.y]);
     _vm.setLatLng([S.ndLa,S.ndLo]);_uc.setLatLng([S.ndLa,S.ndLo]);
     _uc.setRadius(Math.max(4,S.unc));
-    _map.setView([S.ndLa,S.ndLo],_map.getZoom(),{animate:false});
+    // Only pan in sim mode — in live mode, GPS controls the view
+    if(GPS.simMode) _map.setView([S.ndLa,S.ndLo],_map.getZoom(),{animate:false});
   }
 
   // Metrics — NAVDRIFT-0 always wins vs raw IMU; EKF shown separately
@@ -1177,19 +1178,6 @@ function startLiveGPS(){
       }
       setBtnGnss(true);
       try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){}
-      // Show IMU prompt banner if not yet enabled (user must tap it for iOS gesture)
-      if(!IMU.active){
-        let imuBanner = document.getElementById('imu-banner');
-        if(!imuBanner){
-          imuBanner = document.createElement('div');
-          imuBanner.id = 'imu-banner';
-          imuBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9998;background:rgba(155,114,216,0.95);color:#fff;font-family:monospace;font-size:12px;padding:10px 16px;text-align:center;cursor:pointer;letter-spacing:.05em;';
-          imuBanner.textContent = '⊕ TAP HERE to enable Real IMU for accurate dead reckoning';
-          imuBanner.onclick = () => { imuBanner.remove(); openSensorModal(); };
-          document.body.appendChild(imuBanner);
-          setTimeout(()=>{ if(imuBanner.parentNode) imuBanner.remove(); }, 15000);
-        }
-      }
     } else {
       // On subsequent fixes: jump if moved significantly (or if returning from Delhi sim)
       const jumpDeg = Math.abs(S.gtLa - lat) + Math.abs(S.gtLo - lon);
