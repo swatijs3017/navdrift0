@@ -388,11 +388,6 @@
   <span id="gps-status-text">Requesting location…</span>
 </div>
 
-<!-- GPS LOCATED TOAST (shown on first fix) -->
-<div class="gps-toast" id="gps-located-toast">
-  <div class="gps-toast-dot"></div>
-  <span>GPS located · zooming in</span>
-</div>
 
 <!-- SENSOR PERMISSION MODAL -->
 <div class="modal-bg" id="sensor-modal">
@@ -1180,19 +1175,6 @@ function startLiveGPS(){
         _map.setView([lat, lon], 17, {animate:true, duration:0.8});
         GPS.zoomed = true; // step() will keep tracking from here
       }
-      // Show "GPS Located" toast
-      (function(){
-        let t = document.getElementById('gps-located-toast');
-        if(!t){
-          t = document.createElement('div');
-          t.id = 'gps-located-toast';
-          t.className = 'gps-toast';
-          t.innerHTML = '<div class="gps-toast-dot"></div><span>GPS located · zooming in</span>';
-          document.body.appendChild(t);
-        }
-        setTimeout(()=>t.classList.add('show'),50);
-        setTimeout(()=>{ t.classList.remove('show'); },3500);
-      })();
       setBtnGnss(true);
       try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){}
       // Show IMU prompt banner if not yet enabled (user must tap it for iOS gesture)
