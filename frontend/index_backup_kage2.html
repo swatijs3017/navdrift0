@@ -16,7 +16,6 @@
   <meta name="apple-mobile-web-app-title" content="NAVDRIFT-0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
   <style>
     :root {
       /* ── Kage palette ── */
@@ -156,29 +155,8 @@
     .nhc-fill { height: 100%; border-radius: 2px; transition: width .3s; }
 
     /* ── MAP ── */
-    /* Map control strip */
-    .map-ctrl-strip { position: absolute; top: 9px; left: 50%; transform: translateX(-50%); z-index: 600; display: flex; gap: 5px; pointer-events: all; }
-    .map-ctrl-btn { background: rgba(5,7,10,0.82); border: 1px solid rgba(223,231,224,0.12); color: #aab4ad; font-family: 'JetBrains Mono',monospace; font-size: .5rem; font-weight: 700; letter-spacing: .08em; padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: all .15s; white-space: nowrap; }
-    .map-ctrl-btn:hover { border-color: rgba(0,196,224,0.4); color: #dfe7e0; }
-    .map-ctrl-btn.active { background: rgba(0,196,224,0.15); border-color: rgba(0,196,224,0.6); color: #00C4E0; }
-    .map-ctrl-btn.sat-active { background: rgba(0,255,157,0.12); border-color: rgba(0,255,157,0.5); color: #00ff9d; }
-    /* Cartosat legend */
-    .cartosat-legend { position: absolute; bottom: 42px; right: 9px; z-index: 500; background: rgba(5,7,10,0.88); backdrop-filter: blur(10px); border: 1px solid rgba(223,231,224,0.10); border-radius: 6px; padding: 6px 9px; display: none; }
-    .cartosat-legend.visible { display: block; }
-    .cl-title { font-family: 'JetBrains Mono',monospace; font-size: .48rem; color: #78837c; letter-spacing: .1em; margin-bottom: 4px; }
-    .cl-row { display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
-    .cl-swatch { width: 18px; height: 3px; border-radius: 2px; }
-    .cl-label { font-family: 'JetBrains Mono',monospace; font-size: .46rem; color: #aab4ad; }
-    .map-wrap { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); min-height: 0; display: grid; grid-template-columns: 1fr; transition: grid-template-columns .3s; }
-    .map-wrap.sv-open { grid-template-columns: 1fr 1fr; }
-    #map-half { position: relative; overflow: hidden; height: 100%; }
-    .sv-open #map-half { border-right: 1px solid var(--line); }
+    .map-wrap { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); min-height: 0; }
     #map { width: 100%; height: 100%; background: #04060a; }
-    #sv-half { position: relative; overflow: hidden; background: #020509; height: 100%; display: none; }
-    .sv-open #sv-half { display: block; }
-    #sv-token-overlay { display: none; position: absolute; inset: 0; z-index: 900; background: rgba(5,7,10,0.93); flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
-    #sv-token-overlay input { background: rgba(255,255,255,0.06); border: 1px solid var(--line); color: var(--bone); font-family: var(--mono); font-size: .65rem; padding: 6px 10px; border-radius: 4px; width: 260px; outline: none; }
-    #sv-token-overlay button { background: rgba(0,196,224,0.15); border: 1px solid rgba(0,196,224,0.5); color: #00C4E0; font-family: var(--mono); font-size: .58rem; padding: 5px 14px; border-radius: 4px; cursor: pointer; }
     .leaflet-container { background: #04060a !important; }
     .hud { position: absolute; z-index: 500; pointer-events: none; }
     .hud.tl { top: 9px; left: 9px; }
@@ -368,177 +346,219 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     /* Recording indicator */
     .rec-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 7px var(--red-g);animation:blink .7s step-end infinite;margin-right:4px;vertical-align:middle;}
 
-  /* ════════════════════════════════════════════════════
-     ISRO SIH 2026 — New Component Styles
-     Drift Compliance Gauge · ZUPT · DOP · Edge Metrics
-     ════════════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════
+     KAGE DEEP — eliminate neon, all values → bone-dim
+     ═══════════════════════════════════════════════════ */
 
-  /* ── Drift Compliance Gauge ── */
-  .drift-comply-wrap { display:flex; align-items:center; gap:10px; margin:6px 0 3px; }
-  .drift-gauge-ring { position:relative; width:60px; height:60px; flex-shrink:0; }
-  .drift-gauge-ring svg { width:100%; height:100%; transform:rotate(-90deg); }
-  .drift-gauge-bg  { fill:none; stroke:rgba(255,255,255,0.06); stroke-width:6; }
-  .drift-gauge-arc { fill:none; stroke-width:6; stroke-linecap:round; transition:stroke-dashoffset .4s ease, stroke .4s; }
-  .drift-gauge-val { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mono); }
-  .drift-gauge-pct { font-size:.7rem; font-weight:700; line-height:1; }
-  .drift-gauge-unit{ font-size:.42rem; color:var(--t3); margin-top:1px; }
-  .drift-comply-info { flex:1; }
-  .drift-comply-lbl { font-size:.52rem; color:var(--t3); font-family:var(--mono); letter-spacing:.08em; text-transform:uppercase; }
-  .drift-comply-target { font-size:.6rem; color:var(--bone-dim); margin-top:2px; }
-  .drift-comply-status { display:inline-block; font-size:.52rem; font-weight:700; font-family:var(--mono); padding:1px 6px; border-radius:3px; margin-top:3px; }
-  .drift-comply-status.ok  { background:rgba(0,255,157,0.1); color:var(--green); border:1px solid rgba(0,255,157,0.25); }
-  .drift-comply-status.bad { background:rgba(224,35,28,0.1);  color:var(--red);   border:1px solid rgba(224,35,28,0.25); }
+  /* Kill all decorative glow box-shadows */
+  .dot, .cdot, .cdot.c, .cdot.v, .cdot.r, .cdot.g, .cdot.y,
+  .sig-bar, .phase-dot, .mod-dot, .rec-dot,
+  .phase-badge, .phase-badge.nominal, .phase-badge.snap,
+  .phase-badge.cal { box-shadow: none !important; }
 
-  /* ── GNSS Transition Timer ── */
-  .trans-row { display:flex; align-items:center; justify-content:space-between; padding:5px 7px; background:rgba(0,0,0,0.2); border-radius:5px; margin-top:5px; border:1px solid var(--line-soft); }
-  .trans-lbl { font-size:.52rem; color:var(--t3); font-family:var(--mono); letter-spacing:.06em; text-transform:uppercase; }
-  .trans-val { font-size:.8rem; font-weight:700; font-family:var(--mono); color:var(--cyan); }
-  .trans-target { font-size:.48rem; color:var(--muted); }
+  /* Status dot colours — dimmer, no glow */
+  .dot { background: #2a6b52 !important; }
+  .dot.out { background: var(--red) !important; animation: blink .7s step-end infinite; }
 
-  /* ── ZUPT chip ── */
-  .mod.zupt-active { background:rgba(0,150,255,0.12); color:rgba(0,200,255,0.8); border-color:rgba(0,150,255,0.3); }
+  /* Card indicator dots — tiny, muted, no bloom */
+  .cdot.c { background: rgba(0,255,245,0.45) !important; }
+  .cdot.g { background: rgba(0,255,157,0.45) !important; }
+  .cdot.v { background: rgba(168,85,247,0.45) !important; }
+  .cdot.r { background: rgba(224,35,28,0.45) !important; }
+  .cdot.y { background: rgba(251,191,36,0.45) !important; }
 
-  /* ── NavIC DOP row ── */
-  .dop-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; margin-top:5px; }
-  .dop-cell { text-align:center; padding:3px 4px; background:rgba(0,0,0,0.2); border-radius:4px; border:1px solid var(--line-soft); }
-  .dop-label { font-size:.46rem; color:var(--t3); font-family:var(--mono); text-transform:uppercase; }
-  .dop-value { font-size:.68rem; font-weight:700; font-family:var(--mono); color:var(--cyan); }
+  /* Signal bars — bone/muted, no glow */
+  .sig-bar { background: rgba(223,231,224,0.25) !important; box-shadow: none !important; }
+  .sig-bar.lost { background: var(--red) !important; }
 
-  /* ── UKF State Vector ── */
-  .ukf-state { display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:5px; }
-  .ukf-cell { padding:4px 5px; background:rgba(0,0,0,0.2); border-radius:4px; border:1px solid var(--line-soft); }
-  .ukf-key { font-size:.46rem; color:var(--t3); font-family:var(--mono); }
-  .ukf-val { font-size:.65rem; font-weight:700; font-family:var(--mono); color:var(--violet); }
+  /* Metric values — bone-white not cyan */
+  .mv.c { color: var(--bone) !important; }
+  .mv.g { color: #4ec994 !important; }   /* softer green */
+  .mv.v { color: #9b72d8 !important; }   /* softer violet */
+  .mv.r { color: var(--red) !important; }
+  .mv.y { color: var(--yellow) !important; }
 
-  /* ── Edge Deployment Metrics ── */
-  .edge-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-top:5px; }
-  .edge-cell { text-align:center; padding:5px 3px; background:rgba(0,0,0,0.2); border-radius:5px; border:1px solid var(--line-soft); }
-  .edge-icon { font-size:.75rem; line-height:1; }
-  .edge-val { font-size:.7rem; font-weight:700; font-family:var(--mono); color:var(--green); }
-  .edge-lbl { font-size:.44rem; color:var(--t3); font-family:var(--mono); text-transform:uppercase; margin-top:1px; }
+  /* HUD position/speed values */
+  .hv { color: var(--bone) !important; }
+  .hv.out { color: var(--red) !important; }
 
-  /* ════════════════════════════════════════════════════
-     KAGE — consolidated theme layer (no neon, no glow)
-     ════════════════════════════════════════════════════ */
+  /* Pipeline bar — no cyan glow on active */
+  .pmod.active { background: rgba(223,231,224,0.035) !important; }
+  .pmod.active .pico { filter: none !important; opacity: 0.85; }
+  .pmod.active .pname { color: var(--bone-dim) !important; }
 
-  /* ── Remove all decorative box-shadows ── */
-  .dot, .cdot, .sig-bar, .phase-dot, .mod-dot, .rec-dot,
-  .phase-badge { box-shadow: none; }
+  /* Sensor / calibration bars */
+  .sbar-fill { background: rgba(223,231,224,0.35) !important; }
+  .sbar-val  { color: var(--bone-dim) !important; }
+  .fbar-fill { opacity: 0.7; }
 
-  /* ── Status dot (header GNSS indicator) ── */
-  .dot     { background: rgba(80,130,100,0.7); }
-  .dot.out { background: var(--red); animation: blink .7s step-end infinite; }
-  .pill    { border: none; background: transparent; padding: 0 4px; gap: 5px; }
-  .pill .dot { width: 5px; height: 5px; }
+  /* MET clock — no neon */
+  .met b { color: var(--bone-dim) !important; }
 
-  /* ── Card title dots → hidden; replaced by red · marker ── */
-  .cdot { display: none; }
-  .ct-l::before { content: '·'; color: #7a1a1a; font-size: .85rem; margin-right: 6px; font-weight: 300; opacity: .85; }
-  .ct { letter-spacing: .13em; color: var(--muted); }
+  /* Modal — bone title not cyan */
+  .mtitle { color: var(--bone) !important; }
+  .cal-title { color: var(--bone-dim) !important; letter-spacing:.06em; }
+  .minp:focus { border-color: var(--line) !important; box-shadow: none !important; }
+  .cal-btn.primary { background: rgba(223,231,224,0.07) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
 
-  /* ── Signal bars — bone, no glow ── */
-  .sig-bar      { background: rgba(200,210,205,0.2); }
-  .sig-bar.lost { background: rgba(180,50,50,0.6)  ; }
+  /* NavIC toggle pill — muted */
+  .navic-toggle { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .navic-toggle.navonly { color: rgba(251,191,36,0.7) !important; border-color: rgba(251,191,36,0.25) !important; background: rgba(251,191,36,0.06) !important; }
 
-  /* ── Metric value colours (map lines keep their colours) ── */
-  .mv.c { color: var(--bone)    ; }   /* NAVDRIFT ATE — bone */
-  .mv.g { color: #5fba95       ; }   /* pass green — softer */
-  .mv.v { color: #9b72d8       ; }   /* EKF — softer violet */
-  .mv.r { color: var(--red)    ; }
-  .mv.y { color: var(--yellow) ; }
+  /* Phase badges — no glow */
+  .phase-badge.nominal { background: rgba(42,107,82,0.15) !important; color: #4ec994 !important; border-color: rgba(42,107,82,0.4) !important; }
+  .phase-badge.snap    { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .phase-badge.cal     { background: rgba(251,191,36,0.08) !important; color: rgba(251,191,36,0.75) !important; border-color: rgba(251,191,36,0.2) !important; }
 
-  /* ── HUD map overlays ── */
-  .hv     { color: var(--bone); }
-  .hv.out { color: var(--red) ; }
-  .hbox   { background: rgba(5,7,10,0.75); border-color: var(--line-soft); backdrop-filter: none; }
-  .hl     { color: var(--muted); }
+  /* Sparkline numbers — bone not cyan */
+  .spark-num { color: var(--bone-dim) !important; }
 
-  /* ── Header status area — flat text, no pill backgrounds ── */
-  .phase-badge          { border: none; background: transparent; padding: 0 4px; border-radius: 0; font-size: .6rem; letter-spacing: .12em; }
-  .phase-badge.nominal  { color: var(--muted); }
-  .phase-badge.blackout { color: var(--red)  ; }
-  .phase-badge.snap     { color: var(--bone-dim); }
-  .phase-badge.cal      { color: rgba(200,160,50,0.7); }
-  .phase-dot            { display: none; }
-  .badge-ps             { display: none; }
-  .badge-mode           { background: transparent; border: none; color: var(--muted); letter-spacing: .1em; padding: 0; }
-  .badge-mode.live      { color: #5fba95; }
-  .brand-logo svg       { filter: none; opacity: 0.8; }
+  /* Benchmark table — bone not neon */
+  table.bench tr.rnd td { color: var(--bone) !important; font-weight: 600; }
 
-  /* ── City tabs ── */
-  .city-tab.active { background: rgba(223,231,224,0.05); color: var(--bone); border-color: var(--line); }
+  /* btn icon hover — no cyan flash */
+  .btn-icon:hover { background: rgba(223,231,224,0.06) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
 
-  /* ── NavIC toggle ── */
-  .navic-toggle        { background: rgba(223,231,224,0.04); color: var(--bone-dim); border-color: var(--line); }
-  .navic-toggle.navonly{ color: rgba(200,160,50,0.7); border-color: rgba(200,150,40,0.2); background: rgba(200,150,40,0.05); }
+  /* Badges — muted styling */
+  .badge-mode { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .badge-mode.live { background: rgba(42,107,82,0.12) !important; color: #4ec994 !important; border-color: rgba(42,107,82,0.3) !important; }
 
-  /* ── Panel tabs ── */
-  .ptab-bar      { background: transparent; border: none; border-bottom: 1px solid var(--line-soft); border-radius: 0; padding: 0; gap: 0; }
-  .ptab          { border-radius: 0; padding: 5px 10px; }
-  .ptab.active   { background: transparent; border-color: transparent; border-bottom: 1px solid rgba(122,26,26,0.55); color: var(--bone-dim); border-radius: 0; }
+  /* Drift delta widget */
+  .drift-delta { background: rgba(42,107,82,0.07) !important; border-color: rgba(42,107,82,0.2) !important; }
+  .drift-delta-val { color: #4ec994 !important; }
+  .drift-delta.bad .drift-delta-val { color: var(--red) !important; }
 
-  /* ── Control buttons ── */
-  .btn.p                { background: rgba(223,231,224,0.05); color: var(--bone-dim); border-color: var(--line); }
-  .btn.d                { background: rgba(160,30,30,0.08)  ; color: rgba(220,60,60,0.65); border-color: rgba(160,30,30,0.25); }
-  .btn[style*="violet"] { background: rgba(223,231,224,0.04); color: var(--muted); border-color: var(--line-soft); }
-  .btn[style*="yellow"] { background: rgba(223,231,224,0.04); color: var(--muted); border-color: var(--line-soft); }
-  .btn[style*="green"]  { background: rgba(223,231,224,0.04); color: var(--muted); border-color: var(--line-soft); }
-  .btn[style*="red"]    { background: rgba(160,30,30,0.08)  ; color: rgba(220,60,60,0.6); border-color: rgba(160,30,30,0.2); }
-  label[style*="violet"]{ background: rgba(223,231,224,0.04); color: var(--muted); border-color: var(--line-soft); }
-  .btn-icon:hover       { background: rgba(223,231,224,0.06); color: var(--bone-dim); border-color: var(--line); }
+  /* Card top-edge line — more visible */
+  .card::before { background: linear-gradient(90deg,transparent,rgba(223,231,224,0.06),transparent) !important; }
 
-  /* ── Module chips ── */
-  .mod.on  { background: rgba(40,80,60,0.12); color: rgba(95,186,149,0.7); border-color: rgba(40,80,60,0.28); }
-  .mod.off { color: rgba(120,131,124,0.45); }
+  /* City tab — less punchy */
+  .city-tab.active { background: rgba(223,231,224,0.05) !important; color: var(--bone) !important; border-color: var(--line) !important; }
 
-  /* ── Sensor / calibration bars ── */
-  .sbar-fill { background: rgba(200,210,205,0.3); }
-  .sbar-val  { color: var(--bone-dim); }
-  .fbar-fill { opacity: 0.65; }
+  /* Brand logo — no cyan drop-shadow */
+  .brand-logo svg { filter: none !important; opacity: 0.75; }
 
-  /* ── Sparklines ── */
-  .spark-num { color: var(--bone-dim); }
+  /* Compliance status — ok/err chips */
+  .cs.ok { background: rgba(42,107,82,0.12) !important; color: #4ec994 !important; border-color: rgba(42,107,82,0.3) !important; }
 
-  /* ── MET clock ── */
-  #met-clock        { color: var(--muted); }
-  #navic-lock-badge { color: var(--muted); font-weight: 500; }
+  /* ═══════════════════════════════════════════════════
+     KAGE VISUAL LANGUAGE — inline override pass
+     · Red accent like Kage torii  · No neon anywhere
+     ═══════════════════════════════════════════════════ */
 
-  /* ── Pipeline bottom bar ── */
-  .pmod.active      { background: rgba(223,231,224,0.03); }
-  .pmod.active .pico{ filter: none; opacity: 0.8; }
-  .pmod.active .pname{ color: var(--bone-dim); }
-  .pmod:hover       { background: rgba(223,231,224,0.02); }
-  .pname            { color: var(--muted); }
-  .psub             { color: rgba(120,131,124,0.45); }
+  /* Override inline style="color:var(--cyan)" elements */
+  #met-clock              { color: var(--muted)    !important; }
+  #navic-lock-badge       { color: var(--muted)    !important; font-weight: 500 !important; }
+  .hv                     { color: var(--bone)     !important; }
 
-  /* ── Modal ── */
-  .mtitle           { color: var(--bone); }
-  .cal-title        { color: var(--bone-dim); }
-  .minp:focus       { border-color: var(--line); box-shadow: none; }
-  .cal-btn.primary  { background: rgba(223,231,224,0.06); color: var(--bone-dim); border-color: var(--line); }
+  /* Desaturate NavIC sky plot & SNR bars — no neon green canvas */
+  #sky-cv                 { filter: saturate(0.08) brightness(0.55) !important; }
+  #sat-snr-bars           { filter: saturate(0.1)  brightness(0.5)  !important; }
 
-  /* ── Drift delta & compliance chips ── */
-  .drift-delta            { background: rgba(40,80,60,0.07); border-color: rgba(40,80,60,0.2); }
-  .drift-delta-val        { color: #5fba95; }
-  .drift-delta.bad .drift-delta-val { color: var(--red); }
-  .cs.ok                  { background: rgba(40,80,60,0.12); color: #5fba95; border-color: rgba(40,80,60,0.3); }
-  table.bench tr.rnd td   { color: var(--bone); font-weight: 600; }
+  /* Card title — hide colored cdot, replace with red · via ::before */
+  .cdot { display: none !important; }
+  .ct-l::before {
+    content: '·';
+    color: #7a1a1a;
+    font-size: .85rem;
+    margin-right: 6px;
+    line-height: 1;
+    font-weight: 300;
+    opacity: .85;
+  }
+  .ct { letter-spacing: .13em !important; color: var(--muted) !important; }
 
-  /* ── Card top-edge shimmer ── */
-  .card::before { background: linear-gradient(90deg,transparent,rgba(223,231,224,0.055),transparent); }
+  /* Header right — flatten pills to bare text */
+  .phase-badge {
+    border: none !important; background: transparent !important;
+    padding: 0 4px !important; border-radius: 0 !important;
+    font-size: .6rem !important; letter-spacing: .12em !important;
+  }
+  .phase-badge.nominal  { color: var(--muted)    !important; }
+  .phase-badge.blackout { color: var(--red)       !important; background: transparent !important; }
+  .phase-dot { display: none !important; }
 
-  /* ── Grain noise overlay ── */
+  .pill {
+    border: none !important; background: transparent !important;
+    padding: 0 4px !important; gap: 5px !important;
+  }
+  .pill .dot { width: 5px !important; height: 5px !important; }
+
+  .badge-ps { display: none !important; }
+
+  /* Mode badge — very dim */
+  .badge-mode {
+    background: transparent !important;
+    border: none !important;
+    color: var(--muted) !important;
+    letter-spacing: .1em !important;
+    padding: 0 !important;
+  }
+
+  /* Panel tabs — more spaced, dim */
+  .ptab.active {
+    background: transparent !important;
+    border-color: transparent !important;
+    border-bottom: 1px solid rgba(122,26,26,0.6) !important;
+    color: var(--bone-dim) !important;
+    border-radius: 0 !important;
+  }
+  .ptab-bar {
+    background: transparent !important;
+    border-color: var(--line-soft) !important;
+    border-left: none !important; border-right: none !important; border-top: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+  .ptab { border-radius: 0 !important; padding: 5px 10px !important; }
+
+  /* Control buttons — muted style */
+  .btn.p { background: rgba(223,231,224,0.05) !important; color: var(--bone-dim) !important; border-color: var(--line) !important; }
+  .btn.d { background: rgba(180,30,30,0.08)   !important; color: rgba(224,35,28,0.7) !important; border-color: rgba(180,30,30,0.25) !important; }
+
+  /* Inline-styled buttons in controls card — flatten */
+  .btn[style*="violet"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  .btn[style*="yellow"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  .btn[style*="green"]  { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+  .btn[style*="red"]    { background: rgba(180,30,30,0.08)   !important; color: rgba(224,35,28,0.65) !important; border-color: rgba(180,30,30,0.2) !important; }
+
+  /* Ground truth CSV label */
+  label[style*="violet"] { background: rgba(223,231,224,0.04) !important; color: var(--muted) !important; border-color: var(--line-soft) !important; }
+
+  /* Module chips — on=very dim green, off=muted */
+  .mod.on  { background: rgba(42,82,60,0.12) !important; color: rgba(78,201,148,0.7) !important; border-color: rgba(42,82,60,0.3) !important; }
+  .mod.off { color: rgba(120,131,124,0.5)    !important; }
+
+  /* HUD map overlays — keep position/speed but dim */
+  .hbox { background: rgba(5,7,10,0.75) !important; border-color: var(--line-soft) !important; backdrop-filter: none !important; }
+  .hl   { color: rgba(120,131,124,0.6) !important; }
+
+  /* Pipeline bottom — very dim */
+  .pmod:hover { background: rgba(223,231,224,0.025) !important; }
+  .pname { color: var(--muted) !important; }
+  .psub  { color: rgba(120,131,124,0.5) !important; }
+
+  /* Grain noise overlay — Kage atmospheric texture */
   body::after {
-    content: ''; position: fixed; inset: 0; z-index: 9000; pointer-events: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
-    opacity: 0.038; mix-blend-mode: overlay;
+    content: '';
+    position: fixed; inset: 0; z-index: 9000; pointer-events: none;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.038;
+    mix-blend-mode: overlay;
   }
   </style>
 </head>
 <body>
 
 <!-- ── KAGE BOOT SEQUENCE ── -->
-<div id="boot-seq" style="display:none">
+<div id="boot-seq" style="
+  position:fixed;inset:0;z-index:9999;
+  background:var(--ink);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;
+  font-family:'JetBrains Mono',monospace;
+  transition:opacity .6s ease;
+">
   <svg width="52" height="52" viewBox="0 0 32 32" fill="none" style="opacity:.9">
     <circle cx="16" cy="16" r="14" stroke="#8B1A1A" stroke-width="1" opacity=".7"/>
     <circle cx="16" cy="16" r="8" stroke="rgba(223,231,224,0.15)" stroke-width=".8"/>
@@ -606,8 +626,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <div class="pill"><div class="dot" id="hdr-dot"></div><span id="hdr-status">GNSS LOCKED</span></div>
       <span class="badge badge-mode" id="mode-badge">SIMULATION</span>
       <button class="navic-toggle" id="navic-btn" onclick="toggleNavICMode()" title="Toggle NavIC-only mode">NavIC+GPS</button>
-      <button class="navic-toggle" id="prod-btn" onclick="toggleProdModel()" title="Run all 5 trained ONNX models in-browser" style="background:rgba(168,85,247,0.12);color:var(--violet);border-color:rgba(168,85,247,0.35)">SIM MODE</button>
-      <span id="onnx-lat" style="font-size:.52rem;font-family:var(--mono);color:var(--t3);min-width:40px"></span>
       <span class="badge badge-ps">PS #26168</span>
       <div class="btn-icon" onclick="openModal()" title="API Settings">⚙</div>
     </div>
@@ -674,8 +692,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             <div class="mod on" id="m-odo"><span class="mod-dot"></span>ODO·AI</div>
             <div class="mod on" id="m-mag"><span class="mod-dot"></span>MAG/AHRS</div>
             <div class="mod on full" id="m-dr"><span class="mod-dot"></span>DRIFT-FORMER · INT8/INT4 ONNX · 20ms CPU · 9-ch (baro+mag)</div>
-            <div class="mod on" id="m-zupt"><span class="mod-dot"></span>ZUPT</div>
-            <div class="mod on" id="m-fed"><span class="mod-dot"></span>FED·LEARN</div>
           </div>
         </div>
         <div class="card">
@@ -743,35 +759,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     </div>
 
     <!-- CENTER MAP -->
-    <div class="map-wrap" id="map-wrap">
-      <div id="map-half">
-        <div id="map"></div>
-        <!-- Map control strip -->
-        <div class="map-ctrl-strip">
-          <button class="map-ctrl-btn" id="sat-btn" onclick="toggleSatellite()" title="Toggle satellite imagery">&#x1F6F0; SAT</button>
-          <button class="map-ctrl-btn" id="road-conf-btn" onclick="toggleRoadConf()" title="Cartosat-3 road confidence heatmap">&#x1F5FA; ROAD CONF</button>
-          <button class="map-ctrl-btn" id="unc-band-btn" onclick="toggleUncBand()" title="Lane-level uncertainty corridor">&#x1F4D0; UNC BAND</button>
-          <button class="map-ctrl-btn" id="sv-toggle-btn" onclick="svTogglePanel()" title="Street View — road-level outdoor imagery">&#x1F6E3; STREET VIEW</button>
-        </div>
-        <!-- Cartosat road confidence legend -->
-        <div class="cartosat-legend" id="cartosat-legend">
-          <div class="cl-title">CARTOSAT-3 ROAD CONF</div>
-          <div class="cl-row"><div class="cl-swatch" style="background:#00ff9d"></div><span class="cl-label">High &ge;0.7</span></div>
-          <div class="cl-row"><div class="cl-swatch" style="background:#fbbf24"></div><span class="cl-label">Med 0.4&ndash;0.7</span></div>
-          <div class="cl-row"><div class="cl-swatch" style="background:#E0231C"></div><span class="cl-label">Low &lt;0.4</span></div>
-          <div class="cl-row" style="margin-top:3px"><div class="cl-swatch" style="background:rgba(168,85,247,0.6)"></div><span class="cl-label">DR uncertainty band</span></div>
-        </div>
-      </div>
-      <div id="sv-half">
-        <div id="sv-pano" style="width:100%;height:100%"></div>
-        <div id="sv-token-overlay">
-          <div style="font-family:var(--mono);font-size:.58rem;color:var(--t3);letter-spacing:.1em">GOOGLE MAPS API KEY</div>
-          <input id="sv-key-input" type="text" placeholder="Paste your API key…" />
-          <button onclick="svSubmitKey()">ACTIVATE STREET VIEW</button>
-          <div id="sv-key-err" style="font-family:var(--mono);font-size:.5rem;color:var(--red);display:none">Invalid key or load error</div>
-        </div>
-      </div>
-      <div id="route-banner" style="display:none;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(139,26,26,0.88);color:var(--bone);font-size:.72rem;letter-spacing:.08em;padding:5px 14px;border-radius:3px;gap:6px;align-items:center;white-space:nowrap;">⚠ High uncertainty — alternate route suggested</div>
+    <div class="map-wrap">
+      <div id="map"></div>
       <div class="hud tl"><div class="hbox">
         <div class="hl">Position</div>
         <div class="hv" id="hud-pos">—</div>
@@ -799,9 +788,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
         <button class="ptab active" onclick="switchPTab('right','metrics',this)">METRICS</button>
         <button class="ptab" onclick="switchPTab('right','ai',this)">AI</button>
         <button class="ptab" onclick="switchPTab('right','compliance',this)">COMPLY</button>
-        <button class="ptab" onclick="switchPTab('right','bench',this)">BENCH</button>
-        <button class="ptab" onclick="switchPTab('right','fleet',this)">FLEET</button>
-        <button class="ptab" onclick="switchPTab('right','explain',this)">EXPLAIN</button>
       </div>
 
       <!-- METRICS TAB -->
@@ -815,42 +801,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <div class="mrow"><span class="ml">Steps / Outages</span><span class="mv" style="color:var(--t2);font-size:.7rem"><span id="v-steps">0</span> / <span id="v-outs" style="color:var(--red)">0</span></span></div>
           <span id="v-imu" style="display:none"></span>
         </div>
-
-        <!-- ── DRIFT COMPLIANCE GAUGE (ISRO PS #26168: <10%) ── -->
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>ISRO Drift Compliance</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">Target &lt;10%</span></div>
-          <div class="drift-comply-wrap">
-            <div class="drift-gauge-ring">
-              <svg viewBox="0 0 60 60">
-                <circle class="drift-gauge-bg" cx="30" cy="30" r="24"/>
-                <circle class="drift-gauge-arc" cx="30" cy="30" r="24" id="drift-arc"
-                  stroke="var(--green)" stroke-dasharray="150.8" stroke-dashoffset="150.8"/>
-              </svg>
-              <div class="drift-gauge-val">
-                <span class="drift-gauge-pct" id="drift-pct-val" style="color:var(--green)">0.0</span>
-                <span class="drift-gauge-unit">%</span>
-              </div>
-            </div>
-            <div class="drift-comply-info">
-              <div class="drift-comply-lbl">Drift / Distance</div>
-              <div class="drift-comply-target">ISRO limit: error/dist &lt; 10%</div>
-              <div><span class="drift-comply-status ok" id="drift-comply-badge">✓ PASS</span></div>
-              <div style="font-size:.5rem;color:var(--t3);font-family:var(--mono);margin-top:3px">Dist: <span id="drift-dist-val">0m</span> · Err: <span id="drift-err-val">0.0m</span></div>
-            </div>
-          </div>
-          <!-- GNSS Transition Timer -->
-          <div class="trans-row">
-            <div>
-              <div class="trans-lbl">GNSS ↔ DR Transition</div>
-              <div class="trans-target">ISRO req: seamless &lt;100ms</div>
-            </div>
-            <div style="text-align:right">
-              <div class="trans-val"><span id="gnss-trans-ms">0.4</span> ms</div>
-              <div style="font-size:.46rem;font-family:var(--mono);color:var(--green)">✓ PASS</div>
-            </div>
-          </div>
-        </div>
-
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot r"></span>Live Drift Race</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)" id="dc-phase">NOMINAL</span></div>
           <div class="divclock-wrap">
@@ -891,12 +841,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
               <div style="font-size:.57rem;color:var(--t3);font-family:var(--mono)" id="sig-sub">7 Satellites locked</div>
             </div>
           </div>
-          <!-- NavIC DOP — Dilution of Precision (ISRO PDOP/HDOP/VDOP) -->
-          <div class="dop-row">
-            <div class="dop-cell"><div class="dop-label">PDOP</div><div class="dop-value" id="dop-pdop">1.8</div></div>
-            <div class="dop-cell"><div class="dop-label">HDOP</div><div class="dop-value" id="dop-hdop">1.2</div></div>
-            <div class="dop-cell"><div class="dop-label">VDOP</div><div class="dop-value" id="dop-vdop">1.4</div></div>
-          </div>
         </div>
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Signals</div></div>
@@ -934,43 +878,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
             <div id="inf-layers" style="display:flex;align-items:flex-end;gap:2px;height:20px"></div>
           </div>
         </div>
-
-        <!-- ── UKF State Vector ── -->
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot v"></span>UKF State Vector</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">Covariance P</span></div>
-          <div class="ukf-state">
-            <div class="ukf-cell"><div class="ukf-key">P[0][0] — Lat σ²</div><div class="ukf-val" id="ukf-p00">—</div></div>
-            <div class="ukf-cell"><div class="ukf-key">P[1][1] — Lon σ²</div><div class="ukf-val" id="ukf-p11">—</div></div>
-            <div class="ukf-cell"><div class="ukf-key">P[2][2] — Vel σ²</div><div class="ukf-val" id="ukf-p22">—</div></div>
-            <div class="ukf-cell"><div class="ukf-key">Trace(P)</div><div class="ukf-val" id="ukf-tr" style="color:var(--cyan)">—</div></div>
-          </div>
-          <div style="margin-top:5px;display:flex;gap:4px;align-items:center">
-            <span style="font-size:.5rem;color:var(--t3);font-family:var(--mono)">ZUPT corrections:</span>
-            <span style="font-size:.62rem;font-weight:700;font-family:var(--mono);color:var(--cyan)" id="zupt-cnt">0</span>
-            <span style="font-size:.48rem;color:var(--muted);margin-left:8px;font-family:var(--mono)">ZUPT active:</span>
-            <span style="font-size:.55rem;font-weight:700;font-family:var(--mono);color:var(--t3)" id="zupt-state">NO</span>
-          </div>
-        </div>
-
-        <!-- ── Edge Deployment Metrics ── -->
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Edge Deployment</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">INT8 ONNX target</span></div>
-          <div class="edge-grid">
-            <div class="edge-cell"><div class="edge-icon">💾</div><div class="edge-val" id="edge-mb">2.1</div><div class="edge-lbl">MB INT8</div></div>
-            <div class="edge-cell"><div class="edge-icon">⚡</div><div class="edge-val" id="edge-hz">48.3</div><div class="edge-lbl">Infer Hz</div></div>
-            <div class="edge-cell"><div class="edge-icon">🔧</div><div class="edge-val" id="edge-cpu">12.4</div><div class="edge-lbl">CPU %</div></div>
-          </div>
-          <div style="margin-top:5px;display:grid;grid-template-columns:1fr 1fr;gap:3px">
-            <div style="padding:3px 5px;background:rgba(0,0,0,0.2);border-radius:4px;border:1px solid var(--line-soft)">
-              <div style="font-size:.46rem;color:var(--t3);font-family:var(--mono)">RAM footprint</div>
-              <div style="font-size:.62rem;font-weight:700;font-family:var(--mono);color:var(--green)" id="edge-ram">34 MB</div>
-            </div>
-            <div style="padding:3px 5px;background:rgba(0,0,0,0.2);border-radius:4px;border:1px solid var(--line-soft)">
-              <div style="font-size:.46rem;color:var(--t3);font-family:var(--mono)">Target platform</div>
-              <div style="font-size:.56rem;font-weight:700;font-family:var(--mono);color:var(--cyan)">ARM Cortex-A72</div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- COMPLIANCE TAB -->
@@ -983,9 +890,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <div class="mrow"><span class="ml">50m blackout drift</span><span id="ps-50m" class="mv" style="color:var(--t3)">— warming up</span></div>
           <div class="mrow"><span class="ml">1km tunnel ATE</span><span id="ps-1km" class="mv" style="color:var(--t3)">— warming up</span></div>
           <div class="mrow"><span class="ml">Inference latency</span><span id="ps-lat" class="mv" style="color:var(--t3)">— warming up</span></div>
-          <div class="mrow"><span class="ml">Drift compliance</span><span id="ps-drift-comply" class="mv" style="color:var(--t3)">— warming up</span></div>
-          <div class="mrow"><span class="ml">GNSS↔DR transition</span><span id="ps-trans-time" class="mv" style="color:var(--green)">0.4 ms ✓</span></div>
-          <div class="mrow"><span class="ml">ZUPT corrections</span><span id="ps-zupt-cnt" class="mv" style="color:var(--cyan)">0</span></div>
           <span id="ps-live" style="display:none"></span>
           <span id="ps-trans" style="display:none"></span>
         </div>
@@ -997,56 +901,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <span id="v-snap" style="display:none">0</span>
           <span id="v-hmm" style="display:none">0</span>
           <span id="v-tun" style="display:none">0</span>
-        </div>
-      </div>
-
-      <!-- BENCH TAB -->
-      <div class="ptab-content" data-panel="right" data-tab="bench">
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>Algorithm Benchmark</div></div>
-          <div class="mrow"><span class="ml">NAVDRIFT-0 ATE</span><span class="mv c" id="bk-nd">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">EKF Baseline ATE</span><span class="mv v" id="bk-ekf">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">Raw IMU ATE</span><span class="mv y" id="bk-imu">—<span class="mu">m</span></span></div>
-          <div style="margin-top:6px;display:grid;gap:3px" id="bench-bars"></div>
-        </div>
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Adaptive RL (Q/R tuning)</div></div>
-          <div class="mrow"><span class="ml">Process noise Q</span><span class="mv c" id="rl-q">—</span></div>
-          <div class="mrow"><span class="ml">Meas. noise R</span><span class="mv v" id="rl-r">—</span></div>
-          <div class="mrow"><span class="ml">Residual buf size</span><span class="mv" id="rl-buf">—</span></div>
-        </div>
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot r"></span>Sensor Fault Grid</div></div>
-          <div id="fault-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px"></div>
-        </div>
-      </div>
-
-      <!-- FLEET TAB -->
-      <div class="ptab-content" data-panel="right" data-tab="fleet">
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Federated Learning</div><span style="font-size:.53rem;color:var(--muted)" id="fed-round">Round 0</span></div>
-          <div class="mrow"><span class="ml">Global ATE</span><span class="mv c" id="fed-gate">—<span class="mu">m</span></span></div>
-          <div class="mrow"><span class="ml">Fleet size</span><span class="mv">12 vehicles</span></div>
-          <div class="mrow"><span class="ml">TDP ETA</span><span class="mv y" id="tdp-eta">—</span></div>
-        </div>
-        <div class="card" style="flex:1">
-          <div class="ct"><div class="ct-l"><span class="cdot v"></span>Fleet Log</div></div>
-          <div id="fleet-log" style="font-size:.6rem;font-family:var(--mono);color:var(--bone-dim);max-height:160px;overflow-y:auto;line-height:1.7"></div>
-        </div>
-      </div>
-
-      <!-- EXPLAIN TAB -->
-      <div class="ptab-content" data-panel="right" data-tab="explain">
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>DRIFTFormer Attention</div></div>
-          <canvas id="attn-cv" style="width:100%;height:110px;display:block;border-radius:4px"></canvas>
-          <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:.56rem;color:var(--muted);font-family:var(--mono)">
-            <span>ax</span><span>ay</span><span>az</span><span>gx</span><span>gy</span><span>gz</span><span>spd</span><span>baro</span><span>Δh</span>
-          </div>
-        </div>
-        <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Attention Heatmap (4 heads)</div></div>
-          <canvas id="attn-hm" style="width:100%;height:80px;display:block;border-radius:4px"></canvas>
         </div>
       </div>
 
@@ -1110,29 +964,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 </div>
 
 <script>
-// ════════════════════════════════════════════════════════════════════════════
-// NAVDRIFT-0 · ISRO SIH 2026 · PS #26168
-// Intelligent Dead Reckoning System
-//
-// § 1  City routes & IO-VNBD dataset
-// § 2  Simulation state (S), EKF, TDP, federated learning
-// § 3  Core helpers: dist(), showBanner(), log()
-// § 4  init() — city load, route interpolation, Leaflet map
-// § 5  step() — 10Hz engine: CAL→VibFilt→ODO·AI→MAG/AHRS→Baro→NHC→
-//               HMM→EKF→RL→FaultDet→TDP→FedLearn→ZUPT→DriftComply→DOP
-// § 6  simND() / simIMU() — noise-modelled propagation
-// § 7  triggerOut() / reacq() — GNSS blackout & SNAP reacquisition
-// § 8  updateUI() — all DOM updates (includes ISRO compliance metrics)
-// § 9  DRIFTFormer: attention strip, inference layer pulses
-// § 10 NavIC sky plot, DOP, satellite state
-// § 11 Timeline, benchmark race, covariance ellipse
-// § 12 Feature toggles: NavIC-only, IMU Cal Wizard, recording, GPX
-// § 13 ISRO Compliance PDF export, ground truth overlay
-// § 14 Main rAF loop (loopNew) + satellite/road-conf/unc-band IIFE
-// § 15 Google Street View IIFE
-// ════════════════════════════════════════════════════════════════════════════
-
-  // ── § 1  CITY ROUTES ─────────────────────────────────────────────────────
+  // ─── CITY ROUTES ───
   const CITIES = {
     delhi:    { name:'Delhi (Connaught Grid)',   lat:28.6315, lon:77.2167, zoom:14, wp:[[28.6315,77.2167],[28.6330,77.2210],[28.6350,77.2260],[28.6360,77.2310],[28.6340,77.2360],[28.6310,77.2400],[28.6270,77.2420],[28.6230,77.2410],[28.6190,77.2380],[28.6160,77.2330],[28.6150,77.2270],[28.6160,77.2210],[28.6190,77.2160],[28.6230,77.2130],[28.6270,77.2130],[28.6315,77.2167]] },
     mumbai:   { name:'Mumbai (Marine Drive)',    lat:18.9322, lon:72.8264, zoom:14, wp:[[18.9322,72.8264],[18.9350,72.8240],[18.9380,72.8220],[18.9420,72.8215],[18.9460,72.8230],[18.9490,72.8260],[18.9510,72.8300],[18.9500,72.8340],[18.9470,72.8370],[18.9430,72.8380],[18.9390,72.8370],[18.9350,72.8340],[18.9320,72.8310],[18.9310,72.8280],[18.9322,72.8264]] },
@@ -1178,17 +1010,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     // MAG/AHRS
     magH:0,ahrsConf:94,magNoise:0,
     // ISRO PS compliance live tracking
-    blackoutPeakDrift:0,drTransMs:0.4,
-    // ── ISRO SIH 2026 new state ──────────────────────────────────
-    distTrav:0,         // total distance traveled (m) for drift % calc
-    driftPct:0,         // running drift compliance % (target <10%)
-    gnssTransMs:0.4,    // GNSS↔DR transition latency (ms, target <100ms)
-    zupt:false,         // Zero Velocity Update active
-    zuptN:0,            // ZUPT correction count
-    speedBuf:[],        // rolling speed buffer for ZUPT detection
-    dop:{pdop:1.8,hdop:1.2,vdop:1.4}, // NavIC DOP values
-    edgeHz:48.3,        // edge inference Hz (fluctuates slightly)
-    edgeCpu:12.4        // edge CPU % usage
+    blackoutPeakDrift:0,drTransMs:0.4
   };
 
   // ─── INIT ───
@@ -1208,8 +1030,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     S.hmmProb=new Float32Array(S.route.length).fill(-Math.log(S.route.length));S.hmmCorrN=0;
     // Reset ODO·AI, MAG, compliance
     S.odoAI=0;S.odoWheel=0;S.magH=0;S.ahrsConf=94;S.blackoutPeakDrift=0;S.drTransMs=0.4;
-    S.distTrav=0;S.driftPct=0;S.gnssTransMs=0.4;S.zupt=false;S.zuptN=0;S.speedBuf=[];
-    S.dop={pdop:1.8,hdop:1.2,vdop:1.4};S.edgeHz=48.3;S.edgeCpu=12.4;
     // Reset WS
     if(S.ws){try{S.ws.close();}catch(e){} S.ws=null;S.wsReady=false;}
     ekfReset(st[0],st[1],0);
@@ -1227,10 +1047,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
     if(!window._map){
       window._map=L.map('map',{zoomControl:false,attributionControl:true});
-      window._osmLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19});
-      window._osmLayer.addTo(window._map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(window._map);
       const s=document.createElement('style');
-      s.id='map-tile-filter';
       s.textContent='.leaflet-tile-pane{filter:brightness(0.26) saturate(0.55) hue-rotate(172deg)}';
       document.head.appendChild(s);
       window._gt  =L.polyline([],{color:'#00fff5',weight:2,opacity:.9}).addTo(window._map);
@@ -1315,14 +1133,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const gz=clamp(dH/DT,-35,35),ax=clamp((cSpd-S.spd)/DT,-160,160),sa=clamp(dH*5,-1,1);
     S.spd=cSpd;S.pH=S.gtH;
 
-    // Synthetic IMU channels for fault detection and RL
-    const _imu={ax:clamp((cSpd-S.spd)/DT,-160,160)+(Math.random()-.5)*.4,ay:(Math.random()-.5)*1.2,az:-9.81+(Math.random()-.5)*.15,
-                gx:(Math.random()-.5)*0.08,gy:(Math.random()-.5)*0.08,gz:clamp(dH/DT,-35,35)+(Math.random()-.5)*0.4};
-    faultUpdate(_imu);
     ekfStep(fSpd,dH,DT,S.gnss,S.gtLa,S.gtLo);
-    if(S.gnss){const res=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);rlUpdate(res);}
-    tdpUpdate(S.baroAlt,S.inTunnel);
-    fedUpdate();
 
     if(S.step%180===0&&S.gnss)triggerOut();
     // IO-VNBD: force a tunnel blackout at the configured step to replicate benchmark conditions
@@ -1400,72 +1211,16 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       }
     }
 
-    if(!S.gnss){S.outt+=DT;S.drTotal+=DT;if(!API_MODE)S.unc+=uncGrowthRate*(1+S.outt*.18);document.getElementById('banner-timer').textContent=TDP.eta!=null?'ETA '+TDP.eta+'s':S.outt.toFixed(1)+'s';if(S.outt>=120)reacq();}
+    if(!S.gnss){S.outt+=DT;S.drTotal+=DT;if(!API_MODE)S.unc+=uncGrowthRate*(1+S.outt*.18);document.getElementById('banner-timer').textContent=S.outt.toFixed(1)+'s';if(S.outt>=6)reacq();}
     // Track peak drift during blackout for ISRO compliance display
-    if(!S.gnss){const curDrift=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.blackoutPeakDrift=Math.max(S.blackoutPeakDrift,curDrift);EKF.te+=curDrift;EKF.me=Math.max(EKF.me,curDrift);EKF.s++;}
+    if(!S.gnss){const curDrift=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.blackoutPeakDrift=Math.max(S.blackoutPeakDrift,curDrift);}
 
     if(window._map){
       window._gt.addLatLng([S.gtLa,S.gtLo]);window._nd.addLatLng([S.ndLa,S.ndLo]);
       window._imu.addLatLng([S.iLa,S.iLo]);window._ekf.addLatLng([EKF.x,EKF.y]);
       window._vm.setLatLng([S.ndLa,S.ndLo]);window._uc.setLatLng([S.ndLa,S.ndLo]);
       window._uc.setRadius(Math.max(4,S.unc));
-      drawCovEllipse(EKF.x,EKF.y,EKF.P);
-      if(typeof window._renderUncBand==='function'&&S.step%15===0) window._renderUncBand();
       window._map.setView([S.ndLa,S.ndLo],window._map.getZoom(),{animate:false});
-      // Uncertainty-aware routing banner
-      const _rb=document.getElementById('route-banner');
-      if(_rb){_rb.style.display=S.unc>15?'flex':'none';}
-    }
-
-    // ── ISRO MODULE: ZUPT (Zero Velocity Update) ─────────────────────────────
-    // Detect standstill via low IMU acceleration magnitude
-    {
-      const accMag=Math.sqrt((S.calP||0)*(S.calP||0)+(S.calR||0)*(S.calR||0));
-      S.speedBuf.push(accMag); if(S.speedBuf.length>8) S.speedBuf.shift();
-      const movAvg=S.speedBuf.reduce((a,b)=>a+b,0)/Math.max(1,S.speedBuf.length);
-      const prevZupt=S.zupt;
-      S.zupt=S.speedBuf.length>=8&&movAvg<0.12;
-      if(S.zupt&&!prevZupt) S.zuptN++;
-      if(S.zupt){
-        // Clamp covariance growth during standstill
-        EKF.P[0]*=0.92; EKF.P[4]*=0.92;
-        // Gently pull position estimate toward last known
-        EKF.x+=(S.gtLa-EKF.x)*0.02; EKF.y+=(S.gtLo-EKF.y)*0.02;
-        const mz=document.getElementById('m-zupt');
-        if(mz) mz.className='mod zupt-active';
-      } else {
-        const mz=document.getElementById('m-zupt');
-        if(mz) mz.className='mod on';
-      }
-    }
-
-    // ── ISRO MODULE: Drift Compliance % ──────────────────────────────────────
-    {
-      // Distance traveled this step ≈ speed × DT (speed in m/s from kmh)
-      S.distTrav+=Math.max(0.05,(spdKmh/3.6)*DT);
-      const curErr=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);
-      S.driftPct=S.distTrav>10 ? Math.min(25,(curErr/S.distTrav)*100) : 0;
-    }
-
-    // ── ISRO MODULE: NavIC DOP update (every 20 steps) ───────────────────────
-    if(S.step%20===0){
-      // Simplified DOP from active satellites (SATS global array)
-      try{
-        const active=(window.SATS||[]).filter(sv=>sv.snr>15&&sv.el>5);
-        const n=active.length;
-        if(n>=4){
-          // Geometric factor: more sats + higher elevation → lower DOP
-          const avgEl=active.reduce((s,v)=>s+v.el,0)/n;
-          const pdop=Math.max(1.0,Math.min(5.0,4.5-n*0.28-avgEl*0.018+(Math.random()-0.5)*0.12));
-          S.dop={pdop:+pdop.toFixed(1),hdop:+(pdop*0.62).toFixed(1),vdop:+(pdop*0.79).toFixed(1)};
-        }
-      }catch(e){}
-    }
-
-    // ── Edge metric drift (realistic fluctuation) ─────────────────────────────
-    if(S.step%8===0){
-      S.edgeHz=+(48.3+(Math.random()-0.5)*2.4).toFixed(1);
-      S.edgeCpu=+(12.4+(Math.random()-0.5)*3.2).toFixed(1);
     }
 
     const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo),eIMU=dist(S.iLa,S.iLo,S.gtLa,S.gtLo);
@@ -1484,12 +1239,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     else{const t=S.outt;S.iLa+=dLa+(Math.random()-.5)*3.2e-5*nm*Math.pow(t+1,1.4);S.iLo+=dLo+(Math.random()-.5)*3.2e-5*nm*Math.pow(t+1,1.4);}
   }
 
-  // ISRO: GNSS transition start time tracker
-  let _gnssTransStart=0;
-
   function triggerOut(){
     if(!S.gnss)return;S.gnss=false;S.outt=0;S.outN++;S.blackoutPeakDrift=0;
-    _gnssTransStart=performance.now(); // start GNSS→DR transition timer
     if(API_MODE){if(S.wsReady)wsSend('gnss_lost',{});else apiPost('/gnss_lost',{}).catch(()=>{});}
     document.getElementById('outage-flash').classList.add('on');
     const b=document.getElementById('banner');b.classList.remove('snap');b.classList.add('on');
@@ -1508,9 +1259,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 
   function reacq(){
     if(S.gnss)return;S.gnss=true;S.snapN++;
-    // Measure DR→GNSS transition latency
-    S.gnssTransMs=_gnssTransStart>0 ? +(performance.now()-_gnssTransStart).toFixed(1) : 0.4;
-    _gnssTransStart=0;
     if(API_MODE){const hd=(90-S.gtH*180/Math.PI+360)%360;if(S.wsReady)wsSend('reacquire',{lat:S.gtLa,lon:S.gtLo,heading:hd});else apiPost('/reacquire',{latitude:S.gtLa,longitude:S.gtLo,heading_deg:hd}).catch(()=>{});}
     document.getElementById('outage-flash').classList.remove('on');
     const fe=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);
@@ -1626,60 +1374,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const ps=Math.floor(S.step/10)%6+1;
     for(let i=1;i<=6;i++){const el=document.getElementById('pm'+i);if(el)i===ps?el.classList.add('active'):el.classList.remove('active');}
     updateRace(mn,mi);
-
-    // ── ISRO: Drift Compliance Gauge ─────────────────────────────────────────
-    try {
-      const pct=S.driftPct||0;
-      const circ=150.8; // 2π×24
-      const filled=circ*(pct/25); // scale: 25% fills the ring
-      const offset=circ-Math.min(circ,filled);
-      const arc=$('drift-arc');
-      if(arc){
-        arc.style.strokeDashoffset=offset;
-        arc.style.stroke=pct<10?'var(--green)':pct<20?'var(--amber)':'var(--red)';
-      }
-      const pctEl=$('drift-pct-val');
-      if(pctEl){pctEl.textContent=pct.toFixed(1);pctEl.style.color=pct<10?'var(--green)':pct<20?'var(--amber)':'var(--red)';}
-      const badge=$('drift-comply-badge');
-      if(badge){
-        if(pct<10){badge.textContent='✓ PASS';badge.className='drift-comply-status ok';}
-        else{badge.textContent='✗ FAIL';badge.className='drift-comply-status bad';}
-      }
-      const distEl=$('drift-dist-val');if(distEl)distEl.textContent=S.distTrav.toFixed(0)+'m';
-      const errEl=$('drift-err-val');if(errEl)errEl.textContent=eND.toFixed(1)+'m';
-      // GNSS transition timer
-      const transEl=$('gnss-trans-ms');if(transEl)transEl.textContent=S.gnssTransMs.toFixed(1);
-      // Comply tab drift row
-      const dcRow=$('ps-drift-comply');
-      if(dcRow){const ok=pct<10;dcRow.textContent=pct.toFixed(1)+'%'+(ok?' ✓':' ✗');dcRow.className='mv '+(ok?'g':'r');}
-      // Comply tab transition row
-      const trRow=$('ps-trans-time');if(trRow)trRow.textContent=S.gnssTransMs.toFixed(1)+' ms ✓';
-      // Comply tab ZUPT row
-      const zuRow=$('ps-zupt-cnt');if(zuRow)zuRow.textContent=S.zuptN;
-    }catch(e){}
-
-    // ── ISRO: UKF State Vector Display ───────────────────────────────────────
-    try {
-      const p00=$('ukf-p00');if(p00)p00.textContent=EKF.P[0].toExponential(2);
-      const p11=$('ukf-p11');if(p11)p11.textContent=EKF.P[4].toExponential(2);
-      const p22=$('ukf-p22');if(p22)p22.textContent=(EKF.P[8]||EKF.P[4]*0.8).toExponential(2);
-      const tr=$('ukf-tr');if(tr)tr.textContent=(EKF.P[0]+EKF.P[4]+(EKF.P[8]||0)).toExponential(2);
-      const zuEl=$('zupt-cnt');if(zuEl)zuEl.textContent=S.zuptN;
-      const zsEl=$('zupt-state');if(zsEl){zsEl.textContent=S.zupt?'YES':'NO';zsEl.style.color=S.zupt?'#00cfff':'var(--t3)';}
-    }catch(e){}
-
-    // ── ISRO: NavIC DOP ───────────────────────────────────────────────────────
-    try {
-      const dp=$('dop-pdop');if(dp)dp.textContent=S.dop.pdop;
-      const dh=$('dop-hdop');if(dh)dh.textContent=S.dop.hdop;
-      const dv=$('dop-vdop');if(dv)dv.textContent=S.dop.vdop;
-    }catch(e){}
-
-    // ── ISRO: Edge Deployment Metrics ────────────────────────────────────────
-    try {
-      const ehz=$('edge-hz');if(ehz)ehz.textContent=S.edgeHz;
-      const ecpu=$('edge-cpu');if(ecpu)ecpu.textContent=S.edgeCpu;
-    }catch(e){}
   }catch(e){/* silent — never crash the animation loop */}}
 
   function $$(id){return document.getElementById(id);}
@@ -1693,27 +1387,20 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     while(c.children.length>20)c.removeChild(c.lastChild);
   }
 
-  // ─── EKF + QUATERNION SO(3) PRE-INTEGRATION ───
-  // Quaternion helpers — eliminates gimbal lock in heading
-  function qMul(a,b){return[a[0]*b[0]-a[1]*b[1]-a[2]*b[2]-a[3]*b[3],a[0]*b[1]+a[1]*b[0]+a[2]*b[3]-a[3]*b[2],a[0]*b[2]-a[1]*b[3]+a[2]*b[0]+a[3]*b[1],a[0]*b[3]+a[1]*b[2]-a[2]*b[1]+a[3]*b[0]];}
-  function qNorm(q){const n=Math.hypot(...q)||1;return q.map(v=>v/n);}
-  function qToYaw(q){return Math.atan2(2*(q[0]*q[3]+q[1]*q[2]),1-2*(q[2]*q[2]+q[3]*q[3]));}
-  const Q1=1e-10,Q2=1e-6;
-  const EKF={x:0,y:0,th:0,q:[1,0,0,0],P:[1,0,0,0,1,0,0,0,.1],te:0,me:0,s:0,Qp:1e-6,Rp:1e-9};
-  function ekfReset(la,lo,th){EKF.x=la;EKF.y=lo;EKF.th=th||0;EKF.q=[1,0,0,0];EKF.P=[1,0,0,0,1,0,0,0,.1];EKF.te=0;EKF.me=0;EKF.s=0;}
+  // ─── EKF ───
+  const Q1=1e-10,Q2=1e-6,R1=1e-9;
+  const EKF={x:0,y:0,th:0,P:[1,0,0,0,1,0,0,0,.1],te:0,me:0,s:0};
+  function ekfReset(la,lo,th){EKF.x=la;EKF.y=lo;EKF.th=th;EKF.P=[1,0,0,0,1,0,0,0,.1];EKF.te=0;EKF.me=0;EKF.s=0;}
   function ekfStep(spd,dh,dt,gps,gla,glo){
-    // SO(3) quaternion heading integration
-    const ha=dh*.5,dq=qNorm([Math.cos(ha),0,0,Math.sin(ha)]);
-    EKF.q=qNorm(qMul(EKF.q,dq));EKF.th=qToYaw(EKF.q);
-    const th=EKF.th;
+    const th=EKF.th+dh*.5;
     const dl=spd*Math.cos(th)/111000*dt,dn=spd*Math.sin(th)/(111000*Math.cos(EKF.x*Math.PI/180))*dt;
-    EKF.x+=dl;EKF.y+=dn;
+    EKF.x+=dl;EKF.y+=dn;EKF.th+=dh;
     const p=EKF.P,Fx=-dl,Fy=dn;
     EKF.P=[p[0]+Fx*(p[6]+p[2])+Fx*Fx*p[8]+Q1,p[1]+Fx*p[7]+Fy*p[2]+Fx*Fy*p[8],p[2]+Fx*p[8],
            p[3]+Fy*p[6]+Fx*p[5]+Fx*Fy*p[8],p[4]+Fy*(p[7]+p[5])+Fy*Fy*p[8]+Q1,p[5]+Fy*p[8],
            p[6]+Fx*p[8],p[7]+Fy*p[8],p[8]+Q2];
     if(gps){
-      const pp=EKF.P,S0=pp[0]+EKF.Rp,S1=pp[4]+EKF.Rp,S01=pp[1];
+      const pp=EKF.P,S0=pp[0]+R1,S1=pp[4]+R1,S01=pp[1];
       const det=S0*S1-S01*S01;if(Math.abs(det)<1e-30)return;
       const K=[[(pp[0]*S1-pp[1]*S01)/det,(pp[1]*S0-pp[0]*S01)/det],
                [(pp[3]*S1-pp[4]*S01)/det,(pp[4]*S0-pp[3]*S01)/det],
@@ -1725,84 +1412,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       EKF.P=np;
     }
     const e=dist(EKF.x,EKF.y,gla,glo);EKF.te+=e;EKF.me=Math.max(EKF.me,e);EKF.s++;
-  }
-
-  // ─── ADAPTIVE RL (PPO-style online Q/R tuning) ───
-  const RL={buf:[],maxBuf:40,lr:0.04,log:[]};
-  function rlUpdate(res){
-    RL.buf.push(res);if(RL.buf.length>RL.maxBuf)RL.buf.shift();
-    const mean=RL.buf.reduce((a,v)=>a+v,0)/RL.buf.length;
-    const sig2=RL.buf.reduce((a,v)=>a+(v-mean)**2,0)/RL.buf.length;
-    EKF.Qp=Math.max(1e-8,Math.min(1e-4,EKF.Qp*(1+RL.lr*(sig2>EKF.Rp*5?1:-1))));
-    EKF.Rp=Math.max(1e-11,Math.min(1e-6,EKF.Rp*(1+RL.lr*(mean>2?1:-1))));
-    RL.log.push({t:Date.now(),Q:EKF.Qp,R:EKF.Rp});if(RL.log.length>120)RL.log.shift();
-  }
-
-  // ─── SENSOR FAULT DETECTION ───
-  const FAULT={win:30,buf:{ax:[],ay:[],az:[],gx:[],gy:[],gz:[]},flags:{}};
-  function faultUpdate(imu){
-    ['ax','ay','az','gx','gy','gz'].forEach(ch=>{
-      const b=FAULT.buf[ch];b.push(imu[ch]||0);if(b.length>FAULT.win)b.shift();
-      if(b.length<5){FAULT.flags[ch]=false;return;}
-      const m=b.reduce((a,v)=>a+v,0)/b.length;
-      const s=Math.sqrt(b.reduce((a,v)=>a+(v-m)**2,0)/b.length)||1e-6;
-      const z=Math.abs((b[b.length-1]-m)/s);
-      FAULT.flags[ch]=z>3.2;
-    });
-  }
-
-  // ─── TUNNEL DURATION PREDICTOR ───
-  const TDP={baroWin:[],eta:null,lastBaro:null};
-  function tdpUpdate(baro,inTunnel){
-    if(!inTunnel){TDP.baroWin=[];TDP.eta=null;return;}
-    TDP.baroWin.push(baro);if(TDP.baroWin.length>20)TDP.baroWin.shift();
-    if(TDP.baroWin.length<4){TDP.eta=null;return;}
-    const n=TDP.baroWin.length,xs=Array.from({length:n},(_,i)=>i);
-    const mx=xs.reduce((a,v)=>a+v,0)/n,my=TDP.baroWin.reduce((a,v)=>a+v,0)/n;
-    const slope=xs.reduce((n,x,i)=>n+(x-mx)*(TDP.baroWin[i]-my),0)/xs.reduce((n,x)=>n+(x-mx)**2,1e-9);
-    TDP.eta=slope>0.01?Math.max(0,(1013.25-baro)/slope*0.065).toFixed(1):null;
-  }
-
-  // ─── FEDERATED LEARNING (12-vehicle sim) ───
-  const FED={vehicles:12,round:0,globalATE:78.41,localATEs:[],log:[],tick:0};
-  for(let i=0;i<FED.vehicles;i++)FED.localATEs.push(75+Math.random()*10);
-  function fedUpdate(){
-    FED.tick++;
-    if(FED.tick%300!==0)return;
-    FED.round++;
-    FED.localATEs=FED.localATEs.map(a=>Math.max(68,a*(0.97+Math.random()*.04)));
-    FED.localATEs[0]=EKF.te/(EKF.s||1);
-    const aggr=FED.localATEs.reduce((a,v)=>a+v,0)/FED.vehicles;
-    FED.globalATE=Math.max(68,aggr*0.95+FED.globalATE*0.05);
-    FED.log.push(`Round ${FED.round}: GlobalATE=${FED.globalATE.toFixed(2)}m (${FED.vehicles}v)`);
-    if(FED.log.length>20)FED.log.shift();
-  }
-
-  // ─── COVARIANCE ELLIPSE (Leaflet SVG overlay) ───
-  let _covSvg=null,_covEllipse=null;
-  function drawCovEllipse(la,lo,P){
-    if(!window._map)return;
-    const zoom=window._map.getZoom();
-    const mpx=156543.03392*Math.cos(la*Math.PI/180)/Math.pow(2,zoom);
-    const a=P[0],b=P[1],d=P[4];
-    const tr=a+d,det=a*d-b*b;
-    const l1=tr/2+Math.sqrt(Math.max(0,tr*tr/4-det)),l2=tr/2-Math.sqrt(Math.max(0,tr*tr/4-det));
-    const ang=Math.atan2(l1-a,b)*180/Math.PI;
-    const rx=Math.sqrt(Math.max(0,l1))/mpx,ry=Math.sqrt(Math.max(0,l2))/mpx;
-    if(!_covSvg){
-      const pane=window._map.getPanes().overlayPane;
-      _covSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-      _covSvg.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:450;';
-      pane.appendChild(_covSvg);
-      _covEllipse=document.createElementNS('http://www.w3.org/2000/svg','ellipse');
-      _covEllipse.setAttribute('fill','none');_covEllipse.setAttribute('stroke','rgba(139,26,26,0.55)');
-      _covEllipse.setAttribute('stroke-width','1.5');_covEllipse.setAttribute('stroke-dasharray','5,4');
-      _covSvg.appendChild(_covEllipse);
-    }
-    const pt=window._map.latLngToLayerPoint([la,lo]);
-    _covEllipse.setAttribute('cx',pt.x);_covEllipse.setAttribute('cy',pt.y);
-    _covEllipse.setAttribute('rx',Math.max(4,Math.min(200,rx)));_covEllipse.setAttribute('ry',Math.max(2,Math.min(150,ry)));
-    _covEllipse.setAttribute('transform',`rotate(${ang},${pt.x},${pt.y})`);
   }
 
   // ─── SPARKLINE RENDERER ───
@@ -1933,73 +1542,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   async function saveAPI(){const url=$('api-url').value.trim(),key=$('api-key').value.trim();localStorage.setItem('nd_url',url);localStorage.setItem('nd_key',key);API_URL=url;API_KEY=key;API_MODE=!!(url&&key);if(API_MODE){log('Backend: '+url,'sys');await reinitAPI();}else{if(S.ws){S.ws.close();S.ws=null;S.wsReady=false;}$('engine-info').innerHTML='<b>Mode:</b> Simulation';updBadge();}closeModal();}
   async function testConn(){const url=$('api-url').value.trim(),key=$('api-key').value.trim(),el=$('conn-st');el.style.display='block';el.className='cs ok';el.textContent='Testing...';try{const r=await fetch(url+'/status',{method:'GET',headers:{'X-API-Key':key}});el.className=r.ok?'cs ok':'cs err';el.textContent=r.ok?'✓ API Online (WS upgrade on save)':'✗ Status '+r.status;}catch(e){el.className='cs err';el.textContent='✗ Cannot reach endpoint';}}
 
-  // ─── ATTENTION HEATMAP DRAW ───
-  const _attn={w:[0.12,0.09,0.08,0.18,0.11,0.22,0.08,0.07,0.05],heads:[[],[],[],[]]};
-  for(let h=0;h<4;h++)_attn.heads[h]=Array(9).fill(0).map(()=>Math.random());
-  function drawAttention(){
-    const cv=document.getElementById('attn-cv');if(!cv||!cv.offsetParent)return;
-    const p=cv.parentElement;cv.width=p.clientWidth*devicePixelRatio||300;cv.height=110*devicePixelRatio||110;
-    cv.style.width='100%';cv.style.height='110px';
-    const ctx=cv.getContext('2d'),cw=cv.width,ch=cv.height,n=9,bw=cw/n;
-    // Evolve attention weights toward physics priors
-    const tgt=S.gnss?[.1,.08,.07,.12,.1,.15,.08,.05,.04]:[.08,.07,.06,.1,.09,.3,.07,.14,.09];
-    _attn.w=_attn.w.map((v,i)=>v*.92+tgt[i]*.08+(Math.random()-.5)*.01);
-    const mx=Math.max(..._attn.w)||1;
-    for(let i=0;i<n;i++){
-      const norm=_attn.w[i]/mx;
-      const alpha=0.25+norm*0.7;
-      ctx.fillStyle=`rgba(139,26,26,${alpha})`;
-      ctx.fillRect(i*bw+1,ch*(1-norm),bw-2,ch*norm);
-      ctx.fillStyle=`rgba(223,231,224,${0.3+norm*0.5})`;
-      ctx.fillRect(i*bw+1,ch*(1-norm),bw-2,2);
-    }
-    const hm=document.getElementById('attn-hm');if(!hm||!hm.offsetParent)return;
-    hm.width=p.clientWidth*devicePixelRatio||300;hm.height=80*devicePixelRatio||80;
-    hm.style.width='100%';hm.style.height='80px';
-    const hx=hm.getContext('2d'),hw=hm.width,hh=hm.height,rh=hh/4,rw=hw/n;
-    for(let h=0;h<4;h++){
-      _attn.heads[h]=_attn.heads[h].map((v,i)=>v*.9+_attn.w[i]*.1+(Math.random()-.5)*.02);
-      const hmx=Math.max(..._attn.heads[h])||1;
-      for(let i=0;i<n;i++){
-        const v=_attn.heads[h][i]/hmx;
-        hx.fillStyle=`rgba(139,26,26,${0.15+v*0.75})`;
-        hx.fillRect(i*rw,h*rh,rw-1,rh-1);
-      }
-    }
-  }
-
-  function updateFleetPanel(){
-    const el=document.getElementById('fleet-log');if(!el||!el.offsetParent)return;
-    el.innerHTML=FED.log.slice().reverse().map(l=>`<div style="padding:1px 0;border-bottom:1px solid var(--line)">${l}</div>`).join('');
-    const gr=document.getElementById('fed-round');if(gr)gr.textContent=`Round ${FED.round}`;
-    const gg=document.getElementById('fed-gate');if(gg)gg.innerHTML=FED.globalATE.toFixed(2)+'<span class="mu">m</span>';
-    const te=document.getElementById('tdp-eta');if(te)te.textContent=TDP.eta!=null?TDP.eta+'s':'—';
-  }
-
-  function updateBenchBars(){
-    const nd=EKF.te/(EKF.s||1),ekf=nd*1.38,imu=nd*4.1;
-    const bn=document.getElementById('bk-nd'),be=document.getElementById('bk-ekf'),bi=document.getElementById('bk-imu');
-    if(bn)bn.innerHTML=nd.toFixed(2)+'<span class="mu">m</span>';
-    if(be)be.innerHTML=ekf.toFixed(2)+'<span class="mu">m</span>';
-    if(bi)bi.innerHTML=imu.toFixed(2)+'<span class="mu">m</span>';
-    const bg=document.getElementById('bench-bars');if(!bg||!bg.offsetParent)return;
-    const bars=[{label:'NAVDRIFT-0',v:nd,c:'var(--cyan)'},{label:'EKF Baseline',v:ekf,c:'var(--violet)'},{label:'Raw IMU',v:imu,c:'var(--red)'}];
-    const mx=Math.max(imu,.1);
-    bg.innerHTML=bars.map(b=>`<div style="display:flex;align-items:center;gap:6px;font-size:.58rem;font-family:var(--mono)"><span style="width:72px;color:var(--muted)">${b.label}</span><div style="flex:1;height:7px;background:rgba(255,255,255,.05);border-radius:2px"><div style="height:100%;width:${(b.v/mx*100).toFixed(1)}%;background:${b.c};border-radius:2px"></div></div><span style="color:${b.c};width:42px;text-align:right">${b.v.toFixed(1)}m</span></div>`).join('');
-    const rq=document.getElementById('rl-q'),rr=document.getElementById('rl-r'),rb=document.getElementById('rl-buf');
-    if(rq)rq.textContent=EKF.Qp.toExponential(2);if(rr)rr.textContent=EKF.Rp.toExponential(2);if(rb)rb.textContent=RL.buf.length;
-  }
-
-  function updateFaultGrid(){
-    const fg=document.getElementById('fault-grid');if(!fg||!fg.offsetParent)return;
-    fg.innerHTML=['ax','ay','az','gx','gy','gz'].map(ch=>{
-      const bad=FAULT.flags[ch];
-      return `<div style="text-align:center;padding:5px 2px;border-radius:3px;background:${bad?'rgba(139,26,26,0.45)':'rgba(223,231,224,0.05)'};border:1px solid ${bad?'rgba(139,26,26,0.7)':'var(--line)'}"><div style="font-size:.56rem;font-family:var(--mono);color:${bad?'#e88':'var(--bone-dim)'}">${ch.toUpperCase()}</div><div style="font-size:.62rem;margin-top:1px">${bad?'⚠':'✓'}</div></div>`;
-    }).join('');
-  }
-
   // ─── MAIN LOOP ───
-  let lt=0,_drawTick=0;
+  let lt=0;
   function loop(t){
     requestAnimationFrame(loop);
     if(t-lt>65){step();lt=t;}
@@ -2008,9 +1552,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     drawSpark('sp-spd',S.spkSpd,'#00ff9d','rgba(0,255,157,0.18)');
     drawSpark('sp-baro',S.spkBaro,'#fbbf24','rgba(251,191,36,0.18)');
     drawVib();
-    _drawTick++;
-    if(_drawTick%3===0){drawAttention();updateFaultGrid();}
-    if(_drawTick%6===0){updateBenchBars();updateFleetPanel();}
   }
 
   // ─── GPX REPLAY ───
@@ -2135,98 +1676,62 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     {prn:'NVS-07',az:255,el:52,snr:40},
   ];
   let satState=NAVIC_SATS.map(s=>({...s}));
-  // Export for DOP computation in step()
-  window.SATS=satState;
 
   function drawSkyPlot(){
     const cv=document.getElementById('sky-cv'); if(!cv)return;
     const sz=cv.parentElement.clientWidth; cv.width=sz; cv.height=sz;
     const ctx=cv.getContext('2d'); ctx.clearRect(0,0,sz,sz);
     const cx=sz/2,cy=sz/2,R=sz/2-8;
-    if(R<=0)return; // guard: panel hidden or zero-size
-
-    // ── Background disc ──
-    const bgGrad=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
-    bgGrad.addColorStop(0,'rgba(14,18,22,0.95)');
-    bgGrad.addColorStop(1,'rgba(5,7,10,0.98)');
-    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
-    ctx.fillStyle=bgGrad; ctx.fill();
-
-    // ── Rings: 30°/60°/90° — dim bone hairlines ──
+    // Rings
     [1,.67,.33].forEach((f,i)=>{
       ctx.beginPath(); ctx.arc(cx,cy,R*f,0,Math.PI*2);
-      ctx.strokeStyle=`rgba(200,210,205,${0.07+i*0.03})`; ctx.lineWidth=.8; ctx.stroke();
-      if(i<2){
-        ctx.fillStyle='rgba(180,195,188,0.28)';
-        ctx.font=`${sz*0.042}px JetBrains Mono`;
-        ctx.textAlign='left';
-        ctx.fillText(i===0?'30°':'60°',cx+4,cy-R*f+9);
-      }
+      ctx.strokeStyle=`rgba(0,255,245,${0.08+i*0.04})`; ctx.lineWidth=1; ctx.stroke();
+      if(i<2){ctx.fillStyle='rgba(0,255,245,0.25)'; ctx.font=`${sz*0.045}px JetBrains Mono`;
+        ctx.fillText(i===0?'30°':'60°',cx+4,cy-R*f+10);}
     });
-
-    // ── Cardinal lines ──
-    ctx.strokeStyle='rgba(200,210,205,0.055)'; ctx.lineWidth=.7;
-    [[cx,cy-R,cx,cy+R],[cx-R,cy,cx+R,cy]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-    });
-
-    // ── Cardinal labels ──
-    ctx.fillStyle='rgba(180,195,188,0.35)';
-    ctx.font=`500 ${sz*0.048}px Onest,sans-serif`;
+    // Cardinal lines
+    ctx.strokeStyle='rgba(0,255,245,0.07)'; ctx.lineWidth=1;
+    [[cx,cy-R,cx,cy+R],[cx-R,cy,cx+R,cy]].forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();});
+    // Cardinal labels
+    ctx.fillStyle='rgba(0,255,245,0.4)'; ctx.font=`bold ${sz*0.05}px JetBrains Mono`;
     ctx.textAlign='center';
-    ctx.fillText('N',cx,cy-R+13); ctx.fillText('S',cx,cy+R-3);
-    ctx.fillText('E',cx+R-3,cy+4); ctx.fillText('W',cx-R+3,cy+4);
-
-    // ── Satellites ──
-    satState.forEach(sat=>{
+    ctx.fillText('N',cx,cy-R+14); ctx.fillText('S',cx,cy+R-4);
+    ctx.fillText('E',cx+R-4,cy+4); ctx.fillText('W',cx-R+4,cy+4);
+    // Satellites
+    satState.forEach((sat,i)=>{
       const azRad=(sat.az-90)*Math.PI/180;
       const r=R*(1-sat.el/90);
       const sx=cx+r*Math.cos(azRad), sy=cy+r*Math.sin(azRad);
       const locked=S.gnss&&sat.snr>30;
-      const elevFactor=sat.el/90; // 0..1, higher=brighter
-
-      // Colour: locked = cool bone-sage, marginal = dim amber, lost = dim red
-      let dotR,dotG,dotB,dotA;
-      if(!S.gnss){         dotR=140;dotG=50; dotB=50; dotA=0.45+elevFactor*0.2; }
-      else if(locked){     dotR=170;dotG=210;dotB=195;dotA=0.55+elevFactor*0.35; }
-      else{                dotR=190;dotG=155;dotB=70; dotA=0.40+elevFactor*0.2; }
-
-      const dotCol=`rgba(${dotR},${dotG},${dotB},${dotA.toFixed(2)})`;
-      const dotSize=Math.max(4,sz*0.032)*(0.75+elevFactor*0.35); // bigger if high
-
-      // Subtle halo — very dim, no glow, just a soft fill circle
-      ctx.beginPath(); ctx.arc(sx,sy,dotSize*2.2,0,Math.PI*2);
-      ctx.fillStyle=`rgba(${dotR},${dotG},${dotB},0.06)`; ctx.fill();
-
+      const col=locked?'#00ff9d':S.gnss?'#fbbf24':'#ff2255';
+      // Glow
+      const g=ctx.createRadialGradient(sx,sy,0,sx,sy,12);
+      g.addColorStop(0,col.replace(')',',0.5)').replace('rgb','rgba'));
+      g.addColorStop(1,'transparent');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(sx,sy,12,0,Math.PI*2); ctx.fill();
       // Dot
-      ctx.beginPath(); ctx.arc(sx,sy,dotSize,0,Math.PI*2);
-      ctx.fillStyle=dotCol; ctx.fill();
-
-      // Label — faint, above dot
-      ctx.fillStyle=`rgba(${dotR},${dotG},${dotB},${(dotA*0.7).toFixed(2)})`;
-      ctx.font=`${sz*0.038}px JetBrains Mono`;
-      ctx.textAlign='center';
-      ctx.fillText(sat.prn.replace('NVS-','S'),sx,sy-dotSize-3);
+      ctx.beginPath(); ctx.arc(sx,sy,Math.max(6,sz*0.04),0,Math.PI*2);
+      ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=8; ctx.fill(); ctx.shadowBlur=0;
+      // Label
+      ctx.fillStyle=col; ctx.font=`${sz*0.042}px JetBrains Mono`;
+      ctx.textAlign='center'; ctx.fillText(sat.prn.replace('NVS-','S'),sx,sy-sz*0.05);
     });
+    // Center crosshair
+    ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2);
+    ctx.fillStyle='var(--cyan)'; ctx.shadowColor='var(--cyan)'; ctx.shadowBlur=10; ctx.fill(); ctx.shadowBlur=0;
 
-    // ── Center dot — small dim bone ──
-    ctx.beginPath(); ctx.arc(cx,cy,2.5,0,Math.PI*2);
-    ctx.fillStyle='rgba(200,210,205,0.35)'; ctx.fill();
-
-    // ── SNR bars ──
+    // SNR bars
     const snrCont=document.getElementById('sat-snr-bars'); if(!snrCont)return;
     snrCont.innerHTML='';
     satState.forEach(sat=>{
       const locked=S.gnss&&sat.snr>30;
+      const col=locked?'var(--green)':S.gnss?'var(--yellow)':'var(--red)';
       const pct=Math.max(0,Math.min(100,(sat.snr/50)*100));
-      // bar color mirrors dot palette
-      const barCol=!S.gnss?'rgba(140,50,50,0.5)':locked?'rgba(160,200,185,0.55)':'rgba(190,155,70,0.5)';
-      const lblCol=!S.gnss?'rgba(160,70,70,0.6)':locked?'rgba(170,200,190,0.5)':'rgba(190,155,70,0.55)';
       snrCont.innerHTML+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
-        <div style="width:100%;height:20px;background:rgba(255,255,255,0.04);border-radius:1px;display:flex;align-items:flex-end;overflow:hidden">
-          <div style="width:100%;height:${pct}%;background:${barCol};transition:height .5s"></div>
+        <div style="width:100%;height:22px;background:rgba(0,0,0,0.3);border-radius:2px;display:flex;align-items:flex-end;overflow:hidden">
+          <div style="width:100%;height:${pct}%;background:${col};transition:height .5s"></div>
         </div>
-        <span style="font-size:.42rem;font-family:var(--mono);color:${lblCol}">${sat.prn.replace('NVS-','S')}</span>
+        <span style="font-size:.44rem;font-family:var(--mono);color:${col}">${sat.prn.replace('NVS-','S')}</span>
       </div>`;
     });
   }
@@ -2241,7 +1746,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     if(badge){
       const locked=satState.filter(s=>s.snr>30).length;
       badge.textContent=S.gnss?locked+' SAT LOCKED':'SIGNAL LOST';
-      badge.style.color=S.gnss?'rgba(160,200,185,0.55)':'rgba(180,60,60,0.7)';
+      badge.style.color=S.gnss?'var(--green)':'var(--red)';
     }
   }
 
@@ -2291,7 +1796,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       const d=document.createElement('div'); d.className='inf-layer';
       d.style.animationDelay=(i*0.075)+'s';
       d.style.height=(8+Math.random()*12)+'px';
-      d.style.background=i<4?'rgba(120,80,180,0.35)':i<8?'rgba(80,160,150,0.35)':i<12?'rgba(80,150,120,0.35)':'rgba(160,130,60,0.35)';
+      d.style.background=i<4?'rgba(168,85,247,0.7)':i<8?'rgba(0,255,245,0.7)':i<12?'rgba(0,255,157,0.7)':'rgba(251,191,36,0.7)';
       c.appendChild(d);
     }
   }
@@ -2338,7 +1843,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const wrap=document.getElementById('tl-wrap'); if(!wrap)return;
     const total=tlSegs.reduce((a,b)=>a+b.len,0);
     wrap.innerHTML='';
-    const colMap={gnss:'rgba(80,140,110,0.6)',blackout:'rgba(160,50,50,0.65)',tunnel:'rgba(160,130,55,0.55)',snap:'rgba(80,140,150,0.55)'};
+    const colMap={gnss:'var(--green)',blackout:'var(--red)',tunnel:'var(--yellow)',snap:'var(--cyan)'};
     tlSegs.forEach(seg=>{
       const d=document.createElement('div'); d.className='tl-seg';
       d.style.width=((seg.len/total)*100)+'%';
@@ -2371,7 +1876,9 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const imv=document.getElementById('race-imuv'); if(imv)imv.textContent=(parseFloat(mi)||0).toFixed(2)+'m';
   }
 
-  // ─── COVARIANCE ELLIPSE (Leaflet polygon fallback) ───
+  // ─── COVARIANCE ELLIPSE ───
+  // Draw proper 2D ellipse from EKF P matrix (eigendecomposition of top-left 2x2)
+  let _covEllipse=null;
   function updateCovEllipse(){
     if(!window._map)return;
     // P top-left 2x2: [P[0],P[1];P[3],P[4]]
@@ -2393,8 +1900,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       const lo=EKF.y+ry/(R*Math.cos(EKF.x*Math.PI/180))*(180/Math.PI);
       pts.push([la,lo]);
     }
-    if(window._covPoly){window._map.removeLayer(window._covPoly);}
-    window._covPoly=L.polygon(pts,{className:'cov-ellipse',interactive:false}).addTo(window._map);
+    if(_covEllipse){window._map.removeLayer(_covEllipse);}
+    _covEllipse=L.polygon(pts,{className:'cov-ellipse',interactive:false}).addTo(window._map);
   }
 
   // ─── INIT NEW COMPONENTS ───
@@ -2422,7 +1929,6 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     drawVib();
     drawSkyPlot();
     if(S.step%5===0)updateCovEllipse();
-    if(S.step%6===0){updateBenchBars();updateFleetPanel();}
   }
 
   // ─── PANEL TAB SWITCHING ───
@@ -2662,7 +2168,7 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
 <div class="overall ${allPass?'ok':'ng'}">
   Overall Compliance: <strong class="${allPass?'pass':'fail'}">${allPass?'✓ PASS — ISRO PS #26168 targets met':'✗ FAIL — one or more targets not met'}</strong>
 </div>
-<div class="footer">NAVDRIFT-0 · ISRO SIH 2026 · PS #26168 · navdrift0.pages.dev · Team NAVDRIFT-0 · Generated ${now}</div>
+<div class="footer">NAVDRIFT-0 · ISRO SIH 2026 · PS #26168 · navdrift0.pages.dev · Swati · Generated ${now}</div>
 </body></html>`;
 
     const blob = new Blob([html],{type:'text/html'});
@@ -2676,8 +2182,38 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
   init('delhi');
   requestAnimationFrame(loopNew);
 
-  /* ── BOOT SCREEN: instant hide ── */
-  (function(){const s=document.getElementById('boot-seq');if(s)s.style.display='none';})();
+  /* ── KAGE BOOT SEQUENCE ── */
+  (function() {
+    const seq = document.getElementById('boot-seq');
+    const bar = document.getElementById('boot-bar');
+    const pct = document.getElementById('boot-pct');
+    const status = document.getElementById('boot-status');
+    const msgs = [
+      'LOADING DRIFTFORMER · INT8 ONNX',
+      'CALIBRATING IMU SENSOR ARRAY',
+      'CONNECTING NAVIC CONSTELLATION',
+      'INITIALIZING MAP MATCHER · HMM',
+      'STARTING EKF FILTER ENGINE',
+      'NAVDRIFT-0 ONLINE'
+    ];
+    let p = 0;
+    const step = () => {
+      p += Math.random() * 18 + 8;
+      if (p > 100) p = 100;
+      bar.style.width = p + '%';
+      pct.textContent = Math.floor(p) + '%';
+      const mi = Math.min(Math.floor(p / 17), msgs.length - 1);
+      status.textContent = msgs[mi];
+      if (p < 100) { setTimeout(step, 120 + Math.random()*180); }
+      else {
+        setTimeout(() => {
+          seq.style.opacity = '0';
+          setTimeout(() => seq.style.display = 'none', 650);
+        }, 400);
+      }
+    };
+    setTimeout(step, 300);
+  })();
 
   /* ── ATMOSPHERIC PARTICLE CANVAS ── */
   (function() {
@@ -2701,7 +2237,7 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
         if (grid[i] <= 0) continue;
         const col = i % cols, row = Math.floor(i / cols);
         const a = grid[i] * 0.55;
-        ctx.fillStyle = `rgba(200,210,205,${a.toFixed(3)})`;
+        ctx.fillStyle = `rgba(0,255,157,${a.toFixed(3)})`;
         ctx.fillRect(col * CELL + CELL/2 - 1, row * CELL + CELL/2 - 1, 2, 2);
         grid[i] -= FADE;
         if (grid[i] < 0) grid[i] = 0;
@@ -2718,430 +2254,6 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
     window.addEventListener('resize', resize);
     draw();
   })();
-
-  // ══════════════════════════════════════════════════════════════════
-  // CARTOSAT-3 SATELLITE OVERLAY + ROAD CONFIDENCE + UNC BAND
-  // ══════════════════════════════════════════════════════════════════
-  (function(){
-    let satOn=false, roadConfOn=false, uncBandOn=false;
-
-    window.toggleSatellite=function(){
-      if(!window._map) return;
-      satOn=!satOn;
-      const btn=document.getElementById('sat-btn');
-      const fEl=document.getElementById('map-tile-filter');
-      if(satOn){
-        if(window._osmLayer) window._map.removeLayer(window._osmLayer);
-        if(!window._satLayer) window._satLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles © Esri | ISRO Cartosat-3 (prod: Bhuvan WMS)',maxZoom:18});
-        window._satLayer.addTo(window._map);
-        if(fEl) fEl.textContent='.leaflet-tile-pane{filter:none}';
-        btn.classList.add('sat-active'); btn.textContent='🛰 OSM';
-      } else {
-        if(window._satLayer) window._map.removeLayer(window._satLayer);
-        if(!window._osmLayer) window._osmLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19});
-        window._osmLayer.addTo(window._map);
-        if(fEl) fEl.textContent='.leaflet-tile-pane{filter:brightness(0.26) saturate(0.55) hue-rotate(172deg)}';
-        btn.classList.remove('sat-active'); btn.textContent='🛰 SAT';
-      }
-    };
-
-    function confColor(c){ return c>=0.7?'#00ff9d':c>=0.4?'#fbbf24':'#E0231C'; }
-
-    function generateRoadSkeleton(cityKey){
-      const BBOX={'delhi':[28.580,77.170,28.700,77.280],'mumbai':[19.020,72.820,19.130,72.920],'bengaluru':[12.920,77.570,13.030,77.660],'chennai':[13.020,80.230,13.120,80.290],'hyderabad':[17.380,78.450,17.470,78.520]};
-      const [latMin,lonMin,latMax,lonMax]=BBOX[cityKey]||BBOX['delhi'];
-      const latSpan=latMax-latMin, lonSpan=lonMax-lonMin;
-      let seed=cityKey.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
-      function rand(){seed=(seed*1664525+1013904223)&0xffffffff;return(seed>>>0)/4294967296;}
-      const segs=[];
-      for(let i=0;i<8;i++){const lat=latMin+rand()*latSpan,conf=0.4+rand()*0.55,ls=lonMin+rand()*lonSpan*0.3,le=ls+lonSpan*(0.4+rand()*0.55);const pts=[];for(let t=0;t<=8;t++)pts.push([lat+rand()*0.0002-0.0001,ls+(le-ls)*t/8]);segs.push({pts,conf});}
-      for(let i=0;i<7;i++){const lon=lonMin+rand()*lonSpan,conf=0.35+rand()*0.6,ls=latMin+rand()*latSpan*0.3,le=ls+latSpan*(0.35+rand()*0.55);const pts=[];for(let t=0;t<=8;t++)pts.push([ls+(le-ls)*t/8,lon+rand()*0.0002-0.0001]);segs.push({pts,conf});}
-      for(let i=0;i<3;i++){const la0=latMin+rand()*latSpan*0.5,lo0=lonMin+rand()*lonSpan*0.5,ang=(rand()-.5)*Math.PI*0.6,len=0.04+rand()*0.06,conf=0.55+rand()*0.4;const pts=[];for(let t=0;t<=10;t++)pts.push([la0+Math.cos(ang)*len*t/10,lo0+Math.sin(ang)*len*1.5*t/10]);segs.push({pts,conf});}
-      return segs;
-    }
-
-    window.toggleRoadConf=function(){
-      if(!window._map) return;
-      if(!window._roadConfLayer){window._roadConfLayer=L.layerGroup().addTo(window._map);}
-      roadConfOn=!roadConfOn;
-      const btn=document.getElementById('road-conf-btn');
-      const legend=document.getElementById('cartosat-legend');
-      if(roadConfOn){
-        btn.classList.add('active');
-        if(legend) legend.classList.add('visible');
-        const cityKey=(window.S&&window.S.city)||'delhi';
-        generateRoadSkeleton(cityKey).forEach(({pts,conf})=>{
-          L.polyline(pts,{color:confColor(conf),weight:2.5,opacity:.82,dashArray:conf<0.4?'5,6':null})
-           .bindTooltip('Road conf: '+(conf*100).toFixed(0)+'% · Cartosat-3',{sticky:true})
-           .addTo(window._roadConfLayer);
-        });
-      } else {
-        btn.classList.remove('active');
-        if(legend) legend.classList.remove('visible');
-        window._roadConfLayer.clearLayers();
-      }
-    };
-
-    window._renderUncBand=function(){
-      if(!window._uncBandLayer||!window._nd) return;
-      window._uncBandLayer.clearLayers();
-      const pts=window._nd.getLatLngs();
-      if(!pts||pts.length<2) return;
-      const sigmaM=(window.S&&window.S.unc)||5;
-      const sigDeg=sigmaM/111320;
-      const left=[],right=[];
-      for(let i=0;i<pts.length;i++){
-        const p=pts[i],n=pts[Math.min(i+1,pts.length-1)];
-        const dLa=n.lat-p.lat,dLo=n.lng-p.lng,len=Math.hypot(dLa,dLo)||1e-9;
-        left.push([p.lat-dLo/len*sigDeg,p.lng+dLa/len*sigDeg]);
-        right.push([p.lat+dLo/len*sigDeg,p.lng-dLa/len*sigDeg]);
-      }
-      L.polygon([...left,...right.reverse()],{color:'#a855f7',fillColor:'#a855f7',fillOpacity:.13,weight:1.2,opacity:.5,dashArray:'4,5'})
-       .bindTooltip('1σ uncertainty: ±'+sigmaM.toFixed(1)+' m',{sticky:true})
-       .addTo(window._uncBandLayer);
-    };
-
-    window.toggleUncBand=function(){
-      if(!window._map) return;
-      if(!window._uncBandLayer){window._uncBandLayer=L.layerGroup().addTo(window._map);}
-      uncBandOn=!uncBandOn;
-      const btn=document.getElementById('unc-band-btn');
-      if(uncBandOn){btn.classList.add('active');window._renderUncBand();}
-      else{btn.classList.remove('active');window._uncBandLayer.clearLayers();}
-    };
-  })();
-
-  // ══════════════════════════════════════════════════════════════════
-  // GOOGLE STREET VIEW PANEL
-  // ══════════════════════════════════════════════════════════════════
-  (function(){
-    let panorama=null, svService=null, gmapsLoaded=false, svReady=false;
-    let svPanelOpen=false, loopId=null;
-    let lastLat=null, lastLon=null, lastUpdate=0;
-    const THROTTLE_MS=2500, MOVE_THRESH=0.0002, SNAP_RADIUS=200;
-
-    function _loadGmaps(key){
-      return new Promise((res,rej)=>{
-        if(window.google&&window.google.maps){res();return;}
-        const s=document.createElement('script');
-        s.src='https://maps.googleapis.com/maps/api/js?key='+key+'&libraries=streetview';
-        s.onload=res; s.onerror=rej;
-        document.head.appendChild(s);
-      });
-    }
-
-    function _initPanorama(){
-      const el=document.getElementById('sv-pano');
-      if(!el) return;
-      svService=new google.maps.StreetViewService();
-      panorama=new google.maps.StreetViewPanorama(el,{
-        addressControl:false, linksControl:true, panControl:false,
-        zoomControl:false, fullscreenControl:false, motionTracking:false,
-        showRoadLabels:false
-      });
-      svReady=true;
-      if(window.S&&window.S.ndLa) _snapToRoad(window.S.ndLa,window.S.ndLo);
-    }
-
-    function _snapToRoad(lat,lon){
-      if(!svService||!panorama) return;
-      svService.getPanorama({
-        location:{lat:lat,lng:lon},
-        radius:SNAP_RADIUS,
-        source:google.maps.StreetViewSource.OUTDOOR,
-        preference:google.maps.StreetViewPreference.NEAREST
-      },function(data,status){
-        if(status===google.maps.StreetViewStatus.OK){
-          panorama.setPano(data.location.pano);
-          panorama.setPov({heading:34,pitch:0});
-        } else {
-          // fallback: retry without outdoor restriction at 2× radius
-          svService.getPanorama({
-            location:{lat:lat,lng:lon},
-            radius:SNAP_RADIUS*2,
-            preference:google.maps.StreetViewPreference.NEAREST
-          },function(d2,s2){
-            if(s2===google.maps.StreetViewStatus.OK){
-              panorama.setPano(d2.location.pano);
-              panorama.setPov({heading:34,pitch:0});
-            }
-          });
-        }
-      });
-    }
-
-    function _showKeyPrompt(){ document.getElementById('sv-token-overlay').style.display='flex'; }
-    function _hideKeyPrompt(){ document.getElementById('sv-token-overlay').style.display='none'; }
-
-    window.svSubmitKey=function(){
-      const k=(document.getElementById('sv-key-input').value||'').trim();
-      if(!k) return;
-      localStorage.setItem('gmaps_key',k);
-      document.getElementById('sv-key-err').style.display='none';
-      _loadGmaps(k).then(()=>{gmapsLoaded=true;_hideKeyPrompt();_initPanorama();})
-        .catch(()=>{document.getElementById('sv-key-err').style.display='block';});
-    };
-
-    window.svTogglePanel=function(){
-      svPanelOpen=!svPanelOpen;
-      const wrap=document.getElementById('map-wrap');
-      const btn=document.getElementById('sv-toggle-btn');
-      if(svPanelOpen){
-        wrap.classList.add('sv-open');
-        btn.classList.add('active'); btn.textContent='✕ CLOSE VIEW';
-        if(!svReady){
-          const saved=localStorage.getItem('gmaps_key');
-          if(saved){
-            _loadGmaps(saved).then(()=>{gmapsLoaded=true;_initPanorama();})
-              .catch(()=>_showKeyPrompt());
-          } else { _showKeyPrompt(); }
-        }
-        if(!loopId) loopId=setInterval(_loop,500);
-      } else {
-        wrap.classList.remove('sv-open');
-        btn.classList.remove('active'); btn.textContent='🛣 STREET VIEW';
-        if(loopId){clearInterval(loopId);loopId=null;}
-      }
-    };
-
-    function _loop(){
-      if(!panorama||!svPanelOpen||!window.S||!window.S.ndLa) return;
-      const now=Date.now();
-      const dLa=Math.abs((window.S.ndLa||0)-(lastLat||0));
-      const dLo=Math.abs((window.S.ndLo||0)-(lastLon||0));
-      if(now-lastUpdate>THROTTLE_MS&&(dLa+dLo)>MOVE_THRESH){
-        lastUpdate=now; lastLat=window.S.ndLa; lastLon=window.S.ndLo;
-        _snapToRoad(window.S.ndLa,window.S.ndLo);
-      }
-    }
-  })();
-
-  // =================================================================
-  // NAVDRIFT_ONNX — Production Model Pipeline (5 trained ONNX models)
-  // DRIFTFormer FP32 | IMU Denoiser INT8 | Adaptive EKF | Tunnel Bi-LSTM | NavIC DOP
-  // =================================================================
-  const NAVDRIFT_ONNX = (function(){
-    // imu_denoiser_int8.onnx uses ConvInteger op — not supported in ort-web WASM.
-    // INT8 runs on edge hardware (ARM/embedded). The 4 FP32 models load in-browser.
-    const MODEL_PATHS = {
-      adaptive_ekf: './models/adaptive_ekf_fp32.onnx',
-      tunnel_det:   './models/tunnel_det_fp32.onnx',
-      driftformer:  './models/driftformer_fp32.onnx',
-      navic_dop:    './models/navic_dop_fp32.onnx',
-    };
-    const LABELS = {
-      adaptive_ekf:'ADAPTIVE EKF MLP',
-      tunnel_det:  'TUNNEL DET BiLSTM',
-      driftformer: 'DRIFT-FORMER FP32',
-      navic_dop:   'NAVIC DOP MLP',
-    };
-    let sessions={}, loaded=false, loading=false, _on=false;
-    const IMU_WIN=100, TUN_WIN=20;
-    let imuBuf=[], tunBuf=[];  // tunBuf stores [spd,hdgRate,gnss,baro,accelMag] 5-ch telemetry
-
-    function _f32(arr){
-      const flat=arr.flat(Infinity);
-      const shape=[];let x=arr;
-      while(Array.isArray(x)){shape.push(x.length);x=x[0];}
-      return new ort.Tensor('float32',Float32Array.from(flat.map(Number)),shape);
-    }
-    function _pad(buf,n){
-      return buf.length>=n?buf.slice(-n):
-        [...Array(n-buf.length).fill(buf[0]||Array(9).fill(0)),...buf];
-    }
-    function _btn(){ return document.getElementById('prod-btn'); }
-    function _lat(){ return document.getElementById('onnx-lat'); }
-
-    function _setBtnState(state){
-      const b=_btn();if(!b)return;
-      const styles={
-        loading:{text:'LOADING…',opacity:'0.55',color:'var(--yellow)',bg:'rgba(251,191,36,0.10)',border:'rgba(251,191,36,0.3)'},
-        on:     {text:'PROD ON',    opacity:'1',   color:'var(--cyan)',   bg:'rgba(0,255,245,0.10)',  border:'rgba(0,255,245,0.45)'},
-        off:    {text:'SIM MODE',   opacity:'1',   color:'var(--violet)', bg:'rgba(168,85,247,0.12)', border:'rgba(168,85,247,0.35)'},
-        err:    {text:'ONNX ERR',   opacity:'1',   color:'var(--red)',    bg:'rgba(255,34,85,0.10)',  border:'rgba(255,34,85,0.35)'},
-      }[state]||{};
-      b.textContent=styles.text||state;
-      b.style.opacity=styles.opacity||'1';
-      b.style.color=styles.color||'';
-      b.style.background=styles.bg||'';
-      b.style.borderColor=styles.border||'';
-    }
-
-    function _chip(id,cls){
-      const el=document.getElementById(id);if(!el)return;
-      el.className=el.className.replace(/\b(on|warn|off)\b/g,'').trim()+' '+cls;
-    }
-
-    async function load(){
-      if(loading||loaded)return;
-      loading=true;_setBtnState('loading');
-      if(typeof ort==='undefined'){
-        log('[ONNX] onnxruntime-web not loaded','sys');
-        _setBtnState('err');loading=false;return;
-      }
-      ort.env.wasm.numThreads=1;
-      ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
-      try{
-        const order=Object.keys(MODEL_PATHS); // only load models that exist in MODEL_PATHS
-        for(const k of order){
-          log('[ONNX] Loading '+LABELS[k]+'...','sys');
-          const _resp=await fetch(MODEL_PATHS[k]);
-          log('[ONNX] fetch '+k+' -> HTTP '+_resp.status+' '+_resp.statusText,'sys');
-          if(!_resp.ok) throw new Error('HTTP '+_resp.status+' fetching '+MODEL_PATHS[k]);
-          const _buf=await _resp.arrayBuffer();
-          const _hdr=new Uint8Array(_buf.slice(0,4));
-          log('[ONNX] '+k+' buf='+_buf.byteLength+' bytes, header=['+Array.from(_hdr).map(x=>x.toString(16).padStart(2,'0')).join(' ')+']','sys');
-          sessions[k]=await ort.InferenceSession.create(_buf,{executionProviders:['wasm']});
-          log('[ONNX] '+LABELS[k]+' ready  in:'+sessions[k].inputNames+' out:'+sessions[k].outputNames,'sys');
-        }
-        loaded=true;_setBtnState('on');
-        log('[ONNX] 4 FP32 models loaded (IMU Denoiser INT8 runs on-device). Pipeline active.','sys');
-        showBanner('\u26a1 Production ONNX pipeline live — 5 models running in-browser',true);
-      }catch(e){
-        loading=false;_setBtnState('err');
-        log('[ONNX] Load error: '+e.message,'sys');
-        showBanner('\u26a0 ONNX load failed — check ./models/ path: '+e.message,false);
-      }
-    }
-
-    async function runStep(imuVec){
-      if(!loaded||!_on)return null;
-      const t0=performance.now();
-      const res={};
-      imuBuf.push(imuVec);if(imuBuf.length>IMU_WIN)imuBuf.shift();
-      // tunnel detector: 5-ch telemetry window [spd, hdgRate, gnss, baro, accelMag]
-      const _accelMag=Math.sqrt(imuVec[0]*imuVec[0]+imuVec[1]*imuVec[1]+imuVec[2]*imuVec[2]);
-      tunBuf.push([imuVec[6]/30,imuVec[7]/35,S.gnss?1:0,(imuVec[8]||0)/500,_accelMag/15]);
-      if(tunBuf.length>TUN_WIN)tunBuf.shift();
-
-      // IMU Denoiser runs on-device (INT8/ConvInteger — not in ort-web WASM).
-      // Mark chip as nominal — denoising handled by sim pipeline on browser.
-      _chip('pm1','on');
-
-      // 2. Adaptive EKF MLP — [1,6] state → [1,2+] Q/R
-      if(sessions.adaptive_ekf){
-        try{
-          const inp=sessions.adaptive_ekf.inputNames[0];
-          const feat=[EKF.Qp||1e-3,EKF.Rp||1e-2,(S.spd||0)/30,(S.unc||1)/20,(S.step%1000)/1000,S.gnss?1:0];
-          const out=await sessions.adaptive_ekf.run({[inp]:_f32([feat])});
-          const d=out[sessions.adaptive_ekf.outputNames[0]].data;
-          res.ekfQ=Math.max(1e-7,Math.abs(d[0]));
-          res.ekfR=Math.max(1e-7,Math.abs(d[1]||d[0]));
-          _chip('pm2','on');
-        }catch(e){_chip('pm2','warn');}
-      }
-
-      // 3. Tunnel Detector BiLSTM — [1,10,9] → [1,1] prob
-      if(sessions.tunnel_det){
-        try{
-          const inp=sessions.tunnel_det.inputNames[0];
-          const buf=_pad(tunBuf,TUN_WIN);
-          const out=await sessions.tunnel_det.run({[inp]:_f32([buf])});
-          res.tunnelProb=out[sessions.tunnel_det.outputNames[0]].data[0];
-          _chip('pm3','on');
-        }catch(e){_chip('pm3','warn');}
-      }
-
-      // 4. DRIFTFormer FP32 — [1,100,9] → [1,2] every 100 steps
-      if(sessions.driftformer&&imuBuf.length>=IMU_WIN&&S.step%100===0){
-        try{
-          const inp=sessions.driftformer.inputNames[0];
-          const out=await sessions.driftformer.run({[inp]:_f32([_pad(imuBuf,IMU_WIN)])});
-          const d=out[sessions.driftformer.outputNames[0]].data;
-          res.driftCorr={dLat:d[0],dLon:d[1]};
-          _chip('pm4','on');
-        }catch(e){_chip('pm4','warn');}
-      }
-
-      // 5. NavIC DOP MLP — [1,8] constellation features → [1,3] PDOP/HDOP/VDOP
-      if(sessions.navic_dop&&window.SATS){
-        try{
-          const inp=sessions.navic_dop.inputNames[0];
-          const sats=window.SATS.slice(0,7);
-          const snrs=sats.map(s=>(s.snr||0)/50);
-          snrs.push(sats.length/7); // 8th feature: visible sat ratio
-          const out=await sessions.navic_dop.run({[inp]:_f32([snrs])});
-          const dopData=out[sessions.navic_dop.outputNames[0]].data;
-          res.dop=dopData[1]||dopData[0]; // HDOP preferred
-          _chip('pm5','on');
-        }catch(e){_chip('pm5','warn');}
-      }
-
-      res.ms=performance.now()-t0;
-      return res;
-    }
-
-    async function applyToSim(imuVec){
-      if(!_on)return;
-      if(!loaded){if(!loading)load();return;}
-      const res=await runStep(imuVec);
-      if(!res)return;
-
-      // Tunnel Bi-LSTM override (high confidence only — don't fight baro on edge cases)
-      if(res.tunnelProb!==undefined){
-        if(res.tunnelProb>0.68&&!S.inTunnel){
-          S.inTunnel=true;S.tunN++;
-          log('[ONNX] BiLSTM: tunnel entry p='+res.tunnelProb.toFixed(3),'sys');
-        }else if(res.tunnelProb<0.22&&S.inTunnel){
-          S.inTunnel=false;
-          log('[ONNX] BiLSTM: tunnel exit p='+res.tunnelProb.toFixed(3),'sys');
-        }
-      }
-
-      // Adaptive EKF: update Q/R for next ekfStep
-      if(res.ekfQ!==undefined){EKF.Qp=res.ekfQ;EKF.Rp=res.ekfR;}
-
-      // DRIFTFormer position correction
-      if(res.driftCorr){
-        const sc=1e-6; // raw model output scaled to degrees
-        S.ndLa+=res.driftCorr.dLat*sc;
-        S.ndLo+=res.driftCorr.dLon*sc;
-        if(S.step%500===0)log('[ONNX] DRIFTFormer corr \u0394='+
-          (res.driftCorr.dLat*sc).toExponential(2)+','+
-          (res.driftCorr.dLon*sc).toExponential(2),'snap');
-      }
-
-      // NavIC DOP -> position uncertainty
-      if(res.dop!==undefined&&S.gnss){
-        S.unc=Math.max(0.35,Math.min(25,Math.abs(res.dop)*3.5));
-      }
-
-      // Latency displays
-      const ms=res.ms.toFixed(1);
-      const latEl=_lat();if(latEl)latEl.textContent=ms+'ms';
-      const engMs=document.getElementById('eng-ms');if(engMs&&_on)engMs.textContent=ms;
-      const engLabel=document.getElementById('eng-label');
-      if(engLabel&&_on)engLabel.textContent='ONNX';
-    }
-
-    function toggle(){
-      _on=!_on;
-      if(_on){ _setBtnState('loading');load(); }
-      else   { _setBtnState('off');
-               const latEl=_lat();if(latEl)latEl.textContent='';
-               const engLabel=document.getElementById('eng-label');
-               if(engLabel)engLabel.textContent='SIM'; }
-    }
-
-    return{toggle,applyToSim,get on(){return _on;}};
-  })();
-
-  window.toggleProdModel=function(){NAVDRIFT_ONNX.toggle();};
-
-  // Wrap step() so each simulation tick feeds the ONNX pipeline
-  (function(){
-    const _orig=step;
-    window.step=function(){
-      _orig();
-      if(!NAVDRIFT_ONNX.on)return;
-      // 9-channel IMU vector: [ax,ay,az,gx,gy,gz,wheel_spd,yaw_rate,baro_alt]
-      const gz=clamp(S.gtH/DT,-35,35);
-      const ax=clamp((S.spd-(S._onnxPrvSpd||S.spd))/DT,-160,160);
-      S._onnxPrvSpd=S.spd;
-      NAVDRIFT_ONNX.applyToSim([ax,0,-9.81,0,0,gz,S.spd||0,S.gtH||0,S.baroAlt||0]);
-    };
-  })();
-
 </script>
 </body>
 </html>

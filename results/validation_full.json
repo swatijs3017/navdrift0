@@ -1,0 +1,80 @@
+{
+  "compliance_metrics": {
+    "ATE_RMSE_m": 0.2472,
+    "drift_mean_pct": 0.023,
+    "drift_max_pct": 1.742,
+    "pct_under_10_target": 100.0,
+    "pct_under_5": 100.0,
+    "n_steps": 36819,
+    "isro_pass": true
+  },
+  "onnx_benchmark": {
+    "driftformer": {
+      "fp32": {
+        "mean_ms": 3.778,
+        "p50_ms": 3.737,
+        "p95_ms": 4.103,
+        "p99_ms": 4.53,
+        "size_mb": 0.036
+      },
+      "int8": {},
+      "accuracy_delta_fp32_to_int8": -1.0
+    },
+    "imu_denoiser": {
+      "fp32": {
+        "mean_ms": 0.555,
+        "p50_ms": 0.525,
+        "p95_ms": 0.721,
+        "p99_ms": 0.765,
+        "size_mb": 0.026
+      },
+      "int8": {
+        "mean_ms": 4.815,
+        "p50_ms": 4.746,
+        "p95_ms": 5.194,
+        "p99_ms": 5.635,
+        "size_mb": 0.149
+      },
+      "accuracy_delta_fp32_to_int8": 0.007483
+    },
+    "adaptive_ekf": {
+      "fp32": {
+        "mean_ms": 0.052,
+        "p50_ms": 0.051,
+        "p95_ms": 0.063,
+        "p99_ms": 0.069,
+        "size_mb": 0.006
+      },
+      "int8": {},
+      "accuracy_delta_fp32_to_int8": -1.0
+    },
+    "tunnel_det": {
+      "fp32": {
+        "mean_ms": 0.424,
+        "p50_ms": 0.424,
+        "p95_ms": 0.447,
+        "p99_ms": 0.457,
+        "size_mb": 0.014
+      },
+      "int8": {},
+      "accuracy_delta_fp32_to_int8": -1.0
+    },
+    "navic_dop": {
+      "fp32": {
+        "mean_ms": 0.044,
+        "p50_ms": 0.042,
+        "p95_ms": 0.055,
+        "p99_ms": 0.066,
+        "size_mb": 0.004
+      },
+      "int8": {},
+      "accuracy_delta_fp32_to_int8": -1.0
+    },
+    "pipeline_total": {
+      "fp32_ms": 4.853,
+      "int8_ms": 4.815,
+      "target_8ms_pass": true
+    }
+  },
+  "n_test_sequences": 1
+}

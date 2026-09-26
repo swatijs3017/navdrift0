@@ -43,3 +43,5 @@ runs/
 .vscode/
 .idea/
 *.swp
+commit_push.py
+push.py
