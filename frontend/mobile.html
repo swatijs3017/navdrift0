@@ -1225,11 +1225,11 @@ function startLiveGPS(){
 let lt=0;
 function loop(t){requestAnimationFrame(loop);if(t-lt>65){step();lt=t;}}
 
-// Boot: India overview, wait for user to tap ◉ Live
+// Boot: India overview, auto-request GPS (browser shows prompt on first visit)
 document.getElementById('city-buttons').style.display = 'none';
-init('delhi'); // sets up route/state; map stays at India overview
+init('delhi');
 requestAnimationFrame(loop);
-// GPS starts only when user taps ◉ Live (exitSimMode → startLiveGPS)
+startLiveGPS();
 </script>
 </body>
 </html>
