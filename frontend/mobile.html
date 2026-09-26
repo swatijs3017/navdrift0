@@ -417,7 +417,12 @@ const IMU = {
   /* forward-accel residual bias (captured during still calibration) */
   fwdAccelBias: 0,
   /* true when device provides gravity-free e.acceleration */
-  _gravFree: false
+  _gravFree: false,
+  /* in-vehicle alignment: detected forward axis (0=X,1=Y,2=Z) and sign */
+  fwdAxisIdx: 1,    // default: Y axis (phone held upright, top forward)
+  fwdAxisSign: 1,   // +1 or -1
+  alignDone: false, // set true after first-motion axis detection
+  _alignBuf: []     // accumulator during alignment window
 };
 
 /* Butterworth 2nd-order low-pass (fc=2 Hz at fs=30 Hz) */
@@ -471,10 +476,37 @@ function onDeviceMotion(e){
   const dt = _lastDMT>0 ? (now-_lastDMT)/1000 : 0;
   _lastDMT = now;
 
+  // ── In-vehicle alignment: auto-detect forward axis during first 5 s of motion ──
+  if(!IMU.alignDone && IMU.calibrated){
+    IMU._alignBuf.push([fax, fay, faz]);
+    if(IMU._alignBuf.length >= 150){ // ~5 s at 30 Hz
+      const buf = IMU._alignBuf;
+      // Gravity axis = highest absolute mean
+      const means = [0,1,2].map(i => Math.abs(buf.reduce((s,r)=>s+r[i],0)/buf.length));
+      const gravIdx = means.indexOf(Math.max(...means));
+      // Forward axis = highest variance among the other two
+      const cands = [0,1,2].filter(i=>i!==gravIdx);
+      const vars  = cands.map(i => {
+        const mn = buf.reduce((s,r)=>s+r[i],0)/buf.length;
+        return buf.reduce((s,r)=>s+(r[i]-mn)**2,0)/buf.length;
+      });
+      IMU.fwdAxisIdx  = cands[vars.indexOf(Math.max(...vars))];
+      // Sign: net displacement during buffer should be positive (car moved forward)
+      const netFwd = buf.reduce((s,r)=>s+r[IMU.fwdAxisIdx],0);
+      IMU.fwdAxisSign = netFwd >= 0 ? 1 : -1;
+      IMU.alignDone   = true;
+      IMU._alignBuf   = [];
+      const axNames = ['X','Y','Z'];
+      console.log(`[NAVDRIFT] Alignment: forward=${axNames[IMU.fwdAxisIdx]} sign=${IMU.fwdAxisSign}`);
+      try{ document.getElementById('sv-be').textContent = axNames[IMU.fwdAxisIdx]+'✓'; }catch(e){}
+    }
+  }
+
   let rawFwd;
   if(useLinear){
-    // Gravity already removed by the OS — Y axis = phone's long axis = forward direction
-    rawFwd = fay;
+    // Gravity already removed — use aligned forward axis
+    const axes = [fax, fay, faz];
+    rawFwd = axes[IMU.fwdAxisIdx] * IMU.fwdAxisSign;
   } else {
     // Manual gravity removal using beta (front-back tilt) and gamma (left-right tilt)
     const beta  = IMU.beta  * Math.PI/180;
@@ -489,7 +521,8 @@ function onDeviceMotion(e){
     const linY = fay - gravY;
     const linZ = faz - gravZ;
     // Project onto car-forward axis: rotate by tilt angle beta
-    rawFwd = linY * cosB - linZ * sinB;
+    const linAxes = [fax - (-9.81*Math.sin(gamma)), linY, linZ];
+    rawFwd = linAxes[IMU.fwdAxisIdx] * IMU.fwdAxisSign;
   }
 
   // Subtract residual bias captured during stationary calibration
@@ -724,6 +757,7 @@ function init(key){
   S.vibBuf=[];S.baroAlt=220;S.baroPrev=220;S.inTunnel=false;S.tunDur=0;S.hmmCorrN=0;
   S.hmmProb=new Float32Array(S.route.length).fill(-Math.log(S.route.length));
   IMU.intSpeed=0; IMU.intHeading=0;
+  IMU.alignDone=false; IMU._alignBuf=[];
   ekfReset(st[0],st[1]);
   initMap(key);
   setBtnGnss(true);
