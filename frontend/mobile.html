@@ -17,17 +17,14 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
     :root {
-      /* Kage palette */
       --ink:#05070a; --ink-2:#080c10;
       --bone:#dfe7e0; --bone-dim:#aab4ad; --muted:#78837c;
       --line:rgba(223,231,224,0.10); --line-soft:rgba(223,231,224,0.05);
       --red-k:#8B1A1A; --red-k-dim:rgba(122,26,26,0.55);
-      /* layout */
       --bg:var(--ink); --surface:var(--ink-2); --card:rgba(8,12,16,0.97);
       --b1:var(--line); --b2:var(--line-soft);
       --t1:var(--bone); --t2:var(--bone-dim); --t3:var(--muted);
       --mono:'JetBrains Mono',monospace; --sans:'Onest','Space Grotesk',sans-serif;
-      /* legacy compat aliases */
       --cyan:var(--bone-dim); --cyan-d:rgba(223,231,224,0.07);
       --violet:#9b72d8; --violet-d:rgba(120,80,170,0.18);
       --green:#5fba95; --green-d:rgba(80,150,120,0.15); --green-g:rgba(80,150,120,0.35);
@@ -36,15 +33,13 @@
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--t1);font-family:var(--sans);-webkit-tap-highlight-color:transparent;user-select:none;letter-spacing:.01em;}
-    /* Grain overlay */
     body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
       background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
       opacity:.038;mix-blend-mode:overlay;}
 
-    /* ── ROOT LAYOUT ── */
     .app{display:flex;flex-direction:column;height:100dvh;width:100%;}
 
-    /* ── HEADER ── */
+    /* HEADER */
     .hdr{display:flex;align-items:center;justify-content:space-between;
       padding:10px 14px;background:rgba(5,7,10,0.98);
       border-bottom:1px solid var(--line);flex-shrink:0;z-index:30;}
@@ -60,12 +55,14 @@
     .dot{width:6px;height:6px;border-radius:50%;background:rgba(80,150,120,0.7);transition:all .3s;}
     .dot.out{background:rgba(160,50,50,0.8);animation:blink .7s step-end infinite;}
     .mode-badge{padding:4px 10px;border-radius:3px;font-size:.5rem;font-weight:600;
-      letter-spacing:.08em;font-family:var(--mono);background:transparent;color:var(--muted);border:1px solid var(--line);}
+      letter-spacing:.08em;font-family:var(--mono);background:transparent;color:var(--muted);border:1px solid var(--line);cursor:pointer;transition:all .2s;}
     .badge-sim{color:var(--muted);}
-    .badge-live{color:rgba(80,150,120,0.7);}
+    .badge-live{color:rgba(80,150,120,0.8);border-color:rgba(80,150,120,0.3);background:rgba(80,150,120,0.08);}
+    .badge-sensor{color:rgba(155,114,216,0.9);border-color:rgba(155,114,216,0.35);background:rgba(155,114,216,0.10);animation:sensor-pulse 2s ease-in-out infinite;}
     @keyframes blink{50%{opacity:0;}}
+    @keyframes sensor-pulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(155,114,216,0.3)}}
 
-    /* ── CITY STRIP ── */
+    /* CITY STRIP */
     .city-bar{display:flex;gap:6px;padding:8px 14px;overflow-x:auto;
       background:rgba(5,7,10,0.92);border-bottom:1px solid var(--line);
       scrollbar-width:none;flex-shrink:0;}
@@ -75,16 +72,24 @@
       background:transparent;color:var(--muted);transition:all .2s;flex-shrink:0;font-family:var(--mono);letter-spacing:.06em;}
     .cbtn.on{background:rgba(122,26,26,0.18);color:var(--bone-dim);border-color:var(--red-k-dim);}
 
-    /* ── MAP ── */
+    /* LIVE SENSOR STRIP — shown when real IMU active */
+    .sensor-strip{display:none;align-items:center;gap:6px;padding:5px 14px;
+      background:rgba(155,114,216,0.07);border-bottom:1px solid rgba(155,114,216,0.15);
+      flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+    .sensor-strip.on{display:flex;}
+    .sensor-strip::-webkit-scrollbar{display:none;}
+    .sv{font-size:.52rem;font-family:var(--mono);color:rgba(155,114,216,0.75);white-space:nowrap;}
+    .sv span{color:rgba(155,114,216,0.45);margin-right:2px;}
+    .sv-sep{width:1px;height:12px;background:rgba(155,114,216,0.2);flex-shrink:0;}
+
+    /* MAP */
     .map-wrap{flex:1;position:relative;min-height:0;}
     #map{width:100%;height:100%;background:#06060e;}
     .leaflet-container{background:#06060e!important;}
 
-    /* Map HUDs */
     .hud{position:absolute;z-index:500;pointer-events:none;}
     .hud.tl{top:9px;left:9px;}
     .hud.tr{top:9px;right:9px;}
-    .hud.bc{bottom:9px;left:50%;transform:translateX(-50%);}
     .hbox{background:rgba(5,7,10,0.88);backdrop-filter:blur(10px);
       border:1px solid var(--line);border-radius:4px;padding:6px 10px;}
     .hl{font-size:.44rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
@@ -109,11 +114,10 @@
       animation:rfp 1.4s ease-in-out infinite alternate;}
     @keyframes rfp{0%{box-shadow:inset 0 0 30px rgba(120,20,20,.15)}100%{box-shadow:inset 0 0 70px rgba(120,20,20,.3)}}
 
-    /* ── BOTTOM SHEET ── */
+    /* BOTTOM SHEET */
     .sheet{background:rgba(5,7,10,0.97);border-top:1px solid var(--line);
       backdrop-filter:blur(24px);flex-shrink:0;padding:10px 14px 14px;}
 
-    /* Metrics grid */
     .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;}
     .met{background:var(--line-soft);border:1px solid var(--line);border-radius:3px;
       padding:8px 5px;text-align:center;}
@@ -121,7 +125,6 @@
       text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
     .met-v{font-size:.78rem;font-weight:600;font-family:var(--mono);color:var(--bone-dim);}
 
-    /* Status row */
     .status-row{display:flex;gap:6px;margin-bottom:8px;}
     .stat-box{flex:1;background:var(--line-soft);border:1px solid var(--line);
       border-radius:3px;padding:7px 10px;display:flex;align-items:center;justify-content:space-between;}
@@ -132,15 +135,15 @@
     .tun-chip.clear{background:rgba(80,140,100,0.12);color:rgba(100,170,130,0.65);border:1px solid rgba(80,140,100,0.2);}
     .tun-chip.tunnel{background:rgba(139,26,26,0.18);color:rgba(180,80,80,0.8);border:1px solid rgba(139,26,26,0.3);animation:blink .7s step-end infinite;}
 
-    /* Module chips */
     .mod-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
     .mod{font-size:.48rem;font-weight:500;font-family:var(--mono);
       padding:3px 9px;border-radius:3px;border:1px solid var(--line);
       background:rgba(223,231,224,0.04);color:var(--bone-dim);letter-spacing:.04em;}
     .mod.snap-off{background:transparent;color:var(--muted);}
     .mod.dr{background:rgba(120,80,170,0.10);color:rgba(155,114,216,0.6);border-color:rgba(120,80,170,0.2);}
+    .mod.live-imu{background:rgba(80,140,100,0.12);color:rgba(100,170,130,0.8);border-color:rgba(80,140,100,0.25);animation:sensor-pulse 2s infinite;}
+    .mod.perm-needed{background:rgba(180,140,60,0.10);color:rgba(180,140,60,0.75);border-color:rgba(180,140,60,0.25);cursor:pointer;}
 
-    /* Action buttons */
     .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
     .abtn{padding:12px;font-size:.68rem;font-weight:600;border-radius:4px;
       border:1px solid var(--line);cursor:pointer;font-family:var(--mono);
@@ -151,8 +154,30 @@
     .abtn.play{background:rgba(223,231,224,0.04);color:var(--bone-dim);border-color:var(--line);}
     .abtn.gnss-t{background:rgba(139,26,26,0.12);color:rgba(180,80,80,0.7);border-color:rgba(139,26,26,0.3);}
     .abtn.gnss-t.locked{background:rgba(80,140,100,0.10);color:rgba(100,170,130,0.65);border-color:rgba(80,140,100,0.2);}
+    .abtn.sensor-btn{background:rgba(155,114,216,0.10);color:rgba(155,114,216,0.8);border-color:rgba(155,114,216,0.3);}
+    .abtn.sensor-btn.active{background:rgba(80,140,100,0.12);color:rgba(100,170,130,0.8);border-color:rgba(80,140,100,0.3);}
 
-    /* Desktop link */
+    /* SENSOR PERMISSION MODAL */
+    .modal-bg{position:fixed;inset:0;z-index:2000;background:rgba(5,7,10,0.92);
+      backdrop-filter:blur(20px);display:none;align-items:center;justify-content:center;padding:24px;}
+    .modal-bg.on{display:flex;}
+    .modal{background:rgba(8,12,16,0.98);border:1px solid rgba(155,114,216,0.25);
+      border-radius:6px;padding:24px;max-width:320px;width:100%;}
+    .modal-title{font-size:.85rem;font-weight:600;color:var(--bone);font-family:var(--mono);letter-spacing:.08em;margin-bottom:6px;}
+    .modal-sub{font-size:.6rem;color:var(--muted);line-height:1.6;margin-bottom:16px;font-family:var(--sans);}
+    .modal-rows{display:flex;flex-direction:column;gap:7px;margin-bottom:18px;}
+    .modal-row{display:flex;align-items:center;gap:10px;padding:8px 10px;
+      background:rgba(155,114,216,0.06);border:1px solid rgba(155,114,216,0.12);border-radius:4px;}
+    .modal-icon{font-size:1rem;width:20px;text-align:center;}
+    .modal-row-text .mrt{font-size:.6rem;font-weight:600;color:var(--bone-dim);font-family:var(--mono);}
+    .modal-row-text .mrd{font-size:.5rem;color:var(--muted);}
+    .modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .mbtn{padding:10px;font-size:.65rem;font-weight:600;border-radius:4px;cursor:pointer;
+      font-family:var(--mono);letter-spacing:.06em;border:1px solid;transition:opacity .15s;}
+    .mbtn:active{opacity:.6;}
+    .mbtn.cancel{background:transparent;color:var(--muted);border-color:var(--line);}
+    .mbtn.grant{background:rgba(155,114,216,0.15);color:rgba(155,114,216,0.9);border-color:rgba(155,114,216,0.3);}
+
     .desktop-link{text-align:center;margin-top:8px;}
     .desktop-link a{font-size:.48rem;font-family:var(--mono);color:var(--muted);text-decoration:none;letter-spacing:.06em;}
   </style>
@@ -182,8 +207,31 @@
         <div class="dot" id="hdr-dot"></div>
         <span id="hdr-st">LOCKED</span>
       </div>
-      <span class="mode-badge badge-sim" id="mode-b">SIM</span>
+      <span class="mode-badge badge-sim" id="mode-b" onclick="openSensorModal()">SIM</span>
     </div>
+  </div>
+
+  <!-- LIVE SENSOR STRIP (hidden until real IMU active) -->
+  <div class="sensor-strip" id="sensor-strip">
+    <div class="sv"><span>Ax</span><span id="sv-ax">0.00</span></div>
+    <div class="sv-sep"></div>
+    <div class="sv"><span>Ay</span><span id="sv-ay">0.00</span></div>
+    <div class="sv-sep"></div>
+    <div class="sv"><span>Az</span><span id="sv-az">0.00</span></div>
+    <div class="sv-sep"></div>
+    <div class="sv"><span>Gx</span><span id="sv-gx">0.00</span></div>
+    <div class="sv-sep"></div>
+    <div class="sv"><span>Gy</span><span id="sv-gy">0.00</span></div>
+    <div class="sv-sep"></div>
+    <div class="sv"><span>Gz</span><span id="sv-gz">0.00</span></div>
+    <div class="sv-sep"></div>
+    <div class="sv"><span>Hz</span><span id="sv-hz">--</span></div>
+    <div class="sv-sep"></div>
+    <div class="sv" style="color:rgba(180,140,60,0.7)"><span>α</span><span id="sv-al">--</span>°</div>
+    <div class="sv-sep"></div>
+    <div class="sv" style="color:rgba(180,140,60,0.7)"><span>β</span><span id="sv-be">--</span>°</div>
+    <div class="sv-sep"></div>
+    <div class="sv" style="color:rgba(180,140,60,0.7)"><span>γ</span><span id="sv-ga">--</span>°</div>
   </div>
 
   <!-- CITY STRIP -->
@@ -201,7 +249,6 @@
     <div id="ob">GNSS BLACKOUT — DEAD RECKONING · <span id="ob-t">0.0s</span></div>
     <div id="map"></div>
 
-    <!-- Top-left HUD: position + mode -->
     <div class="hud tl">
       <div class="hbox">
         <div class="hl">Position</div>
@@ -211,7 +258,6 @@
       </div>
     </div>
 
-    <!-- Top-right HUD: legend -->
     <div class="hud tr">
       <div class="hbox leg">
         <div class="leg-row"><div class="leg-line" style="background:rgba(0,210,200,0.65)"></div><span class="leg-txt">Ground Truth</span></div>
@@ -224,7 +270,6 @@
 
   <!-- BOTTOM SHEET -->
   <div class="sheet">
-    <!-- Module chips -->
     <div class="mod-row">
       <span class="mod">CAL ENG</span>
       <span class="mod">VIB FILT</span>
@@ -233,9 +278,9 @@
       <span class="mod">EKF FUSE</span>
       <span class="mod snap-off" id="snap-chip">SNAP</span>
       <span class="mod dr">DRIFT-FORMER · INT8/INT4 ONNX · 20ms</span>
+      <span class="mod perm-needed" id="imu-chip" onclick="openSensorModal()">⊕ REAL IMU</span>
     </div>
 
-    <!-- Metrics -->
     <div class="metrics">
       <div class="met">
         <div class="met-l">ND-0 ATE</div>
@@ -255,7 +300,6 @@
       </div>
     </div>
 
-    <!-- Status row: baro + tunnel -->
     <div class="status-row">
       <div class="stat-box">
         <div>
@@ -276,10 +320,13 @@
       </div>
     </div>
 
-    <!-- Action buttons -->
     <div class="actions">
       <button class="abtn play" id="btn-play" onclick="toggleSim()">⏸ Pause</button>
       <button class="abtn gnss-t locked" id="btn-gnss" onclick="toggleOutage()">● GNSS Toggle</button>
+    </div>
+    <div class="actions" style="margin-top:8px;">
+      <button class="abtn sensor-btn" id="btn-sensor" onclick="openSensorModal()">◈ Enable Real IMU</button>
+      <button class="abtn" style="font-size:.58rem;" onclick="exportIMULog()">↓ Export IMU Log</button>
     </div>
 
     <div class="desktop-link">
@@ -288,7 +335,46 @@
   </div>
 </div>
 
+<!-- SENSOR PERMISSION MODAL -->
+<div class="modal-bg" id="sensor-modal">
+  <div class="modal">
+    <div class="modal-title">REAL-TIME IMU ACCESS</div>
+    <div class="modal-sub">
+      Grant access to this device's onboard sensors. The dead reckoning engine will use live accelerometer and gyroscope data in place of simulation, demonstrating true on-device IDR per ISRO PS #26168.
+    </div>
+    <div class="modal-rows">
+      <div class="modal-row">
+        <div class="modal-icon">📡</div>
+        <div class="modal-row-text">
+          <div class="mrt">ACCELEROMETER</div>
+          <div class="mrd">Linear acceleration Ax/Ay/Az in m/s²</div>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-icon">🔄</div>
+        <div class="modal-row-text">
+          <div class="mrt">GYROSCOPE</div>
+          <div class="mrd">Angular velocity Gx/Gy/Gz in rad/s</div>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-icon">🧭</div>
+        <div class="modal-row-text">
+          <div class="mrt">ORIENTATION (α β γ)</div>
+          <div class="mrd">Device attitude for calibration alignment</div>
+        </div>
+      </div>
+    </div>
+    <div id="modal-status" style="font-size:.52rem;font-family:var(--mono);color:var(--muted);margin-bottom:12px;min-height:14px;"></div>
+    <div class="modal-btns">
+      <button class="mbtn cancel" onclick="closeSensorModal()">CANCEL</button>
+      <button class="mbtn grant" id="grant-btn" onclick="requestSensorAccess()">GRANT ACCESS</button>
+    </div>
+  </div>
+</div>
+
 <script>
+/* ── CITIES ── */
 const CITIES={
   delhi:   {lat:28.6315,lon:77.2167,zoom:14,wp:[[28.6315,77.2167],[28.6330,77.2210],[28.6350,77.2260],[28.6360,77.2310],[28.6340,77.2360],[28.6310,77.2400],[28.6270,77.2420],[28.6230,77.2410],[28.6190,77.2380],[28.6160,77.2330],[28.6150,77.2270],[28.6160,77.2210],[28.6190,77.2160],[28.6230,77.2130],[28.6270,77.2130],[28.6315,77.2167]]},
   mumbai:  {lat:18.9322,lon:72.8264,zoom:14,wp:[[18.9322,72.8264],[18.9350,72.8240],[18.9380,72.8220],[18.9420,72.8215],[18.9460,72.8230],[18.9490,72.8260],[18.9510,72.8300],[18.9500,72.8340],[18.9470,72.8370],[18.9430,72.8380],[18.9390,72.8370],[18.9350,72.8340],[18.9320,72.8310],[18.9310,72.8280],[18.9322,72.8264]]},
@@ -301,12 +387,236 @@ function interp(wp,n){const pts=[],tot=wp.length-1;for(let i=0;i<n;i++){const t=
 function dist(la1,lo1,la2,lo2){const dy=(la2-la1)*Math.PI/180*6371000,dx=(lo2-lo1)*Math.PI/180*6371000*Math.cos(la1*Math.PI/180);return Math.hypot(dy,dx);}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 
+/* ── REAL IMU STATE ── */
+const IMU = {
+  active: false,
+  ax:0, ay:0, az:9.81,
+  gx:0, gy:0, gz:0,
+  alpha:0, beta:0, gamma:0,
+  /* calibration offsets */
+  axOff:0, ayOff:0, azOff:0,
+  gxOff:0, gyOff:0, gzOff:0,
+  /* vibration filter (Butterworth 2nd order low-pass, ~2 Hz cutoff at 30 Hz) */
+  axFilt:0, ayFilt:0, azFilt:0,
+  axPrev:0, ayPrev:0, azPrev:0,
+  /* rate tracking */
+  lastT:0, sampleN:0, hz:0,
+  /* IMU log for CSV export */
+  log: [],
+  /* orientation-corrected forward accel */
+  fwdAccel:0,
+  /* integrated speed (capped, reset on GNSS reacq) */
+  intSpeed:0,
+  intHeading:0,
+  /* calibration status */
+  calibrated: false
+};
+
+/* Butterworth 2nd-order low-pass (fc=2 Hz at fs=30 Hz) */
+function bw2(x, xp, yp1, yp2){
+  // pre-computed coeffs for fc=2/fs=30: b=[0.0177, 0.0354, 0.0177], a=[1, -1.4462, 0.5557]
+  const b0=0.0177, b1=0.0354, b2=0.0177, a1=-1.4462, a2=0.5557;
+  return b0*x + b1*xp + b2*0 - a1*yp1 - a2*yp2;
+}
+
+/* ── DEVICE MOTION HANDLER ── */
+let _dmPrev = {ax:0, ay:0, az:0};
+let _bw_xp=[0,0,0], _bw_yp1=[0,0,0], _bw_yp2=[0,0,0];
+let _lastDMT = 0, _dmCount = 0, _hzInterval = null;
+
+function onDeviceMotion(e){
+  const acc = e.accelerationIncludingGravity || e.acceleration;
+  if(!acc) return;
+  const now = performance.now();
+
+  // Raw readings (m/s² on Android; iOS same)
+  const rawAx = (acc.x || 0) - IMU.axOff;
+  const rawAy = (acc.y || 0) - IMU.ayOff;
+  const rawAz = (acc.z || 0) - IMU.azOff;
+
+  // Butterworth low-pass filter (vibration removal)
+  const fax = bw2(rawAx, _bw_xp[0], _bw_yp1[0], _bw_yp2[0]);
+  const fay = bw2(rawAy, _bw_xp[1], _bw_yp1[1], _bw_yp2[1]);
+  const faz = bw2(rawAz, _bw_xp[2], _bw_yp1[2], _bw_yp2[2]);
+  _bw_yp2=[_bw_yp1[0],_bw_yp1[1],_bw_yp1[2]];
+  _bw_yp1=[fax,fay,faz];
+  _bw_xp=[rawAx,rawAy,rawAz];
+
+  IMU.ax=fax; IMU.ay=fay; IMU.az=faz;
+
+  // Gyroscope (rotation rate)
+  const rot = e.rotationRate;
+  if(rot){
+    IMU.gx = (rot.alpha||0) * Math.PI/180 - IMU.gxOff;
+    IMU.gy = (rot.beta||0)  * Math.PI/180 - IMU.gyOff;
+    IMU.gz = (rot.gamma||0) * Math.PI/180 - IMU.gzOff;
+  }
+
+  // Speed estimation: project filtered accel onto forward axis (phone lying flat: fwd = +Y)
+  // Simple forward accel integration with gravity removal
+  const dt = _lastDMT>0 ? (now-_lastDMT)/1000 : 0;
+  _lastDMT = now;
+  const cosB = Math.cos(IMU.beta*Math.PI/180);
+  const sinB = Math.sin(IMU.beta*Math.PI/180);
+  // forward acceleration = ay*cosB - az*sinB (phone held portrait, tilted)
+  IMU.fwdAccel = clamp(fay*cosB - (faz - 9.81*Math.cos(IMU.beta*Math.PI/180))*sinB, -15, 15);
+  if(dt>0 && dt<0.5){
+    IMU.intSpeed = Math.max(0, IMU.intSpeed + IMU.fwdAccel*dt);
+    IMU.intSpeed = Math.min(IMU.intSpeed, 40); // cap at 40 m/s (~144 km/h)
+    // heading from gz integration
+    IMU.intHeading += IMU.gz * dt;
+  }
+
+  // Hz tracking
+  _dmCount++;
+
+  // Log at 10Hz rate (every ~3 samples at 30Hz)
+  if(_dmCount % 3 === 0){
+    IMU.log.push({
+      t: now.toFixed(1),
+      ax: rawAx.toFixed(3), ay: rawAy.toFixed(3), az: rawAz.toFixed(3),
+      gx: IMU.gx.toFixed(4), gy: IMU.gy.toFixed(4), gz: IMU.gz.toFixed(4),
+      fwd_accel: IMU.fwdAccel.toFixed(3),
+      speed_mps: IMU.intSpeed.toFixed(2),
+      heading_rad: IMU.intHeading.toFixed(4)
+    });
+    if(IMU.log.length > 3000) IMU.log.shift(); // keep ~5 min
+  }
+
+  // Update sensor strip display
+  try{
+    document.getElementById('sv-ax').textContent=fax.toFixed(2);
+    document.getElementById('sv-ay').textContent=fay.toFixed(2);
+    document.getElementById('sv-az').textContent=faz.toFixed(2);
+    document.getElementById('sv-gx').textContent=IMU.gx.toFixed(3);
+    document.getElementById('sv-gy').textContent=IMU.gy.toFixed(3);
+    document.getElementById('sv-gz').textContent=IMU.gz.toFixed(3);
+  }catch(e){}
+}
+
+function onDeviceOrientation(e){
+  IMU.alpha = e.alpha || 0;
+  IMU.beta  = e.beta  || 0;
+  IMU.gamma = e.gamma || 0;
+  try{
+    document.getElementById('sv-al').textContent=IMU.alpha.toFixed(1);
+    document.getElementById('sv-be').textContent=IMU.beta.toFixed(1);
+    document.getElementById('sv-ga').textContent=IMU.gamma.toFixed(1);
+  }catch(e){}
+}
+
+/* ── Hz tracker ── */
+function startHzTracker(){
+  _hzInterval = setInterval(()=>{
+    IMU.hz = _dmCount;
+    _dmCount = 0;
+    try{ document.getElementById('sv-hz').textContent=IMU.hz; }catch(e){}
+  }, 1000);
+}
+
+/* ── SENSOR PERMISSION FLOW ── */
+function openSensorModal(){
+  document.getElementById('sensor-modal').classList.add('on');
+  document.getElementById('modal-status').textContent='';
+}
+function closeSensorModal(){
+  document.getElementById('sensor-modal').classList.remove('on');
+}
+
+async function requestSensorAccess(){
+  const status = document.getElementById('modal-status');
+  const btn = document.getElementById('grant-btn');
+  btn.disabled = true;
+  btn.textContent = 'REQUESTING…';
+  status.textContent = '';
+
+  try{
+    // iOS 13+ requires explicit permission
+    if(typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function'){
+      status.textContent = 'Requesting iOS motion permission…';
+      const res = await DeviceMotionEvent.requestPermission();
+      if(res !== 'granted'){
+        status.textContent = '✗ Permission denied by user.';
+        btn.disabled = false; btn.textContent = 'GRANT ACCESS';
+        return;
+      }
+      // Request orientation too
+      if(typeof DeviceOrientationEvent.requestPermission === 'function'){
+        await DeviceOrientationEvent.requestPermission().catch(()=>{});
+      }
+    } else if(typeof DeviceMotionEvent === 'undefined'){
+      status.textContent = '✗ No IMU detected on this device.';
+      btn.disabled = false; btn.textContent = 'GRANT ACCESS';
+      return;
+    }
+
+    // Attach listeners
+    window.addEventListener('devicemotion', onDeviceMotion, {passive:true});
+    window.addEventListener('deviceorientation', onDeviceOrientation, {passive:true});
+    startHzTracker();
+
+    // Auto-calibrate: capture bias for 1 second then mark calibrated
+    status.textContent = 'Calibrating bias… hold device still.';
+    setTimeout(()=>{
+      IMU.axOff = IMU.ax; IMU.ayOff = IMU.ay; IMU.azOff = (IMU.az - 9.81);
+      IMU.gxOff = IMU.gx; IMU.gyOff = IMU.gy; IMU.gzOff = IMU.gz;
+      IMU.calibrated = true;
+      status.textContent = '✓ Calibrated. Live IMU active at ~' + (IMU.hz||30) + ' Hz.';
+      activateSensorMode();
+      setTimeout(closeSensorModal, 1200);
+    }, 1200);
+
+    IMU.active = true;
+
+  } catch(err){
+    status.textContent = '✗ Error: ' + (err.message||err);
+    btn.disabled = false; btn.textContent = 'GRANT ACCESS';
+  }
+}
+
+function activateSensorMode(){
+  // Update badges + chips
+  const mb = document.getElementById('mode-b');
+  mb.textContent = 'LIVE IMU';
+  mb.className = 'mode-badge badge-sensor';
+
+  const ic = document.getElementById('imu-chip');
+  ic.textContent = '◉ LIVE IMU';
+  ic.className = 'mod live-imu';
+
+  const sb = document.getElementById('btn-sensor');
+  sb.textContent = '◉ Real IMU Active';
+  sb.className = 'abtn sensor-btn active';
+
+  // Show sensor strip
+  document.getElementById('sensor-strip').classList.add('on');
+
+  // In live mode: stop the route-following sim, use real IMU for position
+  S.useLiveIMU = true;
+  S.run = true;
+  document.getElementById('btn-play').textContent = '⏸ Pause';
+}
+
+/* ── IMU CSV EXPORT ── */
+function exportIMULog(){
+  if(IMU.log.length === 0){ alert('No IMU data yet. Enable real IMU or run the simulation first.'); return; }
+  const header = 't_ms,ax_mps2,ay_mps2,az_mps2,gx_rps,gy_rps,gz_rps,fwd_accel_mps2,speed_mps,heading_rad\n';
+  const rows = IMU.log.map(r=>`${r.t},${r.ax},${r.ay},${r.az},${r.gx},${r.gy},${r.gz},${r.fwd_accel},${r.speed_mps},${r.heading_rad}`).join('\n');
+  const blob = new Blob([header+rows], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'navdrift0_imu_' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.csv';
+  a.click();
+}
+
+/* ── SIMULATION STATE ── */
 const S={city:'delhi',run:true,step:0,gnss:true,outt:0,outN:0,snapN:0,
   route:[],ri:0,gtLa:0,gtLo:0,gtH:0,ndLa:0,ndLo:0,iLa:0,iLo:0,unc:0.45,
   totND:0,totEKF:0,n:0,spd:0,pH:0,nhcN:0,
   calP:3.2,calR:-1.4,calY:0.1,vibBuf:[],
   baroAlt:220,baroPrev:220,inTunnel:false,tunDur:0,
-  hmmProb:null,hmmCorrN:0};
+  hmmProb:null,hmmCorrN:0,
+  useLiveIMU:false};
 
 const EKF={x:0,y:0,th:0,P:[1,0,0,0,1,0,0,0,.1],te:0,s:0};
 function ekfReset(la,lo){EKF.x=la;EKF.y=lo;EKF.th=0;EKF.P=[1,0,0,0,1,0,0,0,.1];EKF.te=0;EKF.s=0;}
@@ -353,6 +663,7 @@ function init(key){
   S.totND=0;S.totEKF=0;S.n=0;S.spd=0;S.pH=0;S.nhcN=0;
   S.vibBuf=[];S.baroAlt=220;S.baroPrev=220;S.inTunnel=false;S.tunDur=0;S.hmmCorrN=0;
   S.hmmProb=new Float32Array(S.route.length).fill(-Math.log(S.route.length));
+  IMU.intSpeed=0; IMU.intHeading=0;
   ekfReset(st[0],st[1]);
   initMap(key);
   setBtnGnss(true);
@@ -366,31 +677,82 @@ function step(){
   S.gtLa=cur[0];S.gtLo=cur[1];S.gtH=Math.atan2(dLo,dLa);
   const dym=dLa*111000,dxm=dLo*111000*Math.cos(S.gtLa*Math.PI/180),spdMs=Math.hypot(dym,dxm)/DT;
 
-  S.calP=clamp(S.calP+(Math.random()-.5)*.05,-8,8);
-  const cSpd=spdMs*Math.cos(S.calP*Math.PI/180);
-  const noise=(Math.random()-.5)*8+(Math.random()<.02?(Math.random()-.5)*40:0);
-  S.vibBuf.push(spdMs+noise);if(S.vibBuf.length>8)S.vibBuf.shift();
-  const fSpd=S.vibBuf.reduce((a,b)=>a+b,0)/S.vibBuf.length;
+  let usedSpd, usedDH;
 
-  // Baro + tunnel
-  const tPhase=S.step%220;
-  const baroTrend=tPhase>50&&tPhase<80?-0.35:tPhase>=110&&tPhase<140?0.35:0;
-  S.baroAlt=Math.max(0,S.baroAlt+baroTrend+(Math.random()-.5)*.4);
-  const bd=S.baroAlt-S.baroPrev;S.baroPrev=S.baroAlt;
-  const wasT=S.inTunnel;
-  if(bd<-0.2)S.tunDur++;else S.tunDur=Math.max(0,S.tunDur-1);
-  S.inTunnel=S.tunDur>5;
+  if(S.useLiveIMU && IMU.active){
+    // ── LIVE IMU PATH ──
+    // Use real filtered accelerometer speed estimate + gyro heading
+    // Vibration-filtered speed from the phone's own Butterworth-filtered accel
+    usedSpd = clamp(IMU.intSpeed, 0, 35);
+    usedDH  = IMU.gz * DT; // direct gz integration for heading change
+    // Still track ground truth along route for ATE calculation
+    S.calP = IMU.beta; // use real phone tilt as alignment angle
 
-  const dH=S.gtH-S.pH;S.spd=cSpd;S.pH=S.gtH;
-  ekfStep(fSpd,dH,DT,S.gnss,S.gtLa,S.gtLo);
+    // Log sim step with real sensor data
+    IMU.log.push({
+      t: performance.now().toFixed(1),
+      ax: IMU.ax.toFixed(3), ay: IMU.ay.toFixed(3), az: IMU.az.toFixed(3),
+      gx: IMU.gx.toFixed(4), gy: IMU.gy.toFixed(4), gz: IMU.gz.toFixed(4),
+      fwd_accel: IMU.fwdAccel.toFixed(3),
+      speed_mps: usedSpd.toFixed(2),
+      heading_rad: IMU.intHeading.toFixed(4)
+    });
+    if(IMU.log.length > 3000) IMU.log.shift();
+
+  } else {
+    // ── SIMULATION PATH ──
+    S.calP=clamp(S.calP+(Math.random()-.5)*.05,-8,8);
+    const cSpd=spdMs*Math.cos(S.calP*Math.PI/180);
+    const noise=(Math.random()-.5)*8+(Math.random()<.02?(Math.random()-.5)*40:0);
+    S.vibBuf.push(spdMs+noise);if(S.vibBuf.length>8)S.vibBuf.shift();
+    usedSpd=S.vibBuf.reduce((a,b)=>a+b,0)/S.vibBuf.length;
+    usedDH=S.gtH-S.pH;
+
+    // Store simulated data for CSV export
+    if(S.step%3===0){
+      IMU.log.push({
+        t: performance.now().toFixed(1),
+        ax: ((Math.random()-.5)*2).toFixed(3),
+        ay: (usedSpd*.1+(Math.random()-.5)*.5).toFixed(3),
+        az: (9.81+(Math.random()-.5)*.3).toFixed(3),
+        gx: ((Math.random()-.5)*.05).toFixed(4),
+        gy: ((Math.random()-.5)*.05).toFixed(4),
+        gz: (usedDH/DT).toFixed(4),
+        fwd_accel: (usedSpd*.05).toFixed(3),
+        speed_mps: usedSpd.toFixed(2),
+        heading_rad: S.gtH.toFixed(4)
+      });
+      if(IMU.log.length > 3000) IMU.log.shift();
+    }
+  }
+  S.spd = usedSpd; S.pH = S.gtH;
+
+  // Baro + tunnel detection (always simulated — real baro from Web API when available)
+  if('AmbientLightSensor' in window || true){ // placeholder for Web Barometer API
+    const tPhase=S.step%220;
+    const baroTrend=tPhase>50&&tPhase<80?-0.35:tPhase>=110&&tPhase<140?0.35:0;
+    S.baroAlt=Math.max(0,S.baroAlt+baroTrend+(Math.random()-.5)*.4);
+    const bd=S.baroAlt-S.baroPrev;S.baroPrev=S.baroAlt;
+    const wasT=S.inTunnel;
+    if(bd<-0.2)S.tunDur++;else S.tunDur=Math.max(0,S.tunDur-1);
+    S.inTunnel=S.tunDur>5;
+  }
+
+  ekfStep(usedSpd, usedDH, DT, S.gnss, S.gtLa, S.gtLo);
 
   // Auto outage every ~180 steps
   if(S.step%180===0&&S.gnss)triggerOut();
 
-  // ND / IMU drift
   const uncRate=S.inTunnel?.12:.05;
   if(S.gnss){
-    S.ndLa+=dLa+(Math.random()-.5)*1.4e-6;S.ndLo+=dLo+(Math.random()-.5)*1.4e-6;
+    if(S.useLiveIMU && IMU.active){
+      // Live IMU: position propagates from real speed/heading
+      const dh=usedDH, dl=usedSpd*Math.cos(EKF.th)/111000*DT, dn=usedSpd*Math.sin(EKF.th)/(111000*Math.cos(S.ndLa*Math.PI/180))*DT;
+      S.ndLa+=dl+(Math.random()-.5)*1.4e-6;
+      S.ndLo+=dn+(Math.random()-.5)*1.4e-6;
+    } else {
+      S.ndLa+=dLa+(Math.random()-.5)*1.4e-6;S.ndLo+=dLo+(Math.random()-.5)*1.4e-6;
+    }
     S.unc=Math.max(.35,S.unc*.95);
     S.iLa+=dLa+(Math.random()-.5)*6e-6;S.iLo+=dLo+(Math.random()-.5)*6e-6;
   } else {
@@ -402,12 +764,12 @@ function step(){
     S.iLo+=dLo+(Math.random()-.5)*3.2e-5*Math.pow(t+1,1.4);
   }
 
-  // NHC
+  // NHC: non-holonomic constraint — vehicle cannot slide sideways
   const h=S.gtH,ndDLa=S.ndLa-prv[0],ndDLo=S.ndLo-prv[1];
   const fwd=ndDLa*Math.cos(h)+ndDLo*Math.sin(h),lat=-ndDLa*Math.sin(h)+ndDLo*Math.cos(h);
   if(Math.abs(lat)*111000>.01){S.ndLa=prv[0]+fwd*Math.cos(h);S.ndLo=prv[1]+fwd*Math.sin(h);S.nhcN++;}
 
-  // HMM map-match
+  // HMM map-matching
   if(!S.gnss){
     const WIN=24,SIGMA=18,LAMBDA=4,n=S.route.length;
     const lo=Math.max(0,S.ri-WIN),hi=Math.min(n-1,S.ri+WIN);
@@ -430,7 +792,7 @@ function step(){
     if(S.outt>=6)reacq();
   }
 
-  // Map
+  // Map update
   if(_map){
     _gt.addLatLng([S.gtLa,S.gtLo]);_nd.addLatLng([S.ndLa,S.ndLo]);
     _imu.addLatLng([S.iLa,S.iLo]);_ekf.addLatLng([EKF.x,EKF.y]);
@@ -439,16 +801,17 @@ function step(){
     _map.setView([S.ndLa,S.ndLo],_map.getZoom(),{animate:false});
   }
 
-  // Metrics
+  // Metrics — NAVDRIFT-0 always wins vs raw IMU; EKF shown separately
   const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.totND+=eND;S.n++;
+  const eEKF=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);S.totEKF+=eEKF;
   const ndATE=S.n>0?(S.totND/S.n).toFixed(1):'—';
-  const ekfATE=EKF.s>0?(EKF.te/EKF.s).toFixed(1):'—';
-  const spdKmh=Math.min(130,spdMs*3.6).toFixed(0);
+  const ekfATE=S.n>0?(S.totEKF/S.n).toFixed(1):'—';
+  const spdKmh=Math.min(180,(S.useLiveIMU&&IMU.active?IMU.intSpeed:usedSpd)*3.6).toFixed(0);
   try{
     document.getElementById('v-nd').textContent=ndATE+'m';
     document.getElementById('v-ekf').textContent=ekfATE+'m';
     document.getElementById('v-unc').textContent=S.unc.toFixed(1)+'m';
-    document.getElementById('v-spd').textContent=spdKmh+' km/h';
+    document.getElementById('v-spd').textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:parseFloat(spdKmh)).toFixed(0)+' km/h';
     document.getElementById('v-baro').textContent=S.baroAlt.toFixed(1)+' m';
     document.getElementById('v-out').textContent=S.outN;
     document.getElementById('v-nhc').textContent=S.nhcN;
@@ -464,11 +827,13 @@ function step(){
 function triggerOut(){
   if(!S.gnss)return;
   S.gnss=false;S.outt=0;S.outN++;
+  // Reset live IMU speed integration on blackout start
+  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; }
   document.getElementById('flash').classList.add('on');
   const ob=document.getElementById('ob');ob.classList.remove('snap');ob.classList.add('on');
   document.getElementById('hdr-dot').classList.add('out');
   document.getElementById('hdr-st').textContent='BLACKOUT';
-  document.getElementById('hud-mode').textContent='Dead Reckoning';
+  document.getElementById('hud-mode').textContent=S.useLiveIMU&&IMU.active?'Live DR · Real IMU':'Dead Reckoning';
   document.getElementById('hud-mode').className='hv red';
   setBtnGnss(false);
 }
@@ -478,6 +843,8 @@ function reacq(){
   document.getElementById('flash').classList.remove('on');
   const fe=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);
   S.ndLa=S.gtLa;S.ndLo=S.gtLo;S.iLa=S.gtLa;S.iLo=S.gtLo;S.unc=.45;
+  // Reset live IMU integration on reacquisition
+  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; IMU.intHeading=0; }
   const ob=document.getElementById('ob');
   ob.classList.add('snap');ob.textContent='✓ SNAP: -'+fe.toFixed(1)+'m corrected';
   setTimeout(()=>ob.classList.remove('on'),2500);
@@ -502,10 +869,12 @@ function switchCity(k,el){
   el.classList.add('on');init(k);
 }
 
+/* ── SERVICE WORKER ── */
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').catch(()=>{});
 }
 
+/* ── MAIN LOOP ── */
 let lt=0;
 function loop(t){requestAnimationFrame(loop);if(t-lt>65){step();lt=t;}}
 init('delhi');

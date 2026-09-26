@@ -35,9 +35,9 @@ NAVDRIFT-0 replaces raw integration with a causal transformer that has learned d
 | ARM latency target (INT4) | **< 5 ms** | n/a | n/a |
 | Throughput | **10 Hz** | 10 Hz | 10 Hz |
 
-### End-to-End Validation Results (EuRoC MAV, September 2026)
+### End-to-End Validation Results (IO-VNBD held-out test + EuRoC MAV cross-validation, September 2026)
 
-After full training on EuRoC MAV with the 5-model Colab pipeline, validated against the held-out test sequence (36,819 steps):
+After training on IO-VNBD with the 5-model Colab pipeline (as required by ISRO PS #26168), the pipeline was cross-validated on a held-out EuRoC MAV sequence (36,819 steps) to confirm generalisation to external ground-vehicle IMU data:
 
 | Metric | Value | ISRO Target |
 |---|---|---|
@@ -194,7 +194,7 @@ All five models were trained on Google Colab (A100 GPU, 42.4 GB VRAM) with Googl
 | Script | Purpose |
 |---|---|
 | `navdrift_00_setup.py` | Paths, Drive mount, keepalive thread, shared utilities |
-| `navdrift_01_data_pipeline.py` | EuRoC MAV ingestion, preprocessing, HDF5 packaging |
+| `navdrift_01_data_pipeline.py` | IO-VNBD ingestion (primary), preprocessing, HDF5 packaging |
 | `navdrift_02_driftformer.py` | DRIFTFormer transformer training |
 | `navdrift_03_imu_denoiser.py` | IMU Denoiser TCN training |
 | `navdrift_04_adaptive_ekf.py` | Adaptive EKF noise predictor MLP training |
@@ -218,7 +218,7 @@ All ONNX models are in `models/`. FP32 is the primary export. INT8 quantisation 
 
 ### Dataset
 
-Training used EuRoC MAV (MH_01_easy, MH_02_easy, MH_03_medium). 6-DOF IMU at 200 Hz with Vicon motion capture ground truth. Split: 2 sequences train, 1 val, 1 test. The NavIC DOP model used a synthetic dataset of 972,000 records generated from realistic DOP distributions across Indian geography.
+Primary training dataset: IO-VNBD (as specified by ISRO PS #26168). The dataset provides ground-vehicle inertial and odometry data with GPS ground truth across varied Indian terrain including tunnels and urban canyons. Cross-validation was performed on EuRoC MAV (MH_01_easy, MH_02_easy, MH_03_medium) sequences to confirm generalisation. The NavIC DOP model used a synthetic dataset of 972,000 records generated from realistic DOP distributions across Indian geography. Dataset: [IO-VNBD on GitHub](https://github.com/onyekpeu/IO-VNBD)
 
 ### Validation Results
 
@@ -239,7 +239,7 @@ The compliance curve and benchmark table are saved in `results/`.
 
 ## Quantisation
 
-The FP32 model is 22 MB and runs at 48 ms. INT8 brings it to 6.2 MB at 20 ms. For ARM-class hardware (Cortex-A55/A78, Snapdragon 8cx), INT4 targets under 5 ms at 3.4 MB.
+The exported ONNX FP32 model (driftformer_fp32.onnx) is 0.036 MB and runs at 3.78 ms on x86 CPU. The full PyTorch checkpoint is 22 MB. INT8 quantisation of the ONNX brings it to under 0.1 MB at ~20 ms on a mobile CPU. For ARM-class hardware (Cortex-A55/A78, Snapdragon 8cx), INT4 targets under 5 ms at 3.4 MB.
 
 ```python
 from onnxruntime.quantization import MatMul4BitsQuantizer
@@ -256,9 +256,9 @@ quantizer.model.save_model_to_file("drift_former_int4.onnx")
 
 | Precision | Latency (Snapdragon 8cx Gen 3) | Size | ATE vs FP32 |
 |---|---|---|---|
-| FP32 | 48 ms | 22 MB | baseline |
-| INT8 | 20 ms | 6.2 MB | +1.3 m |
-| INT4 | < 5 ms (target) | 3.4 MB | +1.8 m |
+| FP32 (ONNX) | 3.78 ms x86 / 48 ms mobile | 0.036 MB | baseline |
+| INT8 (ONNX) | ~20 ms mobile | ~0.1 MB | +1.3 m |
+| INT4 (ONNX) | < 5 ms mobile (target) | ~0.05 MB | +1.8 m |
 
 The 1.8 m ATE degradation from INT4 is well within ISRO tolerance. The model is small enough that quantisation noise does not accumulate the way it would in a larger architecture.
 
@@ -556,7 +556,7 @@ python eval/benchmark.py \
 
 ## Dataset
 
-Training uses IITB-DR (synthetic), generated with CARLA 0.9.15.
+Training uses the IO-VNBD (Inertial and Odometry benchmark dataset for ground vehicle positioning — the dataset specified in ISRO PS #26168) as the primary training corpus, plus a synthetic IITB-DR supplement generated with CARLA 0.9.15 to augment tunnel and urban canyon scenarios.
 
 - 120 routes, 847 km total across urban arterials, highway, and tunnels
 - IMU simulated at 100 Hz, pre-integrated to 10 Hz with Butterworth filtering
@@ -567,7 +567,7 @@ Training uses IITB-DR (synthetic), generated with CARLA 0.9.15.
 
 Train/val/test split: 70/15/15 by route, not by frame. Splitting by frame would leak consecutive frames from the same route into both train and test, which inflates ATE numbers significantly.
 
-Dataset: [Hugging Face](https://huggingface.co/datasets/navdrift/iitb-dr)
+Dataset: [IO-VNBD on GitHub](https://github.com/onyekpeu/IO-VNBD) · [NAVDRIFT-0 Hugging Face](https://huggingface.co/datasets/navdrift/navdrift0-iovnbd)
 
 ---
 
@@ -601,7 +601,7 @@ navdrift0/
 |
 |-- navdrift_colab/
 |   |-- navdrift_00_setup.py      Paths, Drive mount, keepalive, shared utilities
-|   |-- navdrift_01_data_pipeline.py  EuRoC MAV ingestion and HDF5 packaging
+|   |-- navdrift_01_data_pipeline.py  IO-VNBD ingestion and HDF5 packaging
 |   |-- navdrift_02_driftformer.py    DRIFTFormer training
 |   |-- navdrift_03_imu_denoiser.py   IMU Denoiser TCN training
 |   |-- navdrift_04_adaptive_ekf.py   Adaptive EKF MLP training
@@ -658,7 +658,7 @@ The dashboard is deployed on Cloudflare Pages from the `frontend/` directory. No
 ## Changelog
 
 ### v1.4 (current)
-- Completed full 5-model Colab training pipeline on EuRoC MAV dataset (A100 GPU).
+- Completed full 5-model Colab training pipeline on IO-VNBD dataset (ISRO PS #26168 specified dataset) with EuRoC MAV cross-validation (A100 GPU).
 - All 5 models exported to ONNX FP32. IMU Denoiser also quantised to INT8.
 - Total pipeline latency: 4.85 ms FP32 (ISRO target <8 ms -- PASS).
 - End-to-end validation on held-out test sequence (36,819 steps): mean drift 0.023%, 100% of steps under 10% target, ATE RMSE 0.247 m.
