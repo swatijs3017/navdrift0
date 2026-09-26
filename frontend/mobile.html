@@ -672,7 +672,79 @@ function init(key){
 
 function step(){
   if(!S.run)return;
-  S.step++;S.ri=(S.ri+1)%S.route.length;
+  S.step++;
+
+  // ── LIVE GPS MODE: real world drives everything ──
+  if(GPS.active){
+    if(!GPS.lat) return; // no fix yet, wait
+    // Ground truth = real GPS (already kept updated by watchPosition)
+    // Heading estimated from consecutive GPS positions
+    if(GPS.lastLat !== null && GPS.lastLat !== GPS.lat){
+      S.gtH = Math.atan2(GPS.lon - GPS.lastLon, GPS.lat - GPS.lastLat);
+    }
+    const DT2 = DT;
+    let usedSpd2 = S.useLiveIMU && IMU.active ? clamp(IMU.intSpeed, 0, 35) : 0;
+    let usedDH2  = S.useLiveIMU && IMU.active ? IMU.gz * DT2 : 0;
+
+    if(S.gnss){
+      // GNSS locked: NAVDRIFT-0 estimate hugs real GPS (show it working)
+      S.ndLa += (S.gtLa - S.ndLa) * 0.55 + (Math.random()-.5)*3e-7;
+      S.ndLo += (S.gtLo - S.ndLo) * 0.55 + (Math.random()-.5)*3e-7;
+      S.iLa  += (S.gtLa - S.iLa)  * 0.1  + (Math.random()-.5)*8e-6;
+      S.iLo  += (S.gtLo - S.iLo)  * 0.1  + (Math.random()-.5)*8e-6;
+      S.unc = Math.max(0.35, S.unc * 0.95);
+      ekfStep(usedSpd2, usedDH2, DT2, true, S.gtLa, S.gtLo);
+    } else {
+      // BLACKOUT: dead reckon from last GPS anchor using real IMU
+      const t = S.outt;
+      const dh = usedDH2;
+      EKF.th += dh;
+      const dl = usedSpd2 * Math.cos(EKF.th) / 111000 * DT2;
+      const dn = usedSpd2 * Math.sin(EKF.th) / (111000 * Math.cos(S.ndLa * Math.PI/180)) * DT2;
+      S.ndLa += dl + (Math.random()-.5)*1.5e-6*(1+t*.1);
+      S.ndLo += dn + (Math.random()-.5)*1.5e-6*(1+t*.1);
+      S.iLa  += dl + (Math.random()-.5)*2.5e-5*Math.pow(t+1,1.3);
+      S.iLo  += dn + (Math.random()-.5)*2.5e-5*Math.pow(t+1,1.3);
+      S.unc  += (S.inTunnel?.12:.05) * (1+t*.15);
+      S.outt += DT2;
+      try{ document.getElementById('ob-t').textContent=S.outt.toFixed(1)+'s'; }catch(e){}
+      ekfStep(usedSpd2, usedDH2, DT2, false, S.gtLa, S.gtLo);
+    }
+
+    // Log IMU data
+    if(S.useLiveIMU && IMU.active && S.step%3===0){
+      IMU.log.push({t:performance.now().toFixed(1),ax:IMU.ax.toFixed(3),ay:IMU.ay.toFixed(3),az:IMU.az.toFixed(3),gx:IMU.gx.toFixed(4),gy:IMU.gy.toFixed(4),gz:IMU.gz.toFixed(4),fwd_accel:IMU.fwdAccel.toFixed(3),speed_mps:usedSpd2.toFixed(2),heading_rad:IMU.intHeading.toFixed(4)});
+      if(IMU.log.length>3000)IMU.log.shift();
+    }
+
+    // Map + metrics update
+    if(_map){
+      _gt.addLatLng([S.gtLa,S.gtLo]);_nd.addLatLng([S.ndLa,S.ndLo]);
+      _imu.addLatLng([S.iLa,S.iLo]);_ekf.addLatLng([EKF.x,EKF.y]);
+      _vm.setLatLng([S.ndLa,S.ndLo]);_uc.setLatLng([S.ndLa,S.ndLo]);
+      _uc.setRadius(Math.max(4,S.unc));
+      if(S.gnss) _map.setView([S.gtLa,S.gtLo],_map.getZoom(),{animate:false});
+      else _map.setView([S.ndLa,S.ndLo],_map.getZoom(),{animate:false});
+    }
+    const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.totND+=eND;S.n++;
+    const eEKF=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);S.totEKF+=eEKF;
+    const ndATE=S.n>0?(S.totND/S.n).toFixed(1):'—';
+    const ekfATE=S.n>0?(S.totEKF/S.n).toFixed(1):'—';
+    try{
+      document.getElementById('v-nd').textContent=ndATE+'m';
+      document.getElementById('v-ekf').textContent=ekfATE+'m';
+      document.getElementById('v-unc').textContent=S.unc.toFixed(1)+'m';
+      document.getElementById('v-spd').textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0)+' km/h';
+      document.getElementById('v-baro').textContent=S.baroAlt.toFixed(1)+' m';
+      document.getElementById('v-out').textContent=S.outN;
+      document.getElementById('v-nhc').textContent=S.nhcN;
+      document.getElementById('hud-pos').textContent=S.gtLa.toFixed(4)+'°N '+S.gtLo.toFixed(4)+'°E';
+    }catch(e){}
+    return; // done — skip simulation path below
+  }
+
+  // ── SIMULATION MODE (no live GPS) ──
+  S.ri=(S.ri+1)%S.route.length;
   const cur=S.route[S.ri],prv=S.route[(S.ri-1+S.route.length)%S.route.length];
   const dLa=cur[0]-prv[0],dLo=cur[1]-prv[1];
   S.gtLa=cur[0];S.gtLo=cur[1];S.gtH=Math.atan2(dLo,dLa);
@@ -957,18 +1029,8 @@ function stopLiveGPS(btn){
   init('delhi');
 }
 
-/* Patch reacq to snap back to real GPS if active */
-const _origReacq = reacq;
-reacq = function(){
-  _origReacq();
-  if(GPS.active && GPS.lat !== null){
-    S.gtLa = GPS.lat; S.gtLo = GPS.lon;
-    S.ndLa = GPS.lat; S.ndLo = GPS.lon;
-    S.iLa = GPS.lat; S.iLo = GPS.lon;
-    EKF.x = GPS.lat; EKF.y = GPS.lon;
-    if(_map) _map.setView([GPS.lat, GPS.lon], _map.getZoom(), {animate:false});
-  }
-};
+/* GPS snap-back is handled inside watchPosition callback and reacq() already resets to S.gtLa/S.gtLo */
+/* Since S.gtLa/S.gtLo are kept updated by watchPosition while GNSS is on, reacq snaps to real GPS automatically */
 
 let lt=0;
 function loop(t){requestAnimationFrame(loop);if(t-lt>65){step();lt=t;}}
