@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NAVDRIFT-0 Mobile</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#05070a">
@@ -223,6 +223,80 @@
     /* STAT BOX POLISH */
     .stat-box{flex:1;background:rgba(8,12,16,0.85);border:1px solid var(--line);
       border-radius:4px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;}
+
+    /* VEHICLE MARKER */
+    .vm-dot{width:14px;height:14px;border-radius:50%;background:#00e5cc;border:2px solid rgba(5,7,10,0.9);box-shadow:0 0 0 3px rgba(0,229,204,0.25);position:relative;}
+    .vm-dot::after{content:'';position:absolute;inset:-5px;border-radius:50%;border:1.5px solid rgba(0,229,204,0.4);animation:vm-ring 1.8s ease-out infinite;}
+    @keyframes vm-ring{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.2);opacity:0}}
+
+    /* ND LINE GLOW */
+    .nd-line{filter:drop-shadow(0 0 3px rgba(176,96,255,0.6));}
+
+    /* ZOOM BUTTONS */
+    .zoom-btns{position:absolute;right:9px;bottom:12px;z-index:500;display:flex;flex-direction:column;gap:4px;}
+    .zbtn{width:34px;height:34px;border-radius:4px;border:1px solid rgba(223,231,224,0.15);
+      background:rgba(5,7,10,0.88);backdrop-filter:blur(10px);color:rgba(223,231,224,0.7);
+      font-size:1.1rem;font-weight:400;cursor:pointer;display:flex;align-items:center;justify-content:center;
+      font-family:var(--mono);transition:background .15s;}
+    .zbtn:active{background:rgba(223,231,224,0.1);}
+
+    /* MODULE GRID */
+    .mod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:8px;}
+    .mg-chip{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:3px;
+      font-size:.46rem;font-family:var(--mono);letter-spacing:.05em;font-weight:500;
+      border:1px solid var(--line);background:rgba(8,12,16,0.7);color:var(--bone-dim);}
+    .mg-chip.dr{background:rgba(120,80,170,0.08);border-color:rgba(120,80,170,0.2);color:rgba(155,114,216,0.75);}
+    .mg-chip.snap-off{color:var(--muted);}
+    .mg-chip.perm-needed{border-color:rgba(180,140,60,0.25);color:rgba(180,140,60,0.75);cursor:pointer;}
+    .mg-chip.live-imu{border-color:rgba(80,140,100,0.3);color:rgba(100,170,130,0.9);background:rgba(80,140,100,0.1);animation:sensor-pulse 2s infinite;}
+    .mg-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+    .mg-dot.ok{background:rgba(80,180,120,0.9);}
+    .mg-dot.off{background:rgba(120,120,120,0.5);}
+
+    /* METRICS (override) */
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:7px;}
+    .met{background:rgba(8,12,16,0.9);border:1px solid var(--line);border-radius:4px;
+      padding:9px 4px;text-align:center;position:relative;overflow:hidden;}
+    .met::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+    .met-nd::before{background:rgba(0,229,204,0.7);}
+    .met-ekf::before{background:rgba(155,114,216,0.7);}
+    .met-unc::before{background:rgba(232,160,32,0.7);}
+    .met-spd::before{background:rgba(95,186,149,0.7);}
+    .met-l{font-size:.41rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+    .met-v{font-size:.8rem;font-weight:600;font-family:var(--mono);}
+
+    /* BOTTOM ROW */
+    .bot-row{display:flex;gap:6px;margin-bottom:7px;align-items:stretch;}
+    .baro-box{flex:1;background:rgba(8,12,16,0.85);border:1px solid var(--line);border-radius:4px;padding:7px 9px;display:flex;flex-direction:column;gap:2px;}
+    .counters-box{display:flex;flex-direction:column;gap:4px;justify-content:center;}
+    .counter-item{background:rgba(8,12,16,0.85);border:1px solid var(--line);border-radius:4px;padding:5px 10px;}
+    .act-col{display:flex;flex-direction:column;gap:5px;}
+    .stat-label{font-size:.41rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+    .stat-val{font-size:.7rem;font-weight:600;font-family:var(--mono);color:var(--bone-dim);}
+    .tun-chip{font-size:.44rem;font-family:var(--mono);font-weight:600;padding:2px 6px;border-radius:3px;margin-top:3px;display:inline-block;}
+    .tun-chip.clear{background:rgba(80,140,100,0.12);color:rgba(100,170,130,0.65);border:1px solid rgba(80,140,100,0.2);}
+    .tun-chip.tunnel{background:rgba(139,26,26,0.18);color:rgba(180,80,80,0.8);border:1px solid rgba(139,26,26,0.3);animation:blink .7s step-end infinite;}
+
+    /* ACTION BUTTONS */
+    .abtn{padding:7px 10px;font-size:.56rem;font-weight:600;border-radius:4px;
+      border:1px solid var(--line);cursor:pointer;font-family:var(--mono);
+      background:transparent;color:var(--bone-dim);letter-spacing:.05em;white-space:nowrap;
+      transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:5px;}
+    .abtn:active{opacity:.6;}
+    .abtn.play{background:rgba(223,231,224,0.04);}
+    .abtn.gnss-t{background:rgba(139,26,26,0.12);color:rgba(180,80,80,0.7);border-color:rgba(139,26,26,0.3);}
+    .abtn.gnss-t.locked{background:rgba(80,140,100,0.10);color:rgba(100,170,130,0.65);border-color:rgba(80,140,100,0.2);}
+
+    /* ICON ROW */
+    .icon-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+    .ibtn{padding:9px 6px;font-size:.58rem;font-weight:600;border-radius:4px;
+      border:1px solid var(--line);cursor:pointer;font-family:var(--mono);
+      background:transparent;color:var(--bone-dim);letter-spacing:.05em;
+      display:flex;align-items:center;justify-content:center;text-decoration:none;
+      transition:opacity .15s;}
+    .ibtn:active{opacity:.6;}
+    .ibtn.sensor-btn{background:rgba(155,114,216,0.10);color:rgba(155,114,216,0.85);border-color:rgba(155,114,216,0.3);}
+    .ibtn.sensor-btn.active{background:rgba(80,140,100,0.12);color:rgba(100,170,130,0.85);border-color:rgba(80,140,100,0.3);}
   </style>
 </head>
 <body>
@@ -313,71 +387,74 @@
         <div class="leg-row"><div class="leg-line" style="background:rgba(180,140,60,0.6)"></div><span class="leg-txt">EKF</span></div>
       </div>
     </div>
+    <div class="zoom-btns">
+      <button class="zbtn" onclick="if(_map)_map.zoomIn()">+</button>
+      <button class="zbtn" onclick="if(_map)_map.zoomOut()">−</button>
+    </div>
   </div>
 
   <!-- BOTTOM SHEET -->
   <div class="sheet">
-    <div class="mod-row">
-      <span class="mod">CAL ENG</span>
-      <span class="mod">VIB FILT</span>
-      <span class="mod">NHC</span>
-      <span class="mod">MAP MATCH</span>
-      <span class="mod">EKF FUSE</span>
-      <span class="mod snap-off" id="snap-chip">SNAP</span>
-      <span class="mod dr">DRIFT-FORMER · INT8/INT4 ONNX · 20ms</span>
-      <span class="mod perm-needed" id="imu-chip" onclick="openSensorModal()">⊕ REAL IMU</span>
+    <!-- Module status grid -->
+    <div class="mod-grid">
+      <span class="mg-chip"><span class="mg-dot ok"></span>CAL ENG</span>
+      <span class="mg-chip"><span class="mg-dot ok"></span>VIB FILT</span>
+      <span class="mg-chip"><span class="mg-dot ok"></span>NHC</span>
+      <span class="mg-chip"><span class="mg-dot ok"></span>MAP MATCH</span>
+      <span class="mg-chip"><span class="mg-dot ok"></span>EKF FUSE</span>
+      <span class="mg-chip snap-off" id="snap-chip"><span class="mg-dot off" id="snap-dot"></span>SNAP</span>
+      <span class="mg-chip dr" style="grid-column:span 2"><span class="mg-dot ok" style="background:rgba(155,114,216,0.9)"></span>DRIFT-FORMER · INT8 · 20ms</span>
+      <span class="mg-chip perm-needed" id="imu-chip" onclick="openSensorModal()"><span class="mg-dot off" id="imu-dot"></span>REAL IMU</span>
     </div>
 
+    <!-- Metrics -->
     <div class="metrics">
       <div class="met met-nd">
         <div class="met-l">ND-0 ATE</div>
-        <div class="met-v" id="v-nd" style="color:rgba(0,210,200,0.8)">—</div>
+        <div class="met-v" id="v-nd" style="color:rgba(0,229,204,0.9)">—</div>
       </div>
       <div class="met met-ekf">
         <div class="met-l">EKF ATE</div>
-        <div class="met-v" id="v-ekf" style="color:rgba(155,114,216,0.85)">—</div>
+        <div class="met-v" id="v-ekf" style="color:rgba(155,114,216,0.9)">—</div>
       </div>
       <div class="met met-unc">
         <div class="met-l">Uncert σ</div>
-        <div class="met-v" id="v-unc" style="color:rgba(180,140,60,0.8)">—</div>
+        <div class="met-v" id="v-unc" style="color:rgba(232,160,32,0.9)">—</div>
       </div>
       <div class="met met-spd">
         <div class="met-l">Speed</div>
-        <div class="met-v" id="v-spd" style="color:rgba(95,186,149,0.85)">—</div>
+        <div class="met-v" id="v-spd" style="color:rgba(95,186,149,0.9)">—</div>
       </div>
     </div>
 
-    <div class="status-row">
-      <div class="stat-box">
-        <div>
-          <div class="stat-label">Baro Alt · 9th ch</div>
-          <div class="stat-val" id="v-baro" style="color:rgba(180,140,60,0.7)">— m</div>
-        </div>
+    <!-- Status + actions row -->
+    <div class="bot-row">
+      <div class="baro-box">
+        <div class="stat-label">Baro Alt</div>
+        <div class="stat-val" id="v-baro" style="color:rgba(232,160,32,0.85)">— m</div>
         <span class="tun-chip clear" id="tun-b">CLEAR</span>
       </div>
-      <div class="stat-box" style="flex:0 0 auto;min-width:96px;">
-        <div>
+      <div class="counters-box">
+        <div class="counter-item">
           <div class="stat-label">Outages</div>
-          <div class="stat-val" id="v-out" style="color:rgba(160,70,70,0.7)">0</div>
+          <div class="stat-val" id="v-out" style="color:rgba(192,70,70,0.8)">0</div>
         </div>
-        <div style="text-align:right">
+        <div class="counter-item">
           <div class="stat-label">NHC Corr</div>
-          <div class="stat-val" id="v-nhc" style="color:rgba(155,114,216,0.7)">0</div>
+          <div class="stat-val" id="v-nhc" style="color:rgba(155,114,216,0.8)">0</div>
         </div>
+      </div>
+      <div class="act-col">
+        <button class="abtn play" id="btn-play" onclick="toggleSim()">⏸</button>
+        <button class="abtn gnss-t locked" id="btn-gnss" onclick="toggleOutage()">● GNSS</button>
       </div>
     </div>
 
-    <div class="actions">
-      <button class="abtn play" id="btn-play" onclick="toggleSim()">⏸ Pause</button>
-      <button class="abtn gnss-t locked" id="btn-gnss" onclick="toggleOutage()">● GNSS Toggle</button>
-    </div>
-    <div class="actions" style="margin-top:8px;">
-      <button class="abtn sensor-btn" id="btn-sensor" onclick="openSensorModal()">◈ Enable Real IMU</button>
-      <button class="abtn" style="font-size:.58rem;" onclick="exportIMULog()">↓ Export IMU Log</button>
-    </div>
-
-    <div class="desktop-link">
-      <a href="index.html?desktop=1">↗ Open desktop view</a>
+    <!-- Icon action row -->
+    <div class="icon-row">
+      <button class="ibtn sensor-btn" id="btn-sensor" onclick="openSensorModal()">◈ Real IMU</button>
+      <button class="ibtn" onclick="exportIMULog()">↓ Export</button>
+      <a class="ibtn" href="index.html?desktop=1">↗ Desktop</a>
     </div>
   </div>
 </div>
@@ -720,24 +797,22 @@ async function requestSensorAccess(){
 function activateSensorMode(){
   // Update badges + chips
   const mb = document.getElementById('mode-b');
-  mb.textContent = 'LIVE IMU';
+  mb.textContent = '● IMU';
   mb.className = 'mode-badge badge-sensor';
-
-  const ic = document.getElementById('imu-chip');
-  ic.textContent = '◉ LIVE IMU';
-  ic.className = 'mod live-imu';
-
-  const sb = document.getElementById('btn-sensor');
-  sb.textContent = '◉ Real IMU Active';
-  sb.className = 'abtn sensor-btn active';
 
   // Show sensor strip
   document.getElementById('sensor-strip').classList.add('on');
 
   // In live mode: stop the route-following sim, use real IMU for position
   S.useLiveIMU = true;
+  const imuChip = document.getElementById('imu-chip');
+  if(imuChip){ imuChip.className='mg-chip live-imu'; }
+  const imuDot = document.getElementById('imu-dot');
+  if(imuDot){ imuDot.className='mg-dot ok'; imuDot.style.background='rgba(80,180,120,0.9)'; }
+  const btnSensor = document.getElementById('btn-sensor');
+  if(btnSensor){ btnSensor.className='ibtn sensor-btn active'; btnSensor.textContent='◉ Real IMU'; }
   S.run = true;
-  document.getElementById('btn-play').textContent = '⏸ Pause';
+  document.getElementById('btn-play').textContent = '⏸';
 }
 
 /* ── IMU CSV EXPORT ── */
@@ -781,12 +856,12 @@ function initMap(c){
     _map=L.map('map',{zoomControl:false,attributionControl:false});
     // OSM standard — light map, no API key, no watermark
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:''}).addTo(_map);
-    _gt=L.polyline([],{color:'#00d4cc',weight:2,opacity:.75}).addTo(_map);
-    _nd=L.polyline([],{color:'#9b72d8',weight:2.5,opacity:.8}).addTo(_map);
-    _imu=L.polyline([],{color:'rgba(160,60,60,0.7)',weight:1.5,dashArray:'6,4',opacity:.6}).addTo(_map);
-    _ekf=L.polyline([],{color:'rgba(180,140,60,0.7)',weight:1.5,opacity:.6}).addTo(_map);
-    _vm=L.marker([cfg.lat,cfg.lon],{icon:L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],
-      html:'<div style="width:12px;height:12px;border-radius:50%;background:rgba(200,210,205,0.85);border:1.5px solid rgba(139,26,26,0.6)"></div>'})}).addTo(_map);
+    _gt=L.polyline([],{color:'#00e5cc',weight:3.5,opacity:0.9}).addTo(_map);
+    _nd=L.polyline([],{color:'#b060ff',weight:4,opacity:1,className:'nd-line'}).addTo(_map);
+    _imu=L.polyline([],{color:'#ff5533',weight:2.5,dashArray:'5,4',opacity:0.75}).addTo(_map);
+    _ekf=L.polyline([],{color:'#e8a020',weight:2.5,opacity:0.75}).addTo(_map);
+    _vm=L.marker([cfg.lat,cfg.lon],{icon:L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],
+      html:'<div class="vm-dot"></div>'})}).addTo(_map);
     _uc=L.circle([cfg.lat,cfg.lon],{radius:5,color:'rgba(155,114,216,0.4)',fillColor:'rgba(155,114,216,0.1)',fillOpacity:.4,weight:1}).addTo(_map);
   } else {
     _gt.setLatLngs([]);_nd.setLatLngs([]);_imu.setLatLngs([]);_ekf.setLatLngs([]);
@@ -1039,7 +1114,9 @@ function step(){
     tb.textContent=S.inTunnel?'TUNNEL':'CLEAR';
     tb.className='tun-chip '+(S.inTunnel?'tunnel':'clear');
     const sc=document.getElementById('snap-chip');
-    sc.className='mod'+(S.snapN>0?'':' snap-off');
+    sc.className='mg-chip'+(S.snapN>0?'':' snap-off');
+    const sd = document.getElementById('snap-dot');
+    if(sd){ sd.className='mg-dot ok'; }
   }catch(e){}
 }
 
@@ -1075,12 +1152,12 @@ function reacq(){
 }
 function setBtnGnss(locked){
   const b=document.getElementById('btn-gnss');
-  b.textContent=locked?'● GNSS Toggle':'● Reacquire';
+  b.textContent=locked?'● GNSS':'● Reacq';
   b.className='abtn gnss-t'+(locked?' locked':'');
 }
 function toggleSim(){
   S.run=!S.run;
-  document.getElementById('btn-play').textContent=S.run?'⏸ Pause':'▶ Resume';
+  document.getElementById('btn-play').textContent=S.run?'⏸':'▶';
 }
 function toggleOutage(){S.gnss?triggerOut():reacq();}
 function switchCity(k,el){
