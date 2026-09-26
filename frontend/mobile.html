@@ -178,8 +178,51 @@
     .mbtn.cancel{background:transparent;color:var(--muted);border-color:var(--line);}
     .mbtn.grant{background:rgba(155,114,216,0.15);color:rgba(155,114,216,0.9);border-color:rgba(155,114,216,0.3);}
 
-    .desktop-link{text-align:center;margin-top:8px;}
+    .desktop-link{text-align:center;margin-top:10px;}
     .desktop-link a{font-size:.48rem;font-family:var(--mono);color:var(--muted);text-decoration:none;letter-spacing:.06em;}
+
+    /* GPS LOCATED TOAST */
+    .gps-toast{position:fixed;bottom:140px;left:50%;transform:translateX(-50%);
+      z-index:8000;background:rgba(5,7,10,0.96);border:1px solid rgba(95,186,149,0.5);
+      border-radius:6px;padding:9px 18px;display:flex;align-items:center;gap:9px;
+      font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;color:var(--bone-dim);
+      backdrop-filter:blur(14px);box-shadow:0 4px 24px rgba(0,0,0,0.5),0 0 0 1px rgba(95,186,149,0.08);
+      opacity:0;transition:opacity .4s;pointer-events:none;}
+    .gps-toast.show{opacity:1;}
+    .gps-toast-dot{width:7px;height:7px;border-radius:50%;background:rgba(95,186,149,0.9);
+      box-shadow:0 0 8px rgba(95,186,149,0.6);animation:gps-pulse 1.4s ease-in-out infinite;}
+    @keyframes gps-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.7}}
+
+    /* GPS STATUS PILL (replaces debug bar) */
+    #gps-status{position:fixed;bottom:0;left:0;right:0;z-index:9999;
+      background:rgba(5,7,10,0.97);border-top:1px solid var(--line);
+      padding:4px 14px;font-family:var(--mono);font-size:.52rem;letter-spacing:.04em;
+      color:var(--muted);display:none;pointer-events:none;
+      display:flex;align-items:center;gap:7px;}
+    #gps-status-dot{width:5px;height:5px;border-radius:50%;background:rgba(184,144,64,0.7);flex-shrink:0;}
+    #gps-status-dot.ok{background:rgba(95,186,149,0.85);}
+    #gps-status-dot.err{background:rgba(192,64,64,0.85);}
+    #gps-status-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+    /* MET CARD ACCENT */
+    .met{background:rgba(8,12,16,0.9);border:1px solid var(--line);border-radius:4px;
+      padding:9px 5px;text-align:center;position:relative;overflow:hidden;}
+    .met::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:currentColor;opacity:.25;}
+    .met-nd::before{background:rgba(0,210,200,1);}
+    .met-ekf::before{background:rgba(155,114,216,1);}
+    .met-unc::before{background:rgba(180,140,60,1);}
+    .met-spd::before{background:rgba(95,186,149,1);}
+    .met-l{font-size:.41rem;font-family:var(--mono);color:var(--muted);
+      text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+    .met-v{font-size:.8rem;font-weight:600;font-family:var(--mono);}
+
+    /* SHEET POLISH */
+    .sheet{background:rgba(5,7,10,0.98);border-top:1px solid rgba(223,231,224,0.12);
+      backdrop-filter:blur(28px);flex-shrink:0;padding:11px 14px 16px;}
+
+    /* STAT BOX POLISH */
+    .stat-box{flex:1;background:rgba(8,12,16,0.85);border:1px solid var(--line);
+      border-radius:4px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;}
   </style>
 </head>
 <body>
@@ -286,21 +329,21 @@
     </div>
 
     <div class="metrics">
-      <div class="met">
+      <div class="met met-nd">
         <div class="met-l">ND-0 ATE</div>
-        <div class="met-v" id="v-nd" style="color:rgba(0,200,190,0.7)">—</div>
+        <div class="met-v" id="v-nd" style="color:rgba(0,210,200,0.8)">—</div>
       </div>
-      <div class="met">
+      <div class="met met-ekf">
         <div class="met-l">EKF ATE</div>
-        <div class="met-v" id="v-ekf" style="color:rgba(155,114,216,0.7)">—</div>
+        <div class="met-v" id="v-ekf" style="color:rgba(155,114,216,0.85)">—</div>
       </div>
-      <div class="met">
+      <div class="met met-unc">
         <div class="met-l">Uncert σ</div>
-        <div class="met-v" id="v-unc" style="color:rgba(180,140,60,0.7)">—</div>
+        <div class="met-v" id="v-unc" style="color:rgba(180,140,60,0.8)">—</div>
       </div>
-      <div class="met">
+      <div class="met met-spd">
         <div class="met-l">Speed</div>
-        <div class="met-v" id="v-spd" style="color:rgba(95,186,149,0.7)">—</div>
+        <div class="met-v" id="v-spd" style="color:rgba(95,186,149,0.85)">—</div>
       </div>
     </div>
 
@@ -337,6 +380,18 @@
       <a href="index.html?desktop=1">↗ Open desktop view</a>
     </div>
   </div>
+</div>
+
+<!-- GPS STATUS BAR -->
+<div id="gps-status" style="display:none">
+  <div id="gps-status-dot"></div>
+  <span id="gps-status-text">Requesting location…</span>
+</div>
+
+<!-- GPS LOCATED TOAST (shown on first fix) -->
+<div class="gps-toast" id="gps-located-toast">
+  <div class="gps-toast-dot"></div>
+  <span>GPS located · zooming in</span>
 </div>
 
 <!-- SENSOR PERMISSION MODAL -->
@@ -1080,16 +1135,17 @@ function startLiveGPS(){
     return;
   }
 
-  // Debug bar at bottom
-  let dbg = document.getElementById('gps-dbg');
+  // Elegant status bar at bottom
+  let dbg = document.getElementById('gps-status');
   if(!dbg){
     dbg = document.createElement('div');
-    dbg.id = 'gps-dbg';
-    dbg.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(5,7,10,0.96);color:#5fba95;font-family:monospace;font-size:10px;padding:5px 10px;border-top:1px solid rgba(95,186,149,0.3);pointer-events:none;letter-spacing:.03em;';
+    dbg.id = 'gps-status';
+    dbg.innerHTML = '<div id="gps-status-dot"></div><span id="gps-status-text">Requesting location…</span>';
     document.body.appendChild(dbg);
   }
-  dbg.style.color = '#5fba95';
-  dbg.textContent = 'GPS: requesting permission…';
+  dbg.style.display = 'flex';
+  document.getElementById('gps-status-dot').className = '';
+  document.getElementById('gps-status-text').textContent = 'Requesting location…';
 
   function onFix(pos){
     const lat = pos.coords.latitude;
@@ -1098,8 +1154,10 @@ function startLiveGPS(){
     GPS.lat = lat; GPS.lon = lon; GPS.acc = acc;
     GPS.lastLat = lat; GPS.lastLon = lon;
 
-    dbg.style.color = '#5fba95';
-    dbg.textContent = `◉ GPS  ${lat.toFixed(5)}°N  ${lon.toFixed(5)}°E  ±${acc.toFixed(0)}m`;
+    const sdot = document.getElementById('gps-status-dot');
+    const stxt = document.getElementById('gps-status-text');
+    if(sdot) sdot.className = 'ok';
+    if(stxt) stxt.textContent = `◉  ${lat.toFixed(5)}°N  ${lon.toFixed(5)}°E  ±${acc.toFixed(0)}m`;
 
     if(!GPS.active){
       GPS.active = true;
@@ -1117,7 +1175,24 @@ function startLiveGPS(){
       if(_gt)_gt.setLatLngs([]);if(_nd)_nd.setLatLngs([]);
       if(_imu)_imu.setLatLngs([]);if(_ekf)_ekf.setLatLngs([]);
       GPS.zoomed = false;
-      if(_map){ _map.flyTo([lat, lon], 18, {duration:1.8}); setTimeout(()=>{GPS.zoomed=true;},2000); }
+      // AUTO-ZOOM: fly to user's real location on first fix
+      if(_map){
+        _map.flyTo([lat, lon], 17, {duration:1.5, easeLinearity:0.35});
+        setTimeout(()=>{ GPS.zoomed=true; }, 1800);
+      }
+      // Show "GPS Located" toast
+      (function(){
+        let t = document.getElementById('gps-located-toast');
+        if(!t){
+          t = document.createElement('div');
+          t.id = 'gps-located-toast';
+          t.className = 'gps-toast';
+          t.innerHTML = '<div class="gps-toast-dot"></div><span>GPS located · zooming in</span>';
+          document.body.appendChild(t);
+        }
+        setTimeout(()=>t.classList.add('show'),50);
+        setTimeout(()=>{ t.classList.remove('show'); },3500);
+      })();
       setBtnGnss(true);
       try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){}
       // Show IMU prompt banner if not yet enabled (user must tap it for iOS gesture)
@@ -1158,9 +1233,11 @@ function startLiveGPS(){
   }
 
   function onErr(err){
-    const msgs = {1:'Location denied — go to Settings > Safari > Location > Allow',2:'Position unavailable — check GPS signal',3:'Timed out — retrying…'};
-    dbg.style.color = '#c04040';
-    dbg.textContent = `⚠ ${msgs[err.code] || err.message}`;
+    const msgs = {1:'Location denied — Settings > Safari > Location > Allow',2:'Position unavailable — check GPS signal',3:'Timed out — retrying…'};
+    const sdot2 = document.getElementById('gps-status-dot');
+    const stxt2 = document.getElementById('gps-status-text');
+    if(sdot2) sdot2.className = 'err';
+    if(stxt2) stxt2.textContent = `⚠ ${msgs[err.code] || err.message}`;
     const lb = document.getElementById('btn-livegps');
     lb.textContent = err.code===1 ? '✗ Denied' : '⟳ Retrying…';
     lb.style.color = err.code===1 ? 'rgba(192,64,64,0.9)' : 'rgba(184,144,64,0.9)';
