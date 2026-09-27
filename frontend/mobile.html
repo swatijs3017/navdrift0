@@ -1727,12 +1727,113 @@ function addOverlayLayers(){
   _gtm=new maplibregl.Marker({element:gtEl,anchor:'center'}).setLngLat([CITIES[S.city||'delhi'].lon,CITIES[S.city||'delhi'].lat]).addTo(_map);
 }
 
-function initMap(c){
+/* ── MAP NETWORK RESILIENCE ──────────────────────────────────────────────────
+   Root cause of "map is white on mobile data, fine on Wi-Fi": MapLibre's style/tile/sprite/
+   glyph requests all go to a single host (tiles.openfreemap.org), and this file previously had
+   ZERO error or retry handling around that — no `_map.on('error', ...)`, no load-timeout, no
+   reconnect logic. This section fixes exactly that, against the SAME single provider/style —
+   the approved OpenFreeMap Liberty style is never swapped for anything else. There is
+   deliberately no second map provider here: a demo/test endpoint would risk a different visual
+   appearance for reviewers, which is explicitly not acceptable, and no other production-suitable
+   provider was adopted without evidence it's actually needed (see the report given alongside
+   this change for why a same-provider retry is the correct fix here, not a provider swap).
+
+   What actually fails, and what MapLibre's 'error' event tells us about which:
+     (B) STYLE JSON fetch fails/hangs  → 'load' never fires, e.error has no sourceId  → blocks
+         the ENTIRE map, since nothing can initialize without the style document.
+     (C) SPRITE/GLYPH fetch fails      → same style.load promise chain, same blocking effect —
+         MapLibre does not partially initialize a style missing its sprite/glyphs.
+     (D) An individual VECTOR TILE fails → 'error' fires with e.sourceId set, AFTER 'load' has
+         already happened. This is low-impact and self-healing by design: MapLibre already
+         re-requests that one tile the next time it's needed (pan/zoom), so no other tiles or
+         the map as a whole are affected — no rebuild needed for an isolated miss.
+     (A) Map initialization itself throwing synchronously (bad container, WebGL unavailable) —
+         would surface as an exception from `new maplibregl.Map(...)`, not an 'error' event;
+         guarded below too.
+     (E) Network/DNS/TLS failure and (F) a Wi-Fi↔cellular transition are not directly observable
+         from inside the page (no packet-level access) — they surface AS (B)/(C)/(D) above, or
+         as 'load' simply never firing at all (a hung request, which is why a load-timeout
+         watchdog exists independent of the 'error' event).
+   Recovery strategy: retry the SAME style with backoff for a (B)/(C)-class failure or a load
+   timeout; for (D)-class post-load tile failures, only act if several arrive in a short window
+   (a real sign of a connectivity disruption, not a single normal cache miss), and even then just
+   rebuild against the SAME style, debounced; always retry immediately on 'online', and stop
+   retrying (rather than loop pointlessly) while the browser reports itself offline. Nothing here
+   touches GPS, IMU, EKF, ONNX, or the OSM road graph, and no page reload ever happens — only the
+   map object itself is ever torn down and recreated, against the one approved style. */
+const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'; // unchanged — the one approved production style
+const MAP_LOAD_TIMEOUT_MS = 9000;
+const MAP_RETRY_DELAYS_MS = [2000,4000,8000,15000,30000]; // caps out at 30s and keeps retrying at that interval — never switches provider
+const MAP_TILE_ERROR_WINDOW_MS = 10000, MAP_TILE_ERROR_THRESHOLD = 5; // 5+ tile errors within 10s post-load = treat as a real disruption
+const MAP_REBUILD_DEBOUNCE_MS = 5000; // don't rebuild more than once every 5s, however many triggers fire
+let _mapRetryAttempt=0, _mapLoadTimer=null, _mapRetryTimer=null, _pendingCityKey='delhi';
+let _mapTileErrorTimes=[], _lastMapRebuildAt=0;
+
+function _clearMapTimers(){
+  if(_mapLoadTimer){clearTimeout(_mapLoadTimer);_mapLoadTimer=null;}
+  if(_mapRetryTimer){clearTimeout(_mapRetryTimer);_mapRetryTimer=null;}
+}
+function _scheduleMapRetry(reason){
+  _clearMapTimers();
+  if(navigator.onLine===false){
+    // The browser itself reports no connection at all. Retrying against a network that's
+    // genuinely down just burns battery/CPU in a loop that cannot succeed — wait for the
+    // 'online' event instead, which fires the moment connectivity actually returns.
+    console.warn('[Map] '+reason+' — browser reports offline, waiting for reconnection instead of retrying blindly');
+    return;
+  }
+  const idx=Math.min(_mapRetryAttempt,MAP_RETRY_DELAYS_MS.length-1), delay=MAP_RETRY_DELAYS_MS[idx];
+  console.warn('[Map] '+reason+' — retrying same style in '+(delay/1000)+'s (attempt '+(_mapRetryAttempt+1)+')');
+  _mapRetryTimer=setTimeout(()=>{
+    _mapRetryAttempt++;
+    _rebuildMap();
+  },delay);
+}
+function _rebuildMap(){
+  const now=performance.now();
+  if(now-_lastMapRebuildAt < MAP_REBUILD_DEBOUNCE_MS) return; // debounced — a burst of triggers rebuilds only once
+  _lastMapRebuildAt=now;
+  _clearMapTimers();
+  _mapTileErrorTimes=[];
+  try{ if(_map) _map.remove(); }catch(e){}
+  _map=null; _mapReady=false;
+  _createMap(_pendingCityKey);
+}
+// Retry immediately the instant the browser reports connectivity is back — covers a Wi-Fi<->
+// cellular handoff or a full signal-loss-then-recovery, whether or not the map ever finished
+// loading in the first place (a post-load session can just as easily need this after a handoff).
+window.addEventListener('online', ()=>{
+  // Only rebuild if the map is actually in a failed/loading/recovery state, or shows real
+  // evidence of a network failure (a recent tile-error burst). A healthy, already-loaded map
+  // has nothing to recover from — tearing it down and recreating it on every 'online' event
+  // (which can fire on minor connectivity blips, not just a real Wi-Fi<->cellular handoff) would
+  // be an unnecessary rebuild of a map that was never actually broken.
+  const now=performance.now();
+  _mapTileErrorTimes=_mapTileErrorTimes.filter(t=>now-t<MAP_TILE_ERROR_WINDOW_MS);
+  const hasEvidenceOfFailure = !_mapReady || _mapTileErrorTimes.length>0;
+  if(hasEvidenceOfFailure){
+    console.log('[Map] network back online — map was in a failed/recovery state, rebuilding now');
+    _mapRetryAttempt=0; // fresh connectivity: start the backoff over from the short end
+    _rebuildMap();
+  } else {
+    // Map is healthy — just clear any stale recovery bookkeeping and leave it untouched.
+    console.log('[Map] network back online — map is already healthy, leaving it as-is');
+    _clearMapTimers();
+    _mapRetryAttempt=0;
+    _mapTileErrorTimes=[];
+  }
+});
+window.addEventListener('offline', ()=>{
+  console.warn('[Map] browser reports offline — pausing map retries until reconnection');
+  _clearMapTimers();
+});
+
+function _createMap(c){
   const cfg=CITIES[c];
-  if(!_map){
+  try{
     _map=new maplibregl.Map({
       container:'map',
-      style:'https://tiles.openfreemap.org/styles/liberty',
+      style:MAP_STYLE_URL,
       center:[cfg.lon,cfg.lat],
       zoom:cfg.zoom,
       attributionControl:false,
@@ -1745,28 +1846,85 @@ function initMap(c){
       touchZoomRotate:true,
       scrollZoom:{around:'center'}
     });
-    /* ── gesture tracking ─────────────────────────────────────────────────────
-       _userPanned: true for 4 s after any user-initiated move/zoom.
-       Blocks vehicle-follow jumpTo so it cannot fight an ongoing gesture.
-       e.originalEvent is present only on user gestures, absent on our jumpTo.  */
-    let _gpTimer=null;
-    function _markUserGesture(){
-      _mapMoving=true;_mapZooming=true;
-      clearTimeout(_gpTimer);
-      _gpTimer=setTimeout(()=>{_mapMoving=false;_mapZooming=false;},4000);
+  }catch(e){
+    // (A) Map initialization itself throwing synchronously — bad container, WebGL truly
+    // unavailable, etc. Real and distinct from a network-fetch failure; still recovered the
+    // same way (retry), since a transient WebGL-context problem on some devices can clear too.
+    console.warn('[Map] (A) map initialization threw synchronously:', e && e.message ? e.message : e);
+    _scheduleMapRetry('(A) map init exception');
+    return;
+  }
+  /* ── gesture tracking ─────────────────────────────────────────────────────
+     _userPanned: true for 4 s after any user-initiated move/zoom.
+     Blocks vehicle-follow jumpTo so it cannot fight an ongoing gesture.
+     e.originalEvent is present only on user gestures, absent on our jumpTo.  */
+  let _gpTimer=null;
+  function _markUserGesture(){
+    _mapMoving=true;_mapZooming=true;
+    clearTimeout(_gpTimer);
+    _gpTimer=setTimeout(()=>{_mapMoving=false;_mapZooming=false;},4000);
+  }
+  _map.on('movestart', e=>{if(e.originalEvent)_markUserGesture();});
+  _map.on('zoomstart',e=>{if(e.originalEvent)_markUserGesture();});
+  _map.on('moveend', ()=>{/* flags cleared by timer only */});
+  _map.on('zoomend',()=>{});
+  _map.on('error', (e)=>{
+    const msg = e && e.error ? e.error.message : String(e);
+    if(!_mapReady){
+      // Before the first successful load, ANY error here is functionally a (B) style-JSON or
+      // (C) sprite/glyph failure — MapLibre does not partially initialize a style, so whichever
+      // sub-request failed, the effect is the same: 'load' will never fire on its own.
+      console.warn('[Map] (B/C) style/sprite/glyph error before first load:', msg);
+      _scheduleMapRetry('(B/C) pre-load style/sprite/glyph error');
+      return;
     }
-    _map.on('movestart', e=>{if(e.originalEvent)_markUserGesture();});
-    _map.on('zoomstart',e=>{if(e.originalEvent)_markUserGesture();});
-    _map.on('moveend', ()=>{/* flags cleared by timer only */});
-    _map.on('zoomend',()=>{});
-    _map.on('load',()=>{
-      _mapReady=true;
-      addOverlayLayers();
-      _applyTheme(_mapMode);
-      const lb=document.getElementById('mm-light'),db=document.getElementById('mm-dark');
-      if(lb)lb.classList.toggle('active',_mapMode==='light');
-      if(db)db.classList.toggle('active',_mapMode==='dark');
-    });
+    if(e.sourceId){
+      // (D) An individual vector-tile request failed AFTER the map already loaded successfully.
+      // Low-impact by design — MapLibre re-requests that one tile itself the next time it's
+      // needed (pan/zoom) — so a single occurrence is not acted on. Only a genuine burst (several
+      // within a short window) is treated as a real connectivity disruption worth recovering
+      // from, rather than rebuilding the map over one normal cache miss.
+      const now=performance.now();
+      _mapTileErrorTimes.push(now);
+      _mapTileErrorTimes=_mapTileErrorTimes.filter(t=>now-t<MAP_TILE_ERROR_WINDOW_MS);
+      console.warn('[Map] (D) post-load tile error ('+_mapTileErrorTimes.length+' in the last '+(MAP_TILE_ERROR_WINDOW_MS/1000)+'s):', msg);
+      if(_mapTileErrorTimes.length>=MAP_TILE_ERROR_THRESHOLD){
+        console.warn('[Map] tile-error burst crossed threshold — treating as a real network disruption');
+        _rebuildMap();
+      }
+    } else {
+      console.warn('[Map] post-load error with no sourceId (not a tile request):', msg);
+    }
+  });
+  _map.on('load',()=>{
+    _clearMapTimers();
+    _mapRetryAttempt=0; // this style genuinely loaded — reset backoff for any future failure
+    _mapTileErrorTimes=[];
+    _mapReady=true;
+    addOverlayLayers();
+    _applyTheme(_mapMode);
+    const lb=document.getElementById('mm-light'),db=document.getElementById('mm-dark');
+    if(lb)lb.classList.toggle('active',_mapMode==='light');
+    if(db)db.classList.toggle('active',_mapMode==='dark');
+  });
+  // Load-timeout watchdog: MapLibre does not fire 'error' for every failure mode — a request
+  // that hangs rather than rejecting outright (a real behavior on some restrictive cellular
+  // paths, and exactly what a (E) network/DNS/TLS failure or (F) mid-load network-transition
+  // looks like from inside the page — there is no lower-level signal available here) never
+  // fires 'error' at all. If 'load' hasn't fired within this window, treat it as failed too, so
+  // a hung request can't leave the map blank forever either.
+  _mapLoadTimer=setTimeout(()=>{
+    if(!_mapReady){
+      _scheduleMapRetry('(E/F) style load timed out after '+(MAP_LOAD_TIMEOUT_MS/1000)+'s (no error event, no load event — consistent with a hung network/DNS/TLS request or a transition mid-fetch)');
+    }
+  },MAP_LOAD_TIMEOUT_MS);
+}
+
+function initMap(c){
+  const cfg=CITIES[c];
+  _pendingCityKey=c;
+  if(!_map){
+    _createMap(c);
   } else {
     _gtC=[];_ndC=[];_imuC=[];_ekfC=[];
     _srcData('gt',_emptyLine());_srcData('nd',_emptyLine());
