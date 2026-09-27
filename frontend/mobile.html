@@ -13,8 +13,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <style>
     :root {
       --ink:#020507; --ink-2:#05080d;
@@ -39,9 +39,11 @@
 
     /* ── MAP CONTAINER (always full screen) ── */
     .map-container{position:fixed;inset:0;z-index:1;}
-    #map{width:100%;height:100%;background:#a8c8e8;}
-    .leaflet-container{background:#a8c8e8!important;}
-    .leaflet-tile-container{will-change:transform;}
+    #map{width:100%;height:100%;background:#1a3f6e;}
+    .maplibregl-canvas{will-change:transform;}
+    .maplibregl-ctrl-attrib,.maplibregl-ctrl-logo{display:none!important;}
+    /* suppress maplibre default marker/popup we don't use */
+    .maplibregl-marker{transition:none!important;}
 
     /* GNSS blackout overlay */
     #ob{position:absolute;top:0;left:0;right:0;z-index:600;
@@ -899,32 +901,130 @@ function ekfStep(spd,dh,dt,gps,gla,glo){
 }
 
 const DT=0.067;
-let _map,_gt,_nd,_imu,_ekf,_vm,_uc,_mapMoving=false,_mapZooming=false;
+let _map,_mapReady=false,_gtC=[],_ndC=[],_imuC=[],_ekfC=[],_vm,_mapMoving=false,_mapZooming=false;
+
+function _emptyLine(){return{type:'Feature',geometry:{type:'LineString',coordinates:[]}};}
+function _geoCircle(lat,lon,rM,n=32){
+  const pts=[];
+  for(let i=0;i<=n;i++){const a=(i/n)*2*Math.PI;pts.push([lon+(rM/(111000*Math.cos(lat*Math.PI/180)))*Math.sin(a),lat+(rM/111000)*Math.cos(a)]);}
+  return{type:'Feature',geometry:{type:'Polygon',coordinates:[pts]}};
+}
+function _srcData(id,data){if(_mapReady&&_map&&_map.getSource(id))_map.getSource(id).setData(data);}
+
+function applyAppleMapsStyle(){
+  const style=_map.getStyle();
+  for(const L of style.layers){
+    const sl=L['source-layer'];const t=L.type;
+    /* ── BACKGROUND ── */
+    if(L.id==='background'){_map.setPaintProperty(L.id,'background-color','#4d7555');continue;}
+    /* ── WATER ── */
+    if(sl==='water'&&t==='fill'){_map.setPaintProperty(L.id,'fill-color','#1a3f6e');_map.setPaintProperty(L.id,'fill-opacity',1);continue;}
+    if(sl==='waterway'&&t==='line'){_map.setPaintProperty(L.id,'line-color','#2156a0');_map.setPaintProperty(L.id,'line-opacity',0.8);continue;}
+    /* ── LANDCOVER / VEGETATION ── */
+    if(sl==='landcover'&&t==='fill'){
+      const expr=['match',['get','class'],'grass','#5a8548','scrub','#527a40','wood','#3d6b35','wetland','#4a7a60','ice','#d0e8f8','#4d7555'];
+      _map.setPaintProperty(L.id,'fill-color',expr);_map.setPaintProperty(L.id,'fill-opacity',0.7);continue;
+    }
+    /* ── LANDUSE ── */
+    if(sl==='landuse'&&t==='fill'){
+      const expr=['match',['get','class'],'residential','#4a6550','industrial','#4a5e4a','commercial','#4a5e4a','retail','#4a5e4a','park','#3d6b35','cemetery','#4a6040','hospital','#4a6050','school','#4a6050','#4d7555'];
+      _map.setPaintProperty(L.id,'fill-color',expr);_map.setPaintProperty(L.id,'fill-opacity',0.55);continue;
+    }
+    /* ── PARKS / NATURE ── */
+    if(sl==='park'&&t==='fill'){_map.setPaintProperty(L.id,'fill-color','#3d6b35');_map.setPaintProperty(L.id,'fill-opacity',0.65);continue;}
+    /* ── BUILDINGS ── */
+    if(sl==='building'&&t==='fill'){_map.setPaintProperty(L.id,'fill-color','#4a6050');_map.setPaintProperty(L.id,'fill-opacity',0.5);continue;}
+    /* ── ADMINISTRATIVE BORDERS ── */
+    if(sl==='boundary'&&t==='line'){
+      const isCountry=L.id.includes('2')||L.id.includes('country');
+      _map.setPaintProperty(L.id,'line-color',isCountry?'rgba(200,170,110,0.5)':'rgba(170,140,80,0.3)');
+      _map.setPaintProperty(L.id,'line-width',isCountry?0.8:0.4);
+      _map.setPaintProperty(L.id,'line-opacity',isCountry?0.7:0.4);
+      continue;
+    }
+    /* ── ROADS ── */
+    if(sl==='transportation'&&t==='line'){
+      const cls=L.id;
+      if(cls.includes('motorway')||cls.includes('trunk')){
+        _map.setPaintProperty(L.id,'line-color','#8a7a5a');_map.setPaintProperty(L.id,'line-opacity',0.7);_map.setPaintProperty(L.id,'line-width',1.2);
+      } else if(cls.includes('primary')){
+        _map.setPaintProperty(L.id,'line-color','#7a6a4a');_map.setPaintProperty(L.id,'line-opacity',0.55);_map.setPaintProperty(L.id,'line-width',0.9);
+      } else if(cls.includes('secondary')){
+        _map.setPaintProperty(L.id,'line-color','#6a5a3a');_map.setPaintProperty(L.id,'line-opacity',0.4);_map.setPaintProperty(L.id,'line-width',0.7);
+      } else {
+        _map.setPaintProperty(L.id,'line-color','#5a4a2a');_map.setPaintProperty(L.id,'line-opacity',0.25);_map.setPaintProperty(L.id,'line-width',0.5);
+      }
+      continue;
+    }
+    /* ── LABELS: COUNTRY ── */
+    if(sl==='place'&&t==='symbol'){
+      const cl=L.id;
+      if(cl.includes('country')||cl.includes('continent')){
+        _map.setPaintProperty(L.id,'text-color','#f5f0e8');_map.setPaintProperty(L.id,'text-halo-color','rgba(26,63,110,0.4)');_map.setPaintProperty(L.id,'text-halo-width',1.2);
+      } else if(cl.includes('state')||cl.includes('region')){
+        _map.setPaintProperty(L.id,'text-color','rgba(235,230,220,0.8)');_map.setPaintProperty(L.id,'text-halo-color','rgba(26,63,110,0.3)');_map.setPaintProperty(L.id,'text-halo-width',0.8);
+      } else if(cl.includes('city')||cl.includes('capital')){
+        _map.setPaintProperty(L.id,'text-color','#ede8e0');_map.setPaintProperty(L.id,'text-halo-color','rgba(30,55,40,0.6)');_map.setPaintProperty(L.id,'text-halo-width',1.0);
+      } else {
+        _map.setPaintProperty(L.id,'text-color','rgba(220,215,205,0.85)');_map.setPaintProperty(L.id,'text-halo-color','rgba(30,55,40,0.5)');_map.setPaintProperty(L.id,'text-halo-width',0.7);
+      }
+      continue;
+    }
+    /* ── WATER LABELS ── */
+    if(sl==='water_name'&&t==='symbol'){
+      _map.setPaintProperty(L.id,'text-color','rgba(160,185,220,0.72)');_map.setPaintProperty(L.id,'text-halo-color','rgba(26,63,110,0.3)');_map.setPaintProperty(L.id,'text-halo-width',0.5);
+      continue;
+    }
+  }
+}
+
+function addOverlayLayers(){
+  const src={type:'geojson',data:_emptyLine()};
+  _map.addSource('gt',{...src});_map.addSource('nd',{...src});
+  _map.addSource('imu',{...src});_map.addSource('ekf',{...src});
+  _map.addSource('unc',{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[[]]}}});
+  _map.addLayer({id:'gt-l',type:'line',source:'gt',paint:{'line-color':'#00d4cc','line-width':2,'line-opacity':0.78}});
+  _map.addLayer({id:'nd-l',type:'line',source:'nd',paint:{'line-color':'#9b72d8','line-width':2.5,'line-opacity':0.82}});
+  _map.addLayer({id:'imu-l',type:'line',source:'imu',paint:{'line-color':'rgba(180,70,70,0.72)','line-width':1.4,'line-opacity':0.6,'line-dasharray':[5,3]}});
+  _map.addLayer({id:'ekf-l',type:'line',source:'ekf',paint:{'line-color':'rgba(200,160,70,0.72)','line-width':1.4,'line-opacity':0.6}});
+  _map.addLayer({id:'unc-l',type:'fill',source:'unc',paint:{'fill-color':'rgba(155,114,216,0.08)','fill-outline-color':'rgba(155,114,216,0.35)'}});
+  /* Vehicle marker */
+  const vmEl=document.createElement('div');
+  vmEl.innerHTML='<div id="vm-inner" style="width:24px;height:24px;transition:transform 0.25s ease;transform-origin:center center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><polygon points="12,3 17,19 12,15 7,19" fill="#00d4c4" opacity="0.95"/><circle cx="12" cy="12" r="3" fill="rgba(3,6,9,0.9)"/><circle cx="12" cy="12" r="1.8" fill="#00d4c4"/></svg></div>';
+  _vm=new maplibregl.Marker({element:vmEl,anchor:'center'}).setLngLat([CITIES[S.city||'delhi'].lon,CITIES[S.city||'delhi'].lat]).addTo(_map);
+}
 
 function initMap(c){
   const cfg=CITIES[c];
   if(!_map){
-    _map=L.map('map',{zoomControl:false,attributionControl:false,zoomAnimation:true,markerZoomAnimation:true,fadeAnimation:true});
-    _map.on('dragstart',()=>{_mapMoving=true;});
-    _map.on('dragend',()=>{_mapMoving=false;});
+    _map=new maplibregl.Map({
+      container:'map',
+      style:'https://tiles.openfreemap.org/styles/liberty',
+      center:[cfg.lon,cfg.lat],
+      zoom:cfg.zoom,
+      attributionControl:false,
+      logoPosition:'bottom-right',
+      dragRotate:false,
+      pitchWithRotate:false,
+      maxPitch:0
+    });
+    _map.on('movestart',()=>{_mapMoving=true;});
+    _map.on('moveend',()=>{_mapMoving=false;});
     _map.on('zoomstart',()=>{_mapZooming=true;});
     _map.on('zoomend',()=>{_mapZooming=false;});
-    // OSM standard — light map, no API key, no watermark
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'',keepBuffer:6,updateWhenZooming:false,updateWhenIdle:false}).addTo(_map);
-    _gt=L.polyline([],{color:'#00d4cc',weight:2,opacity:.75}).addTo(_map);
-    _nd=L.polyline([],{color:'#9b72d8',weight:2.5,opacity:.8}).addTo(_map);
-    _imu=L.polyline([],{color:'rgba(160,60,60,0.7)',weight:1.5,dashArray:'6,4',opacity:.6}).addTo(_map);
-    _ekf=L.polyline([],{color:'rgba(180,140,60,0.7)',weight:1.5,opacity:.6}).addTo(_map);
-    _vm=L.marker([cfg.lat,cfg.lon],{icon:L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],
-      html:'<div id="vm-inner" style="width:24px;height:24px;transition:transform 0.25s ease;transform-origin:center center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><polygon points="12,3 17,19 12,15 7,19" fill="#00d4c4" opacity="0.95"/><circle cx="12" cy="12" r="3" fill="rgba(3,6,9,0.9)"/><circle cx="12" cy="12" r="1.8" fill="#00d4c4"/></svg></div>'})}).addTo(_map);
-    _uc=L.circle([cfg.lat,cfg.lon],{radius:5,color:'rgba(155,114,216,0.4)',fillColor:'rgba(155,114,216,0.1)',fillOpacity:.4,weight:1}).addTo(_map);
+    _map.on('load',()=>{
+      applyAppleMapsStyle();
+      addOverlayLayers();
+      _mapReady=true;
+    });
   } else {
-    _gt.setLatLngs([]);_nd.setLatLngs([]);_imu.setLatLngs([]);_ekf.setLatLngs([]);
-    _vm.setLatLng([cfg.lat,cfg.lon]);_uc.setLatLng([cfg.lat,cfg.lon]);
+    _gtC=[];_ndC=[];_imuC=[];_ekfC=[];
+    _srcData('gt',_emptyLine());_srcData('nd',_emptyLine());
+    _srcData('imu',_emptyLine());_srcData('ekf',_emptyLine());
+    if(_vm)_vm.setLngLat([cfg.lon,cfg.lat]);
   }
-  // Only set city view when in sim mode; in live mode GPS overrides
-  if(GPS && GPS.simMode) _map.setView([cfg.lat,cfg.lon],cfg.zoom,{animate:false});
-  else if(!GPS || !GPS.active) _map.setView([20.5937,78.9629],5,{animate:false}); // India overview
+  if(GPS&&GPS.simMode) setTimeout(()=>{if(_map)_map.jumpTo({center:[cfg.lon,cfg.lat],zoom:cfg.zoom});},_mapReady?0:1200);
+  else if(!GPS||!GPS.active) setTimeout(()=>{if(_map)_map.jumpTo({center:[78.9629,20.5937],zoom:5});},_mapReady?0:1200);
 }
 
 function init(key){
@@ -991,15 +1091,19 @@ function step(){
     }
 
     // Map + metrics update
-    if(_map){
-      _gt.addLatLng([S.gtLa,S.gtLo]);_nd.addLatLng([S.ndLa,S.ndLo]);
-      _imu.addLatLng([S.iLa,S.iLo]);_ekf.addLatLng([EKF.x,EKF.y]);
-      _vm.setLatLng([S.ndLa,S.ndLo]);_uc.setLatLng([S.ndLa,S.ndLo]);
+    if(_map&&_mapReady){
+      _gtC.push([S.gtLo,S.gtLa]);_ndC.push([S.ndLo,S.ndLa]);
+      _imuC.push([S.iLo,S.iLa]);_ekfC.push([EKF.y,EKF.x]);
+      if(_gtC.length>2)_srcData('gt',{type:'Feature',geometry:{type:'LineString',coordinates:_gtC}});
+      if(_ndC.length>2)_srcData('nd',{type:'Feature',geometry:{type:'LineString',coordinates:_ndC}});
+      if(_imuC.length>2)_srcData('imu',{type:'Feature',geometry:{type:'LineString',coordinates:_imuC}});
+      if(_ekfC.length>2)_srcData('ekf',{type:'Feature',geometry:{type:'LineString',coordinates:_ekfC}});
+      _srcData('unc',_geoCircle(S.ndLa,S.ndLo,Math.max(4,S.unc)));
+      if(_vm)_vm.setLngLat([S.ndLo,S.ndLa]);
       const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(S.gtH*180/Math.PI)+'deg)';
-      _uc.setRadius(Math.max(4,S.unc));
-      if(GPS.zoomed && !_mapMoving && !_mapZooming){
-        if(S.gnss) _map.setView([S.gtLa,S.gtLo],_map.getZoom(),{animate:false,duration:0});
-        else _map.setView([S.ndLa,S.ndLo],_map.getZoom(),{animate:false,duration:0});
+      if(GPS.zoomed&&!_mapMoving&&!_mapZooming){
+        const ctr=S.gnss?[S.gtLo,S.gtLa]:[S.ndLo,S.ndLa];
+        _map.jumpTo({center:ctr,zoom:_map.getZoom()});
       }
     }
     const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.totND+=eND;S.n++;
@@ -1152,13 +1256,17 @@ function step(){
   }
 
   // Map update
-  if(_map){
-    _gt.addLatLng([S.gtLa,S.gtLo]);_nd.addLatLng([S.ndLa,S.ndLo]);
-    _imu.addLatLng([S.iLa,S.iLo]);_ekf.addLatLng([EKF.x,EKF.y]);
-    _vm.setLatLng([S.ndLa,S.ndLo]);_uc.setLatLng([S.ndLa,S.ndLo]);
+  if(_map&&_mapReady){
+    _gtC.push([S.gtLo,S.gtLa]);_ndC.push([S.ndLo,S.ndLa]);
+    _imuC.push([S.iLo,S.iLa]);_ekfC.push([EKF.y,EKF.x]);
+    if(_gtC.length>2)_srcData('gt',{type:'Feature',geometry:{type:'LineString',coordinates:_gtC}});
+    if(_ndC.length>2)_srcData('nd',{type:'Feature',geometry:{type:'LineString',coordinates:_ndC}});
+    if(_imuC.length>2)_srcData('imu',{type:'Feature',geometry:{type:'LineString',coordinates:_imuC}});
+    if(_ekfC.length>2)_srcData('ekf',{type:'Feature',geometry:{type:'LineString',coordinates:_ekfC}});
+    _srcData('unc',_geoCircle(S.ndLa,S.ndLo,Math.max(4,S.unc)));
+    if(_vm)_vm.setLngLat([S.ndLo,S.ndLa]);
     const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(S.gtH*180/Math.PI)+'deg)';
-    _uc.setRadius(Math.max(4,S.unc));
-    if(!_mapMoving&&!_mapZooming) _map.setView([S.ndLa,S.ndLo],_map.getZoom(),{animate:false,duration:0});
+    if(!_mapMoving&&!_mapZooming)_map.jumpTo({center:[S.ndLo,S.ndLa],zoom:_map.getZoom()});
   }
 
   // Metrics — NAVDRIFT-0 always wins vs raw IMU; EKF shown separately
@@ -1331,10 +1439,11 @@ function startLiveGPS(){
       S.gtLo = S.ndLo = S.iLo = lon;
       EKF.x = lat; EKF.y = lon;
       S.totND=0; S.n=0; S.totEKF=0; S.outN=0; S.nhcN=0; S.outt=0;
-      if(_gt)_gt.setLatLngs([]);if(_nd)_nd.setLatLngs([]);
-      if(_imu)_imu.setLatLngs([]);if(_ekf)_ekf.setLatLngs([]);
+      _gtC=[];_ndC=[];_imuC=[];_ekfC=[];
+      _srcData('gt',_emptyLine());_srcData('nd',_emptyLine());
+      _srcData('imu',_emptyLine());_srcData('ekf',_emptyLine());
       GPS.zoomed = false;
-      if(_map){ _map.flyTo([lat, lon], 18, {duration:1.8}); setTimeout(()=>{GPS.zoomed=true;},2000); }
+      if(_map){ _map.flyTo({center:[lon,lat],zoom:18,duration:1.8}); setTimeout(()=>{GPS.zoomed=true;},2000); }
       setBtnGnss(true);
       try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){}
       // Show IMU prompt banner if not yet enabled (user must tap it for iOS gesture)
@@ -1358,8 +1467,9 @@ function startLiveGPS(){
         if(jumpDeg > 0.05){
           S.ndLa = S.iLa = lat; S.ndLo = S.iLo = lon;
           EKF.x = lat; EKF.y = lon;
-          if(_gt)_gt.setLatLngs([]);if(_nd)_nd.setLatLngs([]);
-          if(_imu)_imu.setLatLngs([]);if(_ekf)_ekf.setLatLngs([]);
+          _gtC=[];_ndC=[];_imuC=[];_ekfC=[];
+          _srcData('gt',_emptyLine());_srcData('nd',_emptyLine());
+          _srcData('imu',_emptyLine());_srcData('ekf',_emptyLine());
         }
       }
       if(S.gnss){
@@ -1368,7 +1478,7 @@ function startLiveGPS(){
         S.ndLo += (lon - S.ndLo) * 0.4;
         EKF.x += (lat - EKF.x) * 0.5;
         EKF.y += (lon - EKF.y) * 0.5;
-        if(_map) _map.setView([lat, lon], _map.getZoom(), {animate:false});
+        if(_map&&!_mapMoving&&!_mapZooming) _map.jumpTo({center:[lon,lat],zoom:_map.getZoom()});
       }
       try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){}
     }
