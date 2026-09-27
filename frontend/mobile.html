@@ -40,7 +40,8 @@
     /* ── MAP CONTAINER (always full screen) ── */
     .map-container{position:fixed;inset:0;z-index:1;}
     #map{width:100%;height:100%;background:#1a3f6e;}
-    .maplibregl-canvas{will-change:transform;}
+    .maplibregl-canvas{will-change:transform;touch-action:none;}
+    #map{touch-action:none;}
     .maplibregl-ctrl-attrib,.maplibregl-ctrl-logo{display:none!important;}
     /* suppress maplibre default marker/popup we don't use */
     .maplibregl-marker{transition:none!important;}
@@ -1216,7 +1217,11 @@ function initMap(c){
       logoPosition:'bottom-right',
       dragRotate:false,
       pitchWithRotate:false,
-      maxPitch:0
+      touchPitch:false,
+      maxPitch:0,
+      cooperativeGestures:false,
+      touchZoomRotate:true,
+      scrollZoom:{around:'center'}
     });
     _map.on('movestart',()=>{_mapMoving=true;});
     _map.on('moveend',()=>{_mapMoving=false;});
