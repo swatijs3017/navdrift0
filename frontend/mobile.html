@@ -938,6 +938,50 @@ function _srcData(id,data){if(_mapReady&&_map&&_map.getSource(id))_map.getSource
 
 let _mapMode='dark';
 
+/* ── THEME: apply color overrides to loaded liberty style via setPaintProperty ──
+   Only modifies fill-color / line-color / text-color — never width/opacity
+   so zoom interpolation expressions in the base style stay intact            */
+function _applyTheme(mode){
+  if(!_map)return;
+  const D=mode==='dark';
+  const layers=_map.getStyle().layers;
+  layers.forEach(l=>{
+    try{
+      const sl=l['source-layer'];
+      if(l.type==='background'){
+        _map.setPaintProperty(l.id,'background-color',D?'#18202e':'#f0ebe0');
+      }else if(l.type==='fill'){
+        if(sl==='water'||sl==='ocean')
+          _map.setPaintProperty(l.id,'fill-color',D?'#0d1c38':'#9dc8e8');
+        else if(sl==='landcover')
+          _map.setPaintProperty(l.id,'fill-color',D?'#1a2418':'#c8e0a8');
+        else if(sl==='landuse'||sl==='park')
+          _map.setPaintProperty(l.id,'fill-color',D?'#1c2830':'#e4e0d8');
+        else if(sl==='building')
+          _map.setPaintProperty(l.id,'fill-color',D?'#242e40':'#d5cfc5');
+      }else if(l.type==='line'){
+        if(sl==='water'||sl==='waterway')
+          _map.setPaintProperty(l.id,'line-color',D?'#0d1c38':'#7ab4d8');
+        else if(sl==='boundary')
+          _map.setPaintProperty(l.id,'line-color',D?'rgba(100,100,135,0.55)':'rgba(140,100,60,0.55)');
+        else if(sl==='transportation'||sl==='road'){
+          /* only override color, never width */
+          const lp=l.paint||{};
+          const isCase='line-gap-width' in lp;
+          if(isCase)
+            _map.setPaintProperty(l.id,'line-color',D?'#0e141e':'rgba(160,140,110,0.4)');
+          else
+            _map.setPaintProperty(l.id,'line-color',D?'#2e3848':'#f0ece4');
+        }
+      }else if(l.type==='symbol'){
+        try{_map.setPaintProperty(l.id,'text-color',D?'#dcd8d0':'#1a1614');}catch(e){}
+        try{_map.setPaintProperty(l.id,'text-halo-color',D?'rgba(10,20,44,0.88)':'rgba(240,236,226,0.95)');}catch(e){}
+      }
+    }catch(e){}
+  });
+}
+
+/* LEGACY — kept so nothing else breaks if referenced */
 function _getMapStyle(mode){
   const L=mode==='light';
   const C=L?{
@@ -1140,16 +1184,8 @@ function setMapMode(mode){
   const lb=document.getElementById('mm-light'),db=document.getElementById('mm-dark');
   if(lb)lb.classList.toggle('active',mode==='light');
   if(db)db.classList.toggle('active',mode==='dark');
-  if(!_map)return;
-  /* Save camera — setStyle preserves nothing */
-  const ctr=_map.getCenter(),z=_map.getZoom();
-  _mapReady=false;
-  _map.setStyle(_getMapStyle(mode));
-  _map.once('style.load',()=>{
-    _map.jumpTo({center:ctr,zoom:z});
-    _readdOverlays();
-    _mapReady=true;
-  });
+  /* Apply color overrides only — no setStyle, so tiles/overlays/camera are untouched */
+  _applyTheme(mode);
 }
 
 function addOverlayLayers(){
@@ -1164,7 +1200,7 @@ function addOverlayLayers(){
   _map.addLayer({id:'unc-l',type:'fill',source:'unc',paint:{'fill-color':'rgba(155,114,216,0.08)','fill-outline-color':'rgba(155,114,216,0.35)'}});
   /* Vehicle marker */
   const vmEl=document.createElement('div');
-  vmEl.innerHTML='<div id="vm-inner" style="width:24px;height:24px;transition:transform 0.25s ease;transform-origin:center center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><polygon points="12,3 17,19 12,15 7,19" fill="#00d4c4" opacity="0.95"/><circle cx="12" cy="12" r="3" fill="rgba(3,6,9,0.9)"/><circle cx="12" cy="12" r="1.8" fill="#00d4c4"/></svg></div>';
+  vmEl.innerHTML='<div id="vm-inner" style="width:20px;height:20px;position:relative;transform-origin:center center"><div style="width:20px;height:20px;border-radius:50%;background:#2979ff;border:2.5px solid #fff;box-shadow:0 0 0 3px rgba(41,121,255,0.28),0 2px 8px rgba(0,0,0,0.45);"></div></div>';
   _vm=new maplibregl.Marker({element:vmEl,anchor:'center'}).setLngLat([CITIES[S.city||'delhi'].lon,CITIES[S.city||'delhi'].lat]).addTo(_map);
 }
 
@@ -1173,7 +1209,7 @@ function initMap(c){
   if(!_map){
     _map=new maplibregl.Map({
       container:'map',
-      style:_getMapStyle(_mapMode),
+      style:'https://tiles.openfreemap.org/styles/liberty',
       center:[cfg.lon,cfg.lat],
       zoom:cfg.zoom,
       attributionControl:false,
@@ -1189,6 +1225,7 @@ function initMap(c){
     _map.on('load',()=>{
       _mapReady=true;
       addOverlayLayers();
+      _applyTheme(_mapMode);
       const lb=document.getElementById('mm-light'),db=document.getElementById('mm-dark');
       if(lb)lb.classList.toggle('active',_mapMode==='light');
       if(db)db.classList.toggle('active',_mapMode==='dark');
