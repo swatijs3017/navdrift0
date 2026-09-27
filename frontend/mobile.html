@@ -688,32 +688,91 @@ function bw2(x, xp, yp1, yp2){
 let _dmPrev = {ax:0, ay:0, az:0};
 let _bw_xp=[0,0,0], _bw_yp1=[0,0,0], _bw_yp2=[0,0,0];
 // ── REAL BAROMETER — Generic Sensor API, when the browser/device actually has one ──
-// Most phone browsers do not expose this today (it's behind experimental flags on a handful
-// of Chromium builds, effectively unsupported on iOS Safari entirely). This is written so that
-// on a device where it IS available, it reports genuine pressure-derived altitude; everywhere
-// else it reports honestly unavailable rather than inventing a number. Nothing here fabricates
-// a fake sensor reading, unlike the old code this replaces.
+// Three genuinely different states, not one blanket "no sensor":
+//   'active'   — the Barometer API exists AND is producing real readings right now.
+//   'blocked'  — the phone almost certainly HAS a barometer chip, but this browser doesn't
+//                expose it as a web API. Every iPhone since the 6 (2014) has one, and WebKit
+//                has never implemented the Generic Sensor API's Barometer class on iOS, in any
+//                browser (Safari, Chrome-on-iOS, etc. all use WebKit under the hood there), so
+//                "no Barometer API" on an iOS device is a browser restriction, not missing
+//                hardware, and it's dishonest in the other direction to imply the hardware
+//                isn't there.
+//   'absent'   — the API doesn't exist and we have no good reason to believe the hardware
+//                does either (e.g. a desktop browser, or a platform where barometers aren't
+//                a given). This is the only state that says "not detected."
+// Whichever state we're in, S.baroAlt is never fabricated — it only ever moves when 'active'.
 const BaroSensor = (function(){
-  let available=false, altitudeM=220, sensor=null, status='not started';
+  let altitudeM=220, sensor=null, state='not-started', detail='';
+
+  const ua = (navigator.userAgent||'');
+  // iPadOS 13+ reports itself as "Macintosh" in the UA string, so UA alone misses iPads —
+  // catch that with the touch-points trick (a real Mac never reports touch points).
+  const isIOSDevice = /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
   function toAltitudeM(pressureHPa){
     // Standard barometric formula against the sea-level reference. Good for detecting relative
     // changes (a tunnel/underpass dip), not a calibrated absolute altitude — same limitation
     // any consumer barometer app has without a local pressure reference.
     return 44330*(1-Math.pow(pressureHPa/1013.25,1/5.255));
   }
+
   function start(){
-    if(sensor) return; // already attempted
-    if(typeof Barometer==='undefined'){ status='Barometer API not supported on this browser'; return; }
+    if(sensor || state==='active') return; // already attempted / already running
+    if(typeof Barometer==='undefined'){
+      // The API itself doesn't exist in this browser. On iOS this is a known, permanent
+      // WebKit limitation, not evidence the phone lacks a barometer — iPhones have shipped
+      // one since 2014. Everywhere else, we don't have a reliable enough signal to claim the
+      // hardware exists, so the honest default is "not detected."
+      if(isIOSDevice){ state='blocked'; detail='WebKit does not expose the Barometer API on iOS'; }
+      else{ state='absent'; detail='Barometer API not supported on this browser'; }
+      return;
+    }
     try{
       sensor=new Barometer({frequency:2});
-      sensor.addEventListener('reading',()=>{ altitudeM=toAltitudeM(sensor.pressure); available=true; status='live'; });
-      sensor.addEventListener('error',(e)=>{ available=false; status='sensor error: '+(e.error?e.error.message:'unknown'); });
+      sensor.addEventListener('reading',()=>{ altitudeM=toAltitudeM(sensor.pressure); state='active'; detail='live'; });
+      sensor.addEventListener('error',(e)=>{
+        // The API exists but errored (commonly a permissions-policy block) — that's still the
+        // hardware/API being present in principle, just inaccessible right now, not "absent."
+        state='blocked'; detail='sensor error: '+(e.error?e.error.message:'unknown');
+      });
       sensor.start();
-      status='starting';
-    }catch(e){ status='not available: '+e.message; }
+      state='starting';
+    }catch(e){
+      state = isIOSDevice ? 'blocked' : 'absent';
+      detail='not available: '+e.message;
+    }
   }
-  return{ start, get available(){return available;}, get altitudeM(){return altitudeM;}, get status(){return status;} };
+
+  return{
+    start,
+    get available(){return state==='active';},
+    get altitudeM(){return altitudeM;},
+    get state(){return state;},   // 'active' | 'blocked' | 'absent' | 'not-started' | 'starting'
+    get detail(){return detail;}
+  };
 })();
+
+// Renders the Baro Alt tile as one of three genuinely different states, matching what
+// BaroSensor actually knows, never a flat "no sensor" that erases the hardware/API distinction.
+function renderBaroDisplay(){
+  const el = document.getElementById('v-baro');
+  if(!el) return;
+  if(GPS.simMode || !GPS.active){
+    el.textContent = S.baroAlt.toFixed(1)+' m'; el.style.color = 'var(--nt)';
+    return;
+  }
+  switch(BaroSensor.state){
+    case 'active':
+      el.textContent = S.baroAlt.toFixed(1)+' m (live)'; el.style.color = 'var(--ng)'; break;
+    case 'blocked':
+      el.textContent = 'HW present · API blocked'; el.style.color = 'var(--na)'; break;
+    case 'absent':
+      el.textContent = 'not detected'; el.style.color = 'var(--muted)'; break;
+    default: // 'not-started' / 'starting'
+      el.textContent = '— m'; el.style.color = 'var(--muted)';
+  }
+}
 
 let _lastDMT = 0, _dmCount = 0, _hzInterval = null;
 
@@ -1668,7 +1727,7 @@ function step(){
       document.getElementById('v-unc').textContent=S.unc.toFixed(1)+'m';
       document.getElementById('v-spd').textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0);
       document.getElementById('v-hdg').textContent=hdgStr(S.gtH);
-      document.getElementById('v-baro').textContent=(GPS.simMode||!GPS.active||BaroSensor.available)?(S.baroAlt.toFixed(1)+' m'):'no sensor';
+      renderBaroDisplay();
       document.getElementById('v-out').textContent=S.outN;
       document.getElementById('v-nhc').textContent=S.nhcN;
       // Position HUD shows NAVDRIFT's believed position (EKF/ND), never raw ground truth —
@@ -1875,7 +1934,7 @@ function step(){
     document.getElementById('v-unc').textContent=S.unc.toFixed(1)+'m';
     document.getElementById('v-spd').textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:parseFloat(spdKmh)).toFixed(0);
     document.getElementById('v-hdg').textContent=hdgStr(S.gtH);
-    document.getElementById('v-baro').textContent=(GPS.simMode||!GPS.active||BaroSensor.available)?(S.baroAlt.toFixed(1)+' m'):'no sensor';
+    renderBaroDisplay();
     document.getElementById('v-out').textContent=S.outN;
     document.getElementById('v-nhc').textContent=S.nhcN;
     document.getElementById('hud-pos').textContent=S.ndLa.toFixed(4)+'°N '+S.ndLo.toFixed(4)+'°E';
