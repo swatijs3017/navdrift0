@@ -32,6 +32,12 @@
 
   // ── GNSS ──
   NavdriftSensors.addListener('gnssFix', (fix) => {
+    // Same discard-don't-fabricate rule as the web GPS handler (onFix in mobile.html) — a
+    // malformed native fix must never reach GPS.lat/lon.
+    if (!isFinite(fix.latitude) || !isFinite(fix.longitude)) {
+      console.warn('[NativeBridge] non-finite native GNSS fix discarded', fix);
+      return;
+    }
     GPS.lat = fix.latitude; GPS.lon = fix.longitude; GPS.acc = fix.accuracy;
     GPS.lastLat = fix.latitude; GPS.lastLon = fix.longitude;
     GPS.lastFixTime = performance.now();
@@ -65,6 +71,7 @@
 
   // ── IMU: accelerometer / gyroscope / orientation / magnetometer / barometer ──
   NavdriftSensors.addListener('imuAccel', (a) => {
+    if (!isFinite(a.x) || !isFinite(a.y) || !isFinite(a.z)) return; // same guard as the web devicemotion handler
     if (!IMU.active) {
       IMU.active = true; IMU.state = 'ACTIVE'; IMU.firstEventAt = performance.now();
       try { const b = document.getElementById('imu-banner'); if (b) b.remove(); } catch (e) {}
@@ -91,6 +98,7 @@
   });
 
   NavdriftSensors.addListener('imuGyro', (g) => {
+    if (!isFinite(g.x) || !isFinite(g.y) || !isFinite(g.z)) return;
     IMU.gx = g.x - IMU.gxOff; IMU.gy = g.y - IMU.gyOff; IMU.gz = g.z - IMU.gzOff;
     SensorManager.setValue('gyroscope', { x: IMU.gx, y: IMU.gy, z: IMU.gz }, null, 'NavdriftSensors(native-imu)');
     try {

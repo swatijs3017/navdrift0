@@ -868,6 +868,11 @@ function onDeviceMotion(e){
   IMU._gravFree = useLinear;
   const acc = useLinear ? accLin : accGrav;
   if(!acc) return;
+  // Real devices occasionally fire a devicemotion event with NaN/Infinity fields (seen on some
+  // Android sensor HAL implementations under thermal throttling or a flaky driver) — never let
+  // one bad sample poison IMU.ax/ay/az (and, downstream, the EKF state) permanently. Drop the
+  // sample; the next genuinely valid one keeps everything moving.
+  if(!isFinite(acc.x) || !isFinite(acc.y) || !isFinite(acc.z)) return;
   const now = performance.now();
 
   // Raw readings (m/s²)
@@ -888,7 +893,7 @@ function onDeviceMotion(e){
 
   // Gyroscope (rotation rate)
   const rot = e.rotationRate;
-  if(rot){
+  if(rot && isFinite(rot.alpha) && isFinite(rot.beta) && isFinite(rot.gamma)){
     IMU.gx = (rot.alpha||0) * Math.PI/180 - IMU.gxOff;
     IMU.gy = (rot.beta||0)  * Math.PI/180 - IMU.gyOff;
     IMU.gz = (rot.gamma||0) * Math.PI/180 - IMU.gzOff;
@@ -1231,6 +1236,17 @@ const EKF={x:0,y:0,th:0,P:[2.5e-9,0,0,0,2.5e-9,0,0,0,.1],te:0,s:0,
                      // null = fall back to the fixed classical constants
 function ekfReset(la,lo){EKF.x=la;EKF.y=lo;EKF.th=0;EKF.P=[2.5e-9,0,0,0,2.5e-9,0,0,0,.1];EKF.te=0;EKF.s=0;EKF.Qp=null;EKF.Rp=null;}
 function ekfStep(spd,dh,dt,gpsMeasured,gla,glo,gpsAccM){
+  // ── Input sanity guard ──
+  // A genuinely bad sensor sample (a device firing NaN/Infinity through DeviceMotionEvent is
+  // real, observed behavior on some hardware, not hypothetical) must never be allowed to
+  // integrate into EKF.x/EKF.y — once a NaN enters lat/lon there is no recovering it on
+  // subsequent ticks, since every future update is `something + NaN = NaN` forever. Skip the
+  // predict step entirely on a bad sample rather than guess a substitute value.
+  if(!isFinite(spd) || !isFinite(dh) || !isFinite(dt)){
+    console.warn('[ekfStep] non-finite input skipped', {spd,dh,dt});
+    const e0=dist(EKF.x,EKF.y,gla,glo); if(isFinite(e0)){ EKF.te+=e0; EKF.s++; }
+    return;
+  }
   // ── PREDICT ──
   const th=EKF.th+dh*.5,dl=spd*Math.cos(th)/111000*dt,dn=spd*Math.sin(th)/(111000*Math.cos(EKF.x*Math.PI/180))*dt;
   EKF.x+=dl;EKF.y+=dn;EKF.th+=dh;
@@ -1239,16 +1255,31 @@ function ekfStep(spd,dh,dt,gpsMeasured,gla,glo,gpsAccM){
   const Q=(EKF.Qp!=null?EKF.Qp:2.2e-11)*(1+dt*4);
   EKF.P[0]+=Q; EKF.P[4]+=Q;
   // ── UPDATE — only when a fresh GPS fix is actually supplied this tick ──
-  if(gpsMeasured){
+  if(gpsMeasured && isFinite(gla) && isFinite(glo)){
     const accDeg=Math.max(3,gpsAccM||8)/111000;
     const R=(EKF.Rp!=null?EKF.Rp:1)*accDeg*accDeg; // Rp scales measurement trust — model-driven
     const Kx=EKF.P[0]/(EKF.P[0]+R), Ky=EKF.P[4]/(EKF.P[4]+R);
-    EKF.x+=Kx*(gla-EKF.x); EKF.y+=Ky*(glo-EKF.y);
-    EKF.P[0]*=(1-Kx); EKF.P[4]*=(1-Ky);
+    if(isFinite(Kx) && isFinite(Ky)){
+      EKF.x+=Kx*(gla-EKF.x); EKF.y+=Ky*(glo-EKF.y);
+      EKF.P[0]*=(1-Kx); EKF.P[4]*=(1-Ky);
+    }
   }
-  const e=dist(EKF.x,EKF.y,gla,glo);EKF.te+=e;EKF.s++;
+  // ── Output sanity watchdog ──
+  // If, despite the above, the state ever ends up non-finite or covariance goes negative (both
+  // observed failure modes of naive EKF implementations under bad input), recover to the last
+  // known-real GPS position rather than displaying NaN/Infinity as a coordinate or letting a
+  // negative P make ekfUncertaintyM() return NaN. This is a recovery of the ESTIMATE using a
+  // real prior fix, never a fabricated position — it only fires when the alternative is a
+  // broken display.
+  if(!isFinite(EKF.x) || !isFinite(EKF.y) || EKF.P[0]<0 || EKF.P[4]<0 || !isFinite(EKF.P[0]) || !isFinite(EKF.P[4])){
+    console.warn('[ekfStep] EKF state became non-finite/invalid — recovering to last known GPS position');
+    if(isFinite(gla) && isFinite(glo)){ EKF.x=gla; EKF.y=glo; }
+    EKF.P=[2.5e-9,0,0,0,2.5e-9,0,0,0,.1];
+    EKF.Qp=null; EKF.Rp=null;
+  }
+  const e=dist(EKF.x,EKF.y,gla,glo);EKF.te+=(isFinite(e)?e:0);EKF.s++;
 }
-function ekfUncertaintyM(){ return Math.sqrt(Math.max(EKF.P[0],EKF.P[4]))*111000; }
+function ekfUncertaintyM(){ const v=Math.sqrt(Math.max(EKF.P[0],EKF.P[4],0))*111000; return isFinite(v)?v:0; }
 
 /* ── DEBUG PANEL — makes the sensor→model→fusion→position pipeline inspectable ── */
 function updateDebugPanel(){
@@ -1257,15 +1288,29 @@ function updateDebugPanel(){
     const fixAgeS = (live && GPS.lastFixTime!=null) ? (performance.now()-GPS.lastFixTime)/1000 : null;
     const gEl=document.getElementById('dbg-gnss');
     if(gEl){
-      if(!live) gEl.textContent='SIM';
+      // A permission-denied/position-unavailable error before the FIRST fix ever lands used to
+      // show "SIM" here — technically true that GPS.active was still false, but actively
+      // misleading: it looked like simulation mode was chosen, when this was really a real live
+      // attempt that hit a real hard error. Check hardError before falling back to the SIM label.
+      if(GPS.simMode) gEl.textContent='SIM';
       else if(GPS.hardError) gEl.textContent='ERROR';
+      else if(!live) gEl.textContent='AWAITING FIRST FIX';
       else if(GPS.forcedOutage) gEl.textContent='BLACKOUT (forced)';
       else gEl.textContent = S.gnss ? 'LOCKED' : 'BLACKOUT';
     }
     const aEl=document.getElementById('dbg-fixage');
     if(aEl) aEl.textContent = fixAgeS!=null ? fixAgeS.toFixed(1)+'s' : '—';
     const iEl=document.getElementById('dbg-imu');
-    if(iEl) iEl.textContent = IMU.state + (IMU.active?(' · '+IMU.evtCount+' evt'):'');
+    // Use SensorManager's accelerometer status here, not the legacy IMU.state latch — IMU.state
+    // only ever moves WAITING→ACTIVE and never reverts if events genuinely stop arriving, while
+    // SensorManager.raw.accelerometer.status correctly falls back to NO_DATA after 3s of
+    // silence (see its watchdog). Without this, IMU State could show "ACTIVE" in the same
+    // instant IMU Hz shows "0Hz" right below it — exactly the kind of self-contradicting
+    // diagnostic pair this panel exists to prevent.
+    if(iEl){
+      const accSt = SensorManager.getStatus('accelerometer');
+      iEl.textContent = (IMU.active ? accSt : IMU.state) + (IMU.active?(' · '+IMU.evtCount+' evt'):'');
+    }
     const hEl=document.getElementById('dbg-imuhz');
     if(hEl) hEl.textContent = IMU.active ? (IMU.hz||0)+'Hz' : '—';
     const sEl=document.getElementById('dbg-src');
@@ -2453,6 +2498,11 @@ function startLiveGPS(){
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
     const acc = pos.coords.accuracy;
+    // A malformed fix from a flaky GPS/location-fusion stack on the device is a real, observed
+    // failure mode — never let it into GPS.lat/lon, where it would poison EKF.x/y on the very
+    // next measurement update. Treat it exactly like any other bad fix: ignored, not fabricated
+    // into something plausible-looking.
+    if(!isFinite(lat) || !isFinite(lon)){ console.warn('[onFix] non-finite coordinate discarded', pos.coords); return; }
     GPS.lat = lat; GPS.lon = lon; GPS.acc = acc;
     GPS.lastLat = lat; GPS.lastLon = lon;
     GPS.lastFixTime = performance.now(); // this is what makes the fix "fresh" — not the coordinate itself
@@ -2640,8 +2690,11 @@ const NAVDRIFT_ONNX = (function(){
         // not by anything physically real. Bounding keeps the model's *influence* honest
         // (it can still shift fusion behavior within a real range) without letting a bad
         // inference make the displayed uncertainty physically nonsensical.
-        res.ekfQ=Math.min(1e-9, Math.max(1e-12,Math.abs(d[0])));
-        res.ekfR=Math.min(5, Math.max(0.2,Math.abs(d[1]||d[0])));
+        const qRaw=Math.abs(d[0]), rRaw=Math.abs(d[1]||d[0]);
+        // isFinite guards: Math.max/min with a NaN operand returns NaN, which would otherwise
+        // pass straight through this "clamp" as if it were a real bounded value.
+        if(isFinite(qRaw)) res.ekfQ=Math.min(1e-9, Math.max(1e-12,qRaw));
+        if(isFinite(rRaw)) res.ekfR=Math.min(5, Math.max(0.2,rRaw));
       }catch(e){}
     }
     // Tunnel Detector BiLSTM — structural-blackout classifier from telemetry window
@@ -2679,7 +2732,7 @@ const NAVDRIFT_ONNX = (function(){
     // refinement layered on top of the kinematic EKF prediction. It must never move the
     // fused position while GNSS is locked — that would be exactly the "silently cheating
     // toward a known point" behavior this whole rebuild exists to eliminate.
-    if(res.driftCorr && !S.gnss){
+    if(res.driftCorr && !S.gnss && isFinite(res.driftCorr.dLat) && isFinite(res.driftCorr.dLon)){
       const sc=1e-6;
       EKF.x += res.driftCorr.dLat*sc;
       EKF.y += res.driftCorr.dLon*sc;
