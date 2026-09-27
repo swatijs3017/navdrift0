@@ -14,7 +14,135 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <!-- ── TEMPORARY PAGE-vs-MAP DIAGNOSTIC INSTRUMENTATION ──────────────────────────────────────
+       Completely inert unless the page is loaded with ?mapdebug=1 in the URL. Answers exactly
+       one question: when the screen goes blank/blue-flash on cellular, is the PAGE itself still
+       alive (script still running, no reload/crash), or is the page fine and only MapLibre/WebGL
+       is failing underneath it? Does not change map provider, style, colors, UI, retry/timeout
+       behavior, or any navigation/GPS/IMU/EKF/ONNX/RoadGraph code. Safe to delete this whole
+       block plus the corresponding hooks in the main script once the question above is answered.
+       ── -->
+  <script>
+  (function(){
+    var params = new URLSearchParams(location.search);
+    window.__MAPDEBUG = params.has('mapdebug');
+    window.__mapDiagLines = [];
+    function pad(n){ return n<10 ? '0'+n : ''+n; }
+    function nowClock(){ var d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }
+    function ensureOverlay(){
+      var wrap = document.getElementById('map-diag-overlay');
+      if(!wrap && document.body){
+        wrap = document.createElement('div');
+        wrap.id = 'map-diag-overlay';
+        wrap.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:rgba(0,0,0,0.92);'
+          + 'color:#39ff14;font:11px/1.4 monospace;pointer-events:none;';
+        var status = document.createElement('div');
+        status.id = 'map-diag-status';
+        status.style.cssText = 'padding:6px 8px;border-bottom:1px solid #39ff14;white-space:pre-wrap;font-weight:bold;';
+        var log = document.createElement('div');
+        log.id = 'map-diag-log';
+        log.style.cssText = 'padding:6px 8px;max-height:40vh;overflow:auto;white-space:pre-wrap;';
+        log.textContent = window.__mapDiagLines.join('\n') + (window.__mapDiagLines.length ? '\n' : '');
+        wrap.appendChild(status);
+        wrap.appendChild(log);
+        document.body.appendChild(wrap);
+      }
+      return wrap;
+    }
+    window.__mapDiag = function(tag, detail){
+      var line = '[' + tag + '] ' + detail;
+      console.log('[MapDiag]', line);
+      window.__mapDiagLines.push(line);
+      if(!window.__MAPDEBUG) return;
+      var wrap = ensureOverlay();
+      if(wrap){
+        var log = document.getElementById('map-diag-log');
+        if(log){ log.textContent += line + '\n'; log.scrollTop = log.scrollHeight; }
+      } else {
+        document.addEventListener('DOMContentLoaded', function(){
+          var w2 = ensureOverlay();
+          var l2 = w2 && document.getElementById('map-diag-log');
+          if(l2) l2.textContent = window.__mapDiagLines.join('\n') + '\n';
+        }, { once:true });
+      }
+    };
+    if(!window.__MAPDEBUG) return; // everything below only ever registers listeners/timers under the flag
+
+    // ── PAGE ALIVE ticker — proves the JS event loop is still running, once per second ──
+    var pageLoadedAt = Date.now();
+    function tickAlive(){
+      var wrap = ensureOverlay();
+      var status = wrap && document.getElementById('map-diag-status');
+      if(status){
+        var navType='?';
+        try{
+          var navEntries = performance.getEntriesByType && performance.getEntriesByType('navigation');
+          if(navEntries && navEntries[0]) navType = navEntries[0].type;
+          else if(performance.navigation) navType = ['navigate','reload','back_forward','reserved'][performance.navigation.type] || String(performance.navigation.type);
+        }catch(e){}
+        var loadCount='?';
+        try{
+          loadCount = sessionStorage.getItem('__mapDiagLoadCount') || '?';
+        }catch(e){}
+        status.textContent = 'PAGE ALIVE\n' + nowClock()
+          + '\nnav=' + navType + '  loads=' + loadCount
+          + '  aliveFor=' + Math.round((Date.now()-pageLoadedAt)/1000) + 's'
+          + '  online=' + navigator.onLine;
+      }
+    }
+    setInterval(tickAlive, 1000);
+    tickAlive();
+
+    // ── page-load counter (survives reloads within the same tab, resets on a fresh tab/session) ──
+    try{
+      var n = parseInt(sessionStorage.getItem('__mapDiagLoadCount')||'0',10) + 1;
+      sessionStorage.setItem('__mapDiagLoadCount', String(n));
+      window.__mapDiag('PAGE_START', 'load #'+n+' this session, navigator.onLine='+navigator.onLine);
+    }catch(e){
+      window.__mapDiag('PAGE_START', 'sessionStorage unavailable: '+(e&&e.message?e.message:e));
+    }
+
+    // ── page lifecycle — if the page itself reloads/unloads/crashes, one of these fires ──
+    window.addEventListener('pageshow', function(e){ window.__mapDiag('PAGE_SHOW', 'persisted='+e.persisted); });
+    window.addEventListener('pagehide', function(e){ window.__mapDiag('PAGE_HIDE', 'persisted='+e.persisted); });
+    window.addEventListener('beforeunload', function(){ window.__mapDiag('PAGE_BEFOREUNLOAD', 'page is about to unload/reload'); });
+    document.addEventListener('visibilitychange', function(){ window.__mapDiag('PAGE_VISIBILITY', 'visibilityState='+document.visibilityState); });
+
+    // ── uncaught errors / rejections — would explain a silent crash without a full reload ──
+    window.addEventListener('error', function(e){
+      window.__mapDiag('WINDOW_ERROR', (e&&e.message?e.message:'?')+' @ '+(e&&e.filename?e.filename:'?')+':'+(e&&e.lineno?e.lineno:'?'));
+    });
+    window.addEventListener('unhandledrejection', function(e){
+      var r=e&&e.reason;
+      window.__mapDiag('UNHANDLED_REJECTION', r&&r.message?r.message:String(r));
+    });
+
+    // ── network/connection info ──
+    window.__mapDiag('NAVIGATOR_ONLINE', String(navigator.onLine));
+    window.addEventListener('online', function(){ window.__mapDiag('NAVIGATOR_ONLINE','true (online event)'); });
+    window.addEventListener('offline', function(){ window.__mapDiag('NAVIGATOR_ONLINE','false (offline event)'); });
+    try{
+      var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      window.__mapDiag('NETWORK_TYPE', conn ? ('effectiveType='+conn.effectiveType+' type='+(conn.type||'?')+' downlink='+conn.downlink+'Mbps rtt='+conn.rtt+'ms') : 'Network Information API unavailable on this browser');
+    }catch(e){
+      window.__mapDiag('NETWORK_TYPE', 'probe threw: '+(e&&e.message?e.message:e));
+    }
+
+    // ── WebGL availability probe — independent of MapLibre/CDN ──
+    try{
+      var testCanvas = document.createElement('canvas');
+      var gl2 = testCanvas.getContext('webgl2');
+      window.__mapDiag('WEBGL2', gl2 ? 'context OK' : 'getContext("webgl2") returned null');
+      var gl1 = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+      window.__mapDiag('WEBGL1', gl1 ? 'context OK' : 'getContext("webgl"/"experimental-webgl") returned null');
+    }catch(e){
+      window.__mapDiag('WEBGL1', 'probe threw: '+(e&&e.message?e.message:e));
+    }
+  })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"
+    onload="if(window.__mapDiag) window.__mapDiag('MAPLIBRE_CDN','onload fired, typeof maplibregl=' + typeof maplibregl)"
+    onerror="if(window.__mapDiag) window.__mapDiag('MAPLIBRE_CDN','FAILED to load (onerror fired) — maplibre-gl.js never arrived')"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
   <style>
     :root {
@@ -1773,6 +1901,26 @@ let _mapRetryAttempt=0, _mapLoadTimer=null, _mapRetryTimer=null, _pendingCityKey
 let _mapTileErrorTimes=[], _lastMapRebuildAt=0;
 let _mapLoadProgressSeen=false, _mapLoadExtended=false; // per-attempt only — reset at the top of every _createMap() call
 
+// TEMPORARY DIAGNOSTIC: a parallel fetch() against the exact same style URL MapLibre itself
+// requests, purely to report reachability/HTTP status/content-type/JSON-parseability
+// independently of whatever MapLibre's internal fetch does with it. Runs once, only under
+// ?mapdebug=1. Does not touch MAP_STYLE_URL, does not replace or precede MapLibre's own request,
+// and has no effect on map init, retries, or rendering.
+if(typeof window!=='undefined' && window.__MAPDEBUG){
+  window.__mapDiag('STYLE_REQUEST','fetching '+MAP_STYLE_URL);
+  fetch(MAP_STYLE_URL,{mode:'cors'}).then(function(r){
+    window.__mapDiag('STYLE_RESPONSE_STATUS','status='+r.status+' ok='+r.ok);
+    window.__mapDiag('STYLE_CONTENT_TYPE', r.headers.get('content-type')||'?');
+    return r.text().then(function(txt){
+      var parseOk=false;
+      try{ JSON.parse(txt); parseOk=true; }catch(e){}
+      window.__mapDiag('STYLE_JSON_PARSE','parseOk='+parseOk+' bytes='+txt.length);
+    });
+  }).catch(function(e){
+    window.__mapDiag('STYLE_REQUEST','fetch FAILED: '+(e&&e.message?e.message:e));
+  });
+}
+
 function _clearMapTimers(){
   if(_mapLoadTimer){clearTimeout(_mapLoadTimer);_mapLoadTimer=null;}
   if(_mapRetryTimer){clearTimeout(_mapRetryTimer);_mapRetryTimer=null;}
@@ -1835,6 +1983,11 @@ window.addEventListener('offline', ()=>{
 function _createMap(c){
   const cfg=CITIES[c];
   _mapLoadProgressSeen=false; _mapLoadExtended=false; // fresh state for this attempt only
+  if(window.__MAPDEBUG){
+    const _r=(function(){ try{ return document.getElementById('map').getBoundingClientRect(); }catch(e){ return null; } })();
+    window.__mapDiag('CONTAINER_SIZE', _r ? ('w='+_r.width+' h='+_r.height) : 'could not read #map bounding rect');
+    window.__mapDiag('MAP_CONSTRUCTOR', 'about to call new maplibregl.Map(), typeof maplibregl='+typeof maplibregl);
+  }
   try{
     _map=new maplibregl.Map({
       container:'map',
@@ -1851,11 +2004,28 @@ function _createMap(c){
       touchZoomRotate:true,
       scrollZoom:{around:'center'}
     });
+    if(window.__MAPDEBUG){
+      window.__mapDiag('MAP_CONSTRUCTOR', 'new maplibregl.Map() returned successfully');
+      try{
+        const glCanvas=_map.getCanvas();
+        if(glCanvas){
+          glCanvas.addEventListener('webglcontextlost', (ev)=>{
+            window.__mapDiag('WEBGL_CONTEXT_LOST', 'statusMessage='+(ev&&ev.statusMessage?ev.statusMessage:'?'));
+          });
+          glCanvas.addEventListener('webglcontextrestored', ()=>{
+            window.__mapDiag('WEBGL_CONTEXT_RESTORED', 'context restored on the live map canvas');
+          });
+        }
+      }catch(e){
+        window.__mapDiag('WEBGL_CONTEXT_LOST', 'could not attach context-loss listener: '+(e&&e.message?e.message:e));
+      }
+    }
   }catch(e){
     // (A) Map initialization itself throwing synchronously — bad container, WebGL truly
     // unavailable, etc. Real and distinct from a network-fetch failure; still recovered the
     // same way (retry), since a transient WebGL-context problem on some devices can clear too.
     console.warn('[Map] (A) map initialization threw synchronously:', e && e.message ? e.message : e);
+    if(window.__MAPDEBUG) window.__mapDiag('MAP_ERROR','(A) synchronous init exception: '+(e&&e.stack?e.stack:(e&&e.message?e.message:e)));
     _scheduleMapRetry('(A) map init exception');
     return;
   }
@@ -1877,10 +2047,28 @@ function _createMap(c){
   // events set this flag, and it is only ever read once (at the watchdog's deadline), never used
   // to reset or repeatedly extend the timer, so a chatty event stream can't stall the watchdog
   // indefinitely.
-  _map.on('styledata', ()=>{ _mapLoadProgressSeen=true; });
-  _map.on('sourcedata', (e)=>{ if(e&&e.isSourceLoaded) _mapLoadProgressSeen=true; });
+  _map.on('styledata', ()=>{
+    _mapLoadProgressSeen=true;
+    if(window.__MAPDEBUG){
+      let isLoaded='?';
+      try{ isLoaded=_map.isStyleLoaded(); }catch(e){}
+      window.__mapDiag('STYLE_DATA','styledata fired, isStyleLoaded='+isLoaded);
+    }
+  });
+  _map.on('sourcedata', (e)=>{
+    if(e&&e.isSourceLoaded){
+      _mapLoadProgressSeen=true;
+      if(window.__MAPDEBUG) window.__mapDiag('SOURCE_DATA','source "'+(e.sourceId||'?')+'" loaded');
+    }
+  });
   _map.on('error', (e)=>{
     const msg = e && e.error ? e.error.message : String(e);
+    if(window.__MAPDEBUG){
+      const errUrl=(e&&e.error&&e.error.url)||(e&&e.tile&&e.tile.url)||(e&&e.source&&e.source.url)||null;
+      const errStatus=(e&&e.error&&e.error.status)!=null?e.error.status:null;
+      window.__mapDiag('MAP_ERROR', JSON.stringify({message:msg, sourceId:e&&e.sourceId||null, url:errUrl, status:errStatus, mapReady:_mapReady}));
+      if(e&&e.sourceId) window.__mapDiag('TILE_ERROR', 'sourceId='+e.sourceId+' url='+(errUrl||'?')+' status='+(errStatus!=null?errStatus:'?')+' msg='+msg);
+    }
     if(!_mapReady){
       // Before the first successful load, ANY error here is functionally a (B) style-JSON or
       // (C) sprite/glyph failure — MapLibre does not partially initialize a style, so whichever
@@ -1908,6 +2096,7 @@ function _createMap(c){
     }
   });
   _map.on('load',()=>{
+    if(window.__MAPDEBUG) window.__mapDiag('MAP_LOAD','load event fired — map reached load, rendering should be visible now');
     _clearMapTimers();
     _mapRetryAttempt=0; // this style genuinely loaded — reset backoff for any future failure
     _mapTileErrorTimes=[];
@@ -1937,14 +2126,21 @@ function _createMap(c){
       // a permanently stuck request still cannot extend itself forever.
       _mapLoadExtended=true;
       console.warn('[Map] load still pending at '+(attemptTimeoutMs/1000)+'s but genuine progress observed (styledata/sourcedata) — granting one '+(MAP_LOAD_EXTENSION_MS/1000)+'s extension before retrying');
+      if(window.__MAPDEBUG) window.__mapDiag('MAP_TIMEOUT', 'base '+(attemptTimeoutMs/1000)+'s reached, progress seen — extending by '+(MAP_LOAD_EXTENSION_MS/1000)+'s');
       _mapLoadTimer=setTimeout(()=>{
         if(!_mapReady){
-          _scheduleMapRetry('(E/F) style load timed out after a '+(MAP_LOAD_EXTENSION_MS/1000)+'s extension on top of '+(attemptTimeoutMs/1000)+'s (progress was seen but load never completed)');
+          const reason='(E/F) style load timed out after a '+(MAP_LOAD_EXTENSION_MS/1000)+'s extension on top of '+(attemptTimeoutMs/1000)+'s (progress was seen but load never completed)';
+          if(window.__MAPDEBUG) window.__mapDiag('MAP_TIMEOUT', reason);
+          _scheduleMapRetry(reason);
         }
       },MAP_LOAD_EXTENSION_MS);
       return;
     }
-    _scheduleMapRetry('(E/F) style load timed out after '+(attemptTimeoutMs/1000)+'s (no error event, no load event, no progress observed — consistent with a hung network/DNS/TLS request or a transition mid-fetch)');
+    {
+      const reason='(E/F) style load timed out after '+(attemptTimeoutMs/1000)+'s (no error event, no load event, no progress observed — consistent with a hung network/DNS/TLS request or a transition mid-fetch)';
+      if(window.__MAPDEBUG) window.__mapDiag('MAP_TIMEOUT', reason);
+      _scheduleMapRetry(reason);
+    }
   },attemptTimeoutMs);
 }
 
