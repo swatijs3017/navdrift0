@@ -15,6 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
   <style>
     :root {
       --ink:#020507; --ink-2:#05080d;
@@ -53,7 +54,8 @@
       border:1px solid rgba(0,200,185,0.1);border-radius:20px;padding:3px;gap:2px;
       transition:opacity 0.25s ease;
     }
-    body.tech-mode #map-mode-ctrl{opacity:0;pointer-events:none;}
+    /* when readings sheet is open, float the toggle just above the sheet edge */
+    body.tech-mode #map-mode-ctrl{bottom:calc(50dvh + 10px);}
     .mm-btn{
       padding:4px 10px;border-radius:16px;border:none;background:transparent;
       font-size:.42rem;font-weight:600;font-family:var(--mono);letter-spacing:.07em;
@@ -147,10 +149,10 @@
     .nbc-expand.open svg path{stroke:rgba(0,212,196,0.9);transform:rotate(180deg);transform-box:fill-box;transform-origin:center;}
     .nbc-expand svg path{transition:transform 0.3s ease;}
 
-    /* ── TECH PANEL ── */
+    /* ── TECH PANEL — bottom sheet, never covers more than lower half ── */
     .tech-panel{
       position:fixed;bottom:0;left:0;right:0;
-      height:72dvh;max-height:72dvh;
+      height:50dvh;max-height:50dvh;
       z-index:200;
       background:var(--glass-b);
       border-top:1px solid rgba(0,200,185,0.12);
@@ -514,6 +516,38 @@
       </div>
     </div>
 
+    <!-- Section: Debug — sensor/fusion pipeline (dev verification, not part of clean nav view) -->
+    <div class="tp-divider"></div>
+    <div class="tp-section-label">Debug — Sensor Pipeline</div>
+    <div class="tp-section-label-sub">Traceable source of the displayed position, for verification</div>
+    <div class="tech-row">
+      <div class="tr-item">
+        <div class="tr-l">GNSS State</div>
+        <div class="tr-v" id="dbg-gnss">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Fix Age</div>
+        <div class="tr-v" id="dbg-fixage">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">IMU State</div>
+        <div class="tr-v" id="dbg-imu">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">IMU Hz</div>
+        <div class="tr-v" id="dbg-imuhz">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Pos Source</div>
+        <div class="tr-v" id="dbg-src" style="color:var(--nt)">—</div>
+      </div>
+    </div>
+    <div class="tp-section-label-sub" id="dbg-detail" style="padding-top:0;">—</div>
+
     <!-- Section: Modules -->
     <div class="tp-divider"></div>
     <div class="mod-row">
@@ -523,7 +557,7 @@
       <span class="mod">MAP MATCH</span>
       <span class="mod">EKF FUSE</span>
       <span class="mod snap-off" id="snap-chip">SNAP</span>
-      <span class="mod dr">DRIFT-FORMER · INT8/INT4 ONNX · 20ms</span>
+      <span class="mod dr" id="drift-chip" title="No neural model runs in-browser — dead reckoning is a kinematic IMU integration + EKF, not DriftFormer inference">DEAD RECKONING · KINEMATIC + EKF (SIM)</span>
       <span class="mod perm-needed" id="imu-chip" onclick="openSensorModal()">⊕ REAL IMU</span>
     </div>
 
@@ -625,7 +659,12 @@ const IMU = {
   fwdAxisIdx: 1,    // default: Y axis (phone held upright, top forward)
   fwdAxisSign: 1,   // +1 or -1
   alignDone: false, // set true after first-motion axis detection
-  _alignBuf: []     // accumulator during alignment window
+  _alignBuf: [],    // accumulator during alignment window
+  /* honest sensor-state tracking — 'active' is only set true once a REAL devicemotion
+     event has been received, never merely because permission was granted */
+  state: 'INACTIVE', // INACTIVE | WAITING | ACTIVE | UNAVAILABLE | DENIED
+  evtCount: 0,
+  firstEventAt: null
 };
 
 /* Butterworth 2nd-order low-pass (fc=2 Hz at fs=30 Hz) */
@@ -641,6 +680,10 @@ let _bw_xp=[0,0,0], _bw_yp1=[0,0,0], _bw_yp2=[0,0,0];
 let _lastDMT = 0, _dmCount = 0, _hzInterval = null;
 
 function onDeviceMotion(e){
+  // Honest activation: IMU is only "ACTIVE" once a real devicemotion event has arrived —
+  // never merely because requestPermission() resolved.
+  IMU.evtCount++;
+  if(!IMU.active){ IMU.active=true; IMU.state='ACTIVE'; IMU.firstEventAt=performance.now(); }
   // Prefer gravity-free acceleration (e.acceleration) — already has gravity subtracted
   // Fall back to gravity-included only if gravity-free is unavailable/zero
   const accLin  = e.acceleration;
@@ -824,10 +867,24 @@ async function requestSensorAccess(){
       return;
     }
 
-    // Attach listeners
+    // Attach listeners. IMU.active stays false — onDeviceMotion() itself flips it to
+    // true the moment a REAL event arrives. Permission granted != data arriving.
+    IMU.state = 'WAITING';
     window.addEventListener('devicemotion', onDeviceMotion, {passive:true});
     window.addEventListener('deviceorientation', onDeviceOrientation, {passive:true});
     startHzTracker();
+
+    // Watchdog: if no real devicemotion event arrives within 3s of requesting,
+    // the device/browser is not actually delivering sensor data — say so, don't fake it.
+    setTimeout(()=>{
+      if(!IMU.active){
+        IMU.state = 'UNAVAILABLE';
+        status.textContent = '✗ IMU UNAVAILABLE — no sensor events received from this device/browser.';
+        const mb=document.getElementById('mode-b'); if(mb){mb.textContent='IMU UNAVAILABLE';mb.className='mode-badge badge-sim';}
+        const ic=document.getElementById('imu-chip'); if(ic){ic.textContent='⊘ IMU UNAVAILABLE';ic.className='mod';}
+        btn.disabled=false; btn.textContent='GRANT ACCESS';
+      }
+    }, 3000);
 
     // Auto-calibrate: accumulate samples for 2 seconds then compute mean bias
     status.textContent = 'Calibrating bias… hold device still (2 s).';
@@ -857,12 +914,16 @@ async function requestSensorAccess(){
         _bw_xp=[0,0,0]; _bw_yp1=[0,0,0]; _bw_yp2=[0,0,0];
       }
       IMU.calibrated = true;
-      status.textContent = '✓ Calibrated. Live IMU active at ~' + (IMU.hz||30) + ' Hz.';
-      activateSensorMode();
-      setTimeout(closeSensorModal, 1200);
+      if(IMU.active){
+        status.textContent = '✓ Calibrated. Live IMU active at ~' + (IMU.hz||30) + ' Hz — ' + IMU.evtCount + ' samples received.';
+        activateSensorMode();
+        setTimeout(closeSensorModal, 1200);
+      } else {
+        // Permission was granted but no real sensor events ever arrived — the 3s
+        // watchdog above will already have flagged UNAVAILABLE. Do not claim LIVE IMU.
+        status.textContent = '✗ IMU UNAVAILABLE — no sensor events received. Dead reckoning cannot use motion data.';
+      }
     }, 2000);
-
-    IMU.active = true;
 
   } catch(err){
     status.textContent = '✗ Error: ' + (err.message||err);
@@ -912,17 +973,62 @@ const S={city:'delhi',run:true,step:0,gnss:true,outt:0,outN:0,snapN:0,
   calP:3.2,calR:-1.4,calY:0.1,vibBuf:[],
   baroAlt:220,baroPrev:220,inTunnel:false,tunDur:0,
   hmmProb:null,hmmCorrN:0,
-  useLiveIMU:false};
+  useLiveIMU:false,
+  posSource:null}; // explicit source of the displayed position — never an ambiguous silent switch
 
-const EKF={x:0,y:0,th:0,P:[1,0,0,0,1,0,0,0,.1],te:0,s:0};
-function ekfReset(la,lo){EKF.x=la;EKF.y=lo;EKF.th=0;EKF.P=[1,0,0,0,1,0,0,0,.1];EKF.te=0;EKF.s=0;}
-function ekfStep(spd,dh,dt,gps,gla,glo){
+/* EKF — decoupled-axis (lat,lon) Kalman filter.
+   PREDICT: kinematic integration from speed + heading-rate (IMU-driven in live mode).
+   P (covariance, deg²) genuinely grows every predict tick — this is the real source of
+   "uncertainty", not a scripted ramp — and genuinely shrinks only on an UPDATE step,
+   which only runs when a fresh GPS measurement is actually supplied, gated by that
+   measurement's real reported accuracy (R). No GPS this tick → no update → P keeps growing. */
+const EKF={x:0,y:0,th:0,P:[2.5e-9,0,0,0,2.5e-9,0,0,0,.1],te:0,s:0,
+  Qp:null,Rp:null}; // set by the trained Adaptive-EKF ONNX model (NAVDRIFT_ONNX below) when loaded;
+                     // null = fall back to the fixed classical constants
+function ekfReset(la,lo){EKF.x=la;EKF.y=lo;EKF.th=0;EKF.P=[2.5e-9,0,0,0,2.5e-9,0,0,0,.1];EKF.te=0;EKF.s=0;EKF.Qp=null;EKF.Rp=null;}
+function ekfStep(spd,dh,dt,gpsMeasured,gla,glo,gpsAccM){
+  // ── PREDICT ──
   const th=EKF.th+dh*.5,dl=spd*Math.cos(th)/111000*dt,dn=spd*Math.sin(th)/(111000*Math.cos(EKF.x*Math.PI/180))*dt;
   EKF.x+=dl;EKF.y+=dn;EKF.th+=dh;
-  if(gps){const R=1e-9,pp=EKF.P,S0=pp[0]+R,S1=pp[4]+R,d=S0*S1-pp[1]*pp[1];
-    if(Math.abs(d)>1e-30){const ix=gla-EKF.x,iy=glo-EKF.y;
-      EKF.x+=(pp[0]*S1-pp[1]*pp[1])/d*ix;EKF.y+=(pp[4]*S0-pp[1]*pp[1])/d*iy;}}
+  // process noise: covariance grows every tick, GPS or not. Uses the trained Adaptive-EKF
+  // model's Qp when it's loaded and running; otherwise the fixed classical constant.
+  const Q=(EKF.Qp!=null?EKF.Qp:2.2e-11)*(1+dt*4);
+  EKF.P[0]+=Q; EKF.P[4]+=Q;
+  // ── UPDATE — only when a fresh GPS fix is actually supplied this tick ──
+  if(gpsMeasured){
+    const accDeg=Math.max(3,gpsAccM||8)/111000;
+    const R=(EKF.Rp!=null?EKF.Rp:1)*accDeg*accDeg; // Rp scales measurement trust — model-driven
+    const Kx=EKF.P[0]/(EKF.P[0]+R), Ky=EKF.P[4]/(EKF.P[4]+R);
+    EKF.x+=Kx*(gla-EKF.x); EKF.y+=Ky*(glo-EKF.y);
+    EKF.P[0]*=(1-Kx); EKF.P[4]*=(1-Ky);
+  }
   const e=dist(EKF.x,EKF.y,gla,glo);EKF.te+=e;EKF.s++;
+}
+function ekfUncertaintyM(){ return Math.sqrt(Math.max(EKF.P[0],EKF.P[4]))*111000; }
+
+/* ── DEBUG PANEL — makes the sensor→model→fusion→position pipeline inspectable ── */
+function updateDebugPanel(){
+  try{
+    const live = GPS.active && !GPS.simMode;
+    const fixAgeS = (live && GPS.lastFixTime!=null) ? (performance.now()-GPS.lastFixTime)/1000 : null;
+    const gEl=document.getElementById('dbg-gnss');
+    if(gEl){
+      if(!live) gEl.textContent='SIM';
+      else if(GPS.hardError) gEl.textContent='ERROR';
+      else if(GPS.forcedOutage) gEl.textContent='BLACKOUT (forced)';
+      else gEl.textContent = S.gnss ? 'LOCKED' : 'BLACKOUT';
+    }
+    const aEl=document.getElementById('dbg-fixage');
+    if(aEl) aEl.textContent = fixAgeS!=null ? fixAgeS.toFixed(1)+'s' : '—';
+    const iEl=document.getElementById('dbg-imu');
+    if(iEl) iEl.textContent = IMU.state + (IMU.active?(' · '+IMU.evtCount+' evt'):'');
+    const hEl=document.getElementById('dbg-imuhz');
+    if(hEl) hEl.textContent = IMU.active ? (IMU.hz||0)+'Hz' : '—';
+    const sEl=document.getElementById('dbg-src');
+    if(sEl) sEl.textContent = S.posSource || (S.gnss?'GNSS-FUSED':'DEAD-RECKONING');
+    const dEl=document.getElementById('dbg-detail');
+    if(dEl) dEl.textContent = `EKF P: ${(ekfUncertaintyM()).toFixed(1)}m · fused=${EKF.x.toFixed(5)},${EKF.y.toFixed(5)} · gps=${live?(GPS.lat||0).toFixed(5)+','+(GPS.lon||0).toFixed(5):'n/a'}`;
+  }catch(e){}
 }
 
 const DT=0.067;
@@ -953,27 +1059,27 @@ function _applyTheme(mode){
   const D=mode==='dark';
   /* ── Color system ── */
   const C=D?{
-    bg:'#18202e',
-    water:'#091624',wStroke:'#0b1c32',
-    grass:'#1c2c1a',scrub:'#1a2a18',wood:'#162215',
-    res:'#1e2838',com:'#1d2742',ind:'#1c2430',park:'#182a16',
-    bld:'#222c3c',bldOut:'rgba(10,18,40,0.55)',
-    mwy:'#4e4030',trunk:'#403424',pri:'#2c2620',sec:'#232122',ter:'#1e1d22',min:'#1c1c20',path:'#232330',
-    mwyCase:'#0d0c18',rdCase:'#0f1020',
-    bdr:'rgba(82,82,115,0.48)',
-    lb:'#dedad2',lbDim:'#aaa49c',lbRd:'#c4beb6',lbH:'rgba(9,17,42,0.92)',
-    wlb:'#4878b2',wlbH:'rgba(7,14,38,0.88)',
+    bg:'#1a2232',
+    water:'#0a1628',wStroke:'#0c1830',
+    grass:'#1e2c1c',scrub:'#1c2a1a',wood:'#182418',
+    res:'#1e2838',com:'#1e2840',ind:'#1c2430',park:'#192a18',
+    bld:'#242e3e',bldOut:'rgba(12,22,42,0.5)',
+    mwy:'#50412e',trunk:'#423624',pri:'#2e2820',sec:'#242022',ter:'#201e22',min:'#1c1c20',path:'#252530',
+    mwyCase:'#100e18',rdCase:'#101018',
+    bdr:'rgba(85,85,115,0.5)',
+    lb:'#e0dbd2',lbDim:'#b0aaa2',lbRd:'#c8c2ba',lbH:'rgba(10,18,42,0.9)',
+    wlb:'#4878b0',wlbH:'rgba(8,16,40,0.85)',
   }:{
-    bg:'#f2ede3',
-    water:'#aacfe6',wStroke:'#82b4d0',
-    grass:'#d0e8b8',scrub:'#c6e0ac',wood:'#b0d098',
-    res:'#eeeae0',com:'#e8e3d8',ind:'#e0d8cc',park:'#bed8a0',
-    bld:'#dbd5ca',bldOut:'rgba(172,162,144,0.32)',
-    mwy:'#f0b030',trunk:'#f0c850',pri:'#f0de84',sec:'#ffffff',ter:'#f8f6f0',min:'#faf8f2',path:'#e8e2d8',
-    mwyCase:'#c08818',rdCase:'#bfb7a6',
-    bdr:'rgba(128,98,56,0.48)',
-    lb:'#1c1a17',lbDim:'#403c37',lbRd:'#2a2620',lbH:'rgba(242,237,227,0.94)',
-    wlb:'#1e5e9e',wlbH:'rgba(228,240,250,0.88)',
+    bg:'#f2ede4',
+    water:'#a8ccdf',wStroke:'#80b0cc',
+    grass:'#d0e8ba',scrub:'#c8e0b0',wood:'#b4d09a',
+    res:'#eeeae2',com:'#e8e4d8',ind:'#e0d8cc',park:'#c0d8a0',
+    bld:'#dbd5cb',bldOut:'rgba(175,165,148,0.35)',
+    mwy:'#f0b030',trunk:'#f0c850',pri:'#f0de88',sec:'#ffffff',ter:'#f8f6f0',min:'#faf8f4',path:'#e8e4dc',
+    mwyCase:'#c08820',rdCase:'#c0b8a8',
+    bdr:'rgba(130,100,60,0.5)',
+    lb:'#1c1a18',lbDim:'#403c38',lbRd:'#2c2820',lbH:'rgba(242,237,228,0.94)',
+    wlb:'#2060a0',wlbH:'rgba(228,240,248,0.85)',
   };
 
   st.layers.forEach(l=>{
@@ -1352,6 +1458,16 @@ function step(){
   // ── LIVE GPS MODE: real world drives everything ──
   if(GPS.active){
     if(!GPS.lat) return; // no fix yet, wait
+
+    // ── REAL GNSS STATE — derived from fix freshness/accuracy/error, never from a toggle ──
+    // A coordinate sitting in GPS.lat does NOT mean GPS is currently connected. Blackout is
+    // declared the moment fresh fixes stop arriving or the browser reports a hard error.
+    // The GNSS-toggle button only FORCES a test outage on top of this; it can never fake LOCKED.
+    const fixAgeMs = GPS.lastFixTime!=null ? (performance.now()-GPS.lastFixTime) : Infinity;
+    const realFreshFix = fixAgeMs < GNSS_TIMEOUT_MS;
+    const gnssUsable = realFreshFix && !GPS.forcedOutage && !GPS.hardError;
+    if(gnssUsable !== S.gnss){ gnssUsable ? reacq() : triggerOut(); }
+
     // Ground truth = real GPS (already kept updated by watchPosition)
     // Heading estimated from consecutive GPS positions
     if(GPS.lastLat !== null && GPS.lastLat !== GPS.lat){
@@ -1361,30 +1477,31 @@ function step(){
     let usedSpd2 = S.useLiveIMU && IMU.active ? clamp(IMU.intSpeed, 0, 35) : 0;
     let usedDH2  = S.useLiveIMU && IMU.active ? IMU.gz * DT2 : 0;
 
+    // ── PREDICT + (conditionally) UPDATE — the ONE place NAVDRIFT's position is computed ──
+    // NAVDRIFT position = EKF output, period. No separate "hug GPS" smoothing formula and
+    // no snap: when GNSS is usable this tick, ekfStep runs a real measurement update gated
+    // by the fix's actual reported accuracy; when it isn't, ekfStep only predicts from IMU,
+    // so the position keeps moving from sensors alone and P (uncertainty) keeps growing.
     if(S.gnss){
-      // GNSS locked: NAVDRIFT-0 estimate hugs real GPS (show it working)
-      S.ndLa += (S.gtLa - S.ndLa) * 0.55 + (Math.random()-.5)*3e-7;
-      S.ndLo += (S.gtLo - S.ndLo) * 0.55 + (Math.random()-.5)*3e-7;
-      S.iLa  += (S.gtLa - S.iLa)  * 0.1  + (Math.random()-.5)*8e-6;
-      S.iLo  += (S.gtLo - S.iLo)  * 0.1  + (Math.random()-.5)*8e-6;
-      S.unc = Math.max(0.35, S.unc * 0.95);
-      ekfStep(usedSpd2, usedDH2, DT2, true, S.gtLa, S.gtLo);
+      ekfStep(usedSpd2, usedDH2, DT2, true, S.gtLa, S.gtLo, GPS.acc);
+      S.posSource = 'GNSS-FUSED';
+      // unfused "raw IMU" baseline trace — for comparison only, not the NAVDRIFT estimate
+      S.iLa += (S.gtLa - S.iLa) * 0.1 + (Math.random()-.5)*8e-6;
+      S.iLo += (S.gtLo - S.iLo) * 0.1 + (Math.random()-.5)*8e-6;
     } else {
-      // BLACKOUT: dead reckon from last GPS anchor using real IMU
-      const t = S.outt;
-      const dh = usedDH2;
-      EKF.th += dh;
-      const dl = usedSpd2 * Math.cos(EKF.th) / 111000 * DT2;
-      const dn = usedSpd2 * Math.sin(EKF.th) / (111000 * Math.cos(S.ndLa * Math.PI/180)) * DT2;
-      S.ndLa += dl + (Math.random()-.5)*1.5e-6*(1+t*.1);
-      S.ndLo += dn + (Math.random()-.5)*1.5e-6*(1+t*.1);
-      S.iLa  += dl + (Math.random()-.5)*2.5e-5*Math.pow(t+1,1.3);
-      S.iLo  += dn + (Math.random()-.5)*2.5e-5*Math.pow(t+1,1.3);
-      S.unc  += (S.inTunnel?.12:.05) * (1+t*.15);
+      ekfStep(usedSpd2, usedDH2, DT2, false, S.gtLa, S.gtLo);
+      S.posSource = (S.useLiveIMU && IMU.active) ? 'DEAD-RECKONING (IMU)' : 'DEAD-RECKONING (NO IMU — HOLDING LAST STATE)';
       S.outt += DT2;
       try{ document.getElementById('ob-t').textContent=S.outt.toFixed(1)+'s'; }catch(e){}
-      ekfStep(usedSpd2, usedDH2, DT2, false, S.gtLa, S.gtLo);
+      // unfused "raw IMU" baseline trace — drifts faster since it has no EKF correction at all
+      const dl = usedSpd2 * Math.cos(EKF.th) / 111000 * DT2;
+      const dn = usedSpd2 * Math.sin(EKF.th) / (111000 * Math.cos(S.iLa * Math.PI/180)) * DT2;
+      S.iLa += dl + (Math.random()-.5)*2.5e-5*(1+S.outt*.3);
+      S.iLo += dn + (Math.random()-.5)*2.5e-5*(1+S.outt*.3);
     }
+    // NAVDRIFT displayed position IS the EKF state — traceable, not a separate variable.
+    S.ndLa = EKF.x; S.ndLo = EKF.y;
+    S.unc  = ekfUncertaintyM();
 
     // Log IMU data
     if(S.useLiveIMU && IMU.active && S.step%3===0){
@@ -1432,6 +1549,7 @@ function step(){
       const nbhdg=document.getElementById('nb-hdg');if(nbhdg)nbhdg.textContent=hdgStr(S.gtH);
       const nberr=document.getElementById('nb-err');if(nberr)nberr.textContent=ndATE+'m';
     }catch(e){}
+    updateDebugPanel();
     return; // done — skip simulation path below
   }
 
@@ -1503,7 +1621,7 @@ function step(){
     S.inTunnel=S.tunDur>5;
   }
 
-  ekfStep(usedSpd, usedDH, DT, S.gnss, S.gtLa, S.gtLo);
+  ekfStep(usedSpd, usedDH, DT, S.gnss, S.gtLa, S.gtLo, 6);
 
   // Auto outage every ~180 steps
   if(S.step%180===0&&S.gnss)triggerOut();
@@ -1603,6 +1721,8 @@ function step(){
     const nbhdg=document.getElementById('nb-hdg');if(nbhdg)nbhdg.textContent=hdgStr(S.gtH);
     const nberr=document.getElementById('nb-err');if(nberr)nberr.textContent=ndATE+'m';
   }catch(e){}
+  S.posSource = S.gnss ? 'SIM-GNSS-FUSED' : 'SIM-DEAD-RECKONING';
+  updateDebugPanel();
 }
 
 function hdgStr(rad){
@@ -1634,12 +1754,16 @@ function reacq(){
   if(S.gnss)return;
   S.gnss=true;S.snapN++;
   document.getElementById('flash').classList.remove('on');
-  const fe=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);
-  S.ndLa=S.gtLa;S.ndLo=S.gtLo;S.iLa=S.gtLa;S.iLo=S.gtLo;S.unc=.45;
+  // Genuine drift error: distance between the dead-reckoned estimate and the fresh GPS
+  // fix, measured BEFORE any correction. The EKF measurement update (ekfStep, called from
+  // step()) is what actually pulls the state back — gated by real GPS accuracy — over the
+  // next tick(s). We do NOT teleport ndLa/ndLo to the GPS position here: predicted and
+  // measured positions must be allowed to differ, or "correction" would be theater.
+  const fe=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);
   // Reset live IMU integration on reacquisition
   if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; IMU.intHeading=0; }
   const ob=document.getElementById('ob');
-  ob.classList.add('snap');ob.textContent='✓ SNAP: -'+fe.toFixed(1)+'m corrected';
+  ob.classList.add('snap');ob.textContent='✓ REACQUIRED: '+fe.toFixed(1)+'m drift error — EKF correcting';
   setTimeout(()=>ob.classList.remove('on'),2500);
   document.getElementById('hdr-dot').classList.remove('out');
   document.getElementById('hdr-st').textContent='LOCKED';
@@ -1658,7 +1782,17 @@ function toggleSim(){
   S.run=!S.run;
   document.getElementById('btn-play').textContent=S.run?'⏸ Pause':'▶ Resume';
 }
-function toggleOutage(){S.gnss?triggerOut():reacq();}
+function toggleOutage(){
+  if(GPS.active && !GPS.simMode){
+    // LIVE mode: this button can only FORCE/RELEASE a test outage (simulates cutting the
+    // antenna). It never directly sets S.gnss — the per-tick watchdog in step() derives
+    // real GNSS state from fix freshness and applies triggerOut()/reacq() itself, so it
+    // cannot be used to fake a LOCKED state while the real signal is actually gone.
+    GPS.forcedOutage = !GPS.forcedOutage;
+    return;
+  }
+  S.gnss?triggerOut():reacq();
+}
 function switchCity(k,el){
   document.querySelectorAll('.cbtn').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');init(k);
@@ -1670,7 +1804,13 @@ if('serviceWorker' in navigator){
 }
 
 /* ── GPS + SIM MODE ── */
-const GPS = {active:false, simMode:false, watchId:null, lat:null, lon:null, acc:null, lastLat:null, lastLon:null};
+// GNSS_TIMEOUT_MS: how long since the last REAL fix before we declare blackout, even if
+// GPS.lat still holds a coordinate in memory. A stale cached coordinate is not a live fix.
+const GNSS_TIMEOUT_MS = 8000;
+const GPS = {active:false, simMode:false, watchId:null, lat:null, lon:null, acc:null, lastLat:null, lastLon:null,
+  lastFixTime:null,   // performance.now() of the last genuinely fresh onFix() call
+  forcedOutage:false, // manual test switch (GNSS-toggle button in LIVE mode) — forces blackout, never LOCKED
+  hardError:false};    // true on permission-denied / position-unavailable until a fresh fix arrives
 
 // Show/hide city sim buttons
 function enterSimMode(){
@@ -1724,6 +1864,8 @@ function startLiveGPS(){
     const acc = pos.coords.accuracy;
     GPS.lat = lat; GPS.lon = lon; GPS.acc = acc;
     GPS.lastLat = lat; GPS.lastLon = lon;
+    GPS.lastFixTime = performance.now(); // this is what makes the fix "fresh" — not the coordinate itself
+    GPS.hardError = false;
 
     dbg.style.color = '#5fba95';
     dbg.textContent = `◉ GPS  ${lat.toFixed(5)}°N  ${lon.toFixed(5)}°E  ±${acc.toFixed(0)}m`;
@@ -1762,25 +1904,23 @@ function startLiveGPS(){
         }
       }
     } else {
-      // On subsequent fixes: jump if moved significantly (or if returning from Delhi sim)
+      // On subsequent fixes: onFix only records ground truth + triggers a hard resync on a
+      // huge jump (new city / GPS glitch, not a drift correction). It must NOT touch
+      // ndLa/ndLo/EKF.x/y itself — that is exclusively step()'s job via ekfStep's real
+      // measurement update, gated by accuracy. Otherwise we'd have two different pieces of
+      // code both "correcting" position with made-up blend factors — precisely the kind of
+      // silent-source-switching this architecture must not have.
       const jumpDeg = Math.abs(S.gtLa - lat) + Math.abs(S.gtLo - lon);
-      if(jumpDeg > 0.003){
-        S.gtLa = lat; S.gtLo = lon;
-        if(jumpDeg > 0.05){
-          S.ndLa = S.iLa = lat; S.ndLo = S.iLo = lon;
-          EKF.x = lat; EKF.y = lon;
-          _gtC=[];_ndC=[];_imuC=[];_ekfC=[];
-          _srcData('gt',_emptyLine());_srcData('nd',_emptyLine());
-          _srcData('imu',_emptyLine());_srcData('ekf',_emptyLine());
-        }
+      S.gtLa = lat; S.gtLo = lon;
+      if(jumpDeg > 0.05){
+        S.ndLa = S.iLa = lat; S.ndLo = S.iLo = lon;
+        EKF.x = lat; EKF.y = lon; EKF.P=[2.5e-9,0,0,0,2.5e-9,0,0,0,.1];
+        _gtC=[];_ndC=[];_imuC=[];_ekfC=[];
+        _srcData('gt',_emptyLine());_srcData('nd',_emptyLine());
+        _srcData('imu',_emptyLine());_srcData('ekf',_emptyLine());
       }
-      if(S.gnss){
-        S.gtLa = lat; S.gtLo = lon;
-        S.ndLa += (lat - S.ndLa) * 0.4;
-        S.ndLo += (lon - S.ndLo) * 0.4;
-        EKF.x += (lat - EKF.x) * 0.5;
-        EKF.y += (lon - EKF.y) * 0.5;
-        if(_map&&!_mapMoving&&!_mapZooming) _map.jumpTo({center:[lon,lat],zoom:_map.getZoom()});
+      if(S.gnss && _map && !_mapMoving && !_mapZooming){
+        _map.jumpTo({center:[lon,lat],zoom:_map.getZoom()});
       }
       try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){}
     }
@@ -1795,6 +1935,10 @@ function startLiveGPS(){
     lb.style.color = err.code===1 ? 'rgba(192,64,64,0.9)' : 'rgba(184,144,64,0.9)';
     lb.style.background = 'transparent';
     console.warn('GPS err', err.code, err.message);
+    // Permission denied / position unavailable is a HARD failure: the per-tick GNSS
+    // watchdog in step() must declare blackout immediately, not wait out the timeout
+    // while a stale GPS.lat coordinate sits in memory pretending to still be live.
+    if(err.code===1 || err.code===2){ GPS.hardError = true; }
     if(err.code !== 1){
       // Retry after 3s for non-permission errors
       setTimeout(()=>{ if(!GPS.active && !GPS.simMode) startLiveGPS(); }, 3000);
@@ -1808,6 +1952,139 @@ function startLiveGPS(){
 
 let lt=0;
 function loop(t){requestAnimationFrame(loop);if(t-lt>65){step();lt=t;}}
+
+/* ── NAVDRIFT_ONNX — the actual trained model pipeline, ported from frontend/index.html ──
+   These are the SAME 4 FP32 ONNX exports validated in results/validation_full.json
+   (0.023% mean drift on IO-VNBD held-out test, ATE RMSE 0.247m, 4.85ms pipeline latency).
+   Runs automatically once real IMU is active. No new UI — status surfaces in the existing
+   Debug panel. If loading fails (offline / path issue), it fails openly (LOAD-FAILED shown
+   in Debug) and the app keeps running on the classical kinematic+EKF pipeline already
+   built above — it never silently pretends the trained model is active when it isn't. */
+const NAVDRIFT_ONNX = (function(){
+  const MODEL_PATHS = {
+    adaptive_ekf: './models/adaptive_ekf_fp32.onnx',
+    tunnel_det:   './models/tunnel_det_fp32.onnx',
+    driftformer:  './models/driftformer_fp32.onnx',
+  };
+  let sessions={}, loaded=false, loading=false, failed=false, lastStatus='INACTIVE', lastMs=0;
+  const IMU_WIN=100, TUN_WIN=20;
+  let imuBuf=[], tunBuf=[];
+
+  function _f32(arr){
+    const flat=arr.flat(Infinity);
+    const shape=[];let x=arr;
+    while(Array.isArray(x)){shape.push(x.length);x=x[0];}
+    return new ort.Tensor('float32',Float32Array.from(flat.map(Number)),shape);
+  }
+  function _pad(buf,n){
+    return buf.length>=n?buf.slice(-n):
+      [...Array(n-buf.length).fill(buf[0]||Array(9).fill(0)),...buf];
+  }
+
+  async function load(){
+    if(loading||loaded||failed)return;
+    loading=true; lastStatus='LOADING';
+    if(typeof ort==='undefined'){ failed=true; lastStatus='ORT-NOT-LOADED'; loading=false; return; }
+    try{
+      ort.env.wasm.numThreads=1;
+      ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+      for(const k of Object.keys(MODEL_PATHS)){
+        const resp=await fetch(MODEL_PATHS[k]);
+        if(!resp.ok) throw new Error('HTTP '+resp.status+' '+MODEL_PATHS[k]);
+        const buf=await resp.arrayBuffer();
+        sessions[k]=await ort.InferenceSession.create(buf,{executionProviders:['wasm']});
+      }
+      loaded=true; lastStatus='ACTIVE';
+      console.log('[NAVDRIFT_ONNX] trained pipeline loaded — DriftFormer + Adaptive EKF + Tunnel BiLSTM live');
+    }catch(e){
+      failed=true; lastStatus='LOAD-FAILED: '+e.message;
+      console.warn('[NAVDRIFT_ONNX] load failed — staying on classical kinematic+EKF pipeline', e);
+    }
+    loading=false;
+  }
+
+  async function runStep(imuVec){
+    if(!loaded)return null;
+    const t0=performance.now();
+    const res={};
+    imuBuf.push(imuVec); if(imuBuf.length>IMU_WIN) imuBuf.shift();
+    const accelMag=Math.sqrt(imuVec[0]*imuVec[0]+imuVec[1]*imuVec[1]+imuVec[2]*imuVec[2]);
+    tunBuf.push([imuVec[6]/30, imuVec[7]/35, S.gnss?1:0, (imuVec[8]||0)/500, accelMag/15]);
+    if(tunBuf.length>TUN_WIN) tunBuf.shift();
+
+    // Adaptive EKF MLP — predicts process/measurement noise (Q/R) for this tick's fusion
+    if(sessions.adaptive_ekf){
+      try{
+        const inp=sessions.adaptive_ekf.inputNames[0];
+        const feat=[EKF.Qp||1e-3, EKF.Rp||1, (imuVec[6]||0)/30, (S.unc||1)/20, (S.step%1000)/1000, S.gnss?1:0];
+        const out=await sessions.adaptive_ekf.run({[inp]:_f32([feat])});
+        const d=out[sessions.adaptive_ekf.outputNames[0]].data;
+        res.ekfQ=Math.max(1e-12,Math.abs(d[0]));
+        res.ekfR=Math.max(1e-3,Math.abs(d[1]||d[0]));
+      }catch(e){}
+    }
+    // Tunnel Detector BiLSTM — structural-blackout classifier from telemetry window
+    if(sessions.tunnel_det){
+      try{
+        const inp=sessions.tunnel_det.inputNames[0];
+        const out=await sessions.tunnel_det.run({[inp]:_f32([_pad(tunBuf,TUN_WIN)])});
+        res.tunnelProb=out[sessions.tunnel_det.outputNames[0]].data[0];
+      }catch(e){}
+    }
+    // DriftFormer — learned drift-correction refinement, once enough window history exists
+    if(sessions.driftformer && imuBuf.length>=IMU_WIN && S.step%20===0){
+      try{
+        const inp=sessions.driftformer.inputNames[0];
+        const out=await sessions.driftformer.run({[inp]:_f32([_pad(imuBuf,IMU_WIN)])});
+        const d=out[sessions.driftformer.outputNames[0]].data;
+        res.driftCorr={dLat:d[0],dLon:d[1]};
+      }catch(e){}
+    }
+    res.ms=performance.now()-t0;
+    return res;
+  }
+
+  async function applyToStep(imuVec){
+    if(!loaded){ load(); return; }
+    const res=await runStep(imuVec);
+    if(!res)return;
+    lastMs=res.ms;
+    if(res.tunnelProb!==undefined){
+      if(res.tunnelProb>0.68 && !S.inTunnel) S.inTunnel=true;
+      else if(res.tunnelProb<0.22 && S.inTunnel) S.inTunnel=false;
+    }
+    if(res.ekfQ!==undefined){ EKF.Qp=res.ekfQ; EKF.Rp=res.ekfR; }
+    // DriftFormer correction is applied ONLY during an actual GNSS blackout, as a learned
+    // refinement layered on top of the kinematic EKF prediction. It must never move the
+    // fused position while GNSS is locked — that would be exactly the "silently cheating
+    // toward a known point" behavior this whole rebuild exists to eliminate.
+    if(res.driftCorr && !S.gnss){
+      const sc=1e-6;
+      EKF.x += res.driftCorr.dLat*sc;
+      EKF.y += res.driftCorr.dLon*sc;
+    }
+  }
+
+  return { load, applyToStep, status(){ return {loaded,failed,label:lastStatus,ms:lastMs}; } };
+})();
+
+// Load the trained pipeline as soon as the page is idle — non-blocking, fails open.
+NAVDRIFT_ONNX.load();
+
+// Wrap step() so every tick, once real IMU is actually active, also feeds the trained
+// ONNX pipeline (same global-binding trick used in frontend/index.html: a top-level
+// `function step(){}` is a property of window, so this reassignment is picked up by
+// every existing call site, including inside loop()).
+(function(){
+  const _origStep = step;
+  window.step = function(){
+    _origStep();
+    if(!(S.useLiveIMU && IMU.active)) return; // only meaningful with real sensor data
+    const gz = clamp(IMU.gz||0, -35, 35);
+    const ax = IMU.fwdAccel||0;
+    NAVDRIFT_ONNX.applyToStep([ax,0,-9.81,0,0,gz,(IMU.intSpeed||0),(S.gtH||0),(S.baroAlt||0)]);
+  };
+})();
 
 // Boot: start in Live GPS mode, India overview until fix arrives
 document.getElementById('city-buttons').style.display = 'none';
