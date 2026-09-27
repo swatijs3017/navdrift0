@@ -1762,12 +1762,16 @@ function addOverlayLayers(){
    touches GPS, IMU, EKF, ONNX, or the OSM road graph, and no page reload ever happens — only the
    map object itself is ever torn down and recreated, against the one approved style. */
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'; // unchanged — the one approved production style
-const MAP_LOAD_TIMEOUT_MS = 9000;
+const MAP_LOAD_TIMEOUT_MS = 9000; // base watchdog window for the first attempt — unchanged default
+const MAP_LOAD_TIMEOUT_MAX_MS = 21000; // hard ceiling regardless of retry count — never waits forever
+const MAP_LOAD_TIMEOUT_STEP_MS = 4000; // each retry attempt gets a bit more patience, capped at the ceiling above
+const MAP_LOAD_EXTENSION_MS = 6000; // one bounded grace period, granted only if real progress was observed right at the deadline
 const MAP_RETRY_DELAYS_MS = [2000,4000,8000,15000,30000]; // caps out at 30s and keeps retrying at that interval — never switches provider
 const MAP_TILE_ERROR_WINDOW_MS = 10000, MAP_TILE_ERROR_THRESHOLD = 5; // 5+ tile errors within 10s post-load = treat as a real disruption
 const MAP_REBUILD_DEBOUNCE_MS = 5000; // don't rebuild more than once every 5s, however many triggers fire
 let _mapRetryAttempt=0, _mapLoadTimer=null, _mapRetryTimer=null, _pendingCityKey='delhi';
 let _mapTileErrorTimes=[], _lastMapRebuildAt=0;
+let _mapLoadProgressSeen=false, _mapLoadExtended=false; // per-attempt only — reset at the top of every _createMap() call
 
 function _clearMapTimers(){
   if(_mapLoadTimer){clearTimeout(_mapLoadTimer);_mapLoadTimer=null;}
@@ -1830,6 +1834,7 @@ window.addEventListener('offline', ()=>{
 
 function _createMap(c){
   const cfg=CITIES[c];
+  _mapLoadProgressSeen=false; _mapLoadExtended=false; // fresh state for this attempt only
   try{
     _map=new maplibregl.Map({
       container:'map',
@@ -1868,6 +1873,12 @@ function _createMap(c){
   _map.on('zoomstart',e=>{if(e.originalEvent)_markUserGesture();});
   _map.on('moveend', ()=>{/* flags cleared by timer only */});
   _map.on('zoomend',()=>{});
+  // Progress tracking for the load watchdog below — only legitimate MapLibre loading-progress
+  // events set this flag, and it is only ever read once (at the watchdog's deadline), never used
+  // to reset or repeatedly extend the timer, so a chatty event stream can't stall the watchdog
+  // indefinitely.
+  _map.on('styledata', ()=>{ _mapLoadProgressSeen=true; });
+  _map.on('sourcedata', (e)=>{ if(e&&e.isSourceLoaded) _mapLoadProgressSeen=true; });
   _map.on('error', (e)=>{
     const msg = e && e.error ? e.error.message : String(e);
     if(!_mapReady){
@@ -1913,11 +1924,28 @@ function _createMap(c){
   // looks like from inside the page — there is no lower-level signal available here) never
   // fires 'error' at all. If 'load' hasn't fired within this window, treat it as failed too, so
   // a hung request can't leave the map blank forever either.
+  // Retry-aware: later attempts (after a previous attempt already failed) get a bit more patience,
+  // capped at MAP_LOAD_TIMEOUT_MAX_MS — a slow cellular connection isn't given up on as fast as
+  // the very first try, but there's still a hard ceiling.
+  const attemptTimeoutMs = Math.min(MAP_LOAD_TIMEOUT_MS + _mapRetryAttempt*MAP_LOAD_TIMEOUT_STEP_MS, MAP_LOAD_TIMEOUT_MAX_MS);
   _mapLoadTimer=setTimeout(()=>{
-    if(!_mapReady){
-      _scheduleMapRetry('(E/F) style load timed out after '+(MAP_LOAD_TIMEOUT_MS/1000)+'s (no error event, no load event — consistent with a hung network/DNS/TLS request or a transition mid-fetch)');
+    if(_mapReady) return;
+    if(_mapLoadProgressSeen && !_mapLoadExtended){
+      // Real progress was actually observed (style and/or source data genuinely arrived) — this
+      // is a slow load, not a dead one. Grant exactly one bounded grace period instead of
+      // destroying an attempt that may finish momentarily. Bounded and one-shot per attempt, so
+      // a permanently stuck request still cannot extend itself forever.
+      _mapLoadExtended=true;
+      console.warn('[Map] load still pending at '+(attemptTimeoutMs/1000)+'s but genuine progress observed (styledata/sourcedata) — granting one '+(MAP_LOAD_EXTENSION_MS/1000)+'s extension before retrying');
+      _mapLoadTimer=setTimeout(()=>{
+        if(!_mapReady){
+          _scheduleMapRetry('(E/F) style load timed out after a '+(MAP_LOAD_EXTENSION_MS/1000)+'s extension on top of '+(attemptTimeoutMs/1000)+'s (progress was seen but load never completed)');
+        }
+      },MAP_LOAD_EXTENSION_MS);
+      return;
     }
-  },MAP_LOAD_TIMEOUT_MS);
+    _scheduleMapRetry('(E/F) style load timed out after '+(attemptTimeoutMs/1000)+'s (no error event, no load event, no progress observed — consistent with a hung network/DNS/TLS request or a transition mid-fetch)');
+  },attemptTimeoutMs);
 }
 
 function initMap(c){
