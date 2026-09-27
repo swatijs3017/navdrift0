@@ -545,6 +545,11 @@
         <div class="tr-l">Pos Source</div>
         <div class="tr-v" id="dbg-src" style="color:var(--nt)">—</div>
       </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">ONNX Pipeline</div>
+        <div class="tr-v" id="dbg-onnx" style="color:var(--np)">—</div>
+      </div>
     </div>
     <div class="tp-section-label-sub" id="dbg-detail" style="padding-top:0;">—</div>
 
@@ -1028,11 +1033,23 @@ function updateDebugPanel(){
     if(sEl) sEl.textContent = S.posSource || (S.gnss?'GNSS-FUSED':'DEAD-RECKONING');
     const dEl=document.getElementById('dbg-detail');
     if(dEl) dEl.textContent = `EKF P: ${(ekfUncertaintyM()).toFixed(1)}m · fused=${EKF.x.toFixed(5)},${EKF.y.toFixed(5)} · gps=${live?(GPS.lat||0).toFixed(5)+','+(GPS.lon||0).toFixed(5):'n/a'}`;
+    // Trained ONNX pipeline (DriftFormer + Adaptive EKF + Tunnel BiLSTM) status + honest chip label
+    if(typeof NAVDRIFT_ONNX!=='undefined'){
+      const st=NAVDRIFT_ONNX.status();
+      const oEl=document.getElementById('dbg-onnx');
+      if(oEl) oEl.textContent = st.label + (st.loaded?' · '+st.ms.toFixed(1)+'ms':'');
+      const chip=document.getElementById('drift-chip');
+      if(chip){
+        if(st.loaded){ chip.textContent='DRIFT-FORMER · ONNX ACTIVE'; chip.title='Trained transformer running live in-browser (onnxruntime-web/WASM)'; }
+        else if(st.failed){ chip.textContent='DEAD RECKONING · ONNX LOAD FAILED'; chip.title=st.label; }
+        else { chip.textContent='DEAD RECKONING · KINEMATIC + EKF (LOADING ONNX…)'; }
+      }
+    }
   }catch(e){}
 }
 
 const DT=0.067;
-let _map,_mapReady=false,_gtC=[],_ndC=[],_imuC=[],_ekfC=[],_vm,_mapMoving=false,_mapZooming=false;
+let _map,_mapReady=false,_gtC=[],_ndC=[],_imuC=[],_ekfC=[],_vm,_gtm,_mapMoving=false,_mapZooming=false;
 
 function _emptyLine(){return{type:'Feature',geometry:{type:'LineString',coordinates:[]}};}
 function _geoCircle(lat,lon,rM,n=32){
@@ -1379,10 +1396,15 @@ function addOverlayLayers(){
   _map.addLayer({id:'imu-l',type:'line',source:'imu',paint:{'line-color':'rgba(180,70,70,0.72)','line-width':1.4,'line-opacity':0.6,'line-dasharray':[5,3]}});
   _map.addLayer({id:'ekf-l',type:'line',source:'ekf',paint:{'line-color':'rgba(200,160,70,0.72)','line-width':1.4,'line-opacity':0.6}});
   _map.addLayer({id:'unc-l',type:'fill',source:'unc',paint:{'fill-color':'rgba(155,114,216,0.08)','fill-outline-color':'rgba(155,114,216,0.35)'}});
-  /* Vehicle marker */
+  /* Vehicle marker — blue filled dot = NAVDRIFT predicted/fused position */
   const vmEl=document.createElement('div');
   vmEl.innerHTML='<div id="vm-inner" style="width:20px;height:20px;position:relative;transform-origin:center center"><div style="width:20px;height:20px;border-radius:50%;background:#2979ff;border:2.5px solid #fff;box-shadow:0 0 0 3px rgba(41,121,255,0.28),0 2px 8px rgba(0,0,0,0.45);"></div></div>';
   _vm=new maplibregl.Marker({element:vmEl,anchor:'center'}).setLngLat([CITIES[S.city||'delhi'].lon,CITIES[S.city||'delhi'].lat]).addTo(_map);
+  /* Ground-truth marker — hollow cyan ring = actual GPS fix (frozen during blackout, so you
+     can SEE the blue predicted dot separate from it, then watch them converge on reacquire) */
+  const gtEl=document.createElement('div');
+  gtEl.innerHTML='<div style="width:16px;height:16px;border-radius:50%;background:rgba(0,212,196,0.12);border:2.5px solid #00d4cc;box-shadow:0 0 8px rgba(0,212,196,0.65);"></div>';
+  _gtm=new maplibregl.Marker({element:gtEl,anchor:'center'}).setLngLat([CITIES[S.city||'delhi'].lon,CITIES[S.city||'delhi'].lat]).addTo(_map);
 }
 
 function initMap(c){
@@ -1430,6 +1452,7 @@ function initMap(c){
     _srcData('gt',_emptyLine());_srcData('nd',_emptyLine());
     _srcData('imu',_emptyLine());_srcData('ekf',_emptyLine());
     if(_vm)_vm.setLngLat([cfg.lon,cfg.lat]);
+    if(_gtm)_gtm.setLngLat([cfg.lon,cfg.lat]);
   }
   if(GPS&&GPS.simMode) setTimeout(()=>{if(_map)_map.jumpTo({center:[cfg.lon,cfg.lat],zoom:cfg.zoom});},_mapReady?0:1200);
   else if(!GPS||!GPS.active) setTimeout(()=>{if(_map)_map.jumpTo({center:[78.9629,20.5937],zoom:5});},_mapReady?0:1200);
@@ -1519,6 +1542,10 @@ function step(){
       if(_ekfC.length>2)_srcData('ekf',{type:'Feature',geometry:{type:'LineString',coordinates:_ekfC}});
       _srcData('unc',_geoCircle(S.ndLa,S.ndLo,Math.max(4,S.unc)));
       if(_vm)_vm.setLngLat([S.ndLo,S.ndLa]);
+      // Ground-truth marker: only moves on a FRESH GPS fix. During blackout S.gtLa/gtLo
+      // simply hold their last value (nothing updates them), so this ring visibly stays
+      // put while the blue predicted dot above keeps moving from sensor data alone.
+      if(_gtm)_gtm.setLngLat([S.gtLo,S.gtLa]);
       const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(S.gtH*180/Math.PI)+'deg)';
       if(GPS.zoomed&&!_mapMoving&&!_mapZooming){
         const ctr=S.gnss?[S.gtLo,S.gtLa]:[S.ndLo,S.ndLa];
