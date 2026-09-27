@@ -906,12 +906,17 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
               <div style="font-size:.57rem;color:var(--t3);font-family:var(--mono)" id="sig-sub">7 Satellites locked</div>
             </div>
           </div>
-          <!-- NavIC DOP — Dilution of Precision (ISRO PDOP/HDOP/VDOP) -->
+          <!-- NavIC DOP — Dilution of Precision (ISRO PDOP/HDOP/VDOP).
+               dop-source says plainly whether this row is the trained navic_dop.onnx model's
+               real output or a geometric estimate from the simulated constellation — browsers
+               have no satellite API, so a real device could only ever get this from the
+               model or from actual GNSS chipset data (Android GnssStatus), never invented. -->
           <div class="dop-row">
             <div class="dop-cell"><div class="dop-label">PDOP</div><div class="dop-value" id="dop-pdop">1.8</div></div>
             <div class="dop-cell"><div class="dop-label">HDOP</div><div class="dop-value" id="dop-hdop">1.2</div></div>
             <div class="dop-cell"><div class="dop-label">VDOP</div><div class="dop-value" id="dop-vdop">1.4</div></div>
           </div>
+          <div style="font-size:.55rem;color:var(--t3);font-family:var(--mono);margin-top:2px" id="dop-source">estimated (sim constellation)</div>
         </div>
         <div class="card">
           <div class="ct"><div class="ct-l"><span class="cdot c"></span>Live Signals</div></div>
@@ -927,7 +932,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <!-- AI TAB -->
       <div class="ptab-content" data-panel="right" data-tab="ai">
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot v"></span>DRIFTFormer Attention</div><span style="font-size:.52rem;color:var(--t3)">50-frame window</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot v"></span>DRIFTFormer Attention <span style="font-size:.5rem;color:var(--t3);font-weight:400">(illustrative — the exported ONNX graph does not emit attention weights)</span></div><span style="font-size:.52rem;color:var(--t3)">50-frame window</span></div>
           <div class="attn-strip" id="attn-strip"></div>
           <div style="display:flex;justify-content:space-between;margin-top:3px">
             <span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">t-50</span>
@@ -972,8 +977,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
           <div class="ct"><div class="ct-l"><span class="cdot g"></span>Edge Deployment</div><span style="font-size:.5rem;font-family:var(--mono);color:var(--t3)">INT8 ONNX target</span></div>
           <div class="edge-grid">
             <div class="edge-cell"><div class="edge-icon">💾</div><div class="edge-val" id="edge-mb">2.1</div><div class="edge-lbl">MB INT8</div></div>
-            <div class="edge-cell"><div class="edge-icon">⚡</div><div class="edge-val" id="edge-hz">48.3</div><div class="edge-lbl">Infer Hz</div></div>
-            <div class="edge-cell"><div class="edge-icon">🔧</div><div class="edge-val" id="edge-cpu">12.4</div><div class="edge-lbl">CPU %</div></div>
+            <div class="edge-cell"><div class="edge-icon">⚡</div><div class="edge-val" id="edge-hz">—</div><div class="edge-lbl">Infer Hz (live, ONNX on)</div></div>
           </div>
           <div style="margin-top:5px;display:grid;grid-template-columns:1fr 1fr;gap:3px">
             <div style="padding:3px 5px;background:rgba(0,0,0,0.2);border-radius:4px;border:1px solid var(--line-soft)">
@@ -1039,7 +1043,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <!-- FLEET TAB -->
       <div class="ptab-content" data-panel="right" data-tab="fleet">
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Federated Learning</div><span style="font-size:.53rem;color:var(--muted)" id="fed-round">Round 0</span></div>
+          <div class="ct"><div class="ct-l"><span class="cdot g"></span>Federated Learning <span style="font-size:.5rem;color:var(--t3);font-weight:400">(illustrative simulation — no real fleet is connected)</span></div><span style="font-size:.53rem;color:var(--muted)" id="fed-round">Round 0</span></div>
           <div class="mrow"><span class="ml">Global ATE</span><span class="mv c" id="fed-gate">—<span class="mu">m</span></span></div>
           <div class="mrow"><span class="ml">Fleet size</span><span class="mv">12 vehicles</span></div>
           <div class="mrow"><span class="ml">TDP ETA</span><span class="mv y" id="tdp-eta">—</span></div>
@@ -1053,14 +1057,14 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       <!-- EXPLAIN TAB -->
       <div class="ptab-content" data-panel="right" data-tab="explain">
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot c"></span>DRIFTFormer Attention</div></div>
+          <div class="ct"><div class="ct-l"><span class="cdot c"></span>DRIFTFormer Attention <span style="font-size:.5rem;color:var(--t3);font-weight:400">(illustrative — not extracted from the real model)</span></div></div>
           <canvas id="attn-cv" style="width:100%;height:110px;display:block;border-radius:4px"></canvas>
           <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:.56rem;color:var(--muted);font-family:var(--mono)">
             <span>ax</span><span>ay</span><span>az</span><span>gx</span><span>gy</span><span>gz</span><span>spd</span><span>baro</span><span>Δh</span>
           </div>
         </div>
         <div class="card">
-          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Attention Heatmap (4 heads)</div></div>
+          <div class="ct"><div class="ct-l"><span class="cdot y"></span>Attention Heatmap (4 heads) <span style="font-size:.5rem;color:var(--t3);font-weight:400">(illustrative)</span></div></div>
           <canvas id="attn-hm" style="width:100%;height:80px;display:block;border-radius:4px"></canvas>
         </div>
       </div>
@@ -1201,9 +1205,8 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     zupt:false,         // Zero Velocity Update active
     zuptN:0,            // ZUPT correction count
     speedBuf:[],        // rolling speed buffer for ZUPT detection
-    dop:{pdop:1.8,hdop:1.2,vdop:1.4}, // NavIC DOP values
-    edgeHz:48.3,        // edge inference Hz (fluctuates slightly)
-    edgeCpu:12.4        // edge CPU % usage
+    dop:{pdop:1.8,hdop:1.2,vdop:1.4}, // NavIC DOP values — real once ONNX is on, see dop-source
+    edgeHz:null         // real measured inference rate once ONNX is on; null renders as "—"
   };
 
   // ─── INIT ───
@@ -1224,7 +1227,7 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     // Reset ODO·AI, MAG, compliance
     S.odoAI=0;S.odoWheel=0;S.magH=0;S.ahrsConf=94;S.blackoutPeakDrift=0;S.drTransMs=0.4;
     S.distTrav=0;S.driftPct=0;S.gnssTransMs=0.4;S.zupt=false;S.zuptN=0;S.speedBuf=[];
-    S.dop={pdop:1.8,hdop:1.2,vdop:1.4};S.edgeHz=48.3;S.edgeCpu=12.4;
+    S.dop={pdop:1.8,hdop:1.2,vdop:1.4};S.edgeHz=null;
     // Reset WS
     if(S.ws){try{S.ws.close();}catch(e){} S.ws=null;S.wsReady=false;}
     ekfReset(st[0],st[1],0);
@@ -1462,25 +1465,32 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
       S.driftPct=S.distTrav>10 ? Math.min(25,(curErr/S.distTrav)*100) : 0;
     }
 
-    // ── ISRO MODULE: NavIC DOP update (every 20 steps) ───────────────────────
-    if(S.step%20===0){
-      // Simplified DOP from active satellites (SATS global array)
+    // ── NavIC DOP ─────────────────────────────────────────────────────────
+    // When the trained navic_dop.onnx model is active, its real output (res.dop, applied in
+    // applyToSim below) is what drives S.unc — this block only supplies the on-screen
+    // pdop/hdop/vdop numbers, and only as a geometric estimate from the simulated
+    // constellation, for when the ONNX pipeline is OFF. It is explicitly labeled as an
+    // estimate in the UI (see #dop-source) rather than presented as a live measurement.
+    if(S.step%20===0 && !(typeof NAVDRIFT_ONNX!=='undefined' && NAVDRIFT_ONNX.on)){
       try{
         const active=(window.SATS||[]).filter(sv=>sv.snr>15&&sv.el>5);
         const n=active.length;
         if(n>=4){
-          // Geometric factor: more sats + higher elevation → lower DOP
           const avgEl=active.reduce((s,v)=>s+v.el,0)/n;
-          const pdop=Math.max(1.0,Math.min(5.0,4.5-n*0.28-avgEl*0.018+(Math.random()-0.5)*0.12));
+          const pdop=Math.max(1.0,Math.min(5.0,4.5-n*0.28-avgEl*0.018));
           S.dop={pdop:+pdop.toFixed(1),hdop:+(pdop*0.62).toFixed(1),vdop:+(pdop*0.79).toFixed(1)};
         }
       }catch(e){}
+      const ds=document.getElementById('dop-source');if(ds)ds.textContent='estimated (sim constellation)';
     }
 
-    // ── Edge metric drift (realistic fluctuation) ─────────────────────────────
-    if(S.step%8===0){
-      S.edgeHz=+(48.3+(Math.random()-0.5)*2.4).toFixed(1);
-      S.edgeCpu=+(12.4+(Math.random()-0.5)*3.2).toFixed(1);
+    // ── Edge inference rate ───────────────────────────────────────────────
+    // Derived from the ONNX pipeline's OWN measured wall-clock latency (res.ms, set in
+    // applyToSim/runStep) — this is a real number, not a scripted fluctuation. There is no
+    // "edge CPU %" field here anymore: a browser has no API to read process CPU usage, so a
+    // number there could only ever be invented, and this pipeline no longer invents metrics.
+    if(S.step%8===0 && !(typeof NAVDRIFT_ONNX!=='undefined' && NAVDRIFT_ONNX.on)){
+      S.edgeHz=null; // shows "—" until the ONNX pipeline is actually running and reports real ms
     }
 
     const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo),eIMU=dist(S.iLa,S.iLo,S.gtLa,S.gtLo);
@@ -1691,9 +1701,12 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     }catch(e){}
 
     // ── ISRO: Edge Deployment Metrics ────────────────────────────────────────
+    // edge-hz is the real measured onnxruntime-web latency turned into a rate; it reads "—"
+    // until the ONNX pipeline is actually on, rather than showing an invented idle number.
+    // There is no edge-cpu metric anymore — browsers cannot read process CPU usage, so this
+    // used to be a made-up figure. Removed rather than faked.
     try {
-      const ehz=$('edge-hz');if(ehz)ehz.textContent=S.edgeHz;
-      const ecpu=$('edge-cpu');if(ecpu)ecpu.textContent=S.edgeCpu;
+      const ehz=$('edge-hz');if(ehz)ehz.textContent=(S.edgeHz==null?'—':S.edgeHz+' Hz');
     }catch(e){}
   }catch(e){/* silent — never crash the animation loop */}}
 
@@ -3116,17 +3129,24 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
           (res.driftCorr.dLon*sc).toExponential(2),'snap');
       }
 
-      // NavIC DOP -> position uncertainty
-      if(res.dop!==undefined&&S.gnss){
-        S.unc=Math.max(0.35,Math.min(25,Math.abs(res.dop)*3.5));
+      // NavIC DOP -> position uncertainty, AND the real on-screen DOP numbers while the
+      // trained model is active (real HDOP from res.dop; PDOP/VDOP derived from it with the
+      // same fixed geometric ratios used elsewhere — no random term).
+      if(res.dop!==undefined){
+        if(S.gnss) S.unc=Math.max(0.35,Math.min(25,Math.abs(res.dop)*3.5));
+        const hdop=Math.abs(res.dop), pdop=hdop/0.62;
+        S.dop={pdop:+pdop.toFixed(1),hdop:+hdop.toFixed(1),vdop:+(pdop*0.79).toFixed(1)};
+        const ds=document.getElementById('dop-source');if(ds)ds.textContent='live · navic_dop.onnx';
       }
 
-      // Latency displays
+      // Latency displays — real measured onnxruntime-web wall-clock time for this tick.
       const ms=res.ms.toFixed(1);
       const latEl=_lat();if(latEl)latEl.textContent=ms+'ms';
       const engMs=document.getElementById('eng-ms');if(engMs&&_on)engMs.textContent=ms;
       const engLabel=document.getElementById('eng-label');
       if(engLabel&&_on)engLabel.textContent='ONNX';
+      // Real inference rate derived from this tick's own measured latency — not a script.
+      if(res.ms>0) S.edgeHz=+(1000/res.ms).toFixed(1);
     }
 
     function toggle(){
