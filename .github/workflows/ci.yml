@@ -14,7 +14,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements-api.txt && pip install -e . && pip install pytest httpx
-      - run: python -c "from navdrift0.api.app import app; print('import OK')"
+      - run: python -c "from api.app import app; print('import OK')"
         env:
           DEMO_MODE: "true"
           NAVDRIFT_API_KEY: "test-key-ci"
