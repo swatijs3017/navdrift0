@@ -891,44 +891,65 @@ async function requestSensorAccess(){
       }
     }, 3000);
 
-    // Auto-calibrate: accumulate samples for 2 seconds then compute mean bias
-    status.textContent = 'Calibrating bias… hold device still (2 s).';
-    let _calSamples = [];
-    const _calHandler = (ev)=>{
-      const a = (ev.acceleration && (Math.abs(ev.acceleration.x||0)+Math.abs(ev.acceleration.y||0)+Math.abs(ev.acceleration.z||0))>0.01)
-                ? ev.acceleration : ev.accelerationIncludingGravity;
-      if(a) _calSamples.push({ax:a.x||0,ay:a.y||0,az:a.z||0,gz:(ev.rotationRate?.gamma||0)*Math.PI/180,fwd:IMU.fwdAccel});
-    };
-    window.addEventListener('devicemotion', _calHandler, {passive:true});
-    setTimeout(()=>{
-      window.removeEventListener('devicemotion', _calHandler);
-      if(_calSamples.length > 5){
-        const n = _calSamples.length;
-        const meanAx = _calSamples.reduce((s,r)=>s+r.ax,0)/n;
-        const meanAy = _calSamples.reduce((s,r)=>s+r.ay,0)/n;
-        const meanAz = _calSamples.reduce((s,r)=>s+r.az,0)/n;
-        const meanGz = _calSamples.reduce((s,r)=>s+r.gz,0)/n;
-        const meanFwd= _calSamples.reduce((s,r)=>s+r.fwd,0)/n;
-        IMU.axOff = meanAx; IMU.ayOff = meanAy;
-        // For gravity-free, azOff ≈ meanAz; for gravity-included, remove expected gravity
-        IMU.azOff = IMU._gravFree ? meanAz : (meanAz - 9.81);
-        IMU.gxOff = IMU.gx; IMU.gyOff = IMU.gy; IMU.gzOff = meanGz;
-        // Capture forward-accel bias (residual after gravity removal while stationary)
-        IMU.fwdAccelBias = meanFwd;
-        // Reset Butterworth filter state after calibration
-        _bw_xp=[0,0,0]; _bw_yp1=[0,0,0]; _bw_yp2=[0,0,0];
-      }
-      IMU.calibrated = true;
-      if(IMU.active){
-        status.textContent = '✓ Calibrated. Live IMU active at ~' + (IMU.hz||30) + ' Hz — ' + IMU.evtCount + ' samples received.';
-        activateSensorMode();
-        setTimeout(closeSensorModal, 1200);
-      } else {
-        // Permission was granted but no real sensor events ever arrived — the 3s
-        // watchdog above will already have flagged UNAVAILABLE. Do not claim LIVE IMU.
-        status.textContent = '✗ IMU UNAVAILABLE — no sensor events received. Dead reckoning cannot use motion data.';
-      }
-    }, 2000);
+    // Auto-calibrate: accumulate samples for 2 seconds then compute mean bias.
+    // A calibration taken while the phone is actually being moved/tapped produces a bad
+    // bias that then integrates into a runaway fake speed later — this happened in a real
+    // exported log (336 m/s from a ~33 m/s² bias that was never real gravity). So we check
+    // how STILL the phone actually was during the window and retry once if it wasn't.
+    function _runCalibration(retriesLeft){
+      status.textContent = 'Calibrating bias… hold device still (2 s).';
+      let _calSamples = [];
+      const _calHandler = (ev)=>{
+        const a = (ev.acceleration && (Math.abs(ev.acceleration.x||0)+Math.abs(ev.acceleration.y||0)+Math.abs(ev.acceleration.z||0))>0.01)
+                  ? ev.acceleration : ev.accelerationIncludingGravity;
+        if(a) _calSamples.push({ax:a.x||0,ay:a.y||0,az:a.z||0,gz:(ev.rotationRate?.gamma||0)*Math.PI/180,fwd:IMU.fwdAccel});
+      };
+      window.addEventListener('devicemotion', _calHandler, {passive:true});
+      setTimeout(()=>{
+        window.removeEventListener('devicemotion', _calHandler);
+        if(_calSamples.length > 5){
+          const n = _calSamples.length;
+          const meanAx = _calSamples.reduce((s,r)=>s+r.ax,0)/n;
+          const meanAy = _calSamples.reduce((s,r)=>s+r.ay,0)/n;
+          const meanAz = _calSamples.reduce((s,r)=>s+r.az,0)/n;
+          const meanGz = _calSamples.reduce((s,r)=>s+r.gz,0)/n;
+          const meanFwd= _calSamples.reduce((s,r)=>s+r.fwd,0)/n;
+          // How still was the phone really? Variance of the acceleration samples around
+          // their own mean — high variance means it was being handled, not resting.
+          const varAx=_calSamples.reduce((s,r)=>s+(r.ax-meanAx)**2,0)/n;
+          const varAy=_calSamples.reduce((s,r)=>s+(r.ay-meanAy)**2,0)/n;
+          const varAz=_calSamples.reduce((s,r)=>s+(r.az-meanAz)**2,0)/n;
+          const stillness=Math.sqrt(varAx+varAy+varAz);
+          if(stillness>1.2 && retriesLeft>0){
+            status.textContent='⚠ Phone was moving — recalibrating, please hold still…';
+            _runCalibration(retriesLeft-1);
+            return;
+          }
+          IMU.axOff = meanAx; IMU.ayOff = meanAy;
+          // For gravity-free, azOff ≈ meanAz; for gravity-included, remove expected gravity
+          IMU.azOff = IMU._gravFree ? meanAz : (meanAz - 9.81);
+          IMU.gxOff = IMU.gx; IMU.gyOff = IMU.gy; IMU.gzOff = meanGz;
+          // Capture forward-accel bias (residual after gravity removal while stationary)
+          IMU.fwdAccelBias = meanFwd;
+          // Reset Butterworth filter state after calibration
+          _bw_xp=[0,0,0]; _bw_yp1=[0,0,0]; _bw_yp2=[0,0,0];
+        }
+        // Always start integrated speed from a clean zero regardless of calibration quality —
+        // never let a bad calibration window hand off a pre-poisoned speed value.
+        IMU.intSpeed = 0; IMU.intHeading = 0;
+        IMU.calibrated = true;
+        if(IMU.active){
+          status.textContent = '✓ Calibrated. Live IMU active at ~' + (IMU.hz||30) + ' Hz — ' + IMU.evtCount + ' samples received.';
+          activateSensorMode();
+          setTimeout(closeSensorModal, 1200);
+        } else {
+          // Permission was granted but no real sensor events ever arrived — the 3s
+          // watchdog above will already have flagged UNAVAILABLE. Do not claim LIVE IMU.
+          status.textContent = '✗ IMU UNAVAILABLE — no sensor events received. Dead reckoning cannot use motion data.';
+        }
+      }, 2000);
+    }
+    _runCalibration(1);
 
   } catch(err){
     status.textContent = '✗ Error: ' + (err.message||err);
@@ -1501,16 +1522,23 @@ function step(){
     let usedDH2  = S.useLiveIMU && IMU.active ? IMU.gz * DT2 : 0;
 
     // ── PREDICT + (conditionally) UPDATE — the ONE place NAVDRIFT's position is computed ──
-    // NAVDRIFT position = EKF output, period. No separate "hug GPS" smoothing formula and
-    // no snap: when GNSS is usable this tick, ekfStep runs a real measurement update gated
-    // by the fix's actual reported accuracy; when it isn't, ekfStep only predicts from IMU,
-    // so the position keeps moving from sensors alone and P (uncertainty) keeps growing.
+    // NAVDRIFT position = EKF output, period. step() runs ~15x/sec but a real GPS fix only
+    // arrives ~1x/sec — so the measurement update must fire ONLY on the tick where a fix
+    // genuinely just landed (gated by GPS.fixConsumed), never repeatedly toward a stale
+    // coordinate. Every other tick is prediction-only, from IMU alone. This is what makes
+    // the NAVDRIFT line a real independent trajectory between fixes rather than GPS with
+    // an offset — you can verify it: the purple line should visibly bend/predict between
+    // the (roughly 1-second-apart) moments it snaps onto a fresh GPS measurement.
     if(S.gnss){
-      ekfStep(usedSpd2, usedDH2, DT2, true, S.gtLa, S.gtLo, GPS.acc);
-      S.posSource = 'GNSS-FUSED';
-      // unfused "raw IMU" baseline trace — for comparison only, not the NAVDRIFT estimate
-      S.iLa += (S.gtLa - S.iLa) * 0.1 + (Math.random()-.5)*8e-6;
-      S.iLo += (S.gtLo - S.iLo) * 0.1 + (Math.random()-.5)*8e-6;
+      const freshFixThisTick = !GPS.fixConsumed;
+      ekfStep(usedSpd2, usedDH2, DT2, freshFixThisTick, S.gtLa, S.gtLo, GPS.acc);
+      if(freshFixThisTick) GPS.fixConsumed = true;
+      S.posSource = freshFixThisTick ? 'GNSS-FUSED (fresh fix)' : 'GNSS-FUSED (IMU-predicted between fixes)';
+      // unfused "raw IMU" baseline trace — only re-anchors on a fresh fix too, for the same reason
+      if(freshFixThisTick){
+        S.iLa += (S.gtLa - S.iLa) * 0.3 + (Math.random()-.5)*8e-6;
+        S.iLo += (S.gtLo - S.iLo) * 0.3 + (Math.random()-.5)*8e-6;
+      }
     } else {
       ekfStep(usedSpd2, usedDH2, DT2, false, S.gtLa, S.gtLo);
       S.posSource = (S.useLiveIMU && IMU.active) ? 'DEAD-RECKONING (IMU)' : 'DEAD-RECKONING (NO IMU — HOLDING LAST STATE)';
