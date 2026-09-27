@@ -1,35 +1,41 @@
-# Real map-matching — not implemented yet
+# Map-matching against real roads
 
-`frontend/mobile.html`'s HMM map-matching block (search `HMM map-matching`) only runs in
-simulation mode (`GPS.simMode`). It snaps the predicted position to `S.route`, which is a
-hand-authored waypoint loop for a demo city (`CITIES[key].wp`), not a real road network. It is
-gated off in live mode (`GPS.active && !GPS.simMode`) on purpose: running it against a live GPS
-fix would silently pull your real predicted position toward a fake, unrelated route.
+## Status: implemented for live mode, works anywhere OSM has coverage
 
-To make this real, in order of effort:
+`frontend/mobile.html` now fetches a real OpenStreetMap road graph from the Overpass API
+(`https://overpass-api.de/api/interpreter`) centered on the phone's actual GPS fix, the moment
+it locks (see the `RoadGraph` module, and the call to `RoadGraph.load()` inside `onFix()`).
+This is not tied to Bengaluru, or to any of the demo cities in `CITIES` — it queries a ~2.2km
+radius around wherever the real fix is, anywhere in the world, and refetches automatically once
+the vehicle drifts near the edge of that cached radius (`RoadGraph.needsReload`).
 
-1. **Bundled regional extract (fastest to demo, no network dependency at judging time).**
-   Pre-download an OSM extract (e.g. via `osmium`/`geofabrik`) for the specific
-   city/campus/route you'll actually drive during evaluation. Build a KD-tree-indexed edge
-   list from the `highway=*` ways (this matches the "KD-tree indexed GeoJSON road graph"
-   description already in `navdrift_outputs/HANDOFF.md`, which was written but never wired to
-   live GPS). Ship the extract as a static JSON/GeoJSON asset alongside `mobile.html`.
+During a GNSS blackout, the predicted position is snapped toward the nearest real road segment
+in that graph (`RoadGraph.nearest`), the same way the old code snapped to the fake scripted
+route, just against real data. This only runs when `isLive` (real GPS + real IMU) and
+`RoadGraph.loaded` are both true. Simulation mode is untouched and still uses the scripted
+city-loop HMM, which was never meant to represent real roads and still doesn't — that code path
+exists for the on-screen demo cities only.
 
-2. **Live Overpass API query (works anywhere, needs network).** On GPS lock, query
-   `overpass-api.de` for `highway=*` ways within ~2km of the current fix, build the same
-   KD-tree graph client-side. Cache it so blackout doesn't depend on a live connection at the
-   exact moment GPS drops.
+The debug panel's "Road Graph" row shows the live state: `fetching OSM…`, a segment count once
+loaded, or the fetch-failure reason if Overpass could not be reached. If the fetch fails (no
+signal at fix time, Overpass rate limit, firewall), map-matching simply stays off. It never
+falls back to the fake route and never fabricates road data.
 
-3. **Wire the existing Viterbi/HMM decode against real edges instead of `S.route`.** The
-   emission (Gaussian, sigma≈18m) and transition (exponential, lambda≈4) model already in the
-   code is reusable — only the candidate set needs to change from route waypoints to
-   nearest-road-segment projections, plus a proper Non-Holonomic Constraint against the
-   matched edge's bearing (the current NHC block constrains against `S.gtH`, the simulated
-   ground-truth heading, which also needs to become the real IMU/GPS-derived heading in live
-   mode — check that this is still correct once map-matching is real).
+## What is NOT done yet, so nobody overclaims it
 
-4. **Validate against a real recorded drive**, not the IO-VNBD offline set, before claiming
-   this satisfies the PS's map-matching requirement.
-
-None of this is implemented. Do not present the current HMM code as satisfying the PS's
-map-matching requirement until one of the above is done and tested against a real drive.
+1. **Non-Holonomic Constraint is not yet tied to the matched road's bearing.** The existing NHC
+   block still constrains against the GPS-derived heading between the last two real fixes
+   (`S.gtH`), which is real, but a proper implementation would constrain against the matched
+   road segment's own bearing once one is found, which is a stronger and more correct
+   constraint. Worth doing next.
+2. **No offline cache.** If the phone loses network exactly at the moment GPS also drops
+   (tunnel entrance, common case), a road graph that hasn't been fetched yet won't get one.
+   Fetching happens on GPS lock, before blackout, so this only bites if the vehicle enters a
+   blackout zone before its first GPS fix ever lands. An IndexedDB cache keyed by rounded
+   lat/lon would fix this for repeat visits to the same area, not yet built.
+3. **Overpass is a shared public rate-limited endpoint.** Fine for a single-phone demo. Not
+   something to rely on for a fleet of vehicles hitting it simultaneously — a production
+   version would run its own Overpass mirror or ship pre-extracted regional data.
+4. **Not yet validated against a real recorded drive.** The graph fetch and nearest-segment
+   projection have been checked for syntax and logic, not against a real GPS log through a real
+   GNSS-denied stretch. Do that before presenting a drift number that depends on it.
