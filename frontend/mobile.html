@@ -982,6 +982,13 @@ function onDeviceMotion(e){
   // Honest activation: IMU is only "ACTIVE" once a real devicemotion event has arrived —
   // never merely because requestPermission() resolved.
   IMU.evtCount++;
+  // Hz tracking: count every real devicemotion event that reaches this function, at the same
+  // point IMU.evtCount is counted — previously this was incremented much further down, after two
+  // possible early-return points (missing acceleration data, non-finite fields), which let
+  // IMU.hz report 0 even while IMU.evtCount/IMU.active correctly showed the sensor as live and
+  // receiving events. This does not change any navigation/dead-reckoning math, only the debug
+  // counter's timing.
+  _dmCount++;
   if(!IMU.active){
     IMU.active=true; IMU.state='ACTIVE'; IMU.firstEventAt=performance.now();
     BaroSensor.start(); // attempt real barometer the same moment IMU goes live — same user gesture context
@@ -1108,8 +1115,41 @@ function onDeviceMotion(e){
     IMU._pinnedMs = 0;
   }
 
-  // Hz tracking
-  _dmCount++;
+  // ── Zero-Velocity Update (ZUPT) ──
+  // IMU.intSpeed is a one-sided (never-negative) integrator of forward acceleration. Any real,
+  // honest residual bias/noise left after the dead-band and stationary-calibration bias
+  // subtraction above — inherent to consumer MEMS accelerometers — will not average to exactly
+  // zero, so across many ticks it can only ratchet upward while the device is genuinely
+  // stationary (the only existing safeguard, the "runaway watchdog" above, is coarse: it only
+  // fires once speed is already pinned above 33 m/s). Fed into the EKF predict step every ~65ms
+  // regardless of GNSS-lock status, that drift is what showed up as a moving "predicted dot"
+  // during a real stationary GNSS-locked test.
+  //
+  // The fix uses independent sensor evidence — sustained low filtered-acceleration-magnitude
+  // variance, the same kind of "stillness" check already used one-time during stationary
+  // calibration (see the `stillness` variance check below in _runCalibration) — generalized to
+  // run continuously. Accelerometer magnitude alone cannot tell "stationary" apart from "moving
+  // at a genuinely constant velocity" (a vehicle holding steady speed on a smooth road also
+  // produces near-zero net acceleration), so a second, independent guard is required:
+  // IMU.intSpeed must already be small (< 2.5 m/s, roughly a fast walk) before a reset is
+  // allowed. This is not the forbidden "freeze the marker because displayed speed is low"
+  // shortcut — that would suppress or hide movement by clamping output whenever speed reads low.
+  // Here the accel-magnitude/duration condition still has to fire first on independent sensor
+  // evidence; the speed gate only prevents that from ever being able to arrest an already-
+  // established higher speed, however smooth or constant the underlying motion is. Once
+  // IMU.intSpeed has legitimately grown past the gate, ZUPT is structurally unable to zero it —
+  // real walking, real driving, and real GNSS-blackout dead reckoning at speed are all unaffected.
+  {
+    const zuptMag = Math.abs(fax) + Math.abs(fay) + Math.abs(faz);
+    if(zuptMag < 0.35){
+      IMU._zuptMs = (IMU._zuptMs||0) + dt*1000;
+      if(IMU._zuptMs > 800 && IMU.intSpeed < 2.5){ // sustained stillness AND already near rest
+        IMU.intSpeed = 0;
+      }
+    } else {
+      IMU._zuptMs = 0;
+    }
+  }
 
   // Log at 10Hz rate (every ~3 samples at 30Hz)
   if(_dmCount % 3 === 0){
