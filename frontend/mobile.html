@@ -550,6 +550,11 @@
         <div class="tr-l">ONNX Pipeline</div>
         <div class="tr-v" id="dbg-onnx" style="color:var(--np)">—</div>
       </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Road Graph</div>
+        <div class="tr-v" id="dbg-roads" style="color:var(--np)">—</div>
+      </div>
     </div>
     <div class="tp-section-label-sub" id="dbg-detail" style="padding-top:0;">—</div>
 
@@ -682,6 +687,34 @@ function bw2(x, xp, yp1, yp2){
 /* ── DEVICE MOTION HANDLER ── */
 let _dmPrev = {ax:0, ay:0, az:0};
 let _bw_xp=[0,0,0], _bw_yp1=[0,0,0], _bw_yp2=[0,0,0];
+// ── REAL BAROMETER — Generic Sensor API, when the browser/device actually has one ──
+// Most phone browsers do not expose this today (it's behind experimental flags on a handful
+// of Chromium builds, effectively unsupported on iOS Safari entirely). This is written so that
+// on a device where it IS available, it reports genuine pressure-derived altitude; everywhere
+// else it reports honestly unavailable rather than inventing a number. Nothing here fabricates
+// a fake sensor reading, unlike the old code this replaces.
+const BaroSensor = (function(){
+  let available=false, altitudeM=220, sensor=null, status='not started';
+  function toAltitudeM(pressureHPa){
+    // Standard barometric formula against the sea-level reference. Good for detecting relative
+    // changes (a tunnel/underpass dip), not a calibrated absolute altitude — same limitation
+    // any consumer barometer app has without a local pressure reference.
+    return 44330*(1-Math.pow(pressureHPa/1013.25,1/5.255));
+  }
+  function start(){
+    if(sensor) return; // already attempted
+    if(typeof Barometer==='undefined'){ status='Barometer API not supported on this browser'; return; }
+    try{
+      sensor=new Barometer({frequency:2});
+      sensor.addEventListener('reading',()=>{ altitudeM=toAltitudeM(sensor.pressure); available=true; status='live'; });
+      sensor.addEventListener('error',(e)=>{ available=false; status='sensor error: '+(e.error?e.error.message:'unknown'); });
+      sensor.start();
+      status='starting';
+    }catch(e){ status='not available: '+e.message; }
+  }
+  return{ start, get available(){return available;}, get altitudeM(){return altitudeM;}, get status(){return status;} };
+})();
+
 let _lastDMT = 0, _dmCount = 0, _hzInterval = null;
 
 function onDeviceMotion(e){
@@ -690,6 +723,7 @@ function onDeviceMotion(e){
   IMU.evtCount++;
   if(!IMU.active){
     IMU.active=true; IMU.state='ACTIVE'; IMU.firstEventAt=performance.now();
+    BaroSensor.start(); // attempt real barometer the same moment IMU goes live — same user gesture context
     // Kill the "TAP HERE to enable Real IMU" banner the instant real sensor data actually
     // arrives, regardless of which code path created it or how long its own 15s auto-hide
     // timer has left to run — otherwise it can sit on screen after IMU is genuinely active,
@@ -1081,6 +1115,14 @@ function updateDebugPanel(){
         if(st.loaded){ chip.textContent='DRIFT-FORMER · ONNX ACTIVE'; chip.title='Trained transformer running live in-browser (onnxruntime-web/WASM)'; }
         else if(st.failed){ chip.textContent='DEAD RECKONING · ONNX LOAD FAILED'; chip.title=st.label; }
         else { chip.textContent='DEAD RECKONING · KINEMATIC + EKF (LOADING ONNX…)'; }
+      }
+    }
+    if(typeof RoadGraph!=='undefined'){
+      const rEl=document.getElementById('dbg-roads');
+      if(rEl){
+        rEl.textContent = RoadGraph.loaded
+          ? RoadGraph.segCount+' segs (live OSM)'
+          : (RoadGraph.status==='fetching' ? 'fetching OSM…' : (RoadGraph.status||'—'));
       }
     }
   }catch(e){}
@@ -1626,7 +1668,7 @@ function step(){
       document.getElementById('v-unc').textContent=S.unc.toFixed(1)+'m';
       document.getElementById('v-spd').textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0);
       document.getElementById('v-hdg').textContent=hdgStr(S.gtH);
-      document.getElementById('v-baro').textContent=S.baroAlt.toFixed(1)+' m';
+      document.getElementById('v-baro').textContent=(GPS.simMode||!GPS.active||BaroSensor.available)?(S.baroAlt.toFixed(1)+' m'):'no sensor';
       document.getElementById('v-out').textContent=S.outN;
       document.getElementById('v-nhc').textContent=S.nhcN;
       // Position HUD shows NAVDRIFT's believed position (EKF/ND), never raw ground truth —
@@ -1704,16 +1746,30 @@ function step(){
   }
   S.spd = usedSpd; S.pH = S.gtH;
 
-  // Baro + tunnel detection (always simulated — real baro from Web API when available)
-  if('AmbientLightSensor' in window || true){ // placeholder for Web Barometer API
+  // Baro + tunnel detection.
+  // BaroSensor (defined below) is the ONLY source of truth for S.baroAlt now. In live mode it
+  // is either a real reading from the Generic Sensor API's Barometer (when the browser/device
+  // actually supports it) or nothing at all — it no longer wanders on a fake sine wave and
+  // feeds that into the real ONNX pipeline. Real barometer support in browsers is genuinely
+  // rare today (most phones/browsers don't expose it), so most of the time this will honestly
+  // report unavailable rather than fabricate a number. Simulation mode keeps the old scripted
+  // altitude ramp, which was always meant to be a demo signal, not a real one.
+  if(GPS.simMode || !GPS.active){
     const tPhase=S.step%220;
     const baroTrend=tPhase>50&&tPhase<80?-0.35:tPhase>=110&&tPhase<140?0.35:0;
     S.baroAlt=Math.max(0,S.baroAlt+baroTrend+(Math.random()-.5)*.4);
     const bd=S.baroAlt-S.baroPrev;S.baroPrev=S.baroAlt;
-    const wasT=S.inTunnel;
+    if(bd<-0.2)S.tunDur++;else S.tunDur=Math.max(0,S.tunDur-1);
+    S.inTunnel=S.tunDur>5;
+  } else if(BaroSensor.available){
+    S.baroAlt=BaroSensor.altitudeM;
+    const bd=S.baroAlt-S.baroPrev;S.baroPrev=S.baroAlt;
     if(bd<-0.2)S.tunDur++;else S.tunDur=Math.max(0,S.tunDur-1);
     S.inTunnel=S.tunDur>5;
   }
+  // else: no real barometer on this device/browser. S.baroAlt stays frozen at its last value,
+  // tunnel state is never toggled from a signal that doesn't exist, and the UI (v-baro) shows
+  // "no sensor" instead of a number that would look real but isn't.
 
   ekfStep(usedSpd, usedDH, DT, S.gnss, S.gtLa, S.gtLo, 6);
 
@@ -1756,13 +1812,21 @@ function step(){
   const fwd=ndDLa*Math.cos(h)+ndDLo*Math.sin(h),lat=-ndDLa*Math.sin(h)+ndDLo*Math.cos(h);
   if(Math.abs(lat)*111000>.01){S.ndLa=prv[0]+fwd*Math.cos(h);S.ndLo=prv[1]+fwd*Math.sin(h);S.nhcN++;}
 
-  // HMM map-matching — only runs against the scripted city route in SIMULATION mode.
-  // S.route is a hand-authored waypoint loop for a demo city, not a real road graph pulled
-  // from wherever the phone actually is. Snapping a real live position to that fake route
-  // would silently corrupt the live drift numbers, so this never touches live GPS/IMU state.
-  // Real map-matching needs an OSM road graph for the phone's actual location (Overpass API
-  // or a bundled regional extract) — that is not implemented yet; see TODO_MAP_MATCHING.md.
-  if(!S.gnss && GPS.simMode){
+  // Map-matching. Two genuinely different code paths, never mixed:
+  //  - LIVE mode snaps to RoadGraph, a real OSM road network fetched live from Overpass API
+  //    for wherever the phone actually is (see RoadGraph below). Works anywhere on Earth,
+  //    not just a pre-picked demo city, because it's fetched from the real coordinates on
+  //    first GPS fix, not bundled ahead of time.
+  //  - SIM mode keeps the original scripted-route HMM for the on-screen city demo, which was
+  //    never meant to represent a real road network and still doesn't.
+  if(!S.gnss && isLive && RoadGraph.loaded){
+    const m=RoadGraph.nearest(S.ndLa,S.ndLo);
+    if(m){
+      const dm=m.distM;
+      const str=Math.min(.45,(dm>1.5?dm/80:0));
+      if(str>.01&&dm<60){ S.ndLa+=(m.lat-S.ndLa)*str; S.ndLo+=(m.lon-S.ndLo)*str; S.hmmCorrN++; }
+    }
+  } else if(!S.gnss && GPS.simMode){
     const WIN=24,SIGMA=18,LAMBDA=4,n=S.route.length;
     const lo=Math.max(0,S.ri-WIN),hi=Math.min(n-1,S.ri+WIN);
     const newP=new Float32Array(n).fill(-1e9);let bestK=S.ri,bestV=-1e9;
@@ -1811,7 +1875,7 @@ function step(){
     document.getElementById('v-unc').textContent=S.unc.toFixed(1)+'m';
     document.getElementById('v-spd').textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:parseFloat(spdKmh)).toFixed(0);
     document.getElementById('v-hdg').textContent=hdgStr(S.gtH);
-    document.getElementById('v-baro').textContent=S.baroAlt.toFixed(1)+' m';
+    document.getElementById('v-baro').textContent=(GPS.simMode||!GPS.active||BaroSensor.available)?(S.baroAlt.toFixed(1)+' m'):'no sensor';
     document.getElementById('v-out').textContent=S.outN;
     document.getElementById('v-nhc').textContent=S.nhcN;
     document.getElementById('hud-pos').textContent=S.ndLa.toFixed(4)+'°N '+S.ndLo.toFixed(4)+'°E';
@@ -1920,6 +1984,103 @@ const GNSS_TIMEOUT_MS = 8000;
 // GNSS_DEBOUNCE_MS: a candidate GNSS-state flip must hold steady this long before triggerOut()/
 // reacq() actually fires — prevents rapid-fire re-triggering near the fix-age boundary.
 const GNSS_DEBOUNCE_MS = 1500;
+// ── REAL ROAD GRAPH — live OpenStreetMap data for wherever the phone actually is ──
+// Fetched from the Overpass API around the first real GPS fix, and refetched whenever the
+// vehicle drifts near the edge of the cached radius. This works anywhere on Earth OSM has
+// road coverage, not just a pre-picked demo city — there is no bundled/pre-baked route here.
+// If the fetch fails (no signal, Overpass rate limit, etc.) map-matching simply stays off —
+// it never falls back to the fake scripted city route, and it never fabricates road data.
+const RoadGraph = (function(){
+  let segs=[], grid=new Map(), loaded=false, loading=false, status='idle';
+  let centerLat=null, centerLon=null;
+  const CELL=0.006; // ~650m per grid cell at the equator — coarse but fast to bucket/search
+
+  function cellKey(lat,lon){ return Math.floor(lat/CELL)+','+Math.floor(lon/CELL); }
+  function addSeg(lat1,lon1,lat2,lon2){
+    const idx=segs.length;
+    segs.push({lat1,lon1,lat2,lon2});
+    const keys=new Set([cellKey(lat1,lon1),cellKey(lat2,lon2),cellKey((lat1+lat2)/2,(lon1+lon2)/2)]);
+    for(const k of keys){ if(!grid.has(k)) grid.set(k,[]); grid.get(k).push(idx); }
+  }
+
+  // Distance from a point to a segment, in meters, using a local equirectangular projection
+  // (fine at the few-km scale this runs at). Returns the nearest point on the segment too.
+  function pointToSeg(lat,lon,s){
+    const mlat=(s.lat1+s.lat2)/2*Math.PI/180;
+    const kx=111320*Math.cos(mlat), ky=110540;
+    const x=(lon-s.lon1)*kx, y=(lat-s.lat1)*ky;
+    const dx=(s.lon2-s.lon1)*kx, dy=(s.lat2-s.lat1)*ky;
+    const len2=dx*dx+dy*dy || 1e-9;
+    let t=(x*dx+y*dy)/len2; t=Math.max(0,Math.min(1,t));
+    const ex=x-dx*t, ey=y-dy*t;
+    return {distM:Math.sqrt(ex*ex+ey*ey), lat:s.lat1+t*(s.lat2-s.lat1), lon:s.lon1+t*(s.lon2-s.lon1)};
+  }
+
+  async function load(lat,lon,radiusM=2200){
+    if(loading) return;
+    loading=true; status='fetching';
+    try{
+      const q='[out:json][timeout:25];way(around:'+radiusM+','+lat+','+lon+')'+
+        '["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|service|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link)$"];(._;>;);out body;';
+      const resp=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)});
+      if(!resp.ok) throw new Error('Overpass HTTP '+resp.status);
+      const j=await resp.json();
+      const nodes=new Map();
+      for(const el of j.elements) if(el.type==='node') nodes.set(el.id,[el.lat,el.lon]);
+      const newSegs=[], newGrid=new Map();
+      segs=newSegs; grid=newGrid; // swap before addSeg populates them
+      let nWays=0;
+      for(const el of j.elements){
+        if(el.type!=='way'||!el.nodes) continue;
+        nWays++;
+        for(let i=0;i<el.nodes.length-1;i++){
+          const a=nodes.get(el.nodes[i]), b=nodes.get(el.nodes[i+1]);
+          if(a&&b) addSeg(a[0],a[1],b[0],b[1]);
+        }
+      }
+      centerLat=lat; centerLon=lon;
+      loaded = segs.length>0;
+      status = loaded ? 'ready' : 'no roads in Overpass response here';
+      console.log('[RoadGraph] '+nWays+' ways / '+segs.length+' segments loaded from OSM around '+lat.toFixed(4)+','+lon.toFixed(4));
+    }catch(e){
+      status='fetch failed: '+e.message;
+      console.warn('[RoadGraph] load failed',e);
+    }finally{ loading=false; }
+  }
+
+  function nearest(lat,lon){
+    if(!loaded) return null;
+    const gx=Math.floor(lat/CELL), gy=Math.floor(lon/CELL);
+    let best=null;
+    for(let r=0;r<=4;r++){
+      for(let dx=-r;dx<=r;dx++)for(let dy=-r;dy<=r;dy++){
+        if(Math.max(Math.abs(dx),Math.abs(dy))!==r) continue;
+        const idxs=grid.get((gx+dx)+','+(gy+dy)); if(!idxs) continue;
+        for(const idx of idxs){
+          const res=pointToSeg(lat,lon,segs[idx]);
+          if(!best||res.distM<best.distM) best=res;
+        }
+      }
+      if(best && best.distM < r*CELL*95000+40) break; // close enough given the ring searched
+    }
+    return best;
+  }
+
+  function needsReload(lat,lon){
+    if(!loaded||!centerLat) return true;
+    const dM=Math.hypot((lat-centerLat)*110540,(lon-centerLon)*111320*Math.cos(lat*Math.PI/180));
+    return dM>1600; // drifted near the edge of the ~2.2km fetch radius — refetch around new center
+  }
+
+  return {
+    load, nearest, needsReload,
+    get loaded(){return loaded;},
+    get loading(){return loading;},
+    get status(){return status;},
+    get segCount(){return segs.length;}
+  };
+})();
+
 const GPS = {active:false, simMode:false, watchId:null, lat:null, lon:null, acc:null, lastLat:null, lastLon:null,
   lastFixTime:null,   // performance.now() of the last genuinely fresh onFix() call
   forcedOutage:false, // manual test switch (GNSS-toggle button in LIVE mode) — forces blackout, never LOCKED
@@ -1986,6 +2147,13 @@ function startLiveGPS(){
     GPS.lastFixTime = performance.now(); // this is what makes the fix "fresh" — not the coordinate itself
     GPS.fixConsumed = false; // a genuinely NEW fix — the EKF gets exactly one measurement update from it
     GPS.hardError = false;
+
+    // Fetch the real OSM road graph for wherever this fix actually is, and refetch if the
+    // vehicle has drifted near the edge of the cached area. Works anywhere Overpass has road
+    // coverage — nothing here is tied to a pre-picked demo city.
+    if(!GPS.simMode && !RoadGraph.loading && RoadGraph.needsReload(lat,lon)){
+      RoadGraph.load(lat,lon);
+    }
 
     dbg.style.color = '#5fba95';
     // Explicitly labeled RAW — this is the unfiltered device GPS chip output. During a
