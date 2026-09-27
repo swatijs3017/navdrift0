@@ -39,9 +39,8 @@
 
     /* ── MAP CONTAINER (always full screen) ── */
     .map-container{position:fixed;inset:0;z-index:1;}
-    #map{width:100%;height:100%;background:#1a3f6e;}
+    #map{width:100%;height:100%;background:#18202e;touch-action:none;}
     .maplibregl-canvas{will-change:transform;touch-action:none;}
-    #map{touch-action:none;}
     .maplibregl-ctrl-attrib,.maplibregl-ctrl-logo{display:none!important;}
     /* suppress maplibre default marker/popup we don't use */
     .maplibregl-marker{transition:none!important;}
@@ -939,62 +938,137 @@ function _srcData(id,data){if(_mapReady&&_map&&_map.getSource(id))_map.getSource
 
 let _mapMode='dark';
 
-/* ── THEME: apply color overrides to loaded liberty style via setPaintProperty ──
-   Only modifies fill-color / line-color / text-color — never width/opacity
-   so zoom interpolation expressions in the base style stay intact            */
+/* ── THEME ENGINE ─────────────────────────────────────────────────────────────
+   Applies a complete cartographic color system to the loaded liberty base style.
+   Uses setPaintProperty so:
+     • tile sources stay loaded — no map reload, no camera reset
+     • liberty's zoom-interpolated widths stay intact (roads scale smoothly)
+     • we ADD smooth building fade-in and minor-road fade-in via expressions
+   Light palette: Apple Maps daytime — warm beige land, blue water, amber roads
+   Dark palette:  Apple Maps nighttime — slate land, navy water, dark roads     */
 function _applyTheme(mode){
   if(!_map)return;
+  const st=_map.getStyle();
+  if(!st||!st.layers)return;
   const D=mode==='dark';
-  const layers=_map.getStyle().layers;
-  layers.forEach(l=>{
+  /* ── Color system ── */
+  const C=D?{
+    bg:'#18202e',
+    water:'#091624',wStroke:'#0b1c32',
+    grass:'#1c2c1a',scrub:'#1a2a18',wood:'#162215',
+    res:'#1e2838',com:'#1d2742',ind:'#1c2430',park:'#182a16',
+    bld:'#222c3c',bldOut:'rgba(10,18,40,0.55)',
+    mwy:'#4e4030',trunk:'#403424',pri:'#2c2620',sec:'#232122',ter:'#1e1d22',min:'#1c1c20',path:'#232330',
+    mwyCase:'#0d0c18',rdCase:'#0f1020',
+    bdr:'rgba(82,82,115,0.48)',
+    lb:'#dedad2',lbDim:'#aaa49c',lbRd:'#c4beb6',lbH:'rgba(9,17,42,0.92)',
+    wlb:'#4878b2',wlbH:'rgba(7,14,38,0.88)',
+  }:{
+    bg:'#f2ede3',
+    water:'#aacfe6',wStroke:'#82b4d0',
+    grass:'#d0e8b8',scrub:'#c6e0ac',wood:'#b0d098',
+    res:'#eeeae0',com:'#e8e3d8',ind:'#e0d8cc',park:'#bed8a0',
+    bld:'#dbd5ca',bldOut:'rgba(172,162,144,0.32)',
+    mwy:'#f0b030',trunk:'#f0c850',pri:'#f0de84',sec:'#ffffff',ter:'#f8f6f0',min:'#faf8f2',path:'#e8e2d8',
+    mwyCase:'#c08818',rdCase:'#bfb7a6',
+    bdr:'rgba(128,98,56,0.48)',
+    lb:'#1c1a17',lbDim:'#403c37',lbRd:'#2a2620',lbH:'rgba(242,237,227,0.94)',
+    wlb:'#1e5e9e',wlbH:'rgba(228,240,250,0.88)',
+  };
+
+  st.layers.forEach(l=>{
+    const id=l.id, sl=l['source-layer'], t=l.type;
+    /* fingerprint combines layer id + filter for road-class detection */
+    const fp=id+JSON.stringify(l.filter||'');
     try{
-      const sl=l['source-layer'];
-      if(l.type==='background'){
-        _map.setPaintProperty(l.id,'background-color',D?'#18202e':'#f0ebe0');
-      }else if(l.type==='fill'){
-        if(sl==='water'||sl==='ocean')
-          _map.setPaintProperty(l.id,'fill-color',D?'#0d1c38':'#9dc8e8');
-        else if(sl==='landcover')
-          _map.setPaintProperty(l.id,'fill-color',D?'#1a2418':'#c8e0a8');
-        else if(sl==='landuse'||sl==='park')
-          _map.setPaintProperty(l.id,'fill-color',D?'#1c2830':'#e4e0d8');
-        else if(sl==='building')
-          _map.setPaintProperty(l.id,'fill-color',D?'#242e40':'#d5cfc5');
-      }else if(l.type==='line'){
-        if(sl==='water'||sl==='waterway')
-          _map.setPaintProperty(l.id,'line-color',D?'#0d1c38':'#7ab4d8');
-        else if(sl==='boundary')
-          _map.setPaintProperty(l.id,'line-color',D?'rgba(100,100,135,0.55)':'rgba(140,100,60,0.55)');
-        else if(sl==='transportation'||sl==='road'){
-          /* only override color, never width */
-          const lp=l.paint||{};
-          const isCase='line-gap-width' in lp;
-          if(isCase)
-            _map.setPaintProperty(l.id,'line-color',D?'#0e141e':'rgba(160,140,110,0.4)');
-          else
-            _map.setPaintProperty(l.id,'line-color',D?'#2e3848':'#f0ece4');
+      /* ── BACKGROUND ── */
+      if(t==='background'){
+        _map.setPaintProperty(id,'background-color',C.bg);
+
+      /* ── FILL layers ── */
+      }else if(t==='fill'){
+        if(sl==='water'){
+          _map.setPaintProperty(id,'fill-color',C.water);
+          _map.setPaintProperty(id,'fill-opacity',1);
+        }else if(sl==='landcover'){
+          const col=/wood|forest/i.test(fp)?C.wood:/scrub|heath/i.test(fp)?C.scrub:C.grass;
+          _map.setPaintProperty(id,'fill-color',col);
+        }else if(sl==='landuse'){
+          const col=/park|garden|cemetery|golf/i.test(fp)?C.park
+            :/retail|commercial/i.test(fp)?C.com
+            :/industrial/i.test(fp)?C.ind
+            :C.res;
+          _map.setPaintProperty(id,'fill-color',col);
+        }else if(sl==='park'){
+          _map.setPaintProperty(id,'fill-color',C.park);
+        }else if(sl==='building'){
+          _map.setPaintProperty(id,'fill-color',C.bld);
+          /* smooth fade-in: 0 at z13, full at z15 — eliminates the abrupt building pop */
+          _map.setPaintProperty(id,'fill-opacity',
+            ['interpolate',['linear'],['zoom'],13,0,14.5,D?0.82:0.88]);
+          try{_map.setPaintProperty(id,'fill-outline-color',C.bldOut);}catch(_){}
         }
-      }else if(l.type==='symbol'){
-        try{_map.setPaintProperty(l.id,'text-color',D?'#dcd8d0':'#1a1614');}catch(e){}
-        try{_map.setPaintProperty(l.id,'text-halo-color',D?'rgba(10,20,44,0.88)':'rgba(240,236,226,0.95)');}catch(e){}
+
+      /* ── LINE layers ── */
+      }else if(t==='line'){
+        if(sl==='water'||sl==='waterway'){
+          _map.setPaintProperty(id,'line-color',C.wStroke);
+        }else if(sl==='boundary'){
+          _map.setPaintProperty(id,'line-color',C.bdr);
+        }else if(sl==='transportation'){
+          const paint=l.paint||{};
+          const isCase='line-gap-width' in paint;
+          /* detect road class from layer id + filter */
+          const isMwy=/motorway/i.test(fp);
+          const isTrk=/trunk/i.test(fp)&&!isMwy;
+          const isPri=/primary/i.test(fp)&&!isMwy&&!isTrk;
+          const isSec=/secondary/i.test(fp);
+          const isTer=/tertiary/i.test(fp);
+          const isSmall=/path|pedestrian|cycleway|footway|track|service/i.test(fp);
+          /* assign color per road class */
+          let col;
+          if(isCase) col=isMwy||isTrk?C.mwyCase:C.rdCase;
+          else col=isMwy?C.mwy:isTrk?C.trunk:isPri?C.pri:isSec?C.sec:isTer?C.ter:isSmall?C.path:C.min;
+          _map.setPaintProperty(id,'line-color',col);
+          /* smooth opacity for roads that should only appear close-up */
+          if(!isCase){
+            if(isSmall)
+              _map.setPaintProperty(id,'line-opacity',['interpolate',['linear'],['zoom'],12,0,14,0.85]);
+            else if(isTer)
+              _map.setPaintProperty(id,'line-opacity',['interpolate',['linear'],['zoom'],10,0,12,0.75,15,1]);
+          }
+        }
+
+      /* ── SYMBOL (label) layers ── */
+      }else if(t==='symbol'){
+        const isRoadLbl=sl==='transportation_name'||/road.*label|road.*name/i.test(id);
+        const isWaterLbl=sl==='water_name'||sl==='ocean_label'||/water.*label/i.test(id);
+        const tc=isRoadLbl?C.lbRd:isWaterLbl?C.wlb:C.lb;
+        const hc=isWaterLbl?C.wlbH:C.lbH;
+        try{_map.setPaintProperty(id,'text-color',tc);}catch(_){}
+        try{_map.setPaintProperty(id,'text-halo-color',hc);}catch(_){}
+        try{_map.setPaintProperty(id,'text-halo-width',isWaterLbl?0.8:1.4);}catch(_){}
+        /* dim secondary labels slightly in dark to reduce noise */
+        if(D&&/poi|housenumber|minor/i.test(id))
+          try{_map.setPaintProperty(id,'text-color',C.lbDim);}catch(_){}
       }
-    }catch(e){}
+    }catch(_){}
   });
 }
 
-/* LEGACY — kept so nothing else breaks if referenced */
+/* ── legacy stub so any stale reference doesn't crash ── */
 function _getMapStyle(mode){
   const L=mode==='light';
   const C=L?{
-    bg:'#f0ebe0',water:'#9dc8e8',wy:'#7ab4d8',
-    grass:'#cce8b0',scrub:'#bcd8a0',wood:'#a8c898',
-    res:'#ece7df',com:'#e4e0d8',ind:'#ddd8cf',park:'#b8d89a',
-    bld:'#d5cfc5',bld_out:'rgba(180,172,158,0.35)',
-    mwy:'#e09010',trunk:'#e8b820',pri:'#f0d870',sec:'#eeece8',min:'#e8e6e2',
-    mwy_case:'rgba(180,130,10,0.42)',
-    bdr_c:'rgba(140,100,60,0.55)',bdr_s:'rgba(120,90,50,0.3)',
-    lc:'#1a1614',lct:'#2c2a22',lcs:'rgba(78,62,48,0.68)',lr:'#3c3830',
-    lh:'rgba(240,236,226,0.95)',wl:'#3578b0',wlh:'rgba(155,205,240,0.5)'
+    bg:'#f2ede3',water:'#aacfe6',wy:'#82b4d0',
+    grass:'#d0e8b8',scrub:'#c6e0ac',wood:'#b0d098',
+    res:'#eeeae0',com:'#e8e3d8',ind:'#e0d8cc',park:'#bed8a0',
+    bld:'#dbd5ca',bld_out:'rgba(172,162,144,0.32)',
+    mwy:'#f0b030',trunk:'#f0c850',pri:'#f0de84',sec:'#ffffff',min:'#faf8f2',
+    mwy_case:'rgba(192,136,24,0.45)',
+    bdr_c:'rgba(128,98,56,0.48)',bdr_s:'rgba(110,84,44,0.28)',
+    lc:'#1c1a17',lct:'#2c2a20',lcs:'rgba(74,58,44,0.65)',lr:'#38342e',
+    lh:'rgba(242,237,227,0.94)',wl:'#1e5e9e',wlh:'rgba(228,240,250,0.88)'
   }:{
     bg:'#1b2130',water:'#0d1c38',wy:'#112040',
     grass:'#1c2a20',scrub:'#1a2818',wood:'#182418',
