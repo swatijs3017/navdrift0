@@ -1712,6 +1712,7 @@ function step(){
     if(_ekfC.length>2)_srcData('ekf',{type:'Feature',geometry:{type:'LineString',coordinates:_ekfC}});
     _srcData('unc',_geoCircle(S.ndLa,S.ndLo,Math.max(4,S.unc)));
     if(_vm)_vm.setLngLat([S.ndLo,S.ndLa]);
+    if(_gtm)_gtm.setLngLat([S.gtLo,S.gtLa]);
     const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(S.gtH*180/Math.PI)+'deg)';
     if(!_mapMoving&&!_mapZooming)_map.jumpTo({center:[S.ndLo,S.ndLa],zoom:_map.getZoom()});
   }
@@ -1837,7 +1838,12 @@ const GNSS_TIMEOUT_MS = 8000;
 const GPS = {active:false, simMode:false, watchId:null, lat:null, lon:null, acc:null, lastLat:null, lastLon:null,
   lastFixTime:null,   // performance.now() of the last genuinely fresh onFix() call
   forcedOutage:false, // manual test switch (GNSS-toggle button in LIVE mode) — forces blackout, never LOCKED
-  hardError:false};    // true on permission-denied / position-unavailable until a fresh fix arrives
+  hardError:false,    // true on permission-denied / position-unavailable until a fresh fix arrives
+  fixConsumed:true};  // false the instant a NEW fix lands, until the EKF has run ONE measurement
+                       // update on it. step() runs ~15x/sec but GPS delivers ~1 fix/sec — without
+                       // this flag the EKF would re-correct toward the same stale fix every tick,
+                       // which over-weights GPS and makes NAVDRIFT look like it's just hugging the
+                       // GPS line instead of genuinely predicting from IMU between real fixes.
 
 // Show/hide city sim buttons
 function enterSimMode(){
@@ -1892,6 +1898,7 @@ function startLiveGPS(){
     GPS.lat = lat; GPS.lon = lon; GPS.acc = acc;
     GPS.lastLat = lat; GPS.lastLon = lon;
     GPS.lastFixTime = performance.now(); // this is what makes the fix "fresh" — not the coordinate itself
+    GPS.fixConsumed = false; // a genuinely NEW fix — the EKF gets exactly one measurement update from it
     GPS.hardError = false;
 
     dbg.style.color = '#5fba95';
