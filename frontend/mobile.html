@@ -340,10 +340,10 @@
   <!-- Legend (top-right, under header) -->
   <div class="hud tr" style="top:68px;">
     <div class="hbox leg">
-      <div class="leg-row"><div class="leg-line" style="background:rgba(0,210,200,0.65)"></div><span class="leg-txt">Ground Truth</span></div>
-      <div class="leg-row"><div class="leg-line" style="background:rgba(144,96,208,0.7)"></div><span class="leg-txt">NAVDRIFT-0</span></div>
-      <div class="leg-row"><div class="leg-line" style="background:rgba(160,60,60,0.6);border-top:1px dashed rgba(160,60,60,0.6)"></div><span class="leg-txt">Raw IMU</span></div>
-      <div class="leg-row"><div class="leg-line" style="background:rgba(180,140,60,0.6)"></div><span class="leg-txt">EKF</span></div>
+      <div class="leg-row"><div class="leg-line" style="background:rgba(0,210,200,0.65);border-radius:50%;width:8px;height:8px;border:1.5px solid rgba(0,212,196,0.9)"></div><span class="leg-txt">GPS fix (ring marker)</span></div>
+      <div class="leg-row"><div class="leg-line" style="background:#2979ff;border-radius:50%;width:8px;height:8px;"></div><span class="leg-txt">NAVDRIFT predicted (dot marker)</span></div>
+      <div class="leg-row"><div class="leg-line" style="background:rgba(160,60,60,0.6);border-top:1px dashed rgba(160,60,60,0.6)"></div><span class="leg-txt">Raw IMU integration</span></div>
+      <div class="leg-row"><div class="leg-line" style="background:rgba(180,140,60,0.6)"></div><span class="leg-txt">EKF fused track</span></div>
     </div>
   </div>
 
@@ -688,7 +688,15 @@ function onDeviceMotion(e){
   // Honest activation: IMU is only "ACTIVE" once a real devicemotion event has arrived —
   // never merely because requestPermission() resolved.
   IMU.evtCount++;
-  if(!IMU.active){ IMU.active=true; IMU.state='ACTIVE'; IMU.firstEventAt=performance.now(); }
+  if(!IMU.active){
+    IMU.active=true; IMU.state='ACTIVE'; IMU.firstEventAt=performance.now();
+    // Kill the "TAP HERE to enable Real IMU" banner the instant real sensor data actually
+    // arrives, regardless of which code path created it or how long its own 15s auto-hide
+    // timer has left to run — otherwise it can sit on screen after IMU is genuinely active,
+    // which is exactly the "shows TAP HERE again even though it showed Real IMU Active
+    // earlier" report.
+    try{ const b=document.getElementById('imu-banner'); if(b) b.remove(); }catch(err){}
+  }
   // Prefer gravity-free acceleration (e.acceleration) — already has gravity subtracted
   // Fall back to gravity-included only if gravity-free is unavailable/zero
   const accLin  = e.acceleration;
@@ -787,6 +795,15 @@ function onDeviceMotion(e){
     IMU.intSpeed = Math.min(IMU.intSpeed, 40); // cap at 40 m/s (~144 km/h)
     // heading from gz integration
     IMU.intHeading += IMU.gz * dt;
+  }
+  // Runaway watchdog: a real exported log once showed speed pinned near the cap for an
+  // extended stretch with essentially no forward-accel input behind it — a leftover
+  // integration error, not real motion. If that pattern recurs, reset rather than trust it.
+  if(IMU.intSpeed > 33 && Math.abs(IMU.fwdAccel) < 0.3){
+    IMU._pinnedMs = (IMU._pinnedMs||0) + dt*1000;
+    if(IMU._pinnedMs > 2500){ IMU.intSpeed = 0; IMU._pinnedMs = 0; }
+  } else {
+    IMU._pinnedMs = 0;
   }
 
   // Hz tracking
@@ -1510,7 +1527,24 @@ function step(){
     const fixAgeMs = GPS.lastFixTime!=null ? (performance.now()-GPS.lastFixTime) : Infinity;
     const realFreshFix = fixAgeMs < GNSS_TIMEOUT_MS;
     const gnssUsable = realFreshFix && !GPS.forcedOutage && !GPS.hardError;
-    if(gnssUsable !== S.gnss){ gnssUsable ? reacq() : triggerOut(); }
+    // HYSTERESIS: fixAgeMs oscillates right around GNSS_TIMEOUT_MS as fixes trickle in near
+    // the boundary (or forcedOutage gets flipped in a quick test tap), which without a debounce
+    // makes gnssUsable flip true/false/true within a second or two — firing reacq() then
+    // triggerOut() then reacq() again in rapid succession. That's what produced the flapping
+    // "REACQUIRED: 83.7m ... 55.2m ... 36.5m" banner and the header disagreeing with the debug
+    // panel: reacq() had already fired (setting LOCKED) but a triggerOut() right behind it
+    // flipped the header back to BLACKOUT while the old REACQUIRED banner text was still on
+    // its own un-related 2.5s fade timer. Fix: require the new state to hold steady for
+    // GNSS_DEBOUNCE_MS before we actually act on it.
+    if(gnssUsable !== S.gnss){
+      if(GPS.pendingGnss !== gnssUsable){ GPS.pendingGnss = gnssUsable; GPS.pendingSince = performance.now(); }
+      else if(performance.now() - GPS.pendingSince >= GNSS_DEBOUNCE_MS){
+        gnssUsable ? reacq() : triggerOut();
+        GPS.pendingGnss = null; GPS.pendingSince = null;
+      }
+    } else if(GPS.pendingGnss !== null){
+      GPS.pendingGnss = null; GPS.pendingSince = null; // state re-agreed with reality before debounce elapsed
+    }
 
     // Ground truth = real GPS (already kept updated by watchPosition)
     // Heading estimated from consecutive GPS positions
@@ -1570,10 +1604,12 @@ function step(){
       if(_ekfC.length>2)_srcData('ekf',{type:'Feature',geometry:{type:'LineString',coordinates:_ekfC}});
       _srcData('unc',_geoCircle(S.ndLa,S.ndLo,Math.max(4,S.unc)));
       if(_vm)_vm.setLngLat([S.ndLo,S.ndLa]);
-      // Ground-truth marker: only moves on a FRESH GPS fix. During blackout S.gtLa/gtLo
-      // simply hold their last value (nothing updates them), so this ring visibly stays
-      // put while the blue predicted dot above keeps moving from sensor data alone.
-      if(_gtm)_gtm.setLngLat([S.gtLo,S.gtLa]);
+      // Ground-truth ring only moves while GNSS is actually LOCKED. During a forced-outage
+      // test the phone's real GPS chip keeps delivering fixes in the background (S.gtLa/gtLo
+      // keep changing internally, for accurate error math) — but this marker must freeze at
+      // the position it had the instant blackout began, so you can SEE the predicted dot
+      // separate from it, rather than watching both markers drift together.
+      if(_gtm && S.gnss) _gtm.setLngLat([S.gtLo,S.gtLa]);
       const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(S.gtH*180/Math.PI)+'deg)';
       if(GPS.zoomed&&!_mapMoving&&!_mapZooming){
         const ctr=S.gnss?[S.gtLo,S.gtLa]:[S.ndLo,S.ndLa];
@@ -1593,11 +1629,14 @@ function step(){
       document.getElementById('v-baro').textContent=S.baroAlt.toFixed(1)+' m';
       document.getElementById('v-out').textContent=S.outN;
       document.getElementById('v-nhc').textContent=S.nhcN;
-      document.getElementById('hud-pos').textContent=S.gtLa.toFixed(4)+'°N '+S.gtLo.toFixed(4)+'°E';
+      // Position HUD shows NAVDRIFT's believed position (EKF/ND), never raw ground truth —
+      // this is a nav app's own estimate, not a GPS readout. See the cyan ring marker on
+      // the map, or the Debug panel's "gps=" field, for the actual raw GPS coordinate.
+      document.getElementById('hud-pos').textContent=S.ndLa.toFixed(4)+'°N '+S.ndLo.toFixed(4)+'°E';
       const hspd=document.getElementById('h-spd');if(hspd)hspd.textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0);
       const hhdg=document.getElementById('h-hdg');if(hhdg)hhdg.textContent=hdgStr(S.gtH);
       const hdrift=document.getElementById('h-drift');if(hdrift)hdrift.textContent=ndATE+'m';
-      const hpos=document.getElementById('h-pos');if(hpos)hpos.textContent=S.gtLa.toFixed(3)+'·'+S.gtLo.toFixed(3);
+      const hpos=document.getElementById('h-pos');if(hpos)hpos.textContent=S.ndLa.toFixed(3)+'·'+S.ndLo.toFixed(3);
     }catch(e){}
     try{
       const nbspd=document.getElementById('nb-spd');if(nbspd)nbspd.textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0);
@@ -1740,7 +1779,7 @@ function step(){
     if(_ekfC.length>2)_srcData('ekf',{type:'Feature',geometry:{type:'LineString',coordinates:_ekfC}});
     _srcData('unc',_geoCircle(S.ndLa,S.ndLo,Math.max(4,S.unc)));
     if(_vm)_vm.setLngLat([S.ndLo,S.ndLa]);
-    if(_gtm)_gtm.setLngLat([S.gtLo,S.gtLa]);
+    if(_gtm && S.gnss)_gtm.setLngLat([S.gtLo,S.gtLa]);
     const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(S.gtH*180/Math.PI)+'deg)';
     if(!_mapMoving&&!_mapZooming)_map.jumpTo({center:[S.ndLo,S.ndLa],zoom:_map.getZoom()});
   }
@@ -1760,11 +1799,11 @@ function step(){
     document.getElementById('v-baro').textContent=S.baroAlt.toFixed(1)+' m';
     document.getElementById('v-out').textContent=S.outN;
     document.getElementById('v-nhc').textContent=S.nhcN;
-    document.getElementById('hud-pos').textContent=S.gtLa.toFixed(4)+'°N '+S.gtLo.toFixed(4)+'°E';
+    document.getElementById('hud-pos').textContent=S.ndLa.toFixed(4)+'°N '+S.ndLo.toFixed(4)+'°E';
     const hspd=document.getElementById('h-spd');if(hspd)hspd.textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:parseFloat(spdKmh)).toFixed(0);
     const hhdg=document.getElementById('h-hdg');if(hhdg)hhdg.textContent=hdgStr(S.gtH);
     const hdrift=document.getElementById('h-drift');if(hdrift)hdrift.textContent=ndATE+'m';
-    const hpos=document.getElementById('h-pos');if(hpos)hpos.textContent=S.gtLa.toFixed(3)+'·'+S.gtLo.toFixed(3);
+    const hpos=document.getElementById('h-pos');if(hpos)hpos.textContent=S.ndLa.toFixed(3)+'·'+S.ndLo.toFixed(3);
     const tb=document.getElementById('tun-b');
     tb.textContent=S.inTunnel?'TUN':'CLR';
     tb.className='tun-chip '+(S.inTunnel?'tunnel':'clear');
@@ -1863,10 +1902,14 @@ if('serviceWorker' in navigator){
 // GNSS_TIMEOUT_MS: how long since the last REAL fix before we declare blackout, even if
 // GPS.lat still holds a coordinate in memory. A stale cached coordinate is not a live fix.
 const GNSS_TIMEOUT_MS = 8000;
+// GNSS_DEBOUNCE_MS: a candidate GNSS-state flip must hold steady this long before triggerOut()/
+// reacq() actually fires — prevents rapid-fire re-triggering near the fix-age boundary.
+const GNSS_DEBOUNCE_MS = 1500;
 const GPS = {active:false, simMode:false, watchId:null, lat:null, lon:null, acc:null, lastLat:null, lastLon:null,
   lastFixTime:null,   // performance.now() of the last genuinely fresh onFix() call
   forcedOutage:false, // manual test switch (GNSS-toggle button in LIVE mode) — forces blackout, never LOCKED
   hardError:false,    // true on permission-denied / position-unavailable until a fresh fix arrives
+  pendingGnss:null, pendingSince:null, // debounce state, see step()
   fixConsumed:true};  // false the instant a NEW fix lands, until the EKF has run ONE measurement
                        // update on it. step() runs ~15x/sec but GPS delivers ~1 fix/sec — without
                        // this flag the EKF would re-correct toward the same stale fix every tick,
@@ -1930,7 +1973,11 @@ function startLiveGPS(){
     GPS.hardError = false;
 
     dbg.style.color = '#5fba95';
-    dbg.textContent = `◉ GPS  ${lat.toFixed(5)}°N  ${lon.toFixed(5)}°E  ±${acc.toFixed(0)}m`;
+    // Explicitly labeled RAW — this is the unfiltered device GPS chip output. During a
+    // forced-outage TEST the chip keeps working and this keeps updating on purpose (that's
+    // honest); the app just isn't feeding it to the EKF. It is NOT what NAVDRIFT is using —
+    // that's the ring marker on the map / the Debug panel's Pos Source row.
+    dbg.textContent = `◉ RAW GPS (unfiltered)  ${lat.toFixed(5)}°N  ${lon.toFixed(5)}°E  ±${acc.toFixed(0)}m`;
 
     if(!GPS.active){
       GPS.active = true;
@@ -1951,7 +1998,9 @@ function startLiveGPS(){
       GPS.zoomed = false;
       if(_map){ _map.flyTo({center:[lon,lat],zoom:18,duration:1.8}); setTimeout(()=>{GPS.zoomed=true;},2000); }
       setBtnGnss(true);
-      try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){}
+      // Only claim "NavIC L5" in the HUD when GNSS is genuinely usable — never stomp on a
+      // "Dead Reckoning" label that a blackout/forced-outage may have just set.
+      if(S.gnss){ try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){} }
       // Show IMU prompt banner if not yet enabled (user must tap it for iOS gesture)
       if(!IMU.active){
         let imuBanner = document.getElementById('imu-banner');
@@ -1984,7 +2033,9 @@ function startLiveGPS(){
       if(S.gnss && _map && !_mapMoving && !_mapZooming){
         _map.jumpTo({center:[lon,lat],zoom:_map.getZoom()});
       }
-      try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){}
+      // Same rule as above: never overwrite the "Dead Reckoning" HUD label with a GPS
+      // accuracy string while the app isn't actually using this fix (blackout/forced outage).
+      if(S.gnss){ try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){} }
     }
   }
 
@@ -2081,8 +2132,16 @@ const NAVDRIFT_ONNX = (function(){
         const feat=[EKF.Qp||1e-3, EKF.Rp||1, (imuVec[6]||0)/30, (S.unc||1)/20, (S.step%1000)/1000, S.gnss?1:0];
         const out=await sessions.adaptive_ekf.run({[inp]:_f32([feat])});
         const d=out[sessions.adaptive_ekf.outputNames[0]].data;
-        res.ekfQ=Math.max(1e-12,Math.abs(d[0]));
-        res.ekfR=Math.max(1e-3,Math.abs(d[1]||d[0]));
+        // Clamp to a sane band around the classical baseline constants (Q≈2.2e-11, R×≈1).
+        // The model's raw output units aren't independently verified against ekfStep's
+        // degree²-scale math, and an unclamped value here is exactly what let displayed
+        // uncertainty spike into the thousands of metres while drift error stayed at a few
+        // tens of metres — P was being inflated (or GPS trust starved) by a mis-scaled Q/R,
+        // not by anything physically real. Bounding keeps the model's *influence* honest
+        // (it can still shift fusion behavior within a real range) without letting a bad
+        // inference make the displayed uncertainty physically nonsensical.
+        res.ekfQ=Math.min(1e-9, Math.max(1e-12,Math.abs(d[0])));
+        res.ekfR=Math.min(5, Math.max(0.2,Math.abs(d[1]||d[0])));
       }catch(e){}
     }
     // Tunnel Detector BiLSTM — structural-blackout classifier from telemetry window
