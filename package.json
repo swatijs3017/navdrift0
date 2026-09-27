@@ -1,0 +1,21 @@
+{
+  "name": "navdrift0",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NAVDRIFT-0 — Intelligent Dead Reckoning navigation (ISRO SIH 2026, PS #26168). Same web app, wrapped natively via Capacitor for real native sensor access on Android/iOS.",
+  "scripts": {
+    "cap:add:android": "cap add android",
+    "cap:sync": "cap sync",
+    "cap:open:android": "cap open android",
+    "cap:add:ios": "cap add ios",
+    "cap:open:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/ios": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

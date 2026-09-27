@@ -2629,5 +2629,9 @@ init('delhi'); // sets up route/state; map view overridden to India overview in 
 requestAnimationFrame(loop);
 startLiveGPS(); // auto-request location — map flyTo on first fix
 </script>
+<!-- Native bridge (Capacitor Android/iOS builds only): no-ops entirely in any plain browser —
+     see frontend/native-bridge.js for why. Loaded after the main script so SensorManager, GPS,
+     IMU, BaroSensor, RoadGraph and startHzTracker already exist for it to hook into. -->
+<script src="native-bridge.js"></script>
 </body>
 </html>

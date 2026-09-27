@@ -934,16 +934,24 @@ This section exists so nobody, us included, mistakes a demo effect for a measure
 
 **Known gaps, not yet real, listed so nobody overclaims these to a judge:**
 
-- Map-matching against actual roads is now implemented for live mode (v2.2): the app fetches a real OpenStreetMap road graph from the Overpass API centered on wherever the phone actually gets its first GPS fix, works anywhere OSM has road coverage, not one pre-picked demo city. Simulation mode still uses the old scripted city waypoint loop, which was never meant to represent real roads and still doesn't. What's genuinely still open on this piece is in `TODO_MAP_MATCHING.md`: the non-holonomic constraint isn't tied to the matched road's bearing yet, there's no offline cache if network drops right at blackout, and it hasn't been checked against a real recorded drive.
+- Map-matching against actual roads is implemented for live mode and, as of v2.3, actually runs during a real GNSS blackout (v2.2 shipped the fetch and the matching function, but a bug meant a real GPS session never reached the code that called it — fixed, see below). The non-holonomic constraint is now tied to the matched road's own bearing, not just the last GPS heading. What's genuinely still open, per `TODO_MAP_MATCHING.md`: no offline cache if network drops right at blackout, and it hasn't been checked against a real recorded drive.
 - No live-drive benchmark exists yet. Every drift number currently published comes from the offline IO-VNBD test set. Nobody has recorded the phone app driving through a real GPS-denied stretch (tunnel, underpass, parking structure) and computed drift from that log.
 - The Federated Learning panel and the DRIFTFormer attention-weight visualisation on the desktop dashboard are illustrative only. No multi-vehicle federation exists anywhere in this codebase, and the exported ONNX graph does not emit attention weights, so that panel was never pulling from the real model. Both are now labelled as illustrative in the UI itself instead of looking like live telemetry.
 - The edge CPU% metric that used to appear next to Infer Hz has been removed rather than fixed. Browsers have no API to read process CPU usage, so that number could only ever have been invented.
+- The Android native build (v2.3) is real code, not yet a real device test — see `NATIVE_BUILD.md`. The iOS native build is real code that cannot be compiled without a Mac running Xcode, which nothing in this project can substitute for.
 
 ---
 
 ## Changelog
 
-### v2.2 (current)
+### v2.3 (current)
+- Added a `SensorManager` abstraction (`frontend/mobile.html`): every sensor (GNSS, accelerometer, gyroscope, orientation, magnetometer, barometer) now reports one of six honest states — AVAILABLE, ACTIVE, NO_DATA, PERMISSION_DENIED, API_BLOCKED, UNAVAILABLE — instead of a single flat "no sensor" that couldn't distinguish "browser blocked this" from "phone doesn't have one."
+- Added real magnetometer/compass support: iOS `webkitCompassHeading` and Android `deviceorientationabsolute`, both real heading sources, with a debug panel row showing whichever honest state applies.
+- Found and fixed a real bug in the live map-matching shipped in v2.2: `step()` returns early for a real GPS session before ever reaching the code block that called `RoadGraph.nearest()`, so a genuine GNSS blackout was never actually snapped to the OSM road graph even though the graph really was being fetched. Moved the real matching logic into the actual live blackout branch.
+- The non-holonomic constraint now constrains against the matched road segment's own bearing when one exists, falling back to the last real GPS-derived heading only when Overpass hasn't returned a usable segment yet.
+- Added Capacitor-based native app scaffolding (`capacitor.config.json`, `package.json`, `native/android-plugin/NavdriftSensorsPlugin.kt`, `native/ios-plugin/NavdriftSensorsPlugin.swift`, `frontend/native-bridge.js`). Same web app, same UI, same DriftFormer/EKF/road-matching engine — a native build just swaps in real native GPS/IMU/magnetometer/barometer access in place of the browser sensor APIs. The web version is completely unaffected and keeps working as-is; see `NATIVE_BUILD.md` for exactly what to run.
+
+### v2.2
 - Added real OpenStreetMap map-matching for live mode. On first GPS fix, `mobile.html` fetches the actual road network within ~2.2km of the phone's real position from the Overpass API, and refetches as the vehicle moves near the edge of that cached area, so this works anywhere OSM has coverage, not one fixed demo city.
 - During a blackout, the predicted position now snaps toward the nearest real road segment from that live-fetched graph, instead of the old scripted-route logic, whenever live GPS/IMU is active. Simulation mode is unchanged and keeps the scripted-route HMM for the on-screen demo cities.
 - Added a Road Graph row to the debug panel showing live fetch status and segment count, so it's visible on screen whether real road data is loaded, still fetching, or failed, instead of it being silent either way.
