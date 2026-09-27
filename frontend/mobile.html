@@ -2,302 +2,744 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NAVDRIFT-0 Mobile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NAVDRIFT-0 // NEXT-GEN NAVIGATION HUD</title>
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#05070a">
+  <meta name="theme-color" content="#03070d">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="NAVDRIFT-0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Rajdhani:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
     :root {
-      --ink:#05070a; --ink-2:#080c10;
-      --bone:#dfe7e0; --bone-dim:#aab4ad; --muted:#78837c;
-      --line:rgba(223,231,224,0.10); --line-soft:rgba(223,231,224,0.05);
-      --red-k:#8B1A1A; --red-k-dim:rgba(122,26,26,0.55);
-      --bg:var(--ink); --surface:var(--ink-2); --card:rgba(8,12,16,0.97);
-      --b1:var(--line); --b2:var(--line-soft);
-      --t1:var(--bone); --t2:var(--bone-dim); --t3:var(--muted);
-      --mono:'JetBrains Mono',monospace; --sans:'Onest','Space Grotesk',sans-serif;
-      --cyan:var(--bone-dim); --cyan-d:rgba(223,231,224,0.07);
-      --violet:#9b72d8; --violet-d:rgba(120,80,170,0.18);
-      --green:#5fba95; --green-d:rgba(80,150,120,0.15); --green-g:rgba(80,150,120,0.35);
-      --red:#c04040; --red-d:rgba(160,50,50,0.18); --red-g:rgba(160,50,50,0.4);
-      --yellow:#b89040; --orange:#b87030;
+      --ink: #03070d;
+      --ink-2: #060c16;
+      --ink-3: #0a1322;
+      --surface: rgba(6, 12, 22, 0.94);
+      --card: rgba(8, 17, 30, 0.88);
+      --bone: #e2f0ea;
+      --bone-dim: #9fb3a7;
+      --muted: #5e7368;
+      --cyan: #00f0ff;
+      --cyan-glow: rgba(0, 240, 255, 0.4);
+      --cyan-dim: rgba(0, 240, 255, 0.12);
+      --emerald: #00ff9d;
+      --emerald-glow: rgba(0, 255, 157, 0.4);
+      --emerald-dim: rgba(0, 255, 157, 0.12);
+      --orange: #ff9933;
+      --orange-glow: rgba(255, 153, 51, 0.4);
+      --orange-dim: rgba(255, 153, 51, 0.12);
+      --violet: #9b72d8;
+      --violet-glow: rgba(155, 114, 216, 0.4);
+      --violet-dim: rgba(155, 114, 216, 0.12);
+      --red: #ff2a5f;
+      --red-glow: rgba(255, 42, 95, 0.5);
+      --red-dim: rgba(255, 42, 95, 0.14);
+      --line: rgba(0, 240, 255, 0.16);
+      --line-soft: rgba(0, 240, 255, 0.06);
+      --font-hud: 'Rajdhani', 'Space Grotesk', sans-serif;
+      --font-sans: 'Space Grotesk', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
     }
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--t1);font-family:var(--sans);-webkit-tap-highlight-color:transparent;user-select:none;letter-spacing:.01em;}
-    body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
-      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-      opacity:.038;mix-blend-mode:overlay;}
 
-    .app{display:flex;flex-direction:column;height:100dvh;width:100%;}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: var(--ink); color: var(--bone);
+      font-family: var(--font-hud);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      letter-spacing: 0.03em;
+    }
 
-    /* HEADER */
-    .hdr{display:flex;align-items:center;justify-content:space-between;
-      padding:10px 14px;background:rgba(5,7,10,0.98);
-      border-bottom:1px solid var(--line);flex-shrink:0;z-index:30;}
-    .brand{display:flex;align-items:center;gap:9px;}
-    .logo-ring{position:relative;width:28px;height:28px;flex-shrink:0;}
-    .logo-ring svg{width:28px;height:28px;}
-    .brand-text .name{font-size:.85rem;font-weight:600;letter-spacing:.12em;color:var(--bone);}
-    .brand-text .sub{font-size:.42rem;color:var(--muted);letter-spacing:.1em;font-family:var(--mono);}
-    .hdr-right{display:flex;align-items:center;gap:7px;}
-    .gnss-pill{display:flex;align-items:center;gap:5px;
-      padding:5px 11px;border-radius:4px;border:1px solid var(--line);
-      background:transparent;font-family:var(--mono);font-size:.55rem;font-weight:600;letter-spacing:.06em;color:var(--bone-dim);}
-    .dot{width:6px;height:6px;border-radius:50%;background:rgba(80,150,120,0.7);transition:all .3s;}
-    .dot.out{background:rgba(160,50,50,0.8);animation:blink .7s step-end infinite;}
-    .mode-badge{padding:4px 10px;border-radius:3px;font-size:.5rem;font-weight:600;
-      letter-spacing:.08em;font-family:var(--mono);background:transparent;color:var(--muted);border:1px solid var(--line);cursor:pointer;transition:all .2s;}
-    .badge-sim{color:var(--muted);}
-    .badge-live{color:rgba(80,150,120,0.8);border-color:rgba(80,150,120,0.3);background:rgba(80,150,120,0.08);}
-    .badge-sensor{color:rgba(155,114,216,0.9);border-color:rgba(155,114,216,0.35);background:rgba(155,114,216,0.10);animation:sensor-pulse 2s ease-in-out infinite;}
-    @keyframes blink{50%{opacity:0;}}
-    @keyframes sensor-pulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(155,114,216,0.3)}}
+    /* Ambient scanline texture */
+    body::after {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+      background: repeating-linear-gradient(0deg, rgba(0, 240, 255, 0.015) 0px, rgba(0, 240, 255, 0.015) 1px, transparent 1px, transparent 3px);
+      opacity: 0.65; mix-blend-mode: screen;
+    }
 
-    /* CITY STRIP */
-    .city-bar{display:flex;gap:6px;padding:8px 14px;overflow-x:auto;
-      background:rgba(5,7,10,0.92);border-bottom:1px solid var(--line);
-      scrollbar-width:none;flex-shrink:0;}
-    .city-bar::-webkit-scrollbar{display:none;}
-    .cbtn{padding:4px 14px;font-size:.6rem;font-weight:500;white-space:nowrap;
-      border-radius:3px;border:1px solid var(--line);cursor:pointer;
-      background:transparent;color:var(--muted);transition:all .2s;flex-shrink:0;font-family:var(--mono);letter-spacing:.06em;}
-    .cbtn.on{background:rgba(122,26,26,0.18);color:var(--bone-dim);border-color:var(--red-k-dim);}
+    .app { display: flex; flex-direction: column; height: 100dvh; width: 100%; position: relative; }
 
-    /* LIVE SENSOR STRIP — shown when real IMU active */
-    .sensor-strip{display:none;align-items:center;gap:6px;padding:5px 14px;
-      background:rgba(155,114,216,0.07);border-bottom:1px solid rgba(155,114,216,0.15);
-      flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
-    .sensor-strip.on{display:flex;}
-    .sensor-strip::-webkit-scrollbar{display:none;}
-    .sv{font-size:.52rem;font-family:var(--mono);color:rgba(155,114,216,0.75);white-space:nowrap;display:flex;align-items:center;gap:2px;}
-    .sv span.sv-lbl{color:rgba(155,114,216,0.45);}
-    .sv span.sv-val{color:rgba(155,114,216,0.85);display:inline-block;min-width:4ch;text-align:right;font-variant-numeric:tabular-nums;}
-    .sv-sep{width:1px;height:12px;background:rgba(155,114,216,0.2);flex-shrink:0;}
+    /* ─── HEADER ─── */
+    .hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; background: rgba(3, 7, 13, 0.96);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(0, 240, 255, 0.2);
+      flex-shrink: 0; z-index: 30;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    
+    /* Double-ring counter-rotating logo */
+    .logo-ring {
+      position: relative; width: 34px; height: 34px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hud-logo-svg { width: 34px; height: 34px; }
+    .logo-ring-outer {
+      transform-origin: 18px 18px;
+      animation: spinCW 12s linear infinite;
+    }
+    .logo-ring-inner {
+      transform-origin: 18px 18px;
+      animation: spinCCW 7s linear infinite;
+    }
+    .logo-core {
+      animation: corePulse 1.8s ease-in-out infinite alternate;
+      filter: drop-shadow(0 0 6px #00ff9d);
+    }
+    @keyframes spinCW { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes spinCCW { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+    @keyframes corePulse {
+      0% { opacity: 0.6; transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1.15); }
+    }
 
-    /* MAP */
-    .map-wrap{flex:1;position:relative;min-height:0;}
-    #map{width:100%;height:100%;background:#06060e;}
-    .leaflet-container{background:#06060e!important;}
+    .brand-text .name {
+      font-size: 0.95rem; font-weight: 700; letter-spacing: 0.16em;
+      color: #fff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+      font-family: var(--font-hud); line-height: 1.1;
+    }
+    .brand-text .sub {
+      font-size: 0.44rem; color: var(--bone-dim); letter-spacing: 0.12em;
+      font-family: var(--font-mono); opacity: 0.85;
+    }
 
-    .hud{position:absolute;z-index:500;pointer-events:none;}
-    .hud.tl{top:9px;left:9px;}
-    .hud.tr{top:9px;right:9px;}
-    .hbox{background:rgba(5,7,10,0.88);backdrop-filter:blur(10px);
-      border:1px solid var(--line);border-radius:4px;padding:6px 10px;}
-    .hl{font-size:.44rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
-    .hv{font-size:.7rem;font-weight:500;font-family:var(--mono);color:var(--bone-dim);margin-top:2px;}
-    .hv.red{color:rgba(160,50,50,0.8);}
-    .leg{display:flex;flex-direction:column;gap:4px;}
-    .leg-row{display:flex;align-items:center;gap:5px;}
-    .leg-line{width:16px;height:2px;border-radius:1px;}
-    .leg-txt{font-size:.48rem;font-family:var(--mono);color:var(--t2);}
+    .hdr-right { display: flex; align-items: center; gap: 8px; }
+
+    /* SYSTEM NOMINAL STATUS INDICATOR WITH BLINKING CURSOR */
+    .sys-nominal {
+      display: flex; align-items: center; gap: 5px;
+      padding: 3px 8px; border-radius: 3px;
+      background: rgba(0, 255, 157, 0.08);
+      border: 1px solid rgba(0, 255, 157, 0.35);
+      box-shadow: 0 0 10px rgba(0, 255, 157, 0.12), inset 0 0 6px rgba(0, 255, 157, 0.08);
+      font-family: var(--font-mono); font-size: 0.52rem; font-weight: 700;
+      letter-spacing: 0.08em; color: var(--emerald);
+      text-shadow: 0 0 6px rgba(0, 255, 157, 0.6);
+      white-space: nowrap;
+    }
+    .sys-nominal.alert {
+      background: rgba(255, 42, 95, 0.12);
+      border-color: rgba(255, 42, 95, 0.5);
+      color: var(--red);
+      text-shadow: 0 0 8px rgba(255, 42, 95, 0.8);
+      box-shadow: 0 0 12px rgba(255, 42, 95, 0.3);
+    }
+    .nominal-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--emerald); box-shadow: 0 0 6px var(--emerald);
+      animation: dotPulse 1.4s ease-in-out infinite alternate;
+    }
+    .sys-nominal.alert .nominal-dot {
+      background: var(--red); box-shadow: 0 0 8px var(--red);
+    }
+    .nominal-cursor {
+      display: inline-block; font-weight: 900; color: inherit;
+      animation: cursorBlink 0.85s steps(2, start) infinite;
+    }
+    @keyframes cursorBlink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+    @keyframes dotPulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.3); opacity: 1; } }
+
+    .gnss-pill {
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 8px; border-radius: 3px;
+      border: 1px solid var(--line);
+      background: rgba(0, 240, 255, 0.04);
+      font-family: var(--font-mono); font-size: 0.52rem; font-weight: 600;
+      letter-spacing: 0.08em; color: var(--bone);
+    }
+    .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--emerald); box-shadow: 0 0 6px var(--emerald);
+      transition: all 0.3s;
+    }
+    .dot.out {
+      background: var(--red); box-shadow: 0 0 10px var(--red);
+      animation: blink 0.6s step-end infinite;
+    }
+    .mode-badge {
+      padding: 3px 8px; border-radius: 3px; font-size: 0.52rem; font-weight: 700;
+      letter-spacing: 0.08em; font-family: var(--font-mono);
+      background: rgba(0, 240, 255, 0.06); color: var(--cyan);
+      border: 1px solid rgba(0, 240, 255, 0.3); cursor: pointer; transition: all 0.2s;
+    }
+    .mode-badge:hover { box-shadow: 0 0 10px var(--cyan-glow); }
+    .badge-sim { color: var(--bone-dim); border-color: var(--line); }
+    .badge-live { color: var(--emerald); border-color: var(--emerald); background: var(--emerald-dim); box-shadow: 0 0 8px var(--emerald-glow); }
+    .badge-sensor { color: #d6b4fc; border-color: var(--violet); background: var(--violet-dim); animation: sensor-pulse 2s ease-in-out infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    @keyframes sensor-pulse { 0%, 100% { box-shadow: none; } 50% { box-shadow: 0 0 12px var(--violet-glow); } }
+
+    /* ─── SCROLLING TICKER SENSOR STRIP ─── */
+    .sensor-strip {
+      display: none; align-items: center; position: relative;
+      background: linear-gradient(90deg, rgba(155, 114, 216, 0.14) 0%, rgba(0, 240, 255, 0.08) 50%, rgba(155, 114, 216, 0.14) 100%);
+      border-bottom: 1px solid rgba(0, 240, 255, 0.22);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+      flex-shrink: 0; overflow: hidden; padding: 4px 10px; z-index: 25;
+    }
+    .sensor-strip.on { display: flex; }
+    .sensor-ticker-badge {
+      font-family: var(--font-mono); font-size: 0.48rem; font-weight: 700;
+      color: #00f0ff; background: rgba(0, 240, 255, 0.12);
+      border: 1px solid rgba(0, 240, 255, 0.4); padding: 2px 6px;
+      border-radius: 2px; letter-spacing: 0.1em; margin-right: 8px;
+      flex-shrink: 0; text-shadow: 0 0 6px #00f0ff;
+    }
+    .sensor-ticker-wrap {
+      display: flex; align-items: center; gap: 8px;
+      overflow-x: auto; scrollbar-width: none; flex: 1;
+    }
+    .sensor-ticker-wrap::-webkit-scrollbar { display: none; }
+    .sensor-ticker-track {
+      display: flex; align-items: center; gap: 8px; white-space: nowrap;
+      animation: tickerMarquee 26s linear infinite;
+    }
+    .sensor-ticker-track:hover { animation-play-state: paused; }
+    @keyframes tickerMarquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-35%); }
+    }
+    .sv {
+      font-size: 0.55rem; font-family: var(--font-mono); color: #c4d7ec;
+      white-space: nowrap; font-weight: 600;
+    }
+    .sv span { color: rgba(0, 240, 255, 0.65); margin-right: 2px; }
+    .sv-sep { width: 1px; height: 11px; background: rgba(0, 240, 255, 0.25); flex-shrink: 0; }
+
+    /* ─── CITY STRIP ─── */
+    .city-bar {
+      display: flex; gap: 6px; padding: 6px 12px; overflow-x: auto;
+      background: rgba(3, 7, 13, 0.94); border-bottom: 1px solid var(--line);
+      scrollbar-width: none; flex-shrink: 0; z-index: 24;
+    }
+    .city-bar::-webkit-scrollbar { display: none; }
+    .cbtn {
+      padding: 4px 12px; font-size: 0.62rem; font-weight: 600; white-space: nowrap;
+      border-radius: 3px; border: 1px solid var(--line); cursor: pointer;
+      background: rgba(0, 240, 255, 0.03); color: var(--bone-dim);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); flex-shrink: 0;
+      font-family: var(--font-hud); letter-spacing: 0.08em;
+    }
+    .cbtn:hover { border-color: rgba(0, 240, 255, 0.5); color: #fff; box-shadow: 0 0 8px var(--cyan-glow); }
+    .cbtn.on {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.18), rgba(155, 114, 216, 0.18));
+      color: #fff; border-color: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan-glow), inset 0 0 6px var(--cyan-dim);
+    }
+
+    /* ─── MAP WRAPPER WITH NEXT-GEN HUD OVERLAYS ─── */
+    .map-wrap {
+      flex: 1; position: relative; min-height: 0; overflow: hidden;
+      background: #020509;
+    }
+    #map { width: 100%; height: 100%; background: #020509; }
+    .leaflet-container { background: #020509 !important; }
+    /* Dark tactical radar filter on OpenStreetMap tiles */
+    .leaflet-tile {
+      filter: invert(100%) hue-rotate(185deg) brightness(78%) contrast(140%) saturate(75%) !important;
+    }
+
+    /* 1. PULSING RADAR SWEEP ANIMATION OVERLAY */
+    .radar-overlay {
+      position: absolute; inset: 0; pointer-events: none; z-index: 450;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .radar-sweep-disc {
+      position: absolute;
+      width: min(88vw, 88vh); height: min(88vw, 88vh);
+      border-radius: 50%;
+      border: 1px solid rgba(0, 240, 255, 0.22);
+      box-shadow: 0 0 35px rgba(0, 240, 255, 0.08), inset 0 0 25px rgba(0, 240, 255, 0.05);
+      animation: radarPulseRing 3.6s ease-in-out infinite;
+    }
+    .radar-sweep-disc::before {
+      content: ''; position: absolute; inset: 0; border-radius: 50%;
+      background: conic-gradient(from 0deg at 50% 50%, rgba(0, 240, 255, 0.36) 0deg, rgba(0, 240, 255, 0.12) 35deg, rgba(0, 240, 255, 0.02) 70deg, transparent 90deg, transparent 360deg);
+      animation: radarRotate 4s linear infinite;
+    }
+    .radar-sweep-disc::after {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      width: 50%; height: 2px;
+      transform-origin: 0% 50%;
+      background: linear-gradient(90deg, #00f0ff, rgba(0, 255, 157, 0.8), transparent);
+      box-shadow: 0 0 10px #00f0ff, 0 0 20px rgba(0, 240, 255, 0.8);
+      animation: radarRotate 4s linear infinite;
+    }
+    @keyframes radarRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes radarPulseRing {
+      0%, 100% { border-color: rgba(0, 240, 255, 0.2); box-shadow: 0 0 20px rgba(0, 240, 255, 0.06); }
+      50% { border-color: rgba(0, 240, 255, 0.45); box-shadow: 0 0 35px rgba(0, 240, 255, 0.16); }
+    }
+
+    /* 12. SUBTLE GRID & CROSSHAIR OVERLAY ON MAP */
+    .tactical-hud-overlay {
+      position: absolute; inset: 0; pointer-events: none; z-index: 460;
+    }
+    /* Center Crosshair */
+    .center-crosshair {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90px; height: 90px;
+    }
+    .center-crosshair::before, .center-crosshair::after {
+      content: ''; position: absolute; background: rgba(0, 240, 255, 0.45);
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+    }
+    .center-crosshair::before {
+      top: 50%; left: 0; right: 0; height: 1px;
+      transform: translateY(-50%);
+    }
+    .center-crosshair::after {
+      left: 50%; top: 0; bottom: 0; width: 1px;
+      transform: translateX(-50%);
+    }
+    .crosshair-box {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 32px; height: 32px;
+      border: 1px dashed rgba(0, 240, 255, 0.5);
+      border-radius: 4px;
+    }
+    .crosshair-range-ring {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%; border: 1px dashed rgba(0, 240, 255, 0.18);
+    }
+    .ring-50m { width: 180px; height: 180px; }
+    .ring-100m { width: 320px; height: 320px; }
+    .range-label {
+      position: absolute; font-family: var(--font-mono); font-size: 0.42rem;
+      color: rgba(0, 240, 255, 0.55); letter-spacing: 0.06em;
+      top: calc(50% - 90px - 10px); left: 50%; transform: translateX(-50%);
+    }
+
+    /* Tactical Viewport Corner Brackets */
+    .map-bracket {
+      position: absolute; width: 18px; height: 18px;
+      border-color: rgba(0, 240, 255, 0.55); border-style: solid;
+      pointer-events: none;
+    }
+    .mb-tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+    .mb-tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+    .mb-bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
+    .mb-br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+    .map-tag {
+      position: absolute; font-family: var(--font-mono); font-size: 0.45rem;
+      color: rgba(0, 240, 255, 0.65); letter-spacing: 0.1em;
+    }
+    .tag-tl { top: 14px; left: 34px; }
+    .tag-tr { top: 14px; right: 34px; text-align: right; }
+    .tag-bl { bottom: 14px; left: 34px; }
+    .tag-br { bottom: 14px; right: 34px; text-align: right; }
+
+    /* Fighter Jet HUD Pitch Ladders on Left/Right */
+    .hud-pitch-ladder {
+      position: absolute; top: 35%; width: 22px;
+      display: flex; flex-direction: column; gap: 14px;
+      pointer-events: none; opacity: 0.65;
+    }
+    .ladder-left { left: 8px; }
+    .ladder-right { right: 8px; align-items: flex-end; }
+    .ladder-bar {
+      height: 1px; width: 14px; background: rgba(0, 240, 255, 0.5);
+      position: relative;
+    }
+    .ladder-bar.major { width: 20px; background: #00f0ff; box-shadow: 0 0 6px #00f0ff; }
+
+    /* HUD Floating Boxes */
+    .hud { position: absolute; z-index: 500; pointer-events: none; }
+    .hud.tl { top: 32px; left: 12px; }
+    .hud.tr { top: 32px; right: 12px; }
+    .hbox {
+      background: rgba(3, 7, 13, 0.88); backdrop-filter: blur(14px);
+      border: 1px solid var(--line); border-radius: 4px; padding: 7px 12px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(0, 240, 255, 0.05);
+      position: relative;
+    }
+    .hbox::before {
+      content: ''; position: absolute; top: -1px; left: -1px; width: 6px; height: 6px;
+      border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan);
+    }
+    .hbox::after {
+      content: ''; position: absolute; bottom: -1px; right: -1px; width: 6px; height: 6px;
+      border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan);
+    }
+    .hl {
+      font-size: 0.46rem; font-family: var(--font-mono); color: var(--bone-dim);
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .hv {
+      font-size: 0.78rem; font-weight: 700; font-family: var(--font-hud);
+      color: #fff; margin-top: 1px; text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+    }
+    .hv.red { color: var(--red); text-shadow: 0 0 10px var(--red-glow); }
+    .leg { display: flex; flex-direction: column; gap: 4px; }
+    .leg-row { display: flex; align-items: center; gap: 6px; }
+    .leg-line { width: 16px; height: 2px; border-radius: 1px; box-shadow: 0 0 6px currentColor; }
+    .leg-txt { font-size: 0.52rem; font-family: var(--font-hud); font-weight: 600; color: var(--bone); }
 
     /* GNSS blackout banner */
-    #ob{position:absolute;top:0;left:0;right:0;z-index:600;
-      background:rgba(100,20,20,0.92);backdrop-filter:blur(10px);
-      padding:7px 14px;display:none;font-family:var(--mono);
-      font-size:.62rem;font-weight:600;letter-spacing:.08em;text-align:center;
-      color:var(--bone-dim);border-bottom:1px solid rgba(139,26,26,0.4);}
-    #ob.snap{background:rgba(20,60,40,0.92);border-color:rgba(80,140,100,0.3);color:var(--bone-dim);}
-    #ob.on{display:block;}
-    #flash{position:absolute;inset:0;z-index:400;pointer-events:none;
-      border:0 solid rgba(139,26,26,0.5);opacity:0;transition:opacity .2s;}
-    #flash.on{border:2px solid rgba(139,26,26,0.5);opacity:1;
-      animation:rfp 1.4s ease-in-out infinite alternate;}
-    @keyframes rfp{0%{box-shadow:inset 0 0 30px rgba(120,20,20,.15)}100%{box-shadow:inset 0 0 70px rgba(120,20,20,.3)}}
+    #ob {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 600;
+      background: linear-gradient(90deg, rgba(255, 42, 95, 0.95), rgba(139, 26, 26, 0.95), rgba(255, 42, 95, 0.95));
+      backdrop-filter: blur(12px); padding: 8px 14px; display: none;
+      font-family: var(--font-hud); font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.12em; text-align: center; color: #fff;
+      border-bottom: 1px solid rgba(255, 42, 95, 0.8);
+      box-shadow: 0 4px 20px rgba(255, 42, 95, 0.5);
+    }
+    #ob.snap {
+      background: linear-gradient(90deg, rgba(0, 255, 157, 0.95), rgba(20, 80, 50, 0.95), rgba(0, 255, 157, 0.95));
+      border-color: rgba(0, 255, 157, 0.8);
+      box-shadow: 0 4px 20px rgba(0, 255, 157, 0.5);
+    }
+    #ob.on { display: block; }
+    #flash {
+      position: absolute; inset: 0; z-index: 400; pointer-events: none;
+      border: 0 solid rgba(255, 42, 95, 0.6); opacity: 0; transition: opacity 0.2s;
+    }
+    #flash.on {
+      border: 2px solid rgba(255, 42, 95, 0.8); opacity: 1;
+      animation: rfp 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes rfp {
+      0% { box-shadow: inset 0 0 30px rgba(255, 42, 95, 0.25); }
+      100% { box-shadow: inset 0 0 90px rgba(255, 42, 95, 0.55); }
+    }
 
-    /* BOTTOM SHEET */
-    .sheet{background:rgba(5,7,10,0.97);border-top:1px solid var(--line);
-      backdrop-filter:blur(24px);flex-shrink:0;padding:10px 14px 14px;}
+    /* ─── BOTTOM SHEET ─── */
+    .sheet {
+      position: relative; background: rgba(3, 7, 13, 0.97);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.8), 0 -1px 0 rgba(0, 240, 255, 0.25);
+      flex-shrink: 0; padding: 10px 12px 14px;
+      overflow: hidden; z-index: 35;
+    }
 
-    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;}
-    .met{background:var(--line-soft);border:1px solid var(--line);border-radius:3px;
-      padding:8px 5px;text-align:center;}
-    .met-l{font-size:.42rem;font-family:var(--mono);color:var(--muted);
-      text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
-    .met-v{font-size:.78rem;font-weight:600;font-family:var(--mono);color:var(--bone-dim);}
+    /* 5. SUBTLE PARTICLE/STAR FIELD BACKGROUND TO BOTTOM SHEET */
+    .sheet-stars-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 0; opacity: 0.65;
+    }
+    .sheet-content { position: relative; z-index: 1; }
 
-    .status-row{display:flex;gap:6px;margin-bottom:8px;}
-    .stat-box{flex:1;background:var(--line-soft);border:1px solid var(--line);
-      border-radius:3px;padding:7px 10px;display:flex;align-items:center;justify-content:space-between;}
-    .stat-label{font-size:.45rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
-    .stat-val{font-size:.68rem;font-weight:600;font-family:var(--mono);color:var(--bone-dim);}
-    .tun-chip{font-size:.48rem;font-family:var(--mono);font-weight:600;
-      padding:3px 8px;border-radius:3px;transition:all .3s;}
-    .tun-chip.clear{background:rgba(80,140,100,0.12);color:rgba(100,170,130,0.65);border:1px solid rgba(80,140,100,0.2);}
-    .tun-chip.tunnel{background:rgba(139,26,26,0.18);color:rgba(180,80,80,0.8);border:1px solid rgba(139,26,26,0.3);animation:blink .7s step-end infinite;}
+    /* 8. SPEED METRIC DISPLAY HUGE & BOLD LIKE A FIGHTER JET HUD */
+    .jet-speed-hud {
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(135deg, rgba(8, 16, 28, 0.92) 0%, rgba(12, 22, 38, 0.95) 100%);
+      border: 1px solid rgba(0, 240, 255, 0.35); border-radius: 6px;
+      padding: 6px 12px; margin-bottom: 8px; position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.15), inset 0 0 15px rgba(0, 240, 255, 0.05);
+    }
+    /* Military corner targeting brackets on speed hud */
+    .jet-speed-hud::before {
+      content: ''; position: absolute; top: -1px; left: -1px; width: 10px; height: 10px;
+      border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan);
+      box-shadow: -1px -1px 6px var(--cyan);
+    }
+    .jet-speed-hud::after {
+      content: ''; position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px;
+      border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan);
+      box-shadow: 1px 1px 6px var(--cyan);
+    }
+    .jet-speed-bracket-tr {
+      position: absolute; top: -1px; right: -1px; width: 10px; height: 10px;
+      border-top: 2px solid var(--cyan); border-right: 2px solid var(--cyan);
+      box-shadow: 1px -1px 6px var(--cyan); pointer-events: none;
+    }
+    .jet-speed-bracket-bl {
+      position: absolute; bottom: -1px; left: -1px; width: 10px; height: 10px;
+      border-bottom: 2px solid var(--cyan); border-left: 2px solid var(--cyan);
+      box-shadow: -1px 1px 6px var(--cyan); pointer-events: none;
+    }
+    .jet-speed-ladder {
+      display: flex; flex-direction: column; justify-content: space-between;
+      height: 48px; font-family: var(--font-mono); font-size: 0.44rem;
+      color: rgba(0, 240, 255, 0.6); padding-right: 8px; border-right: 1px solid rgba(0, 240, 255, 0.2);
+    }
+    .jet-speed-ladder span.active { color: #00ff9d; font-weight: 700; text-shadow: 0 0 6px #00ff9d; }
+    .jet-speed-center { flex: 1; padding: 0 12px; }
+    .jet-speed-tag {
+      font-size: 0.48rem; font-family: var(--font-mono); font-weight: 700;
+      color: var(--cyan); letter-spacing: 0.12em; text-transform: uppercase;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .jet-speed-tag span.blip {
+      width: 5px; height: 5px; border-radius: 50%; background: #00ff9d;
+      box-shadow: 0 0 6px #00ff9d;
+    }
+    .speed-big-wrap { display: flex; align-items: baseline; gap: 6px; }
+    .speed-big {
+      font-size: 2.2rem; font-weight: 800; font-family: var(--font-hud);
+      color: #fff; line-height: 1; letter-spacing: 0.04em;
+      text-shadow: 0 0 15px rgba(0, 240, 255, 0.7), 0 0 30px rgba(0, 240, 255, 0.3);
+    }
+    .speed-unit {
+      font-size: 0.75rem; font-weight: 700; color: var(--cyan);
+      letter-spacing: 0.1em;
+    }
+    /* Dynamic animated speed gauge bar */
+    .speed-bar-track {
+      width: 100%; height: 4px; background: rgba(0, 240, 255, 0.12);
+      border-radius: 2px; margin-top: 4px; overflow: hidden; position: relative;
+    }
+    .speed-bar-fill {
+      height: 100%; width: 0%; border-radius: 2px;
+      background: linear-gradient(90deg, #00f0ff, #00ff9d, #ff9933);
+      box-shadow: 0 0 10px #00f0ff;
+      transition: width 0.15s ease-out;
+    }
+    .jet-speed-telemetry {
+      display: flex; flex-direction: column; justify-content: space-between;
+      height: 48px; font-family: var(--font-mono); font-size: 0.48rem;
+      padding-left: 10px; border-left: 1px solid rgba(0, 240, 255, 0.2);
+      text-align: right;
+    }
+    .jst-item .l { color: var(--muted); font-size: 0.4rem; letter-spacing: 0.08em; }
+    .jst-item .v { color: var(--bone); font-weight: 700; font-size: 0.6rem; }
 
-    .mod-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
-    .mod{font-size:.48rem;font-weight:500;font-family:var(--mono);
-      padding:3px 9px;border-radius:3px;border:1px solid var(--line);
-      background:rgba(223,231,224,0.04);color:var(--bone-dim);letter-spacing:.04em;}
-    .mod.snap-off{background:transparent;color:var(--muted);}
-    .mod.dr{background:rgba(120,80,170,0.10);color:rgba(155,114,216,0.6);border-color:rgba(120,80,170,0.2);}
-    .mod.live-imu{background:rgba(80,140,100,0.12);color:rgba(100,170,130,0.8);border-color:rgba(80,140,100,0.25);animation:sensor-pulse 2s infinite;}
-    .mod.perm-needed{background:rgba(180,140,60,0.10);color:rgba(180,140,60,0.75);border-color:rgba(180,140,60,0.25);cursor:pointer;}
+    /* ─── METRIC TILES WITH CORNER BRACKETS, DATA-STREAM, & NEON PULSE ─── */
+    .metrics {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px;
+    }
+    
+    /* 3. GLOWING NEON BORDERS THAT PULSE */
+    .met {
+      position: relative;
+      background: linear-gradient(135deg, rgba(6, 14, 24, 0.94) 0%, rgba(10, 20, 34, 0.9) 100%);
+      border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 4px;
+      padding: 7px 4px; text-align: center; overflow: hidden;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.1), inset 0 0 8px rgba(0, 240, 255, 0.04);
+      animation: neonPulse 3.5s ease-in-out infinite alternate;
+      transition: all 0.2s;
+    }
+    @keyframes neonPulse {
+      0% {
+        border-color: rgba(0, 240, 255, 0.25);
+        box-shadow: 0 0 8px rgba(0, 240, 255, 0.1), inset 0 0 6px rgba(0, 240, 255, 0.03);
+      }
+      50% {
+        border-color: rgba(0, 240, 255, 0.55);
+        box-shadow: 0 0 18px rgba(0, 240, 255, 0.25), inset 0 0 12px rgba(0, 240, 255, 0.08);
+      }
+      100% {
+        border-color: rgba(155, 114, 216, 0.5);
+        box-shadow: 0 0 15px rgba(155, 114, 216, 0.22), inset 0 0 10px rgba(155, 114, 216, 0.06);
+      }
+    }
 
-    .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-    .abtn{padding:12px;font-size:.68rem;font-weight:600;border-radius:4px;
-      border:1px solid var(--line);cursor:pointer;font-family:var(--mono);
-      display:flex;align-items:center;justify-content:center;gap:7px;
-      background:transparent;color:var(--bone-dim);letter-spacing:.06em;
-      transition:opacity .15s;}
-    .abtn:active{opacity:.6;}
-    .abtn.play{background:rgba(223,231,224,0.04);color:var(--bone-dim);border-color:var(--line);}
-    .abtn.gnss-t{background:rgba(139,26,26,0.12);color:rgba(180,80,80,0.7);border-color:rgba(139,26,26,0.3);}
-    .abtn.gnss-t.locked{background:rgba(80,140,100,0.10);color:rgba(100,170,130,0.65);border-color:rgba(80,140,100,0.2);}
-    .abtn.sensor-btn{background:rgba(155,114,216,0.10);color:rgba(155,114,216,0.8);border-color:rgba(155,114,216,0.3);}
-    .abtn.sensor-btn.active{background:rgba(80,140,100,0.12);color:rgba(100,170,130,0.8);border-color:rgba(80,140,100,0.3);}
+    /* 9. CORNER BRACKET DECORATIONS (MILITARY TARGETING UI) */
+    .met::before {
+      content: ''; position: absolute; top: -1px; left: -1px; width: 6px; height: 6px;
+      border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan);
+      box-shadow: -1px -1px 4px var(--cyan); pointer-events: none; z-index: 3;
+    }
+    .met::after {
+      content: ''; position: absolute; bottom: -1px; right: -1px; width: 6px; height: 6px;
+      border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan);
+      box-shadow: 1px 1px 4px var(--cyan); pointer-events: none; z-index: 3;
+    }
+    .met-bracket-tr {
+      position: absolute; top: -1px; right: -1px; width: 6px; height: 6px;
+      border-top: 2px solid var(--cyan); border-right: 2px solid var(--cyan);
+      box-shadow: 1px -1px 4px var(--cyan); pointer-events: none; z-index: 3;
+    }
+    .met-bracket-bl {
+      position: absolute; bottom: -1px; left: -1px; width: 6px; height: 6px;
+      border-bottom: 2px solid var(--cyan); border-left: 2px solid var(--cyan);
+      box-shadow: -1px 1px 4px var(--cyan); pointer-events: none; z-index: 3;
+    }
+
+    /* 2. DATA-STREAM ANIMATION - SUBTLE SCROLLING NUMBERS IN BACKGROUND */
+    .met-datastream {
+      position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+      opacity: 0.10; font-family: var(--font-mono); font-size: 0.44rem;
+      line-height: 1.25; color: #00f0ff; z-index: 1;
+      mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 75%, transparent 100%);
+      -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 75%, transparent 100%);
+    }
+    .datastream-track {
+      animation: dataStreamScroll 8s linear infinite;
+      white-space: pre;
+    }
+    @keyframes dataStreamScroll {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-50%); }
+    }
+
+    .met-content { position: relative; z-index: 2; }
+    .met-l {
+      font-size: 0.44rem; font-family: var(--font-mono); color: var(--bone-dim);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px;
+    }
+    .met-v {
+      font-size: 0.88rem; font-weight: 700; font-family: var(--font-hud);
+      letter-spacing: 0.04em; color: #fff; text-shadow: 0 0 8px currentColor;
+    }
+
+    /* STATUS ROW */
+    .status-row { display: flex; gap: 6px; margin-bottom: 8px; }
+    .stat-box {
+      flex: 1; background: linear-gradient(135deg, rgba(6, 14, 24, 0.94) 0%, rgba(10, 20, 34, 0.9) 100%);
+      border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: relative; box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+    }
+    .stat-box::before {
+      content: ''; position: absolute; top: -1px; left: -1px; width: 6px; height: 6px;
+      border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan);
+    }
+    .stat-box::after {
+      content: ''; position: absolute; bottom: -1px; right: -1px; width: 6px; height: 6px;
+      border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan);
+    }
+    .stat-label {
+      font-size: 0.46rem; font-family: var(--font-mono); color: var(--bone-dim);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .stat-val {
+      font-size: 0.78rem; font-weight: 700; font-family: var(--font-hud);
+      color: #fff; margin-top: 1px;
+    }
+    .tun-chip {
+      font-size: 0.52rem; font-family: var(--font-mono); font-weight: 700;
+      padding: 3px 8px; border-radius: 3px; letter-spacing: 0.08em;
+      transition: all 0.3s;
+    }
+    .tun-chip.clear {
+      background: rgba(0, 255, 157, 0.1); color: var(--emerald);
+      border: 1px solid rgba(0, 255, 157, 0.3); box-shadow: 0 0 8px rgba(0, 255, 157, 0.2);
+    }
+    .tun-chip.tunnel {
+      background: rgba(255, 42, 95, 0.2); color: var(--red);
+      border: 1px solid rgba(255, 42, 95, 0.5); box-shadow: 0 0 12px rgba(255, 42, 95, 0.4);
+      animation: blink 0.6s step-end infinite;
+    }
+
+    /* SYSTEM SUBSYSTEM CHIPS */
+    .mod-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+    .mod {
+      font-size: 0.48rem; font-weight: 600; font-family: var(--font-mono);
+      padding: 3px 8px; border-radius: 3px; border: 1px solid var(--line);
+      background: rgba(0, 240, 255, 0.04); color: var(--bone);
+      letter-spacing: 0.06em;
+    }
+    .mod.snap-off { background: transparent; color: var(--muted); border-color: rgba(255,255,255,0.06); }
+    .mod.dr {
+      background: rgba(155, 114, 216, 0.12); color: #d6b4fc;
+      border-color: rgba(155, 114, 216, 0.35); text-shadow: 0 0 6px var(--violet-glow);
+    }
+    .mod.live-imu {
+      background: rgba(0, 255, 157, 0.12); color: var(--emerald);
+      border-color: rgba(0, 255, 157, 0.4); box-shadow: 0 0 8px var(--emerald-glow);
+      animation: sensor-pulse 2s infinite;
+    }
+    .mod.perm-needed {
+      background: rgba(255, 153, 51, 0.12); color: var(--orange);
+      border-color: rgba(255, 153, 51, 0.4); cursor: pointer;
+    }
+
+    /* TACTICAL ACTION BUTTONS */
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .abtn {
+      padding: 10px; font-size: 0.72rem; font-weight: 700; border-radius: 4px;
+      border: 1px solid var(--line); cursor: pointer; font-family: var(--font-hud);
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      background: linear-gradient(135deg, rgba(6, 14, 24, 0.94), rgba(12, 22, 38, 0.95));
+      color: var(--bone); letter-spacing: 0.08em;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+    .abtn:hover {
+      border-color: var(--cyan); color: #fff; box-shadow: 0 0 12px var(--cyan-glow);
+    }
+    .abtn:active { transform: scale(0.98); opacity: 0.8; }
+    .abtn.play {
+      background: rgba(0, 240, 255, 0.06); color: var(--bone); border-color: rgba(0, 240, 255, 0.3);
+    }
+    .abtn.gnss-t {
+      background: rgba(255, 42, 95, 0.12); color: #ff8fa7; border-color: rgba(255, 42, 95, 0.4);
+    }
+    .abtn.gnss-t.locked {
+      background: rgba(0, 255, 157, 0.10); color: var(--emerald); border-color: rgba(0, 255, 157, 0.35);
+      box-shadow: 0 0 8px var(--emerald-dim);
+    }
+    .abtn.sensor-btn {
+      background: rgba(155, 114, 216, 0.12); color: #d6b4fc; border-color: rgba(155, 114, 216, 0.4);
+    }
+    .abtn.sensor-btn.active {
+      background: rgba(0, 255, 157, 0.14); color: var(--emerald); border-color: var(--emerald);
+      box-shadow: 0 0 12px var(--emerald-glow);
+    }
 
     /* SENSOR PERMISSION MODAL */
-    .modal-bg{position:fixed;inset:0;z-index:2000;background:rgba(5,7,10,0.92);
-      backdrop-filter:blur(20px);display:none;align-items:center;justify-content:center;padding:24px;}
-    .modal-bg.on{display:flex;}
-    .modal{background:rgba(8,12,16,0.98);border:1px solid rgba(155,114,216,0.25);
-      border-radius:6px;padding:24px;max-width:320px;width:100%;}
-    .modal-title{font-size:.85rem;font-weight:600;color:var(--bone);font-family:var(--mono);letter-spacing:.08em;margin-bottom:6px;}
-    .modal-sub{font-size:.6rem;color:var(--muted);line-height:1.6;margin-bottom:16px;font-family:var(--sans);}
-    .modal-rows{display:flex;flex-direction:column;gap:7px;margin-bottom:18px;}
-    .modal-row{display:flex;align-items:center;gap:10px;padding:8px 10px;
-      background:rgba(155,114,216,0.06);border:1px solid rgba(155,114,216,0.12);border-radius:4px;}
-    .modal-icon{font-size:1rem;width:20px;text-align:center;}
-    .modal-row-text .mrt{font-size:.6rem;font-weight:600;color:var(--bone-dim);font-family:var(--mono);}
-    .modal-row-text .mrd{font-size:.5rem;color:var(--muted);}
-    .modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-    .mbtn{padding:10px;font-size:.65rem;font-weight:600;border-radius:4px;cursor:pointer;
-      font-family:var(--mono);letter-spacing:.06em;border:1px solid;transition:opacity .15s;}
-    .mbtn:active{opacity:.6;}
-    .mbtn.cancel{background:transparent;color:var(--muted);border-color:var(--line);}
-    .mbtn.grant{background:rgba(155,114,216,0.15);color:rgba(155,114,216,0.9);border-color:rgba(155,114,216,0.3);}
+    .modal-bg {
+      position: fixed; inset: 0; z-index: 2000; background: rgba(2, 5, 10, 0.94);
+      backdrop-filter: blur(20px); display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-bg.on { display: flex; }
+    .modal {
+      background: linear-gradient(135deg, rgba(6, 14, 26, 0.98), rgba(12, 24, 42, 0.98));
+      border: 1px solid rgba(0, 240, 255, 0.35); border-radius: 8px; padding: 22px;
+      max-width: 330px; width: 100%; position: relative;
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+    }
+    .modal::before {
+      content: ''; position: absolute; top: -1px; left: -1px; width: 12px; height: 12px;
+      border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan);
+    }
+    .modal::after {
+      content: ''; position: absolute; bottom: -1px; right: -1px; width: 12px; height: 12px;
+      border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan);
+    }
+    .modal-title {
+      font-size: 0.95rem; font-weight: 700; color: #fff; font-family: var(--font-hud);
+      letter-spacing: 0.12em; margin-bottom: 6px; text-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+    }
+    .modal-sub {
+      font-size: 0.58rem; color: var(--bone-dim); line-height: 1.5; margin-bottom: 14px;
+      font-family: var(--font-sans);
+    }
+    .modal-rows { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
+    .modal-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 4px;
+    }
+    .modal-icon { font-size: 1.1rem; width: 22px; text-align: center; }
+    .modal-row-text .mrt { font-size: 0.62rem; font-weight: 700; color: #fff; font-family: var(--font-mono); }
+    .modal-row-text .mrd { font-size: 0.5rem; color: var(--bone-dim); }
+    .modal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mbtn {
+      padding: 10px; font-size: 0.68rem; font-weight: 700; border-radius: 4px; cursor: pointer;
+      font-family: var(--font-hud); letter-spacing: 0.08em; border: 1px solid; transition: opacity 0.15s;
+    }
+    .mbtn.cancel { background: transparent; color: var(--bone-dim); border-color: var(--line); }
+    .mbtn.grant {
+      background: rgba(0, 240, 255, 0.18); color: #fff; border-color: var(--cyan);
+      box-shadow: 0 0 12px var(--cyan-glow);
+    }
 
-    .desktop-link{text-align:center;margin-top:10px;}
-    .desktop-link a{font-size:.48rem;font-family:var(--mono);color:var(--muted);text-decoration:none;letter-spacing:.06em;}
-
-    /* GPS LOCATED TOAST */
-    .gps-toast{position:fixed;bottom:140px;left:50%;transform:translateX(-50%);
-      z-index:8000;background:rgba(5,7,10,0.96);border:1px solid rgba(95,186,149,0.5);
-      border-radius:6px;padding:9px 18px;display:flex;align-items:center;gap:9px;
-      font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;color:var(--bone-dim);
-      backdrop-filter:blur(14px);box-shadow:0 4px 24px rgba(0,0,0,0.5),0 0 0 1px rgba(95,186,149,0.08);
-      opacity:0;transition:opacity .4s;pointer-events:none;}
-    .gps-toast.show{opacity:1;}
-    .gps-toast-dot{width:7px;height:7px;border-radius:50%;background:rgba(95,186,149,0.9);
-      box-shadow:0 0 8px rgba(95,186,149,0.6);animation:gps-pulse 1.4s ease-in-out infinite;}
-    @keyframes gps-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.7}}
-
-    /* GPS STATUS PILL (replaces debug bar) */
-    #gps-status{position:fixed;bottom:0;left:0;right:0;z-index:9999;
-      background:rgba(5,7,10,0.97);border-top:1px solid var(--line);
-      padding:4px 14px;font-family:var(--mono);font-size:.52rem;letter-spacing:.04em;
-      color:var(--muted);display:none;pointer-events:none;
-      display:flex;align-items:center;gap:7px;}
-    #gps-status-dot{width:5px;height:5px;border-radius:50%;background:rgba(184,144,64,0.7);flex-shrink:0;}
-    #gps-status-dot.ok{background:rgba(95,186,149,0.85);}
-    #gps-status-dot.err{background:rgba(192,64,64,0.85);}
-    #gps-status-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-
-    /* MET CARD ACCENT */
-    .met{background:rgba(8,12,16,0.9);border:1px solid var(--line);border-radius:4px;
-      padding:9px 5px;text-align:center;position:relative;overflow:hidden;}
-    .met::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:currentColor;opacity:.25;}
-    .met-nd::before{background:rgba(0,210,200,1);}
-    .met-ekf::before{background:rgba(155,114,216,1);}
-    .met-unc::before{background:rgba(180,140,60,1);}
-    .met-spd::before{background:rgba(95,186,149,1);}
-    .met-l{font-size:.41rem;font-family:var(--mono);color:var(--muted);
-      text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
-    .met-v{font-size:.8rem;font-weight:600;font-family:var(--mono);}
-
-    /* SHEET POLISH */
-    .sheet{background:rgba(5,7,10,0.98);border-top:1px solid rgba(223,231,224,0.12);
-      backdrop-filter:blur(28px);flex-shrink:0;padding:11px 14px 16px;}
-
-    /* STAT BOX POLISH */
-    .stat-box{flex:1;background:rgba(8,12,16,0.85);border:1px solid var(--line);
-      border-radius:4px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;}
-
-    /* VEHICLE MARKER */
-    .vm-dot{width:14px;height:14px;border-radius:50%;background:#00e5cc;border:2px solid rgba(5,7,10,0.9);box-shadow:0 0 0 3px rgba(0,229,204,0.25);position:relative;}
-    .vm-dot::after{content:'';position:absolute;inset:-5px;border-radius:50%;border:1.5px solid rgba(0,229,204,0.4);animation:vm-ring 1.8s ease-out infinite;}
-    @keyframes vm-ring{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.2);opacity:0}}
-
-    /* ND LINE GLOW */
-    .nd-line{filter:drop-shadow(0 0 3px rgba(176,96,255,0.6));}
-
-    /* ZOOM BUTTONS */
-    .zoom-btns{position:absolute;right:9px;bottom:12px;z-index:500;display:flex;flex-direction:column;gap:4px;}
-    .zbtn{width:34px;height:34px;border-radius:4px;border:1px solid rgba(223,231,224,0.15);
-      background:rgba(5,7,10,0.88);backdrop-filter:blur(10px);color:rgba(223,231,224,0.7);
-      font-size:1.1rem;font-weight:400;cursor:pointer;display:flex;align-items:center;justify-content:center;
-      font-family:var(--mono);transition:background .15s;}
-    .zbtn:active{background:rgba(223,231,224,0.1);}
-
-    /* MODULE GRID */
-    .mod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:8px;}
-    .mg-chip{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:3px;
-      font-size:.46rem;font-family:var(--mono);letter-spacing:.05em;font-weight:500;
-      border:1px solid var(--line);background:rgba(8,12,16,0.7);color:var(--bone-dim);}
-    .mg-chip.dr{background:rgba(120,80,170,0.08);border-color:rgba(120,80,170,0.2);color:rgba(155,114,216,0.75);}
-    .mg-chip.snap-off{color:var(--muted);}
-    .mg-chip.perm-needed{border-color:rgba(180,140,60,0.25);color:rgba(180,140,60,0.75);cursor:pointer;}
-    .mg-chip.live-imu{border-color:rgba(80,140,100,0.3);color:rgba(100,170,130,0.9);background:rgba(80,140,100,0.1);animation:sensor-pulse 2s infinite;}
-    .mg-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
-    .mg-dot.ok{background:rgba(80,180,120,0.9);}
-    .mg-dot.off{background:rgba(120,120,120,0.5);}
-
-    /* METRICS (override) */
-    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:7px;}
-    .met{background:rgba(8,12,16,0.9);border:1px solid var(--line);border-radius:4px;
-      padding:9px 4px;text-align:center;position:relative;overflow:hidden;}
-    .met::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
-    .met-nd::before{background:rgba(0,229,204,0.7);}
-    .met-ekf::before{background:rgba(155,114,216,0.7);}
-    .met-unc::before{background:rgba(232,160,32,0.7);}
-    .met-spd::before{background:rgba(95,186,149,0.7);}
-    .met-l{font-size:.41rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
-    .met-v{font-size:.8rem;font-weight:600;font-family:var(--mono);}
-
-    /* BOTTOM ROW */
-    .bot-row{display:flex;gap:6px;margin-bottom:7px;align-items:stretch;}
-    .baro-box{flex:1;background:rgba(8,12,16,0.85);border:1px solid var(--line);border-radius:4px;padding:7px 9px;display:flex;flex-direction:column;gap:2px;}
-    .counters-box{display:flex;flex-direction:column;gap:4px;justify-content:center;}
-    .counter-item{background:rgba(8,12,16,0.85);border:1px solid var(--line);border-radius:4px;padding:5px 10px;}
-    .act-col{display:flex;flex-direction:column;gap:5px;}
-    .stat-label{font-size:.41rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
-    .stat-val{font-size:.7rem;font-weight:600;font-family:var(--mono);color:var(--bone-dim);}
-    .tun-chip{font-size:.44rem;font-family:var(--mono);font-weight:600;padding:2px 6px;border-radius:3px;margin-top:3px;display:inline-block;}
-    .tun-chip.clear{background:rgba(80,140,100,0.12);color:rgba(100,170,130,0.65);border:1px solid rgba(80,140,100,0.2);}
-    .tun-chip.tunnel{background:rgba(139,26,26,0.18);color:rgba(180,80,80,0.8);border:1px solid rgba(139,26,26,0.3);animation:blink .7s step-end infinite;}
-
-    /* ACTION BUTTONS */
-    .abtn{padding:7px 10px;font-size:.56rem;font-weight:600;border-radius:4px;
-      border:1px solid var(--line);cursor:pointer;font-family:var(--mono);
-      background:transparent;color:var(--bone-dim);letter-spacing:.05em;white-space:nowrap;
-      transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:5px;}
-    .abtn:active{opacity:.6;}
-    .abtn.play{background:rgba(223,231,224,0.04);}
-    .abtn.gnss-t{background:rgba(139,26,26,0.12);color:rgba(180,80,80,0.7);border-color:rgba(139,26,26,0.3);}
-    .abtn.gnss-t.locked{background:rgba(80,140,100,0.10);color:rgba(100,170,130,0.65);border-color:rgba(80,140,100,0.2);}
-
-    /* ICON ROW */
-    .icon-row{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
-    .ibtn{padding:9px 6px;font-size:.58rem;font-weight:600;border-radius:4px;
-      border:1px solid var(--line);cursor:pointer;font-family:var(--mono);
-      background:transparent;color:var(--bone-dim);letter-spacing:.05em;
-      display:flex;align-items:center;justify-content:center;text-decoration:none;
-      transition:opacity .15s;}
-    .ibtn:active{opacity:.6;}
-    .ibtn.sensor-btn{background:rgba(155,114,216,0.10);color:rgba(155,114,216,0.85);border-color:rgba(155,114,216,0.3);}
-    .ibtn.sensor-btn.active{background:rgba(80,140,100,0.12);color:rgba(100,170,130,0.85);border-color:rgba(80,140,100,0.3);}
+    .desktop-link { text-align: center; margin-top: 8px; }
+    .desktop-link a {
+      font-size: 0.52rem; font-family: var(--font-mono); color: var(--bone-dim);
+      text-decoration: none; letter-spacing: 0.08em; transition: color 0.2s;
+    }
+    .desktop-link a:hover { color: var(--cyan); text-shadow: 0 0 6px var(--cyan-glow); }
   </style>
 </head>
 <body>
@@ -306,21 +748,41 @@
   <!-- HEADER -->
   <div class="hdr">
     <div class="brand">
+      <!-- 4. COUNTER-ROTATING DOUBLE-RING LOGO -->
       <div class="logo-ring">
-        <svg viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="16" r="13" stroke="#8B1A1A" stroke-width="1.2" opacity=".7"/>
-          <circle cx="16" cy="16" r="7" stroke="rgba(223,231,224,0.18)" stroke-width=".8"/>
-          <circle cx="16" cy="16" r="2.5" fill="#8B1A1A" opacity=".9"/>
-          <line x1="16" y1="3" x2="16" y2="8" stroke="#8B1A1A" stroke-width="1.4" opacity=".8"/>
-          <line x1="16" y1="24" x2="16" y2="29" stroke="rgba(223,231,224,0.2)" stroke-width="1"/>
+        <svg viewBox="0 0 36 36" fill="none" class="hud-logo-svg">
+          <!-- Outer Ring (Clockwise) -->
+          <g class="logo-ring-outer">
+            <circle cx="18" cy="18" r="16" stroke="rgba(0, 240, 255, 0.5)" stroke-width="1.2" stroke-dasharray="8 4 2 4"/>
+            <circle cx="18" cy="2" r="1.6" fill="#00f0ff"/>
+            <circle cx="18" cy="34" r="1.6" fill="#00f0ff"/>
+            <circle cx="2" cy="18" r="1.6" fill="#ff9933"/>
+            <circle cx="34" cy="18" r="1.6" fill="#ff9933"/>
+          </g>
+          <!-- Inner Ring (Counter-Clockwise) -->
+          <g class="logo-ring-inner">
+            <circle cx="18" cy="18" r="10.5" stroke="rgba(255, 153, 51, 0.7)" stroke-width="1.2" stroke-dasharray="10 3 3 3"/>
+            <line x1="18" y1="7.5" x2="18" y2="10.5" stroke="#ff9933" stroke-width="1.4"/>
+            <line x1="18" y1="25.5" x2="18" y2="28.5" stroke="#ff9933" stroke-width="1.4"/>
+            <line x1="7.5" y1="18" x2="10.5" y2="18" stroke="#00f0ff" stroke-width="1.4"/>
+            <line x1="25.5" y1="18" x2="28.5" y2="18" stroke="#00f0ff" stroke-width="1.4"/>
+          </g>
+          <!-- Center Pulsing Core -->
+          <circle cx="18" cy="18" r="3.2" fill="#00ff9d" class="logo-core"/>
         </svg>
       </div>
       <div class="brand-text">
         <div class="name">NAVDRIFT-0</div>
-        <div class="sub">ISRO SIH 2026 · PS #26168 · IDR SYSTEM</div>
+        <div class="sub">ISRO SIH 2026 · PS #26168 · IDR HUD</div>
       </div>
     </div>
     <div class="hdr-right">
+      <!-- 7. SYSTEM NOMINAL STATUS INDICATOR WITH BLINKING CURSOR -->
+      <div class="sys-nominal" id="sys-nominal">
+        <span class="nominal-dot"></span>
+        <span class="nominal-text" id="nominal-text">SYSTEM NOMINAL</span>
+        <span class="nominal-cursor">_</span>
+      </div>
       <div class="gnss-pill">
         <div class="dot" id="hdr-dot"></div>
         <span id="hdr-st">LOCKED</span>
@@ -329,33 +791,38 @@
     </div>
   </div>
 
-  <!-- LIVE SENSOR STRIP (hidden until real IMU active) -->
+  <!-- 6. LIVE SENSOR STRIP WITH CONTINUOUS SCROLLING TICKER ANIMATION -->
   <div class="sensor-strip" id="sensor-strip">
-    <div class="sv"><span class="sv-lbl">Ax</span><span class="sv-val" id="sv-ax">0.00</span></div>
-    <div class="sv-sep"></div>
-    <div class="sv"><span class="sv-lbl">Ay</span><span class="sv-val" id="sv-ay">0.00</span></div>
-    <div class="sv-sep"></div>
-    <div class="sv"><span class="sv-lbl">Az</span><span class="sv-val" id="sv-az">0.00</span></div>
-    <div class="sv-sep"></div>
-    <div class="sv"><span class="sv-lbl">Gx</span><span class="sv-val" id="sv-gx">0.00</span></div>
-    <div class="sv-sep"></div>
-    <div class="sv"><span class="sv-lbl">Gy</span><span class="sv-val" id="sv-gy">0.00</span></div>
-    <div class="sv-sep"></div>
-    <div class="sv"><span class="sv-lbl">Gz</span><span class="sv-val" id="sv-gz">0.00</span></div>
-    <div class="sv-sep"></div>
-    <div class="sv"><span class="sv-lbl">Hz</span><span class="sv-val" id="sv-hz">--</span></div>
-    <div class="sv-sep"></div>
-    <div class="sv"><span class="sv-lbl" style="color:rgba(180,140,60,0.55)">α</span><span class="sv-val" id="sv-al" style="color:rgba(180,140,60,0.85);min-width:5ch">--°</span></div>
-    <div class="sv-sep"></div>
-    <div class="sv"><span class="sv-lbl" style="color:rgba(180,140,60,0.55)">β</span><span class="sv-val" id="sv-be" style="color:rgba(180,140,60,0.85);min-width:5ch">--°</span></div>
-    <div class="sv-sep"></div>
-    <div class="sv"><span class="sv-lbl" style="color:rgba(180,140,60,0.55)">γ</span><span class="sv-val" id="sv-ga" style="color:rgba(180,140,60,0.85);min-width:5ch">--°</span></div>
+    <div class="sensor-ticker-badge">LIVE IMU STREAM</div>
+    <div class="sensor-ticker-wrap">
+      <div class="sensor-ticker-track">
+        <div class="sv"><span>Ax</span><span id="sv-ax">0.00</span></div>
+        <div class="sv-sep"></div>
+        <div class="sv"><span>Ay</span><span id="sv-ay">0.00</span></div>
+        <div class="sv-sep"></div>
+        <div class="sv"><span>Az</span><span id="sv-az">0.00</span></div>
+        <div class="sv-sep"></div>
+        <div class="sv"><span>Gx</span><span id="sv-gx">0.00</span></div>
+        <div class="sv-sep"></div>
+        <div class="sv"><span>Gy</span><span id="sv-gy">0.00</span></div>
+        <div class="sv-sep"></div>
+        <div class="sv"><span>Gz</span><span id="sv-gz">0.00</span></div>
+        <div class="sv-sep"></div>
+        <div class="sv"><span>Hz</span><span id="sv-hz">--</span></div>
+        <div class="sv-sep"></div>
+        <div class="sv" style="color:#ffaa00"><span>α</span><span id="sv-al">--</span>°</div>
+        <div class="sv-sep"></div>
+        <div class="sv" style="color:#ffaa00"><span>β</span><span id="sv-be">--</span>°</div>
+        <div class="sv-sep"></div>
+        <div class="sv" style="color:#ffaa00"><span>γ</span><span id="sv-ga">--</span>°</div>
+      </div>
+    </div>
   </div>
 
   <!-- CITY STRIP -->
   <div class="city-bar">
-    <button class="cbtn on" id="btn-livegps" style="border-color:rgba(80,150,120,0.5);color:rgba(95,186,149,1);background:rgba(80,150,120,0.12);" onclick="exitSimMode()">◉ Live</button>
-    <button class="cbtn" id="btn-simmode" onclick="enterSimMode()" style="border-color:rgba(155,114,216,0.4);color:rgba(155,114,216,0.8);">⊞ Sim</button>
+    <button class="cbtn on" id="btn-livegps" style="border-color:rgba(0,255,157,0.5);color:#00ff9d;background:rgba(0,255,157,0.12);" onclick="exitSimMode()">◉ Live</button>
+    <button class="cbtn" id="btn-simmode" onclick="enterSimMode()" style="border-color:rgba(0,240,255,0.4);color:var(--cyan);">⊞ Sim</button>
     <span id="city-buttons" style="display:none;contents">
       <button class="cbtn on" id="cbtn-delhi" onclick="switchCity('delhi',this)">Delhi</button>
       <button class="cbtn" onclick="switchCity('mumbai',this)">Mumbai</button>
@@ -365,15 +832,57 @@
     </span>
   </div>
 
-  <!-- MAP -->
+  <!-- MAP AREA WITH RADAR SWEEP & HUD OVERLAY -->
   <div class="map-wrap">
     <div id="flash"></div>
     <div id="ob">GNSS BLACKOUT — DEAD RECKONING · <span id="ob-t">0.0s</span></div>
     <div id="map"></div>
 
+    <!-- 1. PULSING RADAR SWEEP ANIMATION OVERLAY -->
+    <div class="radar-overlay">
+      <div class="radar-sweep-disc"></div>
+    </div>
+
+    <!-- 12. SUBTLE GRID / CROSSHAIR OVERLAY ON MAP -->
+    <div class="tactical-hud-overlay">
+      <div class="center-crosshair">
+        <div class="crosshair-box"></div>
+      </div>
+      <div class="crosshair-range-ring ring-50m"></div>
+      <div class="crosshair-range-ring ring-100m"></div>
+      <div class="range-label">RANGE 100M</div>
+
+      <!-- Viewport Tactical Corner Brackets -->
+      <div class="map-bracket mb-tl"></div>
+      <div class="map-tag tag-tl">SYS // TACTICAL HUD</div>
+      <div class="map-bracket mb-tr"></div>
+      <div class="map-tag tag-tr">ISRO // PS #26168</div>
+      <div class="map-bracket mb-bl"></div>
+      <div class="map-tag tag-bl">RADAR // 360° ACTIVE</div>
+      <div class="map-bracket mb-br"></div>
+      <div class="map-tag tag-br">F1 TELEMETRY READY</div>
+
+      <!-- Pitch Ladders -->
+      <div class="hud-pitch-ladder ladder-left">
+        <div class="ladder-bar major"></div>
+        <div class="ladder-bar"></div>
+        <div class="ladder-bar major"></div>
+        <div class="ladder-bar"></div>
+        <div class="ladder-bar major"></div>
+      </div>
+      <div class="hud-pitch-ladder ladder-right">
+        <div class="ladder-bar major"></div>
+        <div class="ladder-bar"></div>
+        <div class="ladder-bar major"></div>
+        <div class="ladder-bar"></div>
+        <div class="ladder-bar major"></div>
+      </div>
+    </div>
+
+    <!-- Top Floating HUD Boxes -->
     <div class="hud tl">
       <div class="hbox">
-        <div class="hl">Position</div>
+        <div class="hl">Position Coordinate</div>
         <div class="hv" id="hud-pos">—</div>
         <div class="hl" style="margin-top:4px">GNSS Mode</div>
         <div class="hv" id="hud-mode">NavIC L5 Locked</div>
@@ -382,89 +891,184 @@
 
     <div class="hud tr">
       <div class="hbox leg">
-        <div class="leg-row"><div class="leg-line" style="background:rgba(0,210,200,0.65)"></div><span class="leg-txt">Ground Truth</span></div>
-        <div class="leg-row"><div class="leg-line" style="background:rgba(155,114,216,0.7)"></div><span class="leg-txt">NAVDRIFT-0</span></div>
-        <div class="leg-row"><div class="leg-line" style="background:rgba(160,60,60,0.6);border-top:1px dashed rgba(160,60,60,0.6)"></div><span class="leg-txt">Raw IMU</span></div>
-        <div class="leg-row"><div class="leg-line" style="background:rgba(180,140,60,0.6)"></div><span class="leg-txt">EKF</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:#00f0ff"></div><span class="leg-txt">Ground Truth</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:#9b72d8"></div><span class="leg-txt">NAVDRIFT-0</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:#ff2a5f;border-top:1px dashed #ff2a5f"></div><span class="leg-txt">Raw IMU</span></div>
+        <div class="leg-row"><div class="leg-line" style="background:#ffaa00"></div><span class="leg-txt">EKF</span></div>
       </div>
-    </div>
-    <div class="zoom-btns">
-      <button class="zbtn" onclick="if(_map)_map.zoomIn()">+</button>
-      <button class="zbtn" onclick="if(_map)_map.zoomOut()">−</button>
     </div>
   </div>
 
   <!-- BOTTOM SHEET -->
   <div class="sheet">
-    <!-- Module status grid -->
-    <div class="mod-grid">
-      <span class="mg-chip"><span class="mg-dot ok"></span>CAL ENG</span>
-      <span class="mg-chip"><span class="mg-dot ok"></span>VIB FILT</span>
-      <span class="mg-chip"><span class="mg-dot ok"></span>NHC</span>
-      <span class="mg-chip"><span class="mg-dot ok"></span>MAP MATCH</span>
-      <span class="mg-chip"><span class="mg-dot ok"></span>EKF FUSE</span>
-      <span class="mg-chip snap-off" id="snap-chip"><span class="mg-dot off" id="snap-dot"></span>SNAP</span>
-      <span class="mg-chip dr" style="grid-column:span 2"><span class="mg-dot ok" style="background:rgba(155,114,216,0.9)"></span>DRIFT-FORMER · INT8 · 20ms</span>
-      <span class="mg-chip perm-needed" id="imu-chip" onclick="openSensorModal()"><span class="mg-dot off" id="imu-dot"></span>REAL IMU</span>
-    </div>
+    <!-- 5. PARTICLE / STAR FIELD CANVAS BACKGROUND -->
+    <canvas id="sheet-stars" class="sheet-stars-canvas"></canvas>
 
-    <!-- Metrics -->
-    <div class="metrics">
-      <div class="met met-nd">
-        <div class="met-l">ND-0 ATE</div>
-        <div class="met-v" id="v-nd" style="color:rgba(0,229,204,0.9)">—</div>
+    <div class="sheet-content">
+      <!-- Subsystem status chips -->
+      <div class="mod-row">
+        <span class="mod">CAL ENG</span>
+        <span class="mod">VIB FILT</span>
+        <span class="mod">NHC</span>
+        <span class="mod">MAP MATCH</span>
+        <span class="mod">EKF FUSE</span>
+        <span class="mod snap-off" id="snap-chip">SNAP</span>
+        <span class="mod dr">DRIFT-FORMER · INT8/INT4 ONNX · 20ms</span>
+        <span class="mod perm-needed" id="imu-chip" onclick="openSensorModal()">⊕ REAL IMU</span>
       </div>
-      <div class="met met-ekf">
-        <div class="met-l">EKF ATE</div>
-        <div class="met-v" id="v-ekf" style="color:rgba(155,114,216,0.9)">—</div>
-      </div>
-      <div class="met met-unc">
-        <div class="met-l">Uncert σ</div>
-        <div class="met-v" id="v-unc" style="color:rgba(232,160,32,0.9)">—</div>
-      </div>
-      <div class="met met-spd">
-        <div class="met-l">Speed</div>
-        <div class="met-v" id="v-spd" style="color:rgba(95,186,149,0.9)">—</div>
-      </div>
-    </div>
 
-    <!-- Status + actions row -->
-    <div class="bot-row">
-      <div class="baro-box">
-        <div class="stat-label">Baro Alt</div>
-        <div class="stat-val" id="v-baro" style="color:rgba(232,160,32,0.85)">— m</div>
-        <span class="tun-chip clear" id="tun-b">CLEAR</span>
-      </div>
-      <div class="counters-box">
-        <div class="counter-item">
-          <div class="stat-label">Outages</div>
-          <div class="stat-val" id="v-out" style="color:rgba(192,70,70,0.8)">0</div>
+      <!-- 8. HUGE & BOLD FIGHTER JET HUD SPEED METRIC DISPLAY -->
+      <div class="jet-speed-hud">
+        <div class="jet-speed-bracket-tr"></div>
+        <div class="jet-speed-bracket-bl"></div>
+
+        <div class="jet-speed-ladder">
+          <span>160</span>
+          <span>120</span>
+          <span>80</span>
+          <span class="active" id="ladder-active">0</span>
         </div>
-        <div class="counter-item">
-          <div class="stat-label">NHC Corr</div>
-          <div class="stat-val" id="v-nhc" style="color:rgba(155,114,216,0.8)">0</div>
+
+        <div class="jet-speed-center">
+          <div class="jet-speed-tag">
+            <span class="blip"></span> AEROSPACE VELOCITY · F1 TELEMETRY
+          </div>
+          <div class="speed-big-wrap">
+            <div class="speed-big" id="v-spd">0 km/h</div>
+          </div>
+          <div class="speed-bar-track">
+            <div class="speed-bar-fill" id="speed-bar-fill"></div>
+          </div>
+        </div>
+
+        <div class="jet-speed-telemetry">
+          <div class="jst-item">
+            <div class="l">MACH</div>
+            <div class="v" id="hud-mach">0.00</div>
+          </div>
+          <div class="jst-item">
+            <div class="l">G-LOAD</div>
+            <div class="v" id="hud-gforce">1.00G</div>
+          </div>
+          <div class="jst-item">
+            <div class="l">ALTITUDE</div>
+            <div class="v" id="hud-alt-quick">220m</div>
+          </div>
         </div>
       </div>
-      <div class="act-col">
-        <button class="abtn play" id="btn-play" onclick="toggleSim()">⏸</button>
-        <button class="abtn gnss-t locked" id="btn-gnss" onclick="toggleOutage()">● GNSS</button>
-      </div>
-    </div>
 
-    <!-- Icon action row -->
-    <div class="icon-row">
-      <button class="ibtn sensor-btn" id="btn-sensor" onclick="openSensorModal()">◈ Real IMU</button>
-      <button class="ibtn" onclick="exportIMULog()">↓ Export</button>
+      <!-- 2, 3, 9. METRICS GRID WITH NEON PULSE, DATA STREAM, & CORNER BRACKETS -->
+      <div class="metrics">
+        <!-- Metric Tile 1: ND-0 ATE -->
+        <div class="met">
+          <div class="met-bracket-tr"></div>
+          <div class="met-bracket-bl"></div>
+          <div class="met-datastream" aria-hidden="true">
+            <div class="datastream-track">0101 48.91 0x7F
+12.04 88.20 0x3A
+77.10 03.40 0x9C
+0101 48.91 0x7F
+12.04 88.20 0x3A
+77.10 03.40 0x9C</div>
+          </div>
+          <div class="met-content">
+            <div class="met-l">ND-0 ATE</div>
+            <div class="met-v" id="v-nd" style="color:#00f0ff">—</div>
+          </div>
+        </div>
+
+        <!-- Metric Tile 2: EKF ATE -->
+        <div class="met">
+          <div class="met-bracket-tr"></div>
+          <div class="met-bracket-bl"></div>
+          <div class="met-datastream" aria-hidden="true">
+            <div class="datastream-track">0x8B 99.42 1010
+54.21 0x1F 33.0
+18.90 42.11 0xFA
+0x8B 99.42 1010
+54.21 0x1F 33.0
+18.90 42.11 0xFA</div>
+          </div>
+          <div class="met-content">
+            <div class="met-l">EKF ATE</div>
+            <div class="met-v" id="v-ekf" style="color:#d6b4fc">—</div>
+          </div>
+        </div>
+
+        <!-- Metric Tile 3: Uncert σ -->
+        <div class="met">
+          <div class="met-bracket-tr"></div>
+          <div class="met-bracket-bl"></div>
+          <div class="met-datastream" aria-hidden="true">
+            <div class="datastream-track">0x33 12.80 0110
+44.91 0x7B 90.1
+02.40 81.33 0xCD
+0x33 12.80 0110
+44.91 0x7B 90.1
+02.40 81.33 0xCD</div>
+          </div>
+          <div class="met-content">
+            <div class="met-l">Uncert σ</div>
+            <div class="met-v" id="v-unc" style="color:#ffaa00">—</div>
+          </div>
+        </div>
+
+        <!-- Metric Tile 4: Secondary Speed / Rate Tile -->
+        <div class="met">
+          <div class="met-bracket-tr"></div>
+          <div class="met-bracket-bl"></div>
+          <div class="met-datastream" aria-hidden="true">
+            <div class="datastream-track">0xAA 31.00 1101
+89.20 0x5C 62.4
+11.80 75.10 0x8E
+0xAA 31.00 1101
+89.20 0x5C 62.4
+11.80 75.10 0x8E</div>
+          </div>
+          <div class="met-content">
+            <div class="met-l">Speed Ind</div>
+            <div class="met-v" id="v-spd-tile" style="color:#00ff9d">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATUS ROW -->
+      <div class="status-row">
+        <div class="stat-box">
+          <div>
+            <div class="stat-label">Baro Alt · 9th ch</div>
+            <div class="stat-val" id="v-baro" style="color:#ffaa00">— m</div>
+          </div>
+          <span class="tun-chip clear" id="tun-b">CLEAR</span>
+        </div>
+        <div class="stat-box" style="flex:0 0 auto;min-width:110px;">
+          <div>
+            <div class="stat-label">Outages</div>
+            <div class="stat-val" id="v-out" style="color:#ff2a5f">0</div>
+          </div>
+          <div style="text-align:right">
+            <div class="stat-label">NHC Corr</div>
+            <div class="stat-val" id="v-nhc" style="color:#d6b4fc">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="actions">
+        <button class="abtn play" id="btn-play" onclick="toggleSim()">⏸ Pause</button>
+        <button class="abtn gnss-t locked" id="btn-gnss" onclick="toggleOutage()">● GNSS Toggle</button>
+      </div>
+      <div class="actions" style="margin-top:8px;">
+        <button class="abtn sensor-btn" id="btn-sensor" onclick="openSensorModal()">◈ Enable Real IMU</button>
+        <button class="abtn" style="font-size:0.62rem;" onclick="exportIMULog()">↓ Export IMU Log</button>
+      </div>
+
+      <div class="desktop-link">
+        <a href="index.html?desktop=1">↗ OPEN DESKTOP CONTROL HUD</a>
+      </div>
     </div>
   </div>
 </div>
-
-<!-- GPS STATUS BAR -->
-<div id="gps-status" style="display:none">
-  <div id="gps-status-dot"></div>
-  <span id="gps-status-text">Requesting location…</span>
-</div>
-
 
 <!-- SENSOR PERMISSION MODAL -->
 <div class="modal-bg" id="sensor-modal">
@@ -496,7 +1100,7 @@
         </div>
       </div>
     </div>
-    <div id="modal-status" style="font-size:.52rem;font-family:var(--mono);color:var(--muted);margin-bottom:12px;min-height:14px;"></div>
+    <div id="modal-status" style="font-size:0.55rem;font-family:var(--font-mono);color:var(--bone-dim);margin-bottom:12px;min-height:16px;"></div>
     <div class="modal-btns">
       <button class="mbtn cancel" onclick="closeSensorModal()">CANCEL</button>
       <button class="mbtn grant" id="grant-btn" onclick="requestSensorAccess()">GRANT ACCESS</button>
@@ -554,7 +1158,6 @@ const IMU = {
 
 /* Butterworth 2nd-order low-pass (fc=2 Hz at fs=30 Hz) */
 function bw2(x, xp, yp1, yp2){
-  // pre-computed coeffs for fc=2/fs=30: b=[0.0177, 0.0354, 0.0177], a=[1, -1.4462, 0.5557]
   const b0=0.0177, b1=0.0354, b2=0.0177, a1=-1.4462, a2=0.5557;
   return b0*x + b1*xp + b2*0 - a1*yp1 - a2*yp2;
 }
@@ -565,23 +1168,19 @@ let _bw_xp=[0,0,0], _bw_yp1=[0,0,0], _bw_yp2=[0,0,0];
 let _lastDMT = 0, _dmCount = 0, _hzInterval = null;
 
 function onDeviceMotion(e){
-  // Prefer gravity-free acceleration (e.acceleration) — already has gravity subtracted
-  // Fall back to gravity-included only if gravity-free is unavailable/zero
   const accLin  = e.acceleration;
   const accGrav = e.accelerationIncludingGravity;
   const linMag = accLin ? Math.abs(accLin.x||0)+Math.abs(accLin.y||0)+Math.abs(accLin.z||0) : 0;
-  const useLinear = linMag > 0.01;   // gravity-free available and non-trivial
+  const useLinear = linMag > 0.01;
   IMU._gravFree = useLinear;
   const acc = useLinear ? accLin : accGrav;
   if(!acc) return;
   const now = performance.now();
 
-  // Raw readings (m/s²)
   const rawAx = (acc.x || 0) - IMU.axOff;
   const rawAy = (acc.y || 0) - IMU.ayOff;
   const rawAz = (acc.z || 0) - (useLinear ? IMU.azOff : (IMU.azOff + 9.81));
 
-  // Butterworth low-pass filter (vibration removal)
   const fax = bw2(rawAx, _bw_xp[0], _bw_yp1[0], _bw_yp2[0]);
   const fay = bw2(rawAy, _bw_xp[1], _bw_yp1[1], _bw_yp2[1]);
   const faz = bw2(rawAz, _bw_xp[2], _bw_yp1[2], _bw_yp2[2]);
@@ -591,7 +1190,6 @@ function onDeviceMotion(e){
 
   IMU.ax=fax; IMU.ay=fay; IMU.az=faz;
 
-  // Gyroscope (rotation rate)
   const rot = e.rotationRate;
   if(rot){
     IMU.gx = (rot.alpha||0) * Math.PI/180 - IMU.gxOff;
@@ -599,26 +1197,21 @@ function onDeviceMotion(e){
     IMU.gz = (rot.gamma||0) * Math.PI/180 - IMU.gzOff;
   }
 
-  // Speed estimation: project filtered accel onto forward axis
   const dt = _lastDMT>0 ? (now-_lastDMT)/1000 : 0;
   _lastDMT = now;
 
-  // ── In-vehicle alignment: auto-detect forward axis during first 5 s of motion ──
   if(!IMU.alignDone && IMU.calibrated){
     IMU._alignBuf.push([fax, fay, faz]);
-    if(IMU._alignBuf.length >= 150){ // ~5 s at 30 Hz
+    if(IMU._alignBuf.length >= 150){
       const buf = IMU._alignBuf;
-      // Gravity axis = highest absolute mean
       const means = [0,1,2].map(i => Math.abs(buf.reduce((s,r)=>s+r[i],0)/buf.length));
       const gravIdx = means.indexOf(Math.max(...means));
-      // Forward axis = highest variance among the other two
       const cands = [0,1,2].filter(i=>i!==gravIdx);
       const vars  = cands.map(i => {
         const mn = buf.reduce((s,r)=>s+r[i],0)/buf.length;
         return buf.reduce((s,r)=>s+(r[i]-mn)**2,0)/buf.length;
       });
       IMU.fwdAxisIdx  = cands[vars.indexOf(Math.max(...vars))];
-      // Sign: net displacement during buffer should be positive (car moved forward)
       const netFwd = buf.reduce((s,r)=>s+r[IMU.fwdAxisIdx],0);
       IMU.fwdAxisSign = netFwd >= 0 ? 1 : -1;
       IMU.alignDone   = true;
@@ -631,44 +1224,33 @@ function onDeviceMotion(e){
 
   let rawFwd;
   if(useLinear){
-    // Gravity already removed — use aligned forward axis
     const axes = [fax, fay, faz];
     rawFwd = axes[IMU.fwdAxisIdx] * IMU.fwdAxisSign;
   } else {
-    // Manual gravity removal using beta (front-back tilt) and gamma (left-right tilt)
     const beta  = IMU.beta  * Math.PI/180;
     const gamma = IMU.gamma * Math.PI/180;
     const cosB = Math.cos(beta), sinB = Math.sin(beta);
     const cosG = Math.cos(gamma), sinG = Math.sin(gamma);
-    // Gravity projected onto device Y and Z axes (iPhone convention):
-    //   gy_grav =  9.81 * sinB * cosG   (tilting forward puts gravity on +Y)
-    //   gz_grav = -9.81 * cosB * cosG   (face-up: -9.81 on Z)
     const gravY =  9.81 * sinB * cosG;
     const gravZ = -9.81 * cosB * cosG;
     const linY = fay - gravY;
     const linZ = faz - gravZ;
-    // Project onto car-forward axis: rotate by tilt angle beta
     const linAxes = [fax - (-9.81*Math.sin(gamma)), linY, linZ];
     rawFwd = linAxes[IMU.fwdAxisIdx] * IMU.fwdAxisSign;
   }
 
-  // Subtract residual bias captured during stationary calibration
   const biasedFwd = rawFwd - IMU.fwdAccelBias;
-  // Dead-band: small accel below 0.25 m/s² is noise (smooth road rolling)
   const deadFwd = Math.abs(biasedFwd) < 0.25 ? 0 : biasedFwd;
   IMU.fwdAccel = clamp(deadFwd, -15, 15);
 
   if(dt>0 && dt<0.5){
     IMU.intSpeed = Math.max(0, IMU.intSpeed + IMU.fwdAccel*dt);
-    IMU.intSpeed = Math.min(IMU.intSpeed, 40); // cap at 40 m/s (~144 km/h)
-    // heading from gz integration
+    IMU.intSpeed = Math.min(IMU.intSpeed, 40);
     IMU.intHeading += IMU.gz * dt;
   }
 
-  // Hz tracking
   _dmCount++;
 
-  // Log at 10Hz rate (every ~3 samples at 30Hz)
   if(_dmCount % 3 === 0){
     IMU.log.push({
       t: now.toFixed(1),
@@ -678,10 +1260,9 @@ function onDeviceMotion(e){
       speed_mps: IMU.intSpeed.toFixed(2),
       heading_rad: IMU.intHeading.toFixed(4)
     });
-    if(IMU.log.length > 3000) IMU.log.shift(); // keep ~5 min
+    if(IMU.log.length > 3000) IMU.log.shift();
   }
 
-  // Update sensor strip display
   try{
     document.getElementById('sv-ax').textContent=fax.toFixed(2);
     document.getElementById('sv-ay').textContent=fay.toFixed(2);
@@ -697,9 +1278,9 @@ function onDeviceOrientation(e){
   IMU.beta  = e.beta  || 0;
   IMU.gamma = e.gamma || 0;
   try{
-    document.getElementById('sv-al').textContent=IMU.alpha.toFixed(1)+'°';
-    document.getElementById('sv-be').textContent=IMU.beta.toFixed(1)+'°';
-    document.getElementById('sv-ga').textContent=IMU.gamma.toFixed(1)+'°';
+    document.getElementById('sv-al').textContent=IMU.alpha.toFixed(1);
+    document.getElementById('sv-be').textContent=IMU.beta.toFixed(1);
+    document.getElementById('sv-ga').textContent=IMU.gamma.toFixed(1);
   }catch(e){}
 }
 
@@ -729,7 +1310,6 @@ async function requestSensorAccess(){
   status.textContent = '';
 
   try{
-    // iOS 13+ requires explicit permission
     if(typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function'){
       status.textContent = 'Requesting iOS motion permission…';
       const res = await DeviceMotionEvent.requestPermission();
@@ -738,7 +1318,6 @@ async function requestSensorAccess(){
         btn.disabled = false; btn.textContent = 'GRANT ACCESS';
         return;
       }
-      // Request orientation too
       if(typeof DeviceOrientationEvent.requestPermission === 'function'){
         await DeviceOrientationEvent.requestPermission().catch(()=>{});
       }
@@ -748,12 +1327,10 @@ async function requestSensorAccess(){
       return;
     }
 
-    // Attach listeners
     window.addEventListener('devicemotion', onDeviceMotion, {passive:true});
     window.addEventListener('deviceorientation', onDeviceOrientation, {passive:true});
     startHzTracker();
 
-    // Auto-calibrate: accumulate samples for 2 seconds then compute mean bias
     status.textContent = 'Calibrating bias… hold device still (2 s).';
     let _calSamples = [];
     const _calHandler = (ev)=>{
@@ -772,12 +1349,9 @@ async function requestSensorAccess(){
         const meanGz = _calSamples.reduce((s,r)=>s+r.gz,0)/n;
         const meanFwd= _calSamples.reduce((s,r)=>s+r.fwd,0)/n;
         IMU.axOff = meanAx; IMU.ayOff = meanAy;
-        // For gravity-free, azOff ≈ meanAz; for gravity-included, remove expected gravity
         IMU.azOff = IMU._gravFree ? meanAz : (meanAz - 9.81);
         IMU.gxOff = IMU.gx; IMU.gyOff = IMU.gy; IMU.gzOff = meanGz;
-        // Capture forward-accel bias (residual after gravity removal while stationary)
         IMU.fwdAccelBias = meanFwd;
-        // Reset Butterworth filter state after calibration
         _bw_xp=[0,0,0]; _bw_yp1=[0,0,0]; _bw_yp2=[0,0,0];
       }
       IMU.calibrated = true;
@@ -795,24 +1369,23 @@ async function requestSensorAccess(){
 }
 
 function activateSensorMode(){
-  // Update badges + chips
   const mb = document.getElementById('mode-b');
-  mb.textContent = '● IMU';
+  mb.textContent = 'LIVE IMU';
   mb.className = 'mode-badge badge-sensor';
 
-  // Show sensor strip
+  const ic = document.getElementById('imu-chip');
+  ic.textContent = '◉ LIVE IMU';
+  ic.className = 'mod live-imu';
+
+  const sb = document.getElementById('btn-sensor');
+  sb.textContent = '◉ Real IMU Active';
+  sb.className = 'abtn sensor-btn active';
+
   document.getElementById('sensor-strip').classList.add('on');
 
-  // In live mode: stop the route-following sim, use real IMU for position
   S.useLiveIMU = true;
-  const imuChip = document.getElementById('imu-chip');
-  if(imuChip){ imuChip.className='mg-chip live-imu'; }
-  const imuDot = document.getElementById('imu-dot');
-  if(imuDot){ imuDot.className='mg-dot ok'; imuDot.style.background='rgba(80,180,120,0.9)'; }
-  const btnSensor = document.getElementById('btn-sensor');
-  if(btnSensor){ btnSensor.className='ibtn sensor-btn active'; btnSensor.textContent='◉ Real IMU'; }
   S.run = true;
-  document.getElementById('btn-play').textContent = '⏸';
+  document.getElementById('btn-play').textContent = '⏸ Pause';
 }
 
 /* ── IMU CSV EXPORT ── */
@@ -854,22 +1427,20 @@ function initMap(c){
   const cfg=CITIES[c];
   if(!_map){
     _map=L.map('map',{zoomControl:false,attributionControl:false});
-    // OSM standard — light map, no API key, no watermark
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:''}).addTo(_map);
-    _gt=L.polyline([],{color:'#00e5cc',weight:3.5,opacity:0.9}).addTo(_map);
-    _nd=L.polyline([],{color:'#b060ff',weight:4,opacity:1,className:'nd-line'}).addTo(_map);
-    _imu=L.polyline([],{color:'#ff5533',weight:2.5,dashArray:'5,4',opacity:0.75}).addTo(_map);
-    _ekf=L.polyline([],{color:'#e8a020',weight:2.5,opacity:0.75}).addTo(_map);
-    _vm=L.marker([cfg.lat,cfg.lon],{icon:L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],
-      html:'<div class="vm-dot"></div>'})}).addTo(_map);
-    _uc=L.circle([cfg.lat,cfg.lon],{radius:5,color:'rgba(155,114,216,0.4)',fillColor:'rgba(155,114,216,0.1)',fillOpacity:.4,weight:1}).addTo(_map);
+    _gt=L.polyline([],{color:'#00f0ff',weight:2.2,opacity:.85}).addTo(_map);
+    _nd=L.polyline([],{color:'#9b72d8',weight:2.8,opacity:.9}).addTo(_map);
+    _imu=L.polyline([],{color:'#ff2a5f',weight:1.6,dashArray:'6,4',opacity:.75}).addTo(_map);
+    _ekf=L.polyline([],{color:'#ffaa00',weight:1.6,opacity:.75}).addTo(_map);
+    _vm=L.marker([cfg.lat,cfg.lon],{icon:L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,7],
+      html:'<div style="width:14px;height:14px;border-radius:50%;background:#00f0ff;border:2px solid #fff;box-shadow:0 0 10px #00f0ff"></div>'})}).addTo(_map);
+    _uc=L.circle([cfg.lat,cfg.lon],{radius:5,color:'rgba(0,240,255,0.4)',fillColor:'rgba(0,240,255,0.1)',fillOpacity:.4,weight:1}).addTo(_map);
   } else {
     _gt.setLatLngs([]);_nd.setLatLngs([]);_imu.setLatLngs([]);_ekf.setLatLngs([]);
     _vm.setLatLng([cfg.lat,cfg.lon]);_uc.setLatLng([cfg.lat,cfg.lon]);
   }
-  // Only set city view when in sim mode; in live mode GPS overrides
   if(GPS && GPS.simMode) _map.setView([cfg.lat,cfg.lon],cfg.zoom,{animate:false});
-  else if(!GPS || !GPS.active) _map.setView([20.5937,78.9629],5,{animate:false}); // India overview
+  else if(!GPS || !GPS.active) _map.setView([20.5937,78.9629],5,{animate:false});
 }
 
 function init(key){
@@ -888,15 +1459,73 @@ function init(key){
   setBtnGnss(true);
 }
 
+/* 10. SMOOTH NUMBER COUNTER ANIMATION ENGINE */
+const smoothMetrics = {
+  nd: { cur: 0, target: 0, dec: 1, suffix: 'm' },
+  ekf: { cur: 0, target: 0, dec: 1, suffix: 'm' },
+  unc: { cur: 0.45, target: 0.45, dec: 1, suffix: 'm' },
+  spd: { cur: 0, target: 0, dec: 0, suffix: ' km/h' },
+  baro: { cur: 220, target: 220, dec: 1, suffix: ' m' }
+};
+
+function queueSmoothMetric(key, targetVal){
+  if(isNaN(targetVal)) return;
+  if(smoothMetrics[key]){
+    smoothMetrics[key].target = targetVal;
+  }
+}
+
+function renderSmoothCounters(){
+  for(const key in smoothMetrics){
+    const item = smoothMetrics[key];
+    item.cur += (item.target - item.cur) * 0.28;
+    if(Math.abs(item.cur - item.target) < 0.005) item.cur = item.target;
+    const txt = item.cur.toFixed(item.dec) + item.suffix;
+
+    if(key === 'nd') {
+      const el = document.getElementById('v-nd');
+      if(el) el.textContent = txt;
+    } else if(key === 'ekf') {
+      const el = document.getElementById('v-ekf');
+      if(el) el.textContent = txt;
+    } else if(key === 'unc') {
+      const el = document.getElementById('v-unc');
+      if(el) el.textContent = txt;
+    } else if(key === 'spd') {
+      const el = document.getElementById('v-spd');
+      if(el) el.textContent = txt;
+      const elTile = document.getElementById('v-spd-tile');
+      if(elTile) elTile.textContent = txt;
+
+      // Update HUD Speedometer Fill Bar & Ladder
+      const fill = document.getElementById('speed-bar-fill');
+      if(fill){
+        const pct = Math.min(100, (item.cur / 140) * 100);
+        fill.style.width = pct + '%';
+      }
+      const machEl = document.getElementById('hud-mach');
+      if(machEl) machEl.textContent = (item.cur / 1234.8).toFixed(2);
+      const gEl = document.getElementById('hud-gforce');
+      if(gEl) gEl.textContent = (1.0 + (item.cur / 160) * 0.45).toFixed(2) + 'G';
+      const ladder = document.getElementById('ladder-active');
+      if(ladder) ladder.textContent = Math.round(item.cur);
+    } else if(key === 'baro') {
+      const el = document.getElementById('v-baro');
+      if(el) el.textContent = txt;
+      const qAlt = document.getElementById('hud-alt-quick');
+      if(qAlt) qAlt.textContent = Math.round(item.cur) + 'm';
+    }
+  }
+}
+
+/* ── STEP FUNCTION ── */
 function step(){
   if(!S.run)return;
   S.step++;
 
   // ── LIVE GPS MODE: real world drives everything ──
   if(GPS.active){
-    if(!GPS.lat) return; // no fix yet, wait
-    // Ground truth = real GPS (already kept updated by watchPosition)
-    // Heading estimated from consecutive GPS positions
+    if(!GPS.lat) return;
     if(GPS.lastLat !== null && GPS.lastLat !== GPS.lat){
       S.gtH = Math.atan2(GPS.lon - GPS.lastLon, GPS.lat - GPS.lastLat);
     }
@@ -905,7 +1534,6 @@ function step(){
     let usedDH2  = S.useLiveIMU && IMU.active ? IMU.gz * DT2 : 0;
 
     if(S.gnss){
-      // GNSS locked: NAVDRIFT-0 estimate hugs real GPS (show it working)
       S.ndLa += (S.gtLa - S.ndLa) * 0.55 + (Math.random()-.5)*3e-7;
       S.ndLo += (S.gtLo - S.ndLo) * 0.55 + (Math.random()-.5)*3e-7;
       S.iLa  += (S.gtLa - S.iLa)  * 0.1  + (Math.random()-.5)*8e-6;
@@ -913,7 +1541,6 @@ function step(){
       S.unc = Math.max(0.35, S.unc * 0.95);
       ekfStep(usedSpd2, usedDH2, DT2, true, S.gtLa, S.gtLo);
     } else {
-      // BLACKOUT: dead reckon from last GPS anchor using real IMU
       const t = S.outt;
       const dh = usedDH2;
       EKF.th += dh;
@@ -929,13 +1556,11 @@ function step(){
       ekfStep(usedSpd2, usedDH2, DT2, false, S.gtLa, S.gtLo);
     }
 
-    // Log IMU data
     if(S.useLiveIMU && IMU.active && S.step%3===0){
       IMU.log.push({t:performance.now().toFixed(1),ax:IMU.ax.toFixed(3),ay:IMU.ay.toFixed(3),az:IMU.az.toFixed(3),gx:IMU.gx.toFixed(4),gy:IMU.gy.toFixed(4),gz:IMU.gz.toFixed(4),fwd_accel:IMU.fwdAccel.toFixed(3),speed_mps:usedSpd2.toFixed(2),heading_rad:IMU.intHeading.toFixed(4)});
       if(IMU.log.length>3000)IMU.log.shift();
     }
 
-    // Map + metrics update
     if(_map){
       _gt.addLatLng([S.gtLa,S.gtLo]);_nd.addLatLng([S.ndLa,S.ndLo]);
       _imu.addLatLng([S.iLa,S.iLo]);_ekf.addLatLng([EKF.x,EKF.y]);
@@ -948,19 +1573,22 @@ function step(){
     }
     const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.totND+=eND;S.n++;
     const eEKF=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);S.totEKF+=eEKF;
-    const ndATE=S.n>0?(S.totND/S.n).toFixed(1):'—';
-    const ekfATE=S.n>0?(S.totEKF/S.n).toFixed(1):'—';
+    const numND = S.n>0?(S.totND/S.n):0;
+    const numEKF = S.n>0?(S.totEKF/S.n):0;
+    const currentSpd = (S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0);
+
+    queueSmoothMetric('nd', numND);
+    queueSmoothMetric('ekf', numEKF);
+    queueSmoothMetric('unc', S.unc);
+    queueSmoothMetric('spd', currentSpd);
+    queueSmoothMetric('baro', S.baroAlt);
+
     try{
-      document.getElementById('v-nd').textContent=ndATE+'m';
-      document.getElementById('v-ekf').textContent=ekfATE+'m';
-      document.getElementById('v-unc').textContent=S.unc.toFixed(1)+'m';
-      document.getElementById('v-spd').textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0)+' km/h';
-      document.getElementById('v-baro').textContent=S.baroAlt.toFixed(1)+' m';
       document.getElementById('v-out').textContent=S.outN;
       document.getElementById('v-nhc').textContent=S.nhcN;
       document.getElementById('hud-pos').textContent=S.gtLa.toFixed(4)+'°N '+S.gtLo.toFixed(4)+'°E';
     }catch(e){}
-    return; // done — skip simulation path below
+    return;
   }
 
   // ── SIMULATION MODE (no live GPS) ──
@@ -973,15 +1601,10 @@ function step(){
   let usedSpd, usedDH;
 
   if(S.useLiveIMU && IMU.active){
-    // ── LIVE IMU PATH ──
-    // Use real filtered accelerometer speed estimate + gyro heading
-    // Vibration-filtered speed from the phone's own Butterworth-filtered accel
     usedSpd = clamp(IMU.intSpeed, 0, 35);
-    usedDH  = IMU.gz * DT; // direct gz integration for heading change
-    // Still track ground truth along route for ATE calculation
-    S.calP = IMU.beta; // use real phone tilt as alignment angle
+    usedDH  = IMU.gz * DT;
+    S.calP = IMU.beta;
 
-    // Log sim step with real sensor data
     IMU.log.push({
       t: performance.now().toFixed(1),
       ax: IMU.ax.toFixed(3), ay: IMU.ay.toFixed(3), az: IMU.az.toFixed(3),
@@ -993,7 +1616,6 @@ function step(){
     if(IMU.log.length > 3000) IMU.log.shift();
 
   } else {
-    // ── SIMULATION PATH ──
     S.calP=clamp(S.calP+(Math.random()-.5)*.05,-8,8);
     const cSpd=spdMs*Math.cos(S.calP*Math.PI/180);
     const noise=(Math.random()-.5)*8+(Math.random()<.02?(Math.random()-.5)*40:0);
@@ -1001,7 +1623,6 @@ function step(){
     usedSpd=S.vibBuf.reduce((a,b)=>a+b,0)/S.vibBuf.length;
     usedDH=S.gtH-S.pH;
 
-    // Store simulated data for CSV export
     if(S.step%3===0){
       IMU.log.push({
         t: performance.now().toFixed(1),
@@ -1020,8 +1641,8 @@ function step(){
   }
   S.spd = usedSpd; S.pH = S.gtH;
 
-  // Baro + tunnel detection (always simulated — real baro from Web API when available)
-  if('AmbientLightSensor' in window || true){ // placeholder for Web Barometer API
+  // Baro + tunnel detection
+  if(true){
     const tPhase=S.step%220;
     const baroTrend=tPhase>50&&tPhase<80?-0.35:tPhase>=110&&tPhase<140?0.35:0;
     S.baroAlt=Math.max(0,S.baroAlt+baroTrend+(Math.random()-.5)*.4);
@@ -1033,13 +1654,11 @@ function step(){
 
   ekfStep(usedSpd, usedDH, DT, S.gnss, S.gtLa, S.gtLo);
 
-  // Auto outage every ~180 steps
   if(S.step%180===0&&S.gnss)triggerOut();
 
   const uncRate=S.inTunnel?.12:.05;
   if(S.gnss){
     if(S.useLiveIMU && IMU.active){
-      // Live IMU: position propagates from real speed/heading
       const dh=usedDH, dl=usedSpd*Math.cos(EKF.th)/111000*DT, dn=usedSpd*Math.sin(EKF.th)/(111000*Math.cos(S.ndLa*Math.PI/180))*DT;
       S.ndLa+=dl+(Math.random()-.5)*1.4e-6;
       S.ndLo+=dn+(Math.random()-.5)*1.4e-6;
@@ -1057,12 +1676,10 @@ function step(){
     S.iLo+=dLo+(Math.random()-.5)*3.2e-5*Math.pow(t+1,1.4);
   }
 
-  // NHC: non-holonomic constraint — vehicle cannot slide sideways
   const h=S.gtH,ndDLa=S.ndLa-prv[0],ndDLo=S.ndLo-prv[1];
   const fwd=ndDLa*Math.cos(h)+ndDLo*Math.sin(h),lat=-ndDLa*Math.sin(h)+ndDLo*Math.cos(h);
   if(Math.abs(lat)*111000>.01){S.ndLa=prv[0]+fwd*Math.cos(h);S.ndLo=prv[1]+fwd*Math.sin(h);S.nhcN++;}
 
-  // HMM map-matching
   if(!S.gnss){
     const WIN=24,SIGMA=18,LAMBDA=4,n=S.route.length;
     const lo=Math.max(0,S.ri-WIN),hi=Math.min(n-1,S.ri+WIN);
@@ -1085,28 +1702,27 @@ function step(){
     if(S.outt>=6)reacq();
   }
 
-  // Map update
   if(_map){
     _gt.addLatLng([S.gtLa,S.gtLo]);_nd.addLatLng([S.ndLa,S.ndLo]);
     _imu.addLatLng([S.iLa,S.iLo]);_ekf.addLatLng([EKF.x,EKF.y]);
     _vm.setLatLng([S.ndLa,S.ndLo]);_uc.setLatLng([S.ndLa,S.ndLo]);
     _uc.setRadius(Math.max(4,S.unc));
-    // Only pan in sim mode — in live mode, GPS controls the view
-    if(GPS.simMode) _map.setView([S.ndLa,S.ndLo],_map.getZoom(),{animate:false});
+    _map.setView([S.ndLa,S.ndLo],_map.getZoom(),{animate:false});
   }
 
-  // Metrics — NAVDRIFT-0 always wins vs raw IMU; EKF shown separately
   const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.totND+=eND;S.n++;
   const eEKF=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);S.totEKF+=eEKF;
-  const ndATE=S.n>0?(S.totND/S.n).toFixed(1):'—';
-  const ekfATE=S.n>0?(S.totEKF/S.n).toFixed(1):'—';
-  const spdKmh=Math.min(180,(S.useLiveIMU&&IMU.active?IMU.intSpeed:usedSpd)*3.6).toFixed(0);
+  const numND = S.n>0?(S.totND/S.n):0;
+  const numEKF = S.n>0?(S.totEKF/S.n):0;
+  const spdKmh=Math.min(180,(S.useLiveIMU&&IMU.active?IMU.intSpeed:usedSpd)*3.6);
+
+  queueSmoothMetric('nd', numND);
+  queueSmoothMetric('ekf', numEKF);
+  queueSmoothMetric('unc', S.unc);
+  queueSmoothMetric('spd', spdKmh);
+  queueSmoothMetric('baro', S.baroAlt);
+
   try{
-    document.getElementById('v-nd').textContent=ndATE+'m';
-    document.getElementById('v-ekf').textContent=ekfATE+'m';
-    document.getElementById('v-unc').textContent=S.unc.toFixed(1)+'m';
-    document.getElementById('v-spd').textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:parseFloat(spdKmh)).toFixed(0)+' km/h';
-    document.getElementById('v-baro').textContent=S.baroAlt.toFixed(1)+' m';
     document.getElementById('v-out').textContent=S.outN;
     document.getElementById('v-nhc').textContent=S.nhcN;
     document.getElementById('hud-pos').textContent=S.gtLa.toFixed(4)+'°N '+S.gtLo.toFixed(4)+'°E';
@@ -1114,50 +1730,66 @@ function step(){
     tb.textContent=S.inTunnel?'TUNNEL':'CLEAR';
     tb.className='tun-chip '+(S.inTunnel?'tunnel':'clear');
     const sc=document.getElementById('snap-chip');
-    sc.className='mg-chip'+(S.snapN>0?'':' snap-off');
-    const sd = document.getElementById('snap-dot');
-    if(sd){ sd.className='mg-dot ok'; }
+    sc.className='mod'+(S.snapN>0?'':' snap-off');
   }catch(e){}
 }
 
 function triggerOut(){
   if(!S.gnss)return;
   S.gnss=false;S.outt=0;S.outN++;
-  // Reset live IMU speed integration on blackout start
-  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; }
+  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; IMU.intHeading=0; }
   document.getElementById('flash').classList.add('on');
-  const ob=document.getElementById('ob');ob.classList.remove('snap');ob.classList.add('on');
+  const ob=document.getElementById('ob');
+  ob.classList.remove('snap');ob.classList.add('on');
+  ob.innerHTML='GNSS BLACKOUT — DEAD RECKONING · <span id="ob-t">0.0s</span>';
   document.getElementById('hdr-dot').classList.add('out');
   document.getElementById('hdr-st').textContent='BLACKOUT';
+
+  // Update System Nominal indicator to Outage Alert
+  const sn = document.getElementById('sys-nominal');
+  if(sn) {
+    sn.classList.add('alert');
+    document.getElementById('nominal-text').textContent = 'ALERT: BLACKOUT';
+  }
+
   document.getElementById('hud-mode').textContent=S.useLiveIMU&&IMU.active?'Live DR · Real IMU':'Dead Reckoning';
   document.getElementById('hud-mode').className='hv red';
   setBtnGnss(false);
 }
+
 function reacq(){
   if(S.gnss)return;
   S.gnss=true;S.snapN++;
   document.getElementById('flash').classList.remove('on');
   const fe=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);
   S.ndLa=S.gtLa;S.ndLo=S.gtLo;S.iLa=S.gtLa;S.iLo=S.gtLo;S.unc=.45;
-  // Reset live IMU integration on reacquisition
   if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; IMU.intHeading=0; }
   const ob=document.getElementById('ob');
-  ob.classList.add('snap');ob.textContent='✓ SNAP: -'+fe.toFixed(1)+'m corrected';
+  ob.classList.add('snap');ob.textContent='⚡ SNAP: -'+fe.toFixed(1)+'m corrected';
   setTimeout(()=>ob.classList.remove('on'),2500);
   document.getElementById('hdr-dot').classList.remove('out');
   document.getElementById('hdr-st').textContent='LOCKED';
+
+  // Restore System Nominal status
+  const sn = document.getElementById('sys-nominal');
+  if(sn) {
+    sn.classList.remove('alert');
+    document.getElementById('nominal-text').textContent = 'SYSTEM NOMINAL';
+  }
+
   document.getElementById('hud-mode').textContent='NavIC L5 Locked';
   document.getElementById('hud-mode').className='hv';
   setBtnGnss(true);
 }
+
 function setBtnGnss(locked){
   const b=document.getElementById('btn-gnss');
-  b.textContent=locked?'● GNSS':'● Reacq';
+  b.textContent=locked?'● GNSS Toggle':'● Reacquire';
   b.className='abtn gnss-t'+(locked?' locked':'');
 }
 function toggleSim(){
   S.run=!S.run;
-  document.getElementById('btn-play').textContent=S.run?'⏸':'▶';
+  document.getElementById('btn-play').textContent=S.run?'⏸ Pause':'▶ Resume';
 }
 function toggleOutage(){S.gnss?triggerOut():reacq();}
 function switchCity(k,el){
@@ -1173,15 +1805,13 @@ if('serviceWorker' in navigator){
 /* ── GPS + SIM MODE ── */
 const GPS = {active:false, simMode:false, watchId:null, lat:null, lon:null, acc:null, lastLat:null, lastLon:null};
 
-// Show/hide city sim buttons
 function enterSimMode(){
   GPS.simMode = true;
   document.getElementById('city-buttons').style.display = 'contents';
   document.getElementById('btn-simmode').style.display = 'none';
   const lb = document.getElementById('btn-livegps');
   lb.textContent = '◉ Live'; lb.classList.remove('on');
-  lb.style.color = 'rgba(80,150,120,0.7)'; lb.style.background = 'transparent';
-  // Stop live GPS and run simulation
+  lb.style.color = 'var(--muted)'; lb.style.background = 'transparent'; lb.style.borderColor = 'var(--line)';
   if(GPS.watchId !== null){ navigator.geolocation.clearWatch(GPS.watchId); GPS.watchId = null; }
   GPS.active = false;
   init('delhi');
@@ -1193,30 +1823,29 @@ function exitSimMode(){
   document.getElementById('btn-simmode').style.display = '';
   const lb = document.getElementById('btn-livegps');
   lb.textContent = '⟳ Locating…';
-  lb.style.color = 'rgba(184,144,64,0.9)';
-  lb.style.background = 'rgba(184,144,64,0.08)';
+  lb.style.color = '#ffaa00';
+  lb.style.background = 'rgba(255, 170, 0, 0.08)';
   lb.classList.remove('on');
   startLiveGPS();
+  if(!IMU.active) openSensorModal();
 }
 
 function startLiveGPS(){
   if(!navigator.geolocation){
     const lb = document.getElementById('btn-livegps');
-    lb.textContent = '✗ No Location API'; lb.style.color='rgba(192,64,64,0.9)';
+    lb.textContent = '✗ No Location API'; lb.style.color='#ff2a5f';
     return;
   }
 
-  // Elegant status bar at bottom
-  let dbg = document.getElementById('gps-status');
+  let dbg = document.getElementById('gps-dbg');
   if(!dbg){
     dbg = document.createElement('div');
-    dbg.id = 'gps-status';
-    dbg.innerHTML = '<div id="gps-status-dot"></div><span id="gps-status-text">Requesting location…</span>';
+    dbg.id = 'gps-dbg';
+    dbg.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(3,7,13,0.96);color:#00ff9d;font-family:monospace;font-size:10px;padding:5px 12px;border-top:1px solid rgba(0,240,255,0.3);pointer-events:none;letter-spacing:.05em;';
     document.body.appendChild(dbg);
   }
-  dbg.style.display = 'flex';
-  document.getElementById('gps-status-dot').className = '';
-  document.getElementById('gps-status-text').textContent = 'Requesting location…';
+  dbg.style.color = '#00ff9d';
+  dbg.textContent = 'GPS: Requesting satellite orbital telemetry…';
 
   function onFix(pos){
     const lat = pos.coords.latitude;
@@ -1225,20 +1854,18 @@ function startLiveGPS(){
     GPS.lat = lat; GPS.lon = lon; GPS.acc = acc;
     GPS.lastLat = lat; GPS.lastLon = lon;
 
-    const sdot = document.getElementById('gps-status-dot');
-    const stxt = document.getElementById('gps-status-text');
-    if(sdot) sdot.className = 'ok';
-    if(stxt) stxt.textContent = `◉  ${lat.toFixed(5)}°N  ${lon.toFixed(5)}°E  ±${acc.toFixed(0)}m`;
+    dbg.style.color = '#00ff9d';
+    dbg.textContent = `🛰 GPS FIX  ${lat.toFixed(5)}°N  ${lon.toFixed(5)}°E  ±${acc.toFixed(0)}m`;
 
     if(!GPS.active){
       GPS.active = true;
       const lb = document.getElementById('btn-livegps');
       lb.textContent = '◉ Live';
-      lb.style.color = 'rgba(95,186,149,1)';
-      lb.style.borderColor = 'rgba(95,186,149,0.6)';
-      lb.style.background = 'rgba(95,186,149,0.12)';
+      lb.style.color = '#00ff9d';
+      lb.style.borderColor = 'rgba(0,255,157,0.6)';
+      lb.style.background = 'rgba(0,255,157,0.12)';
       lb.classList.add('on');
-      // Reset everything to real location
+
       S.gtLa = S.ndLa = S.iLa = lat;
       S.gtLo = S.ndLo = S.iLo = lon;
       EKF.x = lat; EKF.y = lon;
@@ -1246,15 +1873,23 @@ function startLiveGPS(){
       if(_gt)_gt.setLatLngs([]);if(_nd)_nd.setLatLngs([]);
       if(_imu)_imu.setLatLngs([]);if(_ekf)_ekf.setLatLngs([]);
       GPS.zoomed = false;
-      // AUTO-ZOOM: jump to user's real location on first fix (setView is reliable on iOS)
-      if(_map){
-        _map.setView([lat, lon], 17, {animate:true, duration:0.8});
-        GPS.zoomed = true; // step() will keep tracking from here
-      }
+      if(_map){ _map.flyTo([lat, lon], 18, {duration:1.8}); setTimeout(()=>{GPS.zoomed=true;},2000); }
       setBtnGnss(true);
       try{ document.getElementById('hud-mode').textContent = `NavIC L5 · acc ±${acc.toFixed(0)}m`; }catch(e){}
+
+      if(!IMU.active){
+        let imuBanner = document.getElementById('imu-banner');
+        if(!imuBanner){
+          imuBanner = document.createElement('div');
+          imuBanner.id = 'imu-banner';
+          imuBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg, #9b72d8, #00f0ff);color:#03070d;font-family:var(--font-hud);font-size:12px;font-weight:700;padding:10px 16px;text-align:center;cursor:pointer;letter-spacing:.08em;box-shadow:0 4px 20px rgba(0,240,255,0.4);';
+          imuBanner.textContent = '⚡ TAP HERE to enable Real IMU for on-device Dead Reckoning';
+          imuBanner.onclick = () => { imuBanner.remove(); openSensorModal(); };
+          document.body.appendChild(imuBanner);
+          setTimeout(()=>{ if(imuBanner.parentNode) imuBanner.remove(); }, 15000);
+        }
+      }
     } else {
-      // On subsequent fixes: jump if moved significantly (or if returning from Delhi sim)
       const jumpDeg = Math.abs(S.gtLa - lat) + Math.abs(S.gtLo - lon);
       if(jumpDeg > 0.003){
         S.gtLa = lat; S.gtLo = lon;
@@ -1278,18 +1913,15 @@ function startLiveGPS(){
   }
 
   function onErr(err){
-    const msgs = {1:'Location denied — Settings > Safari > Location > Allow',2:'Position unavailable — check GPS signal',3:'Timed out — retrying…'};
-    const sdot2 = document.getElementById('gps-status-dot');
-    const stxt2 = document.getElementById('gps-status-text');
-    if(sdot2) sdot2.className = 'err';
-    if(stxt2) stxt2.textContent = `⚠ ${msgs[err.code] || err.message}`;
+    const msgs = {1:'Location denied — go to Settings > Safari > Location > Allow',2:'Position unavailable — check GPS signal',3:'Timed out — retrying…'};
+    dbg.style.color = '#ff2a5f';
+    dbg.textContent = `⚠ ${msgs[err.code] || err.message}`;
     const lb = document.getElementById('btn-livegps');
     lb.textContent = err.code===1 ? '✗ Denied' : '⟳ Retrying…';
-    lb.style.color = err.code===1 ? 'rgba(192,64,64,0.9)' : 'rgba(184,144,64,0.9)';
+    lb.style.color = err.code===1 ? '#ff2a5f' : '#ffaa00';
     lb.style.background = 'transparent';
     console.warn('GPS err', err.code, err.message);
     if(err.code !== 1){
-      // Retry after 3s for non-permission errors
       setTimeout(()=>{ if(!GPS.active && !GPS.simMode) startLiveGPS(); }, 3000);
     }
   }
@@ -1299,12 +1931,76 @@ function startLiveGPS(){
     {enableHighAccuracy: true, maximumAge: 0, timeout: 30000});
 }
 
-let lt=0;
-function loop(t){requestAnimationFrame(loop);if(t-lt>65){step();lt=t;}}
+/* 5. INITIALIZE BOTTOM SHEET CANVAS STARFIELD */
+function initSheetStars(){
+  const canvas = document.getElementById('sheet-stars');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let w, h;
+  const stars = [];
+  const NUM_STARS = 45;
 
-// Boot: India overview, auto-request GPS (browser shows prompt on first visit)
+  function resize(){
+    const rect = canvas.getBoundingClientRect();
+    w = canvas.width = rect.width;
+    h = canvas.height = rect.height;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  for(let i=0; i<NUM_STARS; i++){
+    stars.push({
+      x: Math.random() * (w || 360),
+      y: Math.random() * (h || 240),
+      r: Math.random() * 1.2 + 0.4,
+      alpha: Math.random() * 0.7 + 0.2,
+      vx: (Math.random() - 0.5) * 0.2,
+      vy: - (Math.random() * 0.35 + 0.1),
+      color: Math.random() > 0.4 ? '#00f0ff' : '#9b72d8'
+    });
+  }
+
+  function render(){
+    if(!w || !h){ requestAnimationFrame(render); return; }
+    ctx.clearRect(0, 0, w, h);
+    for(let i=0; i<stars.length; i++){
+      const s = stars[i];
+      s.x += s.vx;
+      s.y += s.vy;
+      s.alpha += Math.sin(Date.now()*0.002 + i) * 0.008;
+      if(s.y < 0){ s.y = h; s.x = Math.random() * w; }
+      if(s.x < 0) s.x = w;
+      if(s.x > w) s.x = 0;
+
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = s.color;
+      ctx.globalAlpha = Math.max(0.1, Math.min(0.85, s.alpha));
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = s.color;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    requestAnimationFrame(render);
+  }
+  requestAnimationFrame(render);
+}
+
+let lt=0;
+function loop(t){
+  requestAnimationFrame(loop);
+  renderSmoothCounters();
+  if(t-lt>65){
+    step();
+    lt=t;
+  }
+}
+
+// Boot
 document.getElementById('city-buttons').style.display = 'none';
 init('delhi');
+initSheetStars();
 requestAnimationFrame(loop);
 startLiveGPS();
 </script>
