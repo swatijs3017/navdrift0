@@ -919,9 +919,43 @@ The `frontend/` directory is deployed directly to Cloudflare Pages. No build ste
 
 ---
 
+## Current Status: What's Actually Live vs What's Still Open
+
+This section exists so nobody, us included, mistakes a demo effect for a measured result. Written after a full pass through the mobile PWA and desktop dashboard code, checked line by line against what actually runs, not against commit messages.
+
+**Confirmed real and running live, not simulated:**
+
+- Accelerometer, gyroscope and (where the browser exposes it) barometer readings on `mobile.html` come from the phone's actual `DeviceMotionEvent` / `DeviceOrientationEvent` sensors once permission is granted. No synthetic sensor data feeds the pipeline while live IMU is active.
+- GPS position comes from `navigator.geolocation.watchPosition`, a real fix, not a scripted route.
+- DRIFTFormer, the Adaptive-EKF noise predictor, and the Tunnel-BiLSTM detector all run on-device through onnxruntime-web (WASM) on both `mobile.html` and `index.html`. This was verified by tracing the actual inference calls and how their outputs get applied to the fused position, not just checking that the model files load.
+- DRIFTFormer's correction is only ever applied during a genuine GNSS blackout, never while GPS is locked, so it cannot be mistaken for the position quietly snapping to a known point.
+- The 78.4 m mean ATE / 0.247 m ATE RMSE numbers in the compliance table above are real, computed from `results/validation_full.json` over 36,819 steps of held-out IO-VNBD test data. They are offline validation numbers, not a live-drive measurement (see gap below).
+- On the desktop dashboard, the DOP (PDOP/HDOP/VDOP) tile and the "Infer Hz" tile now show the real navic_dop.onnx model output and real measured onnxruntime-web latency whenever the ONNX pipeline is switched on, instead of the randomised placeholder numbers that used to sit there regardless of pipeline state. The dashboard tells you which mode each number is in directly (`dop-source` label).
+
+**Known gaps, not yet real, listed so nobody overclaims these to a judge:**
+
+- Map-matching against actual roads does not exist yet. The HMM/Viterbi decode logic in `mobile.html` is real code, but it snaps position to a hand-authored city waypoint loop, not an OpenStreetMap road graph, and it is now explicitly gated off whenever real live GPS is running so it can't distort a real position. Plan for the real version is in `TODO_MAP_MATCHING.md`.
+- No live-drive benchmark exists yet. Every drift number currently published comes from the offline IO-VNBD test set. Nobody has recorded the phone app driving through a real GPS-denied stretch (tunnel, underpass, parking structure) and computed drift from that log.
+- The Federated Learning panel and the DRIFTFormer attention-weight visualisation on the desktop dashboard are illustrative only. No multi-vehicle federation exists anywhere in this codebase, and the exported ONNX graph does not emit attention weights, so that panel was never pulling from the real model. Both are now labelled as illustrative in the UI itself instead of looking like live telemetry.
+- The edge CPU% metric that used to appear next to Infer Hz has been removed rather than fixed. Browsers have no API to read process CPU usage, so that number could only ever have been invented.
+
+---
+
 ## Changelog
 
-### v2.0 (current)
+### v2.1 (current)
+- Wired the trained ONNX pipeline (DRIFTFormer, Adaptive-EKF, Tunnel-BiLSTM) live into `mobile.html`, running real GNSS/EKF fusion end to end on-device.
+- Added a real GPS marker alongside the predicted NAVDRIFT marker so blackout drift and reacquisition correction are visible on the map, not just implied.
+- Fixed the EKF firing a correction on every render tick instead of only on a genuinely fresh GPS fix, which had been the main cause of erratic position jumps.
+- Rejected IMU calibration taken while the phone was already moving, and added a watchdog against runaway integrated speed.
+- Fixed GNSS state flapping between BLACKOUT / REACQUIRED / LOCKED by adding a 1.5s debounce, so the header, the debug panel and the nav bar can no longer disagree with each other at the same instant.
+- Clamped the Adaptive-EKF's ONNX noise output to a sane band so displayed uncertainty can no longer spike into the thousands of metres while drift error stays in the tens.
+- Fixed the "tap to enable Real IMU" prompt reappearing after IMU was already active.
+- Removed the synthetic jitter that was being layered on top of the real live-IMU-driven position, so the primary NAVDRIFT position is now purely sensor-driven once live IMU is active, no decoration mixed in.
+- Gated the HMM map-matching block so it only ever runs against the simulated city route in simulation mode, and never touches a real live GPS/IMU position (see gap noted above, this is not the same as having real map-matching).
+- Removed the fabricated federated-learning ATE numbers, the random attention-weight visualisation, and the random edge CPU%/Infer Hz numbers from the desktop dashboard, replacing Infer Hz and DOP with real measured values whenever the ONNX pipeline is actually switched on. Labelled every remaining illustrative panel as illustrative in the UI itself.
+
+### v2.0
 - Added BiLSTM speed estimator: 7 IMU channels to speed in m/s, no wheel odometry required. 307K parameters, MAE 2.341 km/h on IO-VNBD test set, drift 7.64%.
 - Added Attention-BiLSTM: Bahdanau attention over BiLSTM(64) hidden states. 316K parameters, 13.1 KB ONNX. Trained on STRIDE=1 windows (70,231 windows, 5x more than STRIDE=5).
 - Ran 5 structured evaluation cells: per-trip drift, baseline comparison, GPS blackout simulation, error distribution, speed-binned MAE.
