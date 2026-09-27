@@ -844,6 +844,11 @@ function renderBaroDisplay(){
 }
 
 let _lastDMT = 0, _dmCount = 0, _hzInterval = null;
+// Real elapsed-time tracker for the RAW IMU INTEGRATION trail's speed→position step (below in
+// step()). Kept separate from _lastDMT (which times the accel→speed integration inside
+// onDeviceMotion) because this one times a different loop — step()'s own call cadence — and
+// must not be confused with it.
+let _lastRawTrailT = 0;
 
 function onDeviceMotion(e){
   // Honest activation: IMU is only "ACTIVE" once a real devicemotion event has arrived —
@@ -1846,21 +1851,39 @@ function step(){
       ekfStep(usedSpd2, usedDH2, DT2, freshFixThisTick, S.gtLa, S.gtLo, GPS.acc);
       if(freshFixThisTick) GPS.fixConsumed = true;
       S.posSource = freshFixThisTick ? 'GNSS-FUSED (fresh fix)' : 'GNSS-FUSED (IMU-predicted between fixes)';
-      // unfused "raw IMU" baseline trace — only re-anchors on a fresh fix too, for the same reason
+      // unfused "raw IMU" baseline trace — only re-anchors on a fresh fix too, for the same reason.
+      // Pulls 30% of the way toward the real GPS fix each fresh fix (never a full snap, so the
+      // trace still visibly shows its own drift between fixes) — no added jitter of any kind.
       if(freshFixThisTick){
-        S.iLa += (S.gtLa - S.iLa) * 0.3 + (Math.random()-.5)*8e-6;
-        S.iLo += (S.gtLo - S.iLo) * 0.3 + (Math.random()-.5)*8e-6;
+        S.iLa += (S.gtLa - S.iLa) * 0.3;
+        S.iLo += (S.gtLo - S.iLo) * 0.3;
       }
     } else {
       ekfStep(usedSpd2, usedDH2, DT2, false, S.gtLa, S.gtLo);
       S.posSource = (S.useLiveIMU && IMU.active) ? 'DEAD-RECKONING (IMU)' : 'DEAD-RECKONING (NO IMU — HOLDING LAST STATE)';
       S.outt += DT2;
       try{ document.getElementById('ob-t').textContent=S.outt.toFixed(1)+'s'; }catch(e){}
-      // unfused "raw IMU" baseline trace — drifts faster since it has no EKF correction at all
-      const dl = usedSpd2 * Math.cos(EKF.th) / 111000 * DT2;
-      const dn = usedSpd2 * Math.sin(EKF.th) / (111000 * Math.cos(S.iLa * Math.PI/180)) * DT2;
-      S.iLa += dl + (Math.random()-.5)*2.5e-5*(1+S.outt*.3);
-      S.iLo += dn + (Math.random()-.5)*2.5e-5*(1+S.outt*.3);
+      // unfused "raw IMU" baseline trace — drifts faster since it has no EKF correction at all.
+      // Real elapsed wall-clock time since this trail was last advanced, not the fixed DT2
+      // constant — DT2/DT is a nominal step()-cadence assumption used for the EKF predict step
+      // (left untouched per the "don't change EKF/NAVDRIFT logic" requirement), but it doesn't
+      // actually measure how much time passed if step() is delayed (WASM/ONNX inference load,
+      // a dropped frame, a background/resume gap). This trail integrates purely from real IMU
+      // output, so its own dt must be real too. Bounded to (0, 0.5]s — the same bound
+      // onDeviceMotion already uses for IMU.intSpeed's own integration — so a long stall
+      // (backgrounded tab, screen lock) produces one skipped tick (dt clamped to 0, no
+      // integration) instead of one huge fake jump when it resumes.
+      const rawNow = performance.now();
+      const rawDtUnbounded = _lastRawTrailT>0 ? (rawNow-_lastRawTrailT)/1000 : 0;
+      _lastRawTrailT = rawNow;
+      const rawDt = (rawDtUnbounded>0 && rawDtUnbounded<0.5) ? rawDtUnbounded : 0;
+      const dl = usedSpd2 * Math.cos(EKF.th) / 111000 * rawDt;
+      const dn = usedSpd2 * Math.sin(EKF.th) / (111000 * Math.cos(S.iLa * Math.PI/180)) * rawDt;
+      // No Math.random(), no synthetic jitter, no fabricated drift — only the real,
+      // sensor-derived dead-reckoning calculation above. If real IMU drift is large, this
+      // shows a large trail; if it's small (a genuinely stationary phone), it stays small.
+      S.iLa += dl;
+      S.iLo += dn;
 
       // ── Real NHC + live OSM map-matching, during an actual GNSS blackout ──
       // This used to exist only in the simulation code path further down in this file, which
