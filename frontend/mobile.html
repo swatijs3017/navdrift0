@@ -1297,10 +1297,20 @@ function initMap(c){
       touchZoomRotate:true,
       scrollZoom:{around:'center'}
     });
-    _map.on('movestart',()=>{_mapMoving=true;});
-    _map.on('moveend',()=>{_mapMoving=false;});
-    _map.on('zoomstart',()=>{_mapZooming=true;});
-    _map.on('zoomend',()=>{_mapZooming=false;});
+    /* ── gesture tracking ─────────────────────────────────────────────────────
+       _userPanned: true for 4 s after any user-initiated move/zoom.
+       Blocks vehicle-follow jumpTo so it cannot fight an ongoing gesture.
+       e.originalEvent is present only on user gestures, absent on our jumpTo.  */
+    let _gpTimer=null;
+    function _markUserGesture(){
+      _mapMoving=true;_mapZooming=true;
+      clearTimeout(_gpTimer);
+      _gpTimer=setTimeout(()=>{_mapMoving=false;_mapZooming=false;},4000);
+    }
+    _map.on('movestart', e=>{if(e.originalEvent)_markUserGesture();});
+    _map.on('zoomstart',e=>{if(e.originalEvent)_markUserGesture();});
+    _map.on('moveend', ()=>{/* flags cleared by timer only */});
+    _map.on('zoomend',()=>{});
     _map.on('load',()=>{
       _mapReady=true;
       addOverlayLayers();
