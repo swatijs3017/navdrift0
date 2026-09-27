@@ -555,6 +555,11 @@
         <div class="tr-l">Road Graph</div>
         <div class="tr-v" id="dbg-roads" style="color:var(--np)">—</div>
       </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Magnetometer</div>
+        <div class="tr-v" id="dbg-mag" style="color:var(--muted)">—</div>
+      </div>
     </div>
     <div class="tp-section-label-sub" id="dbg-detail" style="padding-top:0;">—</div>
 
@@ -625,6 +630,64 @@
 </div>
 
 <script>
+// ── SENSOR MANAGER ──────────────────────────────────────────────────────────────────────
+// A single, honest, normalized status/value layer over the real sensor code below (GPS,
+// IMU/onDeviceMotion, BaroSensor, orientation, magnetometer). It does not replace any of
+// those, and it does not run its own separate navigation logic — it just OBSERVES the same
+// real events they already receive and exposes one normalized shape, so the UI (and later a
+// native bridge, if one is ever added) can read one consistent interface regardless of which
+// platform code path actually produced the data:
+//   AVAILABLE          — this sensor could plausibly work here, not yet started
+//   ACTIVE             — real data is arriving right now
+//   NO_DATA            — started/permitted, but nothing has arrived recently (watchdog-based)
+//   PERMISSION_DENIED  — the user (or the OS) explicitly refused access
+//   API_BLOCKED        — the hardware is known/strongly believed to exist, but this browser
+//                         does not expose an API to reach it (the iOS barometer case)
+//   UNAVAILABLE        — no real signal that the hardware or an API for it exists here
+// Every entry also carries value + timestamp + accuracy, never a fabricated number for any of
+// those fields — a status other than ACTIVE always means value is null or stale, not guessed.
+const SensorManager = (function(){
+  const STATUS = Object.freeze({
+    AVAILABLE:'AVAILABLE', ACTIVE:'ACTIVE', NO_DATA:'NO_DATA',
+    PERMISSION_DENIED:'PERMISSION_DENIED', API_BLOCKED:'API_BLOCKED', UNAVAILABLE:'UNAVAILABLE'
+  });
+  const NAMES = ['gnss','accelerometer','gyroscope','orientation','magnetometer','barometer'];
+  const state = {};
+  for(const n of NAMES) state[n] = {status:STATUS.UNAVAILABLE, value:null, accuracy:null, source:null, ts:0};
+
+  function setStatus(name, status, source){
+    if(!state[name]) return;
+    state[name].status = status;
+    if(source) state[name].source = source;
+  }
+  function setValue(name, value, accuracy, source){
+    const s = state[name]; if(!s) return;
+    s.value = value; s.accuracy = (accuracy!=null?accuracy:s.accuracy); s.ts = performance.now();
+    s.status = STATUS.ACTIVE; if(source) s.source = source;
+  }
+
+  // NO_DATA watchdog: a sensor that WAS active but has produced nothing for 3s is reported as
+  // NO_DATA, never left silently showing a stale "ACTIVE" from ten seconds ago.
+  setInterval(()=>{
+    const now = performance.now();
+    for(const n of NAMES){
+      const s = state[n];
+      if(s.status===STATUS.ACTIVE && (now - s.ts) > 3000) s.status = STATUS.NO_DATA;
+    }
+  }, 1000);
+
+  return {
+    STATUS,
+    setStatus, setValue,
+    getStatus(name){ return name ? state[name].status : Object.fromEntries(NAMES.map(n=>[n,state[n].status])); },
+    getLatestGNSS(){ return state.gnss.value; },
+    getLatestIMU(){ return {accel:state.accelerometer.value, gyro:state.gyroscope.value}; },
+    getLatestBarometer(){ return state.barometer.value; },
+    getLatestOrientation(){ return state.orientation.value; },
+    getLatestMagnetometer(){ return state.magnetometer.value; },
+    raw: state
+  };
+})();
 /* ── CITIES ── */
 const CITIES={
   delhi:   {lat:28.6315,lon:77.2167,zoom:14,wp:[[28.6315,77.2167],[28.6330,77.2210],[28.6350,77.2260],[28.6360,77.2310],[28.6340,77.2360],[28.6310,77.2400],[28.6270,77.2420],[28.6230,77.2410],[28.6190,77.2380],[28.6160,77.2330],[28.6150,77.2270],[28.6160,77.2210],[28.6190,77.2160],[28.6230,77.2130],[28.6270,77.2130],[28.6315,77.2167]]},
@@ -726,21 +789,27 @@ const BaroSensor = (function(){
       // hardware exists, so the honest default is "not detected."
       if(isIOSDevice){ state='blocked'; detail='WebKit does not expose the Barometer API on iOS'; }
       else{ state='absent'; detail='Barometer API not supported on this browser'; }
+      SensorManager.setStatus('barometer', state==='blocked' ? SensorManager.STATUS.API_BLOCKED : SensorManager.STATUS.UNAVAILABLE, 'Barometer');
       return;
     }
     try{
       sensor=new Barometer({frequency:2});
-      sensor.addEventListener('reading',()=>{ altitudeM=toAltitudeM(sensor.pressure); state='active'; detail='live'; });
+      sensor.addEventListener('reading',()=>{
+        altitudeM=toAltitudeM(sensor.pressure); state='active'; detail='live';
+        SensorManager.setValue('barometer', {altitudeM, pressureHPa:sensor.pressure}, null, 'Barometer');
+      });
       sensor.addEventListener('error',(e)=>{
         // The API exists but errored (commonly a permissions-policy block) — that's still the
         // hardware/API being present in principle, just inaccessible right now, not "absent."
         state='blocked'; detail='sensor error: '+(e.error?e.error.message:'unknown');
+        SensorManager.setStatus('barometer', SensorManager.STATUS.API_BLOCKED, 'Barometer');
       });
       sensor.start();
       state='starting';
     }catch(e){
       state = isIOSDevice ? 'blocked' : 'absent';
       detail='not available: '+e.message;
+      SensorManager.setStatus('barometer', state==='blocked' ? SensorManager.STATUS.API_BLOCKED : SensorManager.STATUS.UNAVAILABLE, 'Barometer');
     }
   }
 
@@ -815,6 +884,7 @@ function onDeviceMotion(e){
   _bw_xp=[rawAx,rawAy,rawAz];
 
   IMU.ax=fax; IMU.ay=fay; IMU.az=faz;
+  SensorManager.setValue('accelerometer', {x:fax,y:fay,z:faz}, null, 'devicemotion');
 
   // Gyroscope (rotation rate)
   const rot = e.rotationRate;
@@ -822,6 +892,7 @@ function onDeviceMotion(e){
     IMU.gx = (rot.alpha||0) * Math.PI/180 - IMU.gxOff;
     IMU.gy = (rot.beta||0)  * Math.PI/180 - IMU.gyOff;
     IMU.gz = (rot.gamma||0) * Math.PI/180 - IMU.gzOff;
+    SensorManager.setValue('gyroscope', {x:IMU.gx,y:IMU.gy,z:IMU.gz}, null, 'devicemotion');
   }
 
   // Speed estimation: project filtered accel onto forward axis
@@ -930,11 +1001,30 @@ function onDeviceOrientation(e){
   IMU.alpha = e.alpha || 0;
   IMU.beta  = e.beta  || 0;
   IMU.gamma = e.gamma || 0;
+  SensorManager.setValue('orientation', {alpha:IMU.alpha,beta:IMU.beta,gamma:IMU.gamma}, null, 'deviceorientation');
   try{
     document.getElementById('sv-al').textContent=IMU.alpha.toFixed(1);
     document.getElementById('sv-be').textContent=IMU.beta.toFixed(1);
     document.getElementById('sv-ga').textContent=IMU.gamma.toFixed(1);
   }catch(e){}
+
+  // Real compass heading — iOS exposes it directly on the event (webkitCompassHeading,
+  // true north, no absolute:true needed). Android/Chrome only ever reports magnetometer-
+  // derived absolute heading through the separate 'deviceorientationabsolute' event
+  // (handled below), never on plain 'deviceorientation' — so on Android this branch is
+  // simply skipped rather than fabricating a heading from nothing.
+  if(typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)){
+    SensorManager.setValue('magnetometer', {headingDeg:e.webkitCompassHeading}, e.webkitCompassAccuracy??null, 'webkitCompassHeading');
+  }
+}
+
+function onDeviceOrientationAbsolute(e){
+  // Android/Chrome path: 'deviceorientationabsolute' only fires when the value is truly
+  // referenced to magnetic/true north (backed by the real magnetometer), unlike plain
+  // 'deviceorientation' whose alpha can be relative/unanchored on some devices.
+  if(e.absolute && typeof e.alpha === 'number'){
+    SensorManager.setValue('magnetometer', {headingDeg:(360-e.alpha)%360}, null, 'deviceorientationabsolute');
+  }
 }
 
 /* ── Hz tracker ── */
@@ -969,15 +1059,27 @@ async function requestSensorAccess(){
       const res = await DeviceMotionEvent.requestPermission();
       if(res !== 'granted'){
         status.textContent = '✗ Permission denied by user.';
+        SensorManager.setStatus('accelerometer', SensorManager.STATUS.PERMISSION_DENIED, 'devicemotion');
+        SensorManager.setStatus('gyroscope', SensorManager.STATUS.PERMISSION_DENIED, 'devicemotion');
+        SensorManager.setStatus('orientation', SensorManager.STATUS.PERMISSION_DENIED, 'deviceorientation');
+        SensorManager.setStatus('magnetometer', SensorManager.STATUS.PERMISSION_DENIED, 'deviceorientation');
         btn.disabled = false; btn.textContent = 'GRANT ACCESS';
         return;
       }
       // Request orientation too
       if(typeof DeviceOrientationEvent.requestPermission === 'function'){
-        await DeviceOrientationEvent.requestPermission().catch(()=>{});
+        const oRes = await DeviceOrientationEvent.requestPermission().catch(()=>'denied');
+        if(oRes !== 'granted'){
+          SensorManager.setStatus('orientation', SensorManager.STATUS.PERMISSION_DENIED, 'deviceorientation');
+          SensorManager.setStatus('magnetometer', SensorManager.STATUS.PERMISSION_DENIED, 'deviceorientation');
+        }
       }
     } else if(typeof DeviceMotionEvent === 'undefined'){
       status.textContent = '✗ No IMU detected on this device.';
+      SensorManager.setStatus('accelerometer', SensorManager.STATUS.UNAVAILABLE);
+      SensorManager.setStatus('gyroscope', SensorManager.STATUS.UNAVAILABLE);
+      SensorManager.setStatus('orientation', SensorManager.STATUS.UNAVAILABLE);
+      SensorManager.setStatus('magnetometer', SensorManager.STATUS.UNAVAILABLE);
       btn.disabled = false; btn.textContent = 'GRANT ACCESS';
       return;
     }
@@ -987,6 +1089,10 @@ async function requestSensorAccess(){
     IMU.state = 'WAITING';
     window.addEventListener('devicemotion', onDeviceMotion, {passive:true});
     window.addEventListener('deviceorientation', onDeviceOrientation, {passive:true});
+    window.addEventListener('deviceorientationabsolute', onDeviceOrientationAbsolute, {passive:true});
+    // Magnetometer starts UNAVAILABLE→NO_DATA until a real absolute-heading event actually
+    // arrives (handled by setValue's ACTIVE flip + the 3s no-data watchdog in SensorManager).
+    // Never marked ACTIVE just because listeners were attached.
     startHzTracker();
 
     // Watchdog: if no real devicemotion event arrives within 3s of requesting,
@@ -995,6 +1101,8 @@ async function requestSensorAccess(){
       if(!IMU.active){
         IMU.state = 'UNAVAILABLE';
         status.textContent = '✗ IMU UNAVAILABLE — no sensor events received from this device/browser.';
+        SensorManager.setStatus('accelerometer', SensorManager.STATUS.UNAVAILABLE);
+        SensorManager.setStatus('gyroscope', SensorManager.STATUS.UNAVAILABLE);
         const mb=document.getElementById('mode-b'); if(mb){mb.textContent='IMU UNAVAILABLE';mb.className='mode-badge badge-sim';}
         const ic=document.getElementById('imu-chip'); if(ic){ic.textContent='⊘ IMU UNAVAILABLE';ic.className='mod';}
         btn.disabled=false; btn.textContent='GRANT ACCESS';
@@ -1182,6 +1290,25 @@ function updateDebugPanel(){
         rEl.textContent = RoadGraph.loaded
           ? RoadGraph.segCount+' segs (live OSM)'
           : (RoadGraph.status==='fetching' ? 'fetching OSM…' : (RoadGraph.status||'—'));
+      }
+    }
+    // Honest per-state magnetometer readout — never claims a heading that never arrived.
+    {
+      const mEl=document.getElementById('dbg-mag');
+      if(mEl){
+        const mag = SensorManager.raw.magnetometer;
+        switch(mag.status){
+          case SensorManager.STATUS.ACTIVE:
+            mEl.textContent = mag.value.headingDeg.toFixed(0)+'° ('+mag.source+')'; mEl.style.color='var(--ng)'; break;
+          case SensorManager.STATUS.PERMISSION_DENIED:
+            mEl.textContent = 'permission denied'; mEl.style.color='var(--na)'; break;
+          case SensorManager.STATUS.NO_DATA:
+            mEl.textContent = 'no data'; mEl.style.color='var(--na)'; break;
+          case SensorManager.STATUS.UNAVAILABLE:
+            mEl.textContent = 'not detected'; mEl.style.color='var(--muted)'; break;
+          default:
+            mEl.textContent = '—'; mEl.style.color='var(--muted)';
+        }
       }
     }
   }catch(e){}
@@ -1664,6 +1791,7 @@ function step(){
     // the NAVDRIFT line a real independent trajectory between fixes rather than GPS with
     // an offset — you can verify it: the purple line should visibly bend/predict between
     // the (roughly 1-second-apart) moments it snaps onto a fresh GPS measurement.
+    const prevEkfLa = EKF.x, prevEkfLo = EKF.y; // captured BEFORE predict, for the real NHC below
     if(S.gnss){
       const freshFixThisTick = !GPS.fixConsumed;
       ekfStep(usedSpd2, usedDH2, DT2, freshFixThisTick, S.gtLa, S.gtLo, GPS.acc);
@@ -1684,6 +1812,42 @@ function step(){
       const dn = usedSpd2 * Math.sin(EKF.th) / (111000 * Math.cos(S.iLa * Math.PI/180)) * DT2;
       S.iLa += dl + (Math.random()-.5)*2.5e-5*(1+S.outt*.3);
       S.iLo += dn + (Math.random()-.5)*2.5e-5*(1+S.outt*.3);
+
+      // ── Real NHC + live OSM map-matching, during an actual GNSS blackout ──
+      // This used to exist only in the simulation code path further down in this file, which
+      // step() can never reach during a real GPS session (it returns before getting there) —
+      // so a genuine live blackout was never actually NHC-constrained or road-snapped, despite
+      // the debug panel's "Road Graph: N segs" implying map-matching was live. Fixed by running
+      // the same real logic here, against the real EKF state, gated only on real conditions.
+      let roadMatch = null;
+      if(GPS.active && !GPS.simMode && RoadGraph.loaded){
+        roadMatch = RoadGraph.nearest(EKF.x, EKF.y);
+      }
+      // Non-holonomic constraint: a vehicle cannot slide sideways. Constrain against the
+      // matched road segment's own bearing when one is available — the correct implementation
+      // TODO_MAP_MATCHING.md flagged as still open — falling back to the last real
+      // GPS-derived heading (S.gtH) only when no road match exists yet (never a scripted or
+      // fabricated bearing).
+      const nhcH = roadMatch ? roadMatch.bearing : S.gtH;
+      const ndDLa = EKF.x - prevEkfLa, ndDLo = EKF.y - prevEkfLo;
+      const fwdC = ndDLa*Math.cos(nhcH) + ndDLo*Math.sin(nhcH);
+      const latC = -ndDLa*Math.sin(nhcH) + ndDLo*Math.cos(nhcH);
+      if(Math.abs(latC)*111000 > .01){
+        EKF.x = prevEkfLa + fwdC*Math.cos(nhcH);
+        EKF.y = prevEkfLo + fwdC*Math.sin(nhcH);
+        S.nhcN++;
+      }
+      // Soft pull toward the matched road segment itself — never a hard teleport, and never
+      // applied at all until Overpass has actually returned real segments for this area.
+      if(roadMatch){
+        const dm = roadMatch.distM;
+        const str = Math.min(.45, (dm>1.5 ? dm/80 : 0));
+        if(str>.01 && dm<60){
+          EKF.x += (roadMatch.lat - EKF.x)*str;
+          EKF.y += (roadMatch.lon - EKF.y)*str;
+          S.hmmCorrN++;
+        }
+      }
     }
     // NAVDRIFT displayed position IS the EKF state — traceable, not a separate variable.
     S.ndLa = EKF.x; S.ndLo = EKF.y;
@@ -2072,7 +2236,11 @@ const RoadGraph = (function(){
     const len2=dx*dx+dy*dy || 1e-9;
     let t=(x*dx+y*dy)/len2; t=Math.max(0,Math.min(1,t));
     const ex=x-dx*t, ey=y-dy*t;
-    return {distM:Math.sqrt(ex*ex+ey*ey), lat:s.lat1+t*(s.lat2-s.lat1), lon:s.lon1+t*(s.lon2-s.lon1)};
+    // Segment's own bearing (radians, atan2(east,north) convention matching S.gtH elsewhere in
+    // this file) — this is what lets NHC constrain against the ROAD's direction during a
+    // blackout, not just the last GPS-derived heading, which goes stale the longer GNSS is out.
+    const bearing = Math.atan2(dx, dy);
+    return {distM:Math.sqrt(ex*ex+ey*ey), lat:s.lat1+t*(s.lat2-s.lat1), lon:s.lon1+t*(s.lon2-s.lon1), bearing};
   }
 
   async function load(lat,lon,radiusM=2200){
@@ -2206,6 +2374,11 @@ function startLiveGPS(){
     GPS.lastFixTime = performance.now(); // this is what makes the fix "fresh" — not the coordinate itself
     GPS.fixConsumed = false; // a genuinely NEW fix — the EKF gets exactly one measurement update from it
     GPS.hardError = false;
+    SensorManager.setValue('gnss', {
+      latitude:lat, longitude:lon, altitude:(pos.coords.altitude??null),
+      accuracy:acc, speed:(pos.coords.speed??null), course:(pos.coords.heading??null),
+      timestamp:pos.timestamp
+    }, acc, 'navigator.geolocation');
 
     // Fetch the real OSM road graph for wherever this fix actually is, and refetch if the
     // vehicle has drifted near the edge of the cached area. Works anywhere Overpass has road
@@ -2290,6 +2463,7 @@ function startLiveGPS(){
     lb.style.color = err.code===1 ? 'rgba(192,64,64,0.9)' : 'rgba(184,144,64,0.9)';
     lb.style.background = 'transparent';
     console.warn('GPS err', err.code, err.message);
+    SensorManager.setStatus('gnss', err.code===1 ? SensorManager.STATUS.PERMISSION_DENIED : SensorManager.STATUS.NO_DATA);
     // Permission denied / position unavailable is a HARD failure: the per-tick GNSS
     // watchdog in step() must declare blackout immediately, not wait out the timeout
     // while a stale GPS.lat coordinate sits in memory pretending to still be live.
