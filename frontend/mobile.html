@@ -910,7 +910,7 @@ function initMap(c){
     _map.on('zoomstart',()=>{_mapZooming=true;});
     _map.on('zoomend',()=>{_mapZooming=false;});
     // OSM standard — light map, no API key, no watermark
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'',keepBuffer:6,updateWhenZooming:false,updateWhenIdle:false}).addTo(_map);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'',keepBuffer:6,updateWhenZooming:false,updateWhenIdle:false}).addTo(_map);
     _gt=L.polyline([],{color:'#00d4cc',weight:2,opacity:.75}).addTo(_map);
     _nd=L.polyline([],{color:'#9b72d8',weight:2.5,opacity:.8}).addTo(_map);
     _imu=L.polyline([],{color:'rgba(160,60,60,0.7)',weight:1.5,dashArray:'6,4',opacity:.6}).addTo(_map);
