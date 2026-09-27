@@ -1287,9 +1287,13 @@ function updateDebugPanel(){
     if(typeof RoadGraph!=='undefined'){
       const rEl=document.getElementById('dbg-roads');
       if(rEl){
-        rEl.textContent = RoadGraph.loaded
-          ? RoadGraph.segCount+' segs (live OSM)'
-          : (RoadGraph.status==='fetching' ? 'fetching OSM…' : (RoadGraph.status||'—'));
+        if(RoadGraph.loaded){
+          rEl.textContent = RoadGraph.segCount+' segs ('+(RoadGraph.source==='cached'?'offline cache':'live OSM')+')';
+          rEl.style.color = RoadGraph.source==='cached' ? 'var(--na)' : 'var(--np)';
+        } else {
+          rEl.textContent = RoadGraph.status==='fetching' ? 'fetching OSM…' : (RoadGraph.status||'—');
+          rEl.style.color = 'var(--muted)';
+        }
       }
     }
     // Honest per-state magnetometer readout — never claims a heading that never arrived.
@@ -2213,8 +2217,65 @@ const GNSS_DEBOUNCE_MS = 1500;
 // road coverage, not just a pre-picked demo city — there is no bundled/pre-baked route here.
 // If the fetch fails (no signal, Overpass rate limit, etc.) map-matching simply stays off —
 // it never falls back to the fake scripted city route, and it never fabricates road data.
+// ── Offline road-graph cache, IndexedDB-backed ──
+// Keyed by a coarse (~2km) rounded lat/lon tile so a repeat visit to the same area — or a
+// blackout that starts before the very first fetch on this drive has landed — can fall back to
+// whatever was already fetched here on a previous session, instead of losing map-matching
+// outright. This never invents road data: a cache miss just means map-matching stays off, same
+// as a live fetch failure always has.
+const RoadGraphCache = (function(){
+  const DB_NAME='navdrift-roadgraph', STORE='tiles', TILE_DEG=0.02; // ~2.2km tiles at this latitude band
+  let dbPromise=null;
+
+  function tileKey(lat,lon){ return Math.round(lat/TILE_DEG)+','+Math.round(lon/TILE_DEG); }
+
+  function openDB(){
+    if(dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve,reject)=>{
+      if(!('indexedDB' in window)){ reject(new Error('IndexedDB unavailable')); return; }
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = ()=>{ req.result.createObjectStore(STORE, {keyPath:'key'}); };
+      req.onsuccess = ()=> resolve(req.result);
+      req.onerror = ()=> reject(req.error);
+    });
+    return dbPromise;
+  }
+
+  async function put(lat,lon,segsArr){
+    try{
+      const db = await openDB();
+      const tx = db.transaction(STORE,'readwrite');
+      tx.objectStore(STORE).put({key:tileKey(lat,lon), lat, lon, segs:segsArr, savedAt:Date.now()});
+    }catch(e){ console.warn('[RoadGraphCache] put failed (non-fatal, still working from network):', e.message); }
+  }
+
+  // Looks for ANY cached tile within radiusM of (lat,lon) — not just an exact key match, since
+  // the vehicle may be a few hundred metres from wherever a past session's fetch was centered.
+  async function findNear(lat,lon,radiusM){
+    try{
+      const db = await openDB();
+      const all = await new Promise((resolve,reject)=>{
+        const tx = db.transaction(STORE,'readonly');
+        const req = tx.objectStore(STORE).getAll();
+        req.onsuccess = ()=>resolve(req.result||[]);
+        req.onerror = ()=>reject(req.error);
+      });
+      let best=null, bestD=Infinity;
+      for(const t of all){
+        const dM=Math.hypot((lat-t.lat)*110540,(lon-t.lon)*111320*Math.cos(lat*Math.PI/180));
+        if(dM<radiusM && dM<bestD){ best=t; bestD=dM; }
+      }
+      return best;
+    }catch(e){
+      return null; // no IndexedDB, or genuinely empty — never fabricate a tile
+    }
+  }
+
+  return {put, findNear};
+})();
+
 const RoadGraph = (function(){
-  let segs=[], grid=new Map(), loaded=false, loading=false, status='idle';
+  let segs=[], grid=new Map(), loaded=false, loading=false, status='idle', source=null; // source: 'live' | 'cached' | null
   let centerLat=null, centerLon=null;
   const CELL=0.006; // ~650m per grid cell at the equator — coarse but fast to bucket/search
 
@@ -2243,6 +2304,12 @@ const RoadGraph = (function(){
     return {distM:Math.sqrt(ex*ex+ey*ey), lat:s.lat1+t*(s.lat2-s.lat1), lon:s.lon1+t*(s.lon2-s.lon1), bearing};
   }
 
+  function loadSegsInto(segsArr){
+    const newSegs=[], newGrid=new Map();
+    segs=newSegs; grid=newGrid;
+    for(const s of segsArr) addSeg(s.lat1,s.lon1,s.lat2,s.lon2);
+  }
+
   async function load(lat,lon,radiusM=2200){
     if(loading) return;
     loading=true; status='fetching';
@@ -2267,11 +2334,27 @@ const RoadGraph = (function(){
       }
       centerLat=lat; centerLon=lon;
       loaded = segs.length>0;
-      status = loaded ? 'ready' : 'no roads in Overpass response here';
+      source = loaded ? 'live' : null;
+      status = loaded ? 'ready (live OSM)' : 'no roads in Overpass response here';
       console.log('[RoadGraph] '+nWays+' ways / '+segs.length+' segments loaded from OSM around '+lat.toFixed(4)+','+lon.toFixed(4));
+      // Cache the real segments we just fetched for next time — a plain snapshot of what OSM
+      // actually returned, nothing derived or invented.
+      if(loaded) RoadGraphCache.put(lat, lon, segs);
     }catch(e){
-      status='fetch failed: '+e.message;
+      status='fetch failed: '+e.message+' — checking offline cache…';
       console.warn('[RoadGraph] load failed',e);
+      // No network, or Overpass unreachable right now (the exact case a tunnel entrance
+      // produces — GPS and network can drop together). Fall back to whatever real road data
+      // was cached from a previous visit near here, if any. If there is none, map-matching
+      // simply stays off, same as it always has — never a fabricated tile.
+      const cached = await RoadGraphCache.findNear(lat, lon, radiusM*1.5);
+      if(cached && cached.segs && cached.segs.length){
+        loadSegsInto(cached.segs);
+        centerLat=cached.lat; centerLon=cached.lon;
+        loaded = true; source='cached';
+        status = 'ready (offline cache, saved '+new Date(cached.savedAt).toLocaleDateString()+')';
+        console.log('[RoadGraph] fetch failed, using '+segs.length+' cached segments from a previous visit near here');
+      }
     }finally{ loading=false; }
   }
 
@@ -2304,7 +2387,8 @@ const RoadGraph = (function(){
     get loaded(){return loaded;},
     get loading(){return loading;},
     get status(){return status;},
-    get segCount(){return segs.length;}
+    get segCount(){return segs.length;},
+    get source(){return source;} // 'live' | 'cached' | null — never hidden from the debug panel
   };
 })();
 

@@ -39,13 +39,25 @@ the NHC "no sideways slide" constraint when a road match exists, and falls back 
 GPS-derived heading (`S.gtH`) only when Overpass hasn't returned a usable segment yet — never a
 scripted or fabricated bearing.
 
+## Also fixed since the first version of this file
+
+**Offline cache added.** Every successful Overpass fetch now also gets written to an IndexedDB
+store (`RoadGraphCache`, keyed by a coarse ~2km rounded lat/lon tile). If a later fetch fails —
+no signal, Overpass down, or the classic case of GPS and network dropping together right at a
+tunnel entrance — `RoadGraph.load()` falls back to the nearest cached tile within 1.5x the fetch
+radius, if one exists from a previous visit near there. The debug panel's Road Graph row says
+which source is actually in use (`live OSM` vs `offline cache`, with the cache's save date), so
+this is never silently indistinguishable from a live fetch. A cache miss still just means
+map-matching stays off, exactly as a live fetch failure always has — nothing here ever invents a
+tile.
+
 ## What is NOT done yet, so nobody overclaims it
 
-1. **No offline cache.** If the phone loses network exactly at the moment GPS also drops
-   (tunnel entrance, common case), a road graph that hasn't been fetched yet won't get one.
-   Fetching happens on GPS lock, before blackout, so this only bites if the vehicle enters a
-   blackout zone before its first GPS fix ever lands. An IndexedDB cache keyed by rounded
-   lat/lon would fix this for repeat visits to the same area, not yet built.
+1. **The cache only helps on a repeat visit to the same area, or later in the same drive after
+   the first successful fetch.** It cannot help the very first time a phone is ever used in a
+   brand new area with a blackout starting before any fetch has ever completed there — there is
+   nothing to have cached yet. That case still has no map-matching, which is correct: there is no
+   real road data available to use.
 2. **Overpass is a shared public rate-limited endpoint.** Fine for a single-phone demo. Not
    something to rely on for a fleet of vehicles hitting it simultaneously — a production
    version would run its own Overpass mirror or ship pre-extracted regional data.
