@@ -45,6 +45,25 @@
     /* suppress maplibre default marker/popup we don't use */
     .maplibregl-marker{transition:none!important;}
 
+    /* ── MAP APPEARANCE TOGGLE ── */
+    #map-mode-ctrl{
+      position:absolute;bottom:84px;right:12px;z-index:150;
+      display:flex;align-items:center;
+      background:rgba(2,5,8,0.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+      border:1px solid rgba(0,200,185,0.1);border-radius:20px;padding:3px;gap:2px;
+      transition:opacity 0.25s ease;
+    }
+    body.tech-mode #map-mode-ctrl{opacity:0;pointer-events:none;}
+    .mm-btn{
+      padding:4px 10px;border-radius:16px;border:none;background:transparent;
+      font-size:.42rem;font-weight:600;font-family:var(--mono);letter-spacing:.07em;
+      cursor:pointer;color:var(--muted);transition:all .2s;
+    }
+    .mm-btn.active{
+      background:rgba(0,212,196,0.1);color:rgba(0,212,196,0.85);
+      border:1px solid rgba(0,212,196,0.18);
+    }
+
     /* GNSS blackout overlay */
     #ob{position:absolute;top:0;left:0;right:0;z-index:600;
       background:rgba(70,10,10,0.95);backdrop-filter:blur(12px);
@@ -324,6 +343,12 @@
       <div class="leg-row"><div class="leg-line" style="background:rgba(160,60,60,0.6);border-top:1px dashed rgba(160,60,60,0.6)"></div><span class="leg-txt">Raw IMU</span></div>
       <div class="leg-row"><div class="leg-line" style="background:rgba(180,140,60,0.6)"></div><span class="leg-txt">EKF</span></div>
     </div>
+  </div>
+
+  <!-- Map appearance toggle -->
+  <div id="map-mode-ctrl">
+    <button class="mm-btn" id="mm-light" onclick="setMapMode('light')">☀ LIGHT</button>
+    <button class="mm-btn active" id="mm-dark" onclick="setMapMode('dark')">● DARK</button>
   </div>
 </div>
 
