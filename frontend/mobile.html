@@ -14,7 +14,135 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <!-- ── TEMPORARY PAGE-vs-MAP DIAGNOSTIC INSTRUMENTATION ──────────────────────────────────────
+       Completely inert unless the page is loaded with ?mapdebug=1 in the URL. Answers exactly
+       one question: when the screen goes blank/blue-flash on cellular, is the PAGE itself still
+       alive (script still running, no reload/crash), or is the page fine and only MapLibre/WebGL
+       is failing underneath it? Does not change map provider, style, colors, UI, retry/timeout
+       behavior, or any navigation/GPS/IMU/EKF/ONNX/RoadGraph code. Safe to delete this whole
+       block plus the corresponding hooks in the main script once the question above is answered.
+       ── -->
+  <script>
+  (function(){
+    var params = new URLSearchParams(location.search);
+    window.__MAPDEBUG = params.has('mapdebug');
+    window.__mapDiagLines = [];
+    function pad(n){ return n<10 ? '0'+n : ''+n; }
+    function nowClock(){ var d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }
+    function ensureOverlay(){
+      var wrap = document.getElementById('map-diag-overlay');
+      if(!wrap && document.body){
+        wrap = document.createElement('div');
+        wrap.id = 'map-diag-overlay';
+        wrap.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:rgba(0,0,0,0.92);'
+          + 'color:#39ff14;font:11px/1.4 monospace;pointer-events:none;';
+        var status = document.createElement('div');
+        status.id = 'map-diag-status';
+        status.style.cssText = 'padding:6px 8px;border-bottom:1px solid #39ff14;white-space:pre-wrap;font-weight:bold;';
+        var log = document.createElement('div');
+        log.id = 'map-diag-log';
+        log.style.cssText = 'padding:6px 8px;max-height:40vh;overflow:auto;white-space:pre-wrap;';
+        log.textContent = window.__mapDiagLines.join('\n') + (window.__mapDiagLines.length ? '\n' : '');
+        wrap.appendChild(status);
+        wrap.appendChild(log);
+        document.body.appendChild(wrap);
+      }
+      return wrap;
+    }
+    window.__mapDiag = function(tag, detail){
+      var line = '[' + tag + '] ' + detail;
+      console.log('[MapDiag]', line);
+      window.__mapDiagLines.push(line);
+      if(!window.__MAPDEBUG) return;
+      var wrap = ensureOverlay();
+      if(wrap){
+        var log = document.getElementById('map-diag-log');
+        if(log){ log.textContent += line + '\n'; log.scrollTop = log.scrollHeight; }
+      } else {
+        document.addEventListener('DOMContentLoaded', function(){
+          var w2 = ensureOverlay();
+          var l2 = w2 && document.getElementById('map-diag-log');
+          if(l2) l2.textContent = window.__mapDiagLines.join('\n') + '\n';
+        }, { once:true });
+      }
+    };
+    if(!window.__MAPDEBUG) return; // everything below only ever registers listeners/timers under the flag
+
+    // ── PAGE ALIVE ticker — proves the JS event loop is still running, once per second ──
+    var pageLoadedAt = Date.now();
+    function tickAlive(){
+      var wrap = ensureOverlay();
+      var status = wrap && document.getElementById('map-diag-status');
+      if(status){
+        var navType='?';
+        try{
+          var navEntries = performance.getEntriesByType && performance.getEntriesByType('navigation');
+          if(navEntries && navEntries[0]) navType = navEntries[0].type;
+          else if(performance.navigation) navType = ['navigate','reload','back_forward','reserved'][performance.navigation.type] || String(performance.navigation.type);
+        }catch(e){}
+        var loadCount='?';
+        try{
+          loadCount = sessionStorage.getItem('__mapDiagLoadCount') || '?';
+        }catch(e){}
+        status.textContent = 'PAGE ALIVE\n' + nowClock()
+          + '\nnav=' + navType + '  loads=' + loadCount
+          + '  aliveFor=' + Math.round((Date.now()-pageLoadedAt)/1000) + 's'
+          + '  online=' + navigator.onLine;
+      }
+    }
+    setInterval(tickAlive, 1000);
+    tickAlive();
+
+    // ── page-load counter (survives reloads within the same tab, resets on a fresh tab/session) ──
+    try{
+      var n = parseInt(sessionStorage.getItem('__mapDiagLoadCount')||'0',10) + 1;
+      sessionStorage.setItem('__mapDiagLoadCount', String(n));
+      window.__mapDiag('PAGE_START', 'load #'+n+' this session, navigator.onLine='+navigator.onLine);
+    }catch(e){
+      window.__mapDiag('PAGE_START', 'sessionStorage unavailable: '+(e&&e.message?e.message:e));
+    }
+
+    // ── page lifecycle — if the page itself reloads/unloads/crashes, one of these fires ──
+    window.addEventListener('pageshow', function(e){ window.__mapDiag('PAGE_SHOW', 'persisted='+e.persisted); });
+    window.addEventListener('pagehide', function(e){ window.__mapDiag('PAGE_HIDE', 'persisted='+e.persisted); });
+    window.addEventListener('beforeunload', function(){ window.__mapDiag('PAGE_BEFOREUNLOAD', 'page is about to unload/reload'); });
+    document.addEventListener('visibilitychange', function(){ window.__mapDiag('PAGE_VISIBILITY', 'visibilityState='+document.visibilityState); });
+
+    // ── uncaught errors / rejections — would explain a silent crash without a full reload ──
+    window.addEventListener('error', function(e){
+      window.__mapDiag('WINDOW_ERROR', (e&&e.message?e.message:'?')+' @ '+(e&&e.filename?e.filename:'?')+':'+(e&&e.lineno?e.lineno:'?'));
+    });
+    window.addEventListener('unhandledrejection', function(e){
+      var r=e&&e.reason;
+      window.__mapDiag('UNHANDLED_REJECTION', r&&r.message?r.message:String(r));
+    });
+
+    // ── network/connection info ──
+    window.__mapDiag('NAVIGATOR_ONLINE', String(navigator.onLine));
+    window.addEventListener('online', function(){ window.__mapDiag('NAVIGATOR_ONLINE','true (online event)'); });
+    window.addEventListener('offline', function(){ window.__mapDiag('NAVIGATOR_ONLINE','false (offline event)'); });
+    try{
+      var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      window.__mapDiag('NETWORK_TYPE', conn ? ('effectiveType='+conn.effectiveType+' type='+(conn.type||'?')+' downlink='+conn.downlink+'Mbps rtt='+conn.rtt+'ms') : 'Network Information API unavailable on this browser');
+    }catch(e){
+      window.__mapDiag('NETWORK_TYPE', 'probe threw: '+(e&&e.message?e.message:e));
+    }
+
+    // ── WebGL availability probe — independent of MapLibre/CDN ──
+    try{
+      var testCanvas = document.createElement('canvas');
+      var gl2 = testCanvas.getContext('webgl2');
+      window.__mapDiag('WEBGL2', gl2 ? 'context OK' : 'getContext("webgl2") returned null');
+      var gl1 = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+      window.__mapDiag('WEBGL1', gl1 ? 'context OK' : 'getContext("webgl"/"experimental-webgl") returned null');
+    }catch(e){
+      window.__mapDiag('WEBGL1', 'probe threw: '+(e&&e.message?e.message:e));
+    }
+  })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"
+    onload="if(window.__mapDiag) window.__mapDiag('MAPLIBRE_CDN','onload fired, typeof maplibregl=' + typeof maplibregl)"
+    onerror="if(window.__mapDiag) window.__mapDiag('MAPLIBRE_CDN','FAILED to load (onerror fired) — maplibre-gl.js never arrived')"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
   <style>
     :root {
@@ -55,7 +183,7 @@
       transition:opacity 0.25s ease;
     }
     /* when readings sheet is open, float the toggle just above the sheet edge */
-    body.tech-mode #map-mode-ctrl{bottom:calc(50dvh + 10px);}
+    body.tech-mode #map-mode-ctrl{bottom:calc(50svh + 10px);}
     .mm-btn{
       padding:4px 10px;border-radius:16px;border:none;background:transparent;
       font-size:.42rem;font-weight:600;font-family:var(--mono);letter-spacing:.07em;
@@ -152,7 +280,7 @@
     /* ── TECH PANEL — bottom sheet, never covers more than lower half ── */
     .tech-panel{
       position:fixed;bottom:0;left:0;right:0;
-      height:50dvh;max-height:50dvh;
+      height:50svh;max-height:50svh;
       z-index:200;
       background:var(--glass-b);
       border-top:1px solid rgba(0,200,185,0.12);
@@ -164,8 +292,9 @@
     body.tech-mode .tech-panel{transform:translateY(0);}
     .tech-drag-area{display:flex;justify-content:center;padding:10px 0 6px;flex-shrink:0;cursor:pointer;}
     .tech-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,0.15);}
-    .tech-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 0 env(safe-area-inset-bottom,16px);
+    .tech-scroll{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:0 0 8px;
       scrollbar-width:thin;scrollbar-color:rgba(0,200,185,0.15) transparent;}
+    .tech-footer{flex-shrink:0;padding:0 0 env(safe-area-inset-bottom,16px);}
     .tech-scroll::-webkit-scrollbar{width:3px;}
     .tech-scroll::-webkit-scrollbar-thumb{background:rgba(0,200,185,0.15);border-radius:2px;}
 
@@ -231,7 +360,14 @@
     .tr-item{display:flex;flex-direction:column;align-items:center;min-width:56px;flex:1;padding:3px 4px;}
     .tr-sep{width:1px;background:var(--div);align-self:stretch;margin:2px 0;flex-shrink:0;}
     .tr-l{font-family:var(--sans);font-size:.4rem;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;font-weight:500;}
-    .tr-v{font-family:var(--mono);font-size:.68rem;font-weight:600;color:var(--bone-dim);margin-top:2px;font-variant-numeric:tabular-nums;}
+    .tr-v{font-family:var(--mono);font-size:.68rem;font-weight:600;color:var(--bone-dim);margin-top:2px;font-variant-numeric:tabular-nums;white-space:normal;word-break:break-word;text-align:center;}
+    /* Long values (Pos Source / ONNX Pipeline / Road Graph) wrap instead of overlapping the
+       next column on narrow iPhone widths — no redesign, same grid/colors/scroll, just a
+       wider minimum column and slightly smaller type so more fits before it needs to scroll. */
+    @media (max-width:400px){
+      .tr-item{min-width:78px;}
+      .tr-v{font-size:.6rem;}
+    }
     .tun-chip{font-size:.52rem;font-family:var(--mono);font-weight:600;transition:color .3s;}
     .tun-chip.clear{color:rgba(53,196,114,0.55);}
     .tun-chip.tunnel{color:var(--nr);animation:blink .7s step-end infinite;}
@@ -576,7 +712,13 @@
       <span class="mod perm-needed" id="imu-chip" onclick="openSensorModal()">⊕ REAL IMU</span>
     </div>
 
-    <!-- Section: Controls -->
+  </div><!-- end .tech-scroll -->
+
+  <!-- Controls footer: deliberately OUTSIDE .tech-scroll so its buttons (GNSS Toggle above
+       all) sit at a fixed position within the panel regardless of scroll position or any
+       reflow from variable-height debug content above — that variable-height content stays
+       inside .tech-scroll and can wrap/scroll freely without moving these buttons at all. -->
+  <div class="tech-footer">
     <div class="tp-divider"></div>
     <div class="actions" style="padding:0 16px;">
       <button class="abtn play" id="btn-play" onclick="toggleSim()">⏸ Pause</button>
@@ -588,7 +730,7 @@
     </div>
 
     <div class="desktop-link"><a href="index.html?desktop=1">↗ Open desktop view</a></div>
-  </div><!-- end .tech-scroll -->
+  </div><!-- end .tech-footer -->
 </div><!-- end .tech-panel -->
 
 <!-- SENSOR MODAL -->
@@ -854,6 +996,13 @@ function onDeviceMotion(e){
   // Honest activation: IMU is only "ACTIVE" once a real devicemotion event has arrived —
   // never merely because requestPermission() resolved.
   IMU.evtCount++;
+  // Hz tracking: count every real devicemotion event that reaches this function, at the same
+  // point IMU.evtCount is counted — previously this was incremented much further down, after two
+  // possible early-return points (missing acceleration data, non-finite fields), which let
+  // IMU.hz report 0 even while IMU.evtCount/IMU.active correctly showed the sensor as live and
+  // receiving events. This does not change any navigation/dead-reckoning math, only the debug
+  // counter's timing.
+  _dmCount++;
   if(!IMU.active){
     IMU.active=true; IMU.state='ACTIVE'; IMU.firstEventAt=performance.now();
     BaroSensor.start(); // attempt real barometer the same moment IMU goes live — same user gesture context
@@ -914,24 +1063,71 @@ function onDeviceMotion(e){
     IMU._alignBuf.push([fax, fay, faz]);
     if(IMU._alignBuf.length >= 150){ // ~5 s at 30 Hz
       const buf = IMU._alignBuf;
-      // Gravity axis = highest absolute mean
-      const means = [0,1,2].map(i => Math.abs(buf.reduce((s,r)=>s+r[i],0)/buf.length));
-      const gravIdx = means.indexOf(Math.max(...means));
-      // Forward axis = highest variance among the other two
-      const cands = [0,1,2].filter(i=>i!==gravIdx);
+      // Which axes are even eligible candidates depends on whether this buffer's samples
+      // still contain a gravity DC component. IMU._gravFree records that per-sample (true
+      // when the browser's gravity-free e.acceleration is in use, which is the normal,
+      // preferred case — e.g. iPhone Safari almost always provides it). When gravity has
+      // ALREADY been subtracted by the platform, none of fax/fay/faz carries a gravity
+      // component any more, so "the axis with the highest mean" is just whichever axis
+      // happens to have the largest residual sensor bias that session — pure noise, not
+      // gravity. Excluding that axis from candidacy in that case was throwing away one of
+      // the three real candidates at random, and if it happened to be the true forward
+      // axis, real driving acceleration would land on an axis the alignment could never
+      // select — producing exactly "IMU active, Hz normal, speed stays ~0 during real
+      // driving" with no error anywhere. Only exclude a "gravity axis" when this buffer's
+      // samples genuinely still contain one (the manual gravity-removal fallback path).
+      const gravFreeBuf = IMU._gravFree;
+      let cands;
+      if(gravFreeBuf){
+        // No gravity component to identify/exclude — all three axes are real candidates.
+        cands = [0,1,2];
+      } else {
+        // Gravity axis = highest absolute mean (still valid here: this buffer's samples
+        // come from accelerationIncludingGravity, so gravity really is present on one axis).
+        const means = [0,1,2].map(i => Math.abs(buf.reduce((s,r)=>s+r[i],0)/buf.length));
+        const gravIdx = means.indexOf(Math.max(...means));
+        cands = [0,1,2].filter(i=>i!==gravIdx);
+      }
+      // Forward axis = highest variance among the candidates
       const vars  = cands.map(i => {
         const mn = buf.reduce((s,r)=>s+r[i],0)/buf.length;
         return buf.reduce((s,r)=>s+(r[i]-mn)**2,0)/buf.length;
       });
-      IMU.fwdAxisIdx  = cands[vars.indexOf(Math.max(...vars))];
-      // Sign: net displacement during buffer should be positive (car moved forward)
-      const netFwd = buf.reduce((s,r)=>s+r[IMU.fwdAxisIdx],0);
-      IMU.fwdAxisSign = netFwd >= 0 ? 1 : -1;
-      IMU.alignDone   = true;
-      IMU._alignBuf   = [];
-      const axNames = ['X','Y','Z'];
-      console.log(`[NAVDRIFT] Alignment: forward=${axNames[IMU.fwdAxisIdx]} sign=${IMU.fwdAxisSign}`);
-      try{ document.getElementById('sv-be').textContent = axNames[IMU.fwdAxisIdx]+'✓'; }catch(e){}
+      const maxVar = Math.max(...vars);
+      // Require actual evidence of motion before locking a forward axis. A stationary phone
+      // produces near-zero variance on every axis, and picking "highest variance" out of pure
+      // sensor noise locks an arbitrary, permanent axis — that was the real bug (a 5s window
+      // that fills entirely during a stationary calibration period had nothing but noise to
+      // distinguish axes by). 0.0625 (m/s²)² is the square of the same 0.25 m/s² dead-band
+      // already used elsewhere in this function to separate real acceleration from sensor
+      // noise, so this reuses an existing, already-justified threshold rather than inventing
+      // a new one. Genuine walking/driving variance (footstep impacts, vehicle acceleration)
+      // is well above this, so real motion still aligns within one window as before; a
+      // noise-only window is simply discarded and a fresh one starts collecting, rather than
+      // locking onto it or waiting forever (real motion, once it occurs, is caught promptly).
+      if(maxVar >= 0.0625){
+        IMU.fwdAxisIdx  = cands[vars.indexOf(maxVar)];
+        // Sign: net displacement during buffer should be positive (car moved forward)
+        const netFwd = buf.reduce((s,r)=>s+r[IMU.fwdAxisIdx],0);
+        IMU.fwdAxisSign = netFwd >= 0 ? 1 : -1;
+        // IMU.fwdAccelBias was measured during stationary calibration, which always runs
+        // before alignment can even start (alignDone begins false, calibrated must be true
+        // first) — so that bias was captured on the DEFAULT axis (index 1), never on
+        // whichever axis alignment ends up locking. Applying a bias measured on one physical
+        // axis to a different one is not a real per-axis bias — it is an arbitrary offset.
+        // If alignment locked a different axis than the default, that measurement simply
+        // doesn't exist for the new axis; 0 is the honest value until it's actually measured,
+        // not the old axis's number carried over.
+        if(IMU.fwdAxisIdx !== 1) IMU.fwdAccelBias = 0;
+        IMU.alignDone   = true;
+        IMU._alignBuf   = [];
+        const axNames = ['X','Y','Z'];
+        console.log(`[NAVDRIFT] Alignment: forward=${axNames[IMU.fwdAxisIdx]} sign=${IMU.fwdAxisSign}`);
+        try{ document.getElementById('sv-be').textContent = axNames[IMU.fwdAxisIdx]+'✓'; }catch(e){}
+      } else {
+        // Noise-only calibration window. Do NOT lock an axis.
+        IMU._alignBuf = [];
+      }
     }
   }
 
@@ -965,8 +1161,24 @@ function onDeviceMotion(e){
   IMU.fwdAccel = clamp(deadFwd, -15, 15);
 
   if(dt>0 && dt<0.5){
-    IMU.intSpeed = Math.max(0, IMU.intSpeed + IMU.fwdAccel*dt);
-    IMU.intSpeed = Math.min(IMU.intSpeed, 40); // cap at 40 m/s (~144 km/h)
+    // ── Signed raw accumulator, clamped only for what's actually consumed ──
+    // The previous integrator clamped IMU.intSpeed itself to >=0 EVERY tick, then fed that
+    // already-clamped value back in as next tick's base. That clamp is a reflecting boundary:
+    // whenever noise pushed the running total slightly negative, that excursion was discarded
+    // (snapped to 0) instead of being carried forward to cancel a later positive excursion.
+    // With symmetric, zero-mean sensor noise, a reflecting boundary at zero produces a net
+    // UPWARD drift over time on its own — a real statistical effect, independent of any
+    // accelerometer bias. That is the actual source of the stationary speed-ratchet. Fix: keep
+    // the true signed running total in IMU._intSpeedRaw (allowed to go negative — physically
+    // "net deceleration past the last zero-crossing"), and only clamp to >=0 at the point a
+    // value is reported/consumed (IMU.intSpeed). Up-noise and down-noise now properly cancel
+    // in the raw accumulator while stationary instead of ratcheting. Real motion is unaffected:
+    // during genuine acceleration the raw total stays positive and IMU.intSpeed tracks it
+    // exactly as before; a real constant-speed cruise (near-zero net accel for as long as it
+    // lasts) leaves the raw total sitting wherever real acceleration/deceleration last put it,
+    // not reset toward zero by anything time-based.
+    IMU._intSpeedRaw = clamp((IMU._intSpeedRaw||0) + IMU.fwdAccel*dt, -40, 40);
+    IMU.intSpeed = Math.max(0, IMU._intSpeedRaw);
     // heading from gz integration
     IMU.intHeading += IMU.gz * dt;
   }
@@ -975,13 +1187,47 @@ function onDeviceMotion(e){
   // integration error, not real motion. If that pattern recurs, reset rather than trust it.
   if(IMU.intSpeed > 33 && Math.abs(IMU.fwdAccel) < 0.3){
     IMU._pinnedMs = (IMU._pinnedMs||0) + dt*1000;
-    if(IMU._pinnedMs > 2500){ IMU.intSpeed = 0; IMU._pinnedMs = 0; }
+    if(IMU._pinnedMs > 2500){ IMU.intSpeed = 0; IMU._intSpeedRaw = 0; IMU._pinnedMs = 0; }
   } else {
     IMU._pinnedMs = 0;
   }
 
-  // Hz tracking
-  _dmCount++;
+  // ── Zero-Velocity Update (ZUPT) ──
+  // IMU.intSpeed is a one-sided (never-negative) integrator of forward acceleration. Any real,
+  // honest residual bias/noise left after the dead-band and stationary-calibration bias
+  // subtraction above — inherent to consumer MEMS accelerometers — will not average to exactly
+  // zero, so across many ticks it can only ratchet upward while the device is genuinely
+  // stationary (the only existing safeguard, the "runaway watchdog" above, is coarse: it only
+  // fires once speed is already pinned above 33 m/s). Fed into the EKF predict step every ~65ms
+  // regardless of GNSS-lock status, that drift is what showed up as a moving "predicted dot"
+  // during a real stationary GNSS-locked test.
+  //
+  // The fix uses independent sensor evidence — sustained low filtered-acceleration-magnitude
+  // variance, the same kind of "stillness" check already used one-time during stationary
+  // calibration (see the `stillness` variance check below in _runCalibration) — generalized to
+  // run continuously. Accelerometer magnitude alone cannot tell "stationary" apart from "moving
+  // at a genuinely constant velocity" (a vehicle holding steady speed on a smooth road also
+  // produces near-zero net acceleration), so a second, independent guard is required:
+  // IMU.intSpeed must already be small (< 2.5 m/s, roughly a fast walk) before a reset is
+  // allowed. This is not the forbidden "freeze the marker because displayed speed is low"
+  // shortcut — that would suppress or hide movement by clamping output whenever speed reads low.
+  // Here the accel-magnitude/duration condition still has to fire first on independent sensor
+  // evidence; the speed gate only prevents that from ever being able to arrest an already-
+  // established higher speed, however smooth or constant the underlying motion is. Once
+  // IMU.intSpeed has legitimately grown past the gate, ZUPT is structurally unable to zero it —
+  // real walking, real driving, and real GNSS-blackout dead reckoning at speed are all unaffected.
+  {
+    const zuptMag = Math.abs(fax) + Math.abs(fay) + Math.abs(faz);
+    if(zuptMag < 0.35){
+      IMU._zuptMs = (IMU._zuptMs||0) + dt*1000;
+      if(IMU._zuptMs > 800 && IMU.intSpeed < 2.5){ // sustained stillness AND already near rest
+        IMU.intSpeed = 0;
+        IMU._intSpeedRaw = 0; // clear the raw accumulator too, or the next tick reads it back
+      }
+    } else {
+      IMU._zuptMs = 0;
+    }
+  }
 
   // Log at 10Hz rate (every ~3 samples at 30Hz)
   if(_dmCount % 3 === 0){
@@ -990,7 +1236,12 @@ function onDeviceMotion(e){
       ax: rawAx.toFixed(3), ay: rawAy.toFixed(3), az: rawAz.toFixed(3),
       gx: IMU.gx.toFixed(4), gy: IMU.gy.toFixed(4), gz: IMU.gz.toFixed(4),
       fwd_accel: IMU.fwdAccel.toFixed(3),
-      speed_mps: IMU.intSpeed.toFixed(2),
+      speed_mps: IMU.intSpeed.toFixed(2), // dead-reckoned (IMU) speed — NOT GNSS
+      // Diagnostic-only column: the last real, finite GNSS ground speed GPS.lastSpeedMps was
+      // actually holding at this instant, for direct comparison against speed_mps above. An
+      // explicit 'NaN' string means no real GNSS speed has ever been accepted yet — never a
+      // fabricated 0, which would be indistinguishable from a real reported zero speed.
+      gnss_speed_mps: (typeof GPS!=='undefined' && GPS.lastSpeedMps!=null && isFinite(GPS.lastSpeedMps)) ? GPS.lastSpeedMps.toFixed(2) : 'NaN',
       heading_rad: IMU.intHeading.toFixed(4)
     });
     if(IMU.log.length > 3000) IMU.log.shift(); // keep ~5 min
@@ -1164,7 +1415,7 @@ async function requestSensorAccess(){
         }
         // Always start integrated speed from a clean zero regardless of calibration quality —
         // never let a bad calibration window hand off a pre-poisoned speed value.
-        IMU.intSpeed = 0; IMU.intHeading = 0;
+        IMU.intSpeed = 0; IMU._intSpeedRaw = 0; IMU.intHeading = 0;
         IMU.calibrated = true;
         if(IMU.active){
           status.textContent = '✓ Calibrated. Live IMU active at ~' + (IMU.hz||30) + ' Hz — ' + IMU.evtCount + ' samples received.';
@@ -1211,8 +1462,12 @@ function activateSensorMode(){
 /* ── IMU CSV EXPORT ── */
 function exportIMULog(){
   if(IMU.log.length === 0){ alert('No IMU data yet. Enable real IMU or run the simulation first.'); return; }
-  const header = 't_ms,ax_mps2,ay_mps2,az_mps2,gx_rps,gy_rps,gz_rps,fwd_accel_mps2,speed_mps,heading_rad\n';
-  const rows = IMU.log.map(r=>`${r.t},${r.ax},${r.ay},${r.az},${r.gx},${r.gy},${r.gz},${r.fwd_accel},${r.speed_mps},${r.heading_rad}`).join('\n');
+  // gnss_speed_mps = raw GNSS ground speed last accepted from pos.coords.speed (diagnostic-only).
+  // speed_mps      = current dead-reckoned (IMU-integrated) speed — unchanged, still the same
+  //                  column it always was. Both are m/s. 'NaN' in gnss_speed_mps means no real
+  //                  GNSS speed had been accepted yet at that row, never a fabricated 0.
+  const header = 't_ms,ax_mps2,ay_mps2,az_mps2,gx_rps,gy_rps,gz_rps,fwd_accel_mps2,speed_mps,gnss_speed_mps,heading_rad\n';
+  const rows = IMU.log.map(r=>`${r.t},${r.ax},${r.ay},${r.az},${r.gx},${r.gy},${r.gz},${r.fwd_accel},${r.speed_mps},${r.gnss_speed_mps!==undefined?r.gnss_speed_mps:'NaN'},${r.heading_rad}`).join('\n');
   const blob = new Blob([header+rows], {type:'text/csv'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1370,6 +1625,7 @@ function updateDebugPanel(){
 
 const DT=0.067;
 let _map,_mapReady=false,_gtC=[],_ndC=[],_imuC=[],_ekfC=[],_vm,_gtm,_mapMoving=false,_mapZooming=false;
+let _lastCamLa=null,_lastCamLo=null,_camAwayMs=0; // camera-follow jumpTo gate state (last recentered position, sustained-distance timer)
 
 function _emptyLine(){return{type:'Feature',geometry:{type:'LineString',coordinates:[]}};}
 function _geoCircle(lat,lon,rM,n=32){
@@ -1773,6 +2029,26 @@ let _mapRetryAttempt=0, _mapLoadTimer=null, _mapRetryTimer=null, _pendingCityKey
 let _mapTileErrorTimes=[], _lastMapRebuildAt=0;
 let _mapLoadProgressSeen=false, _mapLoadExtended=false; // per-attempt only — reset at the top of every _createMap() call
 
+// TEMPORARY DIAGNOSTIC: a parallel fetch() against the exact same style URL MapLibre itself
+// requests, purely to report reachability/HTTP status/content-type/JSON-parseability
+// independently of whatever MapLibre's internal fetch does with it. Runs once, only under
+// ?mapdebug=1. Does not touch MAP_STYLE_URL, does not replace or precede MapLibre's own request,
+// and has no effect on map init, retries, or rendering.
+if(typeof window!=='undefined' && window.__MAPDEBUG){
+  window.__mapDiag('STYLE_REQUEST','fetching '+MAP_STYLE_URL);
+  fetch(MAP_STYLE_URL,{mode:'cors'}).then(function(r){
+    window.__mapDiag('STYLE_RESPONSE_STATUS','status='+r.status+' ok='+r.ok);
+    window.__mapDiag('STYLE_CONTENT_TYPE', r.headers.get('content-type')||'?');
+    return r.text().then(function(txt){
+      var parseOk=false;
+      try{ JSON.parse(txt); parseOk=true; }catch(e){}
+      window.__mapDiag('STYLE_JSON_PARSE','parseOk='+parseOk+' bytes='+txt.length);
+    });
+  }).catch(function(e){
+    window.__mapDiag('STYLE_REQUEST','fetch FAILED: '+(e&&e.message?e.message:e));
+  });
+}
+
 function _clearMapTimers(){
   if(_mapLoadTimer){clearTimeout(_mapLoadTimer);_mapLoadTimer=null;}
   if(_mapRetryTimer){clearTimeout(_mapRetryTimer);_mapRetryTimer=null;}
@@ -1835,6 +2111,11 @@ window.addEventListener('offline', ()=>{
 function _createMap(c){
   const cfg=CITIES[c];
   _mapLoadProgressSeen=false; _mapLoadExtended=false; // fresh state for this attempt only
+  if(window.__MAPDEBUG){
+    const _r=(function(){ try{ return document.getElementById('map').getBoundingClientRect(); }catch(e){ return null; } })();
+    window.__mapDiag('CONTAINER_SIZE', _r ? ('w='+_r.width+' h='+_r.height) : 'could not read #map bounding rect');
+    window.__mapDiag('MAP_CONSTRUCTOR', 'about to call new maplibregl.Map(), typeof maplibregl='+typeof maplibregl);
+  }
   try{
     _map=new maplibregl.Map({
       container:'map',
@@ -1851,11 +2132,28 @@ function _createMap(c){
       touchZoomRotate:true,
       scrollZoom:{around:'center'}
     });
+    if(window.__MAPDEBUG){
+      window.__mapDiag('MAP_CONSTRUCTOR', 'new maplibregl.Map() returned successfully');
+      try{
+        const glCanvas=_map.getCanvas();
+        if(glCanvas){
+          glCanvas.addEventListener('webglcontextlost', (ev)=>{
+            window.__mapDiag('WEBGL_CONTEXT_LOST', 'statusMessage='+(ev&&ev.statusMessage?ev.statusMessage:'?'));
+          });
+          glCanvas.addEventListener('webglcontextrestored', ()=>{
+            window.__mapDiag('WEBGL_CONTEXT_RESTORED', 'context restored on the live map canvas');
+          });
+        }
+      }catch(e){
+        window.__mapDiag('WEBGL_CONTEXT_LOST', 'could not attach context-loss listener: '+(e&&e.message?e.message:e));
+      }
+    }
   }catch(e){
     // (A) Map initialization itself throwing synchronously — bad container, WebGL truly
     // unavailable, etc. Real and distinct from a network-fetch failure; still recovered the
     // same way (retry), since a transient WebGL-context problem on some devices can clear too.
     console.warn('[Map] (A) map initialization threw synchronously:', e && e.message ? e.message : e);
+    if(window.__MAPDEBUG) window.__mapDiag('MAP_ERROR','(A) synchronous init exception: '+(e&&e.stack?e.stack:(e&&e.message?e.message:e)));
     _scheduleMapRetry('(A) map init exception');
     return;
   }
@@ -1877,10 +2175,28 @@ function _createMap(c){
   // events set this flag, and it is only ever read once (at the watchdog's deadline), never used
   // to reset or repeatedly extend the timer, so a chatty event stream can't stall the watchdog
   // indefinitely.
-  _map.on('styledata', ()=>{ _mapLoadProgressSeen=true; });
-  _map.on('sourcedata', (e)=>{ if(e&&e.isSourceLoaded) _mapLoadProgressSeen=true; });
+  _map.on('styledata', ()=>{
+    _mapLoadProgressSeen=true;
+    if(window.__MAPDEBUG){
+      let isLoaded='?';
+      try{ isLoaded=_map.isStyleLoaded(); }catch(e){}
+      window.__mapDiag('STYLE_DATA','styledata fired, isStyleLoaded='+isLoaded);
+    }
+  });
+  _map.on('sourcedata', (e)=>{
+    if(e&&e.isSourceLoaded){
+      _mapLoadProgressSeen=true;
+      if(window.__MAPDEBUG) window.__mapDiag('SOURCE_DATA','source "'+(e.sourceId||'?')+'" loaded');
+    }
+  });
   _map.on('error', (e)=>{
     const msg = e && e.error ? e.error.message : String(e);
+    if(window.__MAPDEBUG){
+      const errUrl=(e&&e.error&&e.error.url)||(e&&e.tile&&e.tile.url)||(e&&e.source&&e.source.url)||null;
+      const errStatus=(e&&e.error&&e.error.status)!=null?e.error.status:null;
+      window.__mapDiag('MAP_ERROR', JSON.stringify({message:msg, sourceId:e&&e.sourceId||null, url:errUrl, status:errStatus, mapReady:_mapReady}));
+      if(e&&e.sourceId) window.__mapDiag('TILE_ERROR', 'sourceId='+e.sourceId+' url='+(errUrl||'?')+' status='+(errStatus!=null?errStatus:'?')+' msg='+msg);
+    }
     if(!_mapReady){
       // Before the first successful load, ANY error here is functionally a (B) style-JSON or
       // (C) sprite/glyph failure — MapLibre does not partially initialize a style, so whichever
@@ -1908,6 +2224,7 @@ function _createMap(c){
     }
   });
   _map.on('load',()=>{
+    if(window.__MAPDEBUG) window.__mapDiag('MAP_LOAD','load event fired — map reached load, rendering should be visible now');
     _clearMapTimers();
     _mapRetryAttempt=0; // this style genuinely loaded — reset backoff for any future failure
     _mapTileErrorTimes=[];
@@ -1937,14 +2254,21 @@ function _createMap(c){
       // a permanently stuck request still cannot extend itself forever.
       _mapLoadExtended=true;
       console.warn('[Map] load still pending at '+(attemptTimeoutMs/1000)+'s but genuine progress observed (styledata/sourcedata) — granting one '+(MAP_LOAD_EXTENSION_MS/1000)+'s extension before retrying');
+      if(window.__MAPDEBUG) window.__mapDiag('MAP_TIMEOUT', 'base '+(attemptTimeoutMs/1000)+'s reached, progress seen — extending by '+(MAP_LOAD_EXTENSION_MS/1000)+'s');
       _mapLoadTimer=setTimeout(()=>{
         if(!_mapReady){
-          _scheduleMapRetry('(E/F) style load timed out after a '+(MAP_LOAD_EXTENSION_MS/1000)+'s extension on top of '+(attemptTimeoutMs/1000)+'s (progress was seen but load never completed)');
+          const reason='(E/F) style load timed out after a '+(MAP_LOAD_EXTENSION_MS/1000)+'s extension on top of '+(attemptTimeoutMs/1000)+'s (progress was seen but load never completed)';
+          if(window.__MAPDEBUG) window.__mapDiag('MAP_TIMEOUT', reason);
+          _scheduleMapRetry(reason);
         }
       },MAP_LOAD_EXTENSION_MS);
       return;
     }
-    _scheduleMapRetry('(E/F) style load timed out after '+(attemptTimeoutMs/1000)+'s (no error event, no load event, no progress observed — consistent with a hung network/DNS/TLS request or a transition mid-fetch)');
+    {
+      const reason='(E/F) style load timed out after '+(attemptTimeoutMs/1000)+'s (no error event, no load event, no progress observed — consistent with a hung network/DNS/TLS request or a transition mid-fetch)';
+      if(window.__MAPDEBUG) window.__mapDiag('MAP_TIMEOUT', reason);
+      _scheduleMapRetry(reason);
+    }
   },attemptTimeoutMs);
 }
 
@@ -1973,7 +2297,7 @@ function init(key){
   S.totND=0;S.totEKF=0;S.n=0;S.spd=0;S.pH=0;S.nhcN=0;
   S.vibBuf=[];S.baroAlt=220;S.baroPrev=220;S.inTunnel=false;S.tunDur=0;S.hmmCorrN=0;
   S.hmmProb=new Float32Array(S.route.length).fill(-Math.log(S.route.length));
-  IMU.intSpeed=0; IMU.intHeading=0;
+  IMU.intSpeed=0; IMU._intSpeedRaw=0; IMU.intHeading=0;
   IMU.alignDone=false; IMU._alignBuf=[];
   ekfReset(st[0],st[1]);
   initMap(key);
@@ -2041,8 +2365,17 @@ function step(){
       // Pulls 30% of the way toward the real GPS fix each fresh fix (never a full snap, so the
       // trace still visibly shows its own drift between fixes) — no added jitter of any kind.
       if(freshFixThisTick){
-        S.iLa += (S.gtLa - S.iLa) * 0.3;
-        S.iLo += (S.gtLo - S.iLo) * 0.3;
+        // Same hard physical sanity bound as the blackout trail below: a single fix-to-fix
+        // pull implying more than 60 m/s is rejected outright (this tick's pull is skipped)
+        // rather than drawn, so one bad/glitched GPS fix can't produce a giant jump on this
+        // diagnostic line either. DT here is the nominal ~1s fix interval, used only to size
+        // a generous outer bound, not to compute the pull itself (unchanged: still 0.3 of the
+        // real raw gt-iLa gap, no added jitter).
+        const pullDistM = dist(S.gtLa, S.gtLo, S.iLa, S.iLo);
+        if(pullDistM <= 60){
+          S.iLa += (S.gtLa - S.iLa) * 0.3;
+          S.iLo += (S.gtLo - S.iLo) * 0.3;
+        }
       }
     } else {
       ekfStep(usedSpd2, usedDH2, DT2, false, S.gtLa, S.gtLo);
@@ -2068,8 +2401,19 @@ function step(){
       // No Math.random(), no synthetic jitter, no fabricated drift — only the real,
       // sensor-derived dead-reckoning calculation above. If real IMU drift is large, this
       // shows a large trail; if it's small (a genuinely stationary phone), it stays small.
-      S.iLa += dl;
-      S.iLo += dn;
+      //
+      // Hard physical sanity bound: reject a single step's displacement outright if it implies
+      // a speed beyond any physically plausible vehicle/pedestrian value (60 m/s ≈ 216 km/h),
+      // rather than drawing whatever it computed to. This is a bound on THIS diagnostic trail
+      // only — it never touches usedSpd2, IMU.intSpeed, EKF state, or the navigation solution —
+      // so a bad single sample is dropped (this tick contributes no displacement) instead of
+      // drawing a giant segment, without hiding or disabling the trail itself.
+      const stepDistM = Math.hypot(dl*111000, dn*111000*Math.cos(S.iLa*Math.PI/180));
+      const maxStepDistM = 60 * rawDt; // 60 m/s hard ceiling × this tick's own real dt
+      if(rawDt>0 && stepDistM<=maxStepDistM && isFinite(dl) && isFinite(dn)){
+        S.iLa += dl;
+        S.iLo += dn;
+      }
 
       // ── Real NHC + live OSM map-matching, during an actual GNSS blackout ──
       // This used to exist only in the simulation code path further down in this file, which
@@ -2082,11 +2426,19 @@ function step(){
         roadMatch = RoadGraph.nearest(EKF.x, EKF.y);
       }
       // Non-holonomic constraint: a vehicle cannot slide sideways. Constrain against the
-      // matched road segment's own bearing when one is available — the correct implementation
-      // TODO_MAP_MATCHING.md flagged as still open — falling back to the last real
-      // GPS-derived heading (S.gtH) only when no road match exists yet (never a scripted or
-      // fabricated bearing).
-      const nhcH = roadMatch ? roadMatch.bearing : S.gtH;
+      // matched road segment's own bearing when one is available. When none exists yet, the
+      // fallback must be the actual current dead-reckoning heading (EKF.th) — not S.gtH.
+      // S.gtH is derived purely from consecutive REAL GPS fixes (atan2 of successive
+      // GPS.lat/lon deltas); during a genuine GNSS blackout those fixes stop arriving, so
+      // S.gtH freezes at whatever heading it had the instant blackout began and never
+      // reflects the vehicle actually turning. EKF.th, by contrast, is integrated every tick
+      // from the real gyro rate (usedDH2 = IMU.gz*DT2) regardless of GNSS state, so it is the
+      // only heading value that is still genuinely current during blackout. Using the stale
+      // S.gtH here was constraining the EKF's real, correctly-turning predicted displacement
+      // back onto a frozen pre-blackout bearing every tick whenever no road match existed —
+      // discarding real turning motion as if it were sideways slip, a direct, provable
+      // contributor to a large reacquisition correction after any blackout that included a turn.
+      const nhcH = roadMatch ? roadMatch.bearing : EKF.th;
       const ndDLa = EKF.x - prevEkfLa, ndDLo = EKF.y - prevEkfLo;
       const fwdC = ndDLa*Math.cos(nhcH) + ndDLo*Math.sin(nhcH);
       const latC = -ndDLa*Math.sin(nhcH) + ndDLo*Math.cos(nhcH);
@@ -2110,10 +2462,20 @@ function step(){
     // NAVDRIFT displayed position IS the EKF state — traceable, not a separate variable.
     S.ndLa = EKF.x; S.ndLo = EKF.y;
     S.unc  = ekfUncertaintyM();
+    // Displayed/marker heading must follow the same principle as position above: while
+    // GNSS-locked, S.gtH (heading from consecutive real GPS fixes) is the best available
+    // estimate, so it's used as before. During blackout, real fixes stop arriving and S.gtH
+    // freezes at its last value — it was still being shown to the user as "the" heading even
+    // while the vehicle kept turning, because every display/marker-rotation site below read
+    // S.gtH unconditionally. EKF.th is the value that's actually still current (integrated
+    // every tick from the real gyro rate regardless of GNSS state), so it's what gets shown
+    // once GNSS is no longer locked. S.gtH itself is left untouched — it still drives ATE
+    // error math and the NHC road-bearing fallback's real-GPS case elsewhere.
+    const dispH = S.gnss ? S.gtH : EKF.th;
 
     // Log IMU data
     if(S.useLiveIMU && IMU.active && S.step%3===0){
-      IMU.log.push({t:performance.now().toFixed(1),ax:IMU.ax.toFixed(3),ay:IMU.ay.toFixed(3),az:IMU.az.toFixed(3),gx:IMU.gx.toFixed(4),gy:IMU.gy.toFixed(4),gz:IMU.gz.toFixed(4),fwd_accel:IMU.fwdAccel.toFixed(3),speed_mps:usedSpd2.toFixed(2),heading_rad:IMU.intHeading.toFixed(4)});
+      IMU.log.push({t:performance.now().toFixed(1),ax:IMU.ax.toFixed(3),ay:IMU.ay.toFixed(3),az:IMU.az.toFixed(3),gx:IMU.gx.toFixed(4),gy:IMU.gy.toFixed(4),gz:IMU.gz.toFixed(4),fwd_accel:IMU.fwdAccel.toFixed(3),speed_mps:usedSpd2.toFixed(2),gnss_speed_mps:(GPS.lastSpeedMps!=null&&isFinite(GPS.lastSpeedMps))?GPS.lastSpeedMps.toFixed(2):'NaN',heading_rad:IMU.intHeading.toFixed(4)});
       if(IMU.log.length>3000)IMU.log.shift();
     }
 
@@ -2133,10 +2495,39 @@ function step(){
       // the position it had the instant blackout began, so you can SEE the predicted dot
       // separate from it, rather than watching both markers drift together.
       if(_gtm && S.gnss) _gtm.setLngLat([S.gtLo,S.gtLa]);
-      const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(S.gtH*180/Math.PI)+'deg)';
+      const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(dispH*180/Math.PI)+'deg)';
       if(GPS.zoomed&&!_mapMoving&&!_mapZooming){
-        const ctr=S.gnss?[S.gtLo,S.gtLa]:[S.ndLo,S.ndLa];
-        _map.jumpTo({center:ctr,zoom:_map.getZoom()});
+        // Camera-follow now always tracks the FUSED position (S.ndLa/S.ndLo — the real EKF
+        // output, same value the predicted dot itself is drawn from), never the raw GPS fix
+        // directly. While GNSS-locked this used to follow S.gtLa/S.gtLo (raw GPS) instead —
+        // raw fixes can legitimately swing by several to tens of meters between samples
+        // (the same accuracy-scale noise already documented elsewhere in this app), which is
+        // a much bigger real signal than the fused position's much smaller, Kalman-damped
+        // noise. That's what was still producing substantial reframing even with a distance
+        // gate. Nothing here changes what NAVDRIFT reports or how it's computed — only which
+        // already-real, already-computed position variable the camera itself reads.
+        const camLa=S.ndLa, camLo=S.ndLo;
+        if(_lastCamLa===null){
+          _map.jumpTo({center:[camLo,camLa],zoom:_map.getZoom()});
+          _lastCamLa=camLa; _lastCamLo=camLo; _camAwayMs=0;
+        } else {
+          const camD=dist(camLa,camLo,_lastCamLa,_lastCamLo);
+          // Distance gate alone still let a single noisy sample over the 3m threshold snap
+          // the camera. Requiring that distance to be SUSTAINED for half a second (using the
+          // same real per-tick DT2 already used for the EKF predict step above, not a fake
+          // timer) filters out a one-off spike while still recentering within half a second
+          // of genuine, sustained movement — real motion keeps camD>3 continuously, so it is
+          // never delayed by more than this short, fixed window.
+          if(camD>3){
+            _camAwayMs += DT2*1000;
+            if(_camAwayMs>500){
+              _map.jumpTo({center:[camLo,camLa],zoom:_map.getZoom()});
+              _lastCamLa=camLa; _lastCamLo=camLo; _camAwayMs=0;
+            }
+          } else {
+            _camAwayMs=0;
+          }
+        }
       }
     }
     const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.totND+=eND;S.n++;
@@ -2148,7 +2539,7 @@ function step(){
       document.getElementById('v-ekf').textContent=ekfATE+'m';
       document.getElementById('v-unc').textContent=S.unc.toFixed(1)+'m';
       document.getElementById('v-spd').textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0);
-      document.getElementById('v-hdg').textContent=hdgStr(S.gtH);
+      document.getElementById('v-hdg').textContent=hdgStr(dispH);
       renderBaroDisplay();
       document.getElementById('v-out').textContent=S.outN;
       document.getElementById('v-nhc').textContent=S.nhcN;
@@ -2157,13 +2548,13 @@ function step(){
       // the map, or the Debug panel's "gps=" field, for the actual raw GPS coordinate.
       document.getElementById('hud-pos').textContent=S.ndLa.toFixed(4)+'°N '+S.ndLo.toFixed(4)+'°E';
       const hspd=document.getElementById('h-spd');if(hspd)hspd.textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0);
-      const hhdg=document.getElementById('h-hdg');if(hhdg)hhdg.textContent=hdgStr(S.gtH);
+      const hhdg=document.getElementById('h-hdg');if(hhdg)hhdg.textContent=hdgStr(dispH);
       const hdrift=document.getElementById('h-drift');if(hdrift)hdrift.textContent=ndATE+'m';
       const hpos=document.getElementById('h-pos');if(hpos)hpos.textContent=S.ndLa.toFixed(3)+'·'+S.ndLo.toFixed(3);
     }catch(e){}
     try{
       const nbspd=document.getElementById('nb-spd');if(nbspd)nbspd.textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0);
-      const nbhdg=document.getElementById('nb-hdg');if(nbhdg)nbhdg.textContent=hdgStr(S.gtH);
+      const nbhdg=document.getElementById('nb-hdg');if(nbhdg)nbhdg.textContent=hdgStr(dispH);
       const nberr=document.getElementById('nb-err');if(nberr)nberr.textContent=ndATE+'m';
     }catch(e){}
     updateDebugPanel();
@@ -2171,6 +2562,22 @@ function step(){
   }
 
   // ── SIMULATION MODE (no live GPS) ──
+  // This block must only ever run when the user has explicitly chosen the demo
+  // simulation mode (GPS.simMode === true, set by enterSimMode()). GPS.active
+  // being false is NOT the same thing as simulation mode: it is also the normal,
+  // transient state during ordinary live-mode startup, for however long it takes
+  // the phone's first real GPS fix to land (can be several seconds, longer
+  // indoors). Before this guard existed, that startup window fell through into
+  // this same branch and ran the fabricated demo route below — synthetic
+  // Math.random() jitter growing unbounded with S.outt, feeding straight into
+  // S.iLa/S.iLo and the same 'imu' map source the RAW IMU trail is rendered
+  // from. That is the exact, reproducible cause of a raw trail exploding into
+  // huge zig-zags on a genuinely stationary phone: it was drawing invented demo
+  // motion, not real sensor data, for however long GPS took to acquire. Fix:
+  // do absolutely nothing this tick (no fabricated movement, no trail update,
+  // no render) until the user is actually in simulation mode. Real live-mode
+  // startup just waits, silently, for the first real fix — never fabricates.
+  if(!GPS.simMode) return;
   S.ri=(S.ri+1)%S.route.length;
   const cur=S.route[S.ri],prv=S.route[(S.ri-1+S.route.length)%S.route.length];
   const dLa=cur[0]-prv[0],dLo=cur[1]-prv[1];
@@ -2393,8 +2800,29 @@ function toggleMode(){
 function triggerOut(){
   if(!S.gnss)return;
   S.gnss=false;S.outt=0;S.outN++;
-  // Reset live IMU speed integration on blackout start
-  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; }
+  // Initialize the dead-reckoning speed epoch at blackout start.
+  // This used to hard-reset IMU.intSpeed/_intSpeedRaw to 0 the instant blackout began — which
+  // meant the ONLY speed value the EKF received for the entire blackout (usedSpd2, derived
+  // solely from IMU.intSpeed while !S.gnss) started at zero regardless of how fast the vehicle
+  // was actually moving, and had to re-accumulate from raw accelerometer integration alone
+  // (itself subject to the 0.25 m/s² dead-band and ZUPT). During ordinary driving — long
+  // stretches of near-constant speed with little net forward acceleration — that re-accumulation
+  // can take much of the blackout to catch up to the real speed, or never fully catch up at all:
+  // exactly the reported "actually ~20 km/h, displayed only a few km/h" symptom, and it also
+  // starves the EKF predict step (ekfStep's dh/dl/dn all scale with usedSpd2) of any real
+  // distance for however long the ratchet takes, which is a direct, provable contributor to a
+  // large reacquisition drift error on top of anything heading-related.
+  // Fix: seed the epoch from GPS.lastSpeedMps — the last REAL GNSS ground speed actually
+  // reported by the device the instant before blackout began. This is real, honestly-measured
+  // sensor data, not an assumption or a fixed value: if the device never reported a usable
+  // speed (GPS.lastSpeedMps is still null), the epoch starts at 0, which is the truthful
+  // fallback, not a guess. Acceleration integration then continues exactly as before from that
+  // real starting point instead of from a fabricated zero.
+  if(S.useLiveIMU && IMU.active){
+    const seed = (GPS.lastSpeedMps!=null && isFinite(GPS.lastSpeedMps)) ? clamp(GPS.lastSpeedMps,0,40) : 0;
+    IMU._intSpeedRaw = seed;
+    IMU.intSpeed = seed;
+  }
   document.getElementById('flash').classList.add('on');
   const ob=document.getElementById('ob');ob.classList.remove('snap');ob.classList.add('on');
   document.getElementById('hdr-dot').classList.add('out');
@@ -2415,8 +2843,20 @@ function reacq(){
   // next tick(s). We do NOT teleport ndLa/ndLo to the GPS position here: predicted and
   // measured positions must be allowed to differ, or "correction" would be theater.
   const fe=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);
-  // Reset live IMU integration on reacquisition
-  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; IMU.intHeading=0; }
+  // Reset live IMU SPEED integration on reacquisition — speed is a relative quantity, so
+  // restarting its accumulation at a fresh dead-reckoning epoch is legitimate (unchanged).
+  // IMU.intHeading must NOT be reset here: unlike speed, heading is an absolute orientation.
+  // Snapping it to a literal 0 on every reacquisition claims the vehicle is suddenly facing
+  // due north regardless of its real compass heading — a real, reproducible bug (confirmed
+  // against an exported IMU log: heading dropped ~56° to ~0° in one 52ms tick, with gz at
+  // that instant far too small to have produced it by integration — it was this reset firing,
+  // not a physical turn). IMU.intHeading is diagnostic-log-only and never feeds navigation
+  // (EKF.th, integrated independently every tick from the same real gyro rate, is what the
+  // EKF/position/display actually use), but the log itself must stay honest.
+  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; IMU._intSpeedRaw=0; }
+  // See NAVDRIFT_ONNX.resetDriftCorrClock() comment: each blackout's DriftFormer correction
+  // bound must be measured against its own start, not a stale timestamp from a prior blackout.
+  if(typeof NAVDRIFT_ONNX!=='undefined' && NAVDRIFT_ONNX.resetDriftCorrClock) NAVDRIFT_ONNX.resetDriftCorrClock();
   const ob=document.getElementById('ob');
   ob.classList.add('snap');ob.textContent='✓ REACQUIRED: '+fe.toFixed(1)+'m drift error — EKF correcting';
   setTimeout(()=>ob.classList.remove('on'),2500);
@@ -2444,6 +2884,16 @@ function toggleOutage(){
     // real GNSS state from fix freshness and applies triggerOut()/reacq() itself, so it
     // cannot be used to fake a LOCKED state while the real signal is actually gone.
     GPS.forcedOutage = !GPS.forcedOutage;
+    // The real state transition (triggerOut()/reacq(), which is what actually changes
+    // S.gnss/the header/the banner) only fires from step()'s debounced watchdog, up to
+    // GNSS_DEBOUNCE_MS (1.5s) later — real behavior, not something to shortcut. But that
+    // means a tap produced NO visible acknowledgment at all for up to 1.5s, which is
+    // indistinguishable from the tap not having registered. This only gives the button
+    // itself immediate press feedback of the real GPS.forcedOutage value just set above —
+    // it does not touch S.gnss, does not fake LOCKED/BLACKOUT, and the debounced watchdog
+    // is still the sole authority for the actual GNSS state and banner.
+    const b=document.getElementById('btn-gnss');
+    if(b) b.textContent = GPS.forcedOutage ? '● Forcing outage…' : '● Releasing…';
     return;
   }
   S.gnss?triggerOut():reacq();
@@ -2648,6 +3098,9 @@ const RoadGraph = (function(){
 
 const GPS = {active:false, simMode:false, watchId:null, lat:null, lon:null, acc:null, lastLat:null, lastLon:null,
   lastFixTime:null,   // performance.now() of the last genuinely fresh onFix() call
+  lastSpeedMps:null,  // most recent REAL GNSS ground speed (pos.coords.speed, m/s) that was
+                       // actually reported as a valid number. null until the device's first fix
+                       // that includes a usable speed value — never fabricated, never assumed.
   forcedOutage:false, // manual test switch (GNSS-toggle button in LIVE mode) — forces blackout, never LOCKED
   hardError:false,    // true on permission-denied / position-unavailable until a fresh fix arrives
   pendingGnss:null, pendingSince:null, // debounce state, see step()
@@ -2717,6 +3170,32 @@ function startLiveGPS(){
     GPS.lastFixTime = performance.now(); // this is what makes the fix "fresh" — not the coordinate itself
     GPS.fixConsumed = false; // a genuinely NEW fix — the EKF gets exactly one measurement update from it
     GPS.hardError = false;
+    // Real GNSS ground speed, when the device actually reports one. Per the Geolocation spec
+    // this is null/NaN whenever the device can't determine speed (e.g. too few recent fixes,
+    // or genuinely stationary) — only a finite, non-negative value is ever kept, and only the
+    // most recent such value is retained. This becomes the dead-reckoning speed epoch's honest
+    // starting point at the moment GNSS is lost (see triggerOut()) — never a guess, never zero
+    // when a real speed was in fact just being reported the instant before blackout began.
+    // ── DIAGNOSTIC ONLY — resolving whether this device's Safari geolocation callbacks ever
+    // report a real, finite pos.coords.speed while moving. Logs the RAW value exactly as
+    // received, before the accept/reject check below runs, so it can never mask what the
+    // browser actually sent. Console-only; does not touch navigation, EKF, ZUPT, heading,
+    // forward-axis, map, or UI, and does not change GPS.lastSpeedMps's own accept logic.
+    {
+      const _rawSpd = pos.coords.speed;
+      const _finiteSpd = isFinite(_rawSpd);
+      const _acceptedSpd = _finiteSpd && _rawSpd >= 0;
+      console.log('[NAVDRIFT][gnss-speed-diag]', {
+        t: new Date().toISOString(),
+        raw_coords_speed: _rawSpd,           // exactly as the browser reported it — null/NaN preserved, never substituted
+        finite: _finiteSpd,
+        accepted_into_lastSpeedMps: _acceptedSpd,
+        gps_lastSpeedMps_before_this_fix: GPS.lastSpeedMps,
+        imu_intSpeed_mps: (typeof IMU!=='undefined' ? IMU.intSpeed : null),
+        gnss_state: (typeof S!=='undefined' ? (S.gnss ? 'LOCKED' : 'BLACKOUT') : null)
+      });
+    }
+    if(isFinite(pos.coords.speed) && pos.coords.speed >= 0) GPS.lastSpeedMps = pos.coords.speed;
     SensorManager.setValue('gnss', {
       latitude:lat, longitude:lon, altitude:(pos.coords.altitude??null),
       accuracy:acc, speed:(pos.coords.speed??null), course:(pos.coords.heading??null),
@@ -2841,6 +3320,13 @@ const NAVDRIFT_ONNX = (function(){
   let sessions={}, loaded=false, loading=false, failed=false, lastStatus='INACTIVE', lastMs=0;
   const IMU_WIN=100, TUN_WIN=20;
   let imuBuf=[], tunBuf=[];
+  // Physical sanity bound for DriftFormer's blackout-only position correction, reusing the
+  // exact same reject-don't-clamp pattern as the raw trail's 60 m/s hard ceiling (see
+  // _lastRawTrailT / maxStepDistM above): a correction is only as trustworthy as the real
+  // elapsed time since the last one, so it's bounded in physical meters-per-correction-step,
+  // never accepted on faith just because the model produced a finite number.
+  let _lastDriftCorrT = 0;
+  let driftCorrStats = { applied: 0, rejected: 0, lastRawDLat: 0, lastRawDLon: 0, lastAppliedM: 0, lastRejectedM: 0 };
 
   function _f32(arr){
     const flat=arr.flat(Infinity);
@@ -2943,12 +3429,45 @@ const NAVDRIFT_ONNX = (function(){
     // toward a known point" behavior this whole rebuild exists to eliminate.
     if(res.driftCorr && !S.gnss && isFinite(res.driftCorr.dLat) && isFinite(res.driftCorr.dLon)){
       const sc=1e-6;
-      EKF.x += res.driftCorr.dLat*sc;
-      EKF.y += res.driftCorr.dLon*sc;
+      driftCorrStats.lastRawDLat=res.driftCorr.dLat;
+      driftCorrStats.lastRawDLon=res.driftCorr.dLon;
+      const dLatDeg=res.driftCorr.dLat*sc, dLonDeg=res.driftCorr.dLon*sc;
+      // Same reject-don't-clamp pattern as the raw trail's 60 m/s ceiling: bound the
+      // correction's implied physical displacement against 60 m/s times the REAL elapsed
+      // time since the last applied correction (not an assumed fixed tick interval), and
+      // reject the whole step outright — never silently clamp a bad correction toward a
+      // plausible-looking but still fabricated value.
+      const corrNow = performance.now();
+      const corrDtUnbounded = _lastDriftCorrT>0 ? (corrNow-_lastDriftCorrT)/1000 : 0;
+      const corrDt = (corrDtUnbounded>0 && corrDtUnbounded<5) ? corrDtUnbounded : 0;
+      const corrDistM = Math.hypot(dLatDeg*111000, dLonDeg*111000*Math.cos(EKF.x*Math.PI/180));
+      const maxCorrDistM = 60 * corrDt;
+      if(corrDt>0 && corrDistM<=maxCorrDistM && isFinite(corrDistM)){
+        EKF.x += dLatDeg;
+        EKF.y += dLonDeg;
+        _lastDriftCorrT = corrNow;
+        driftCorrStats.applied++;
+        driftCorrStats.lastAppliedM = corrDistM;
+      } else if(corrDt>0) {
+        driftCorrStats.rejected++;
+        driftCorrStats.lastRejectedM = corrDistM;
+        console.warn('[DriftFormer] correction rejected: implied '+corrDistM.toFixed(1)+'m exceeds physical bound of '+maxCorrDistM.toFixed(1)+'m ('+corrDt.toFixed(2)+'s since last correction)');
+      }
+      // First correction after blackout start has no prior _lastDriftCorrT to measure a real
+      // dt against — establish the clock without applying, rather than guessing a dt.
+      if(_lastDriftCorrT===0) _lastDriftCorrT = corrNow;
     }
   }
 
-  return { load, applyToStep, status(){ return {loaded,failed,label:lastStatus,ms:lastMs}; } };
+  return {
+    load, applyToStep,
+    status(){ return {loaded,failed,label:lastStatus,ms:lastMs}; },
+    // Called on GNSS reacquisition so a new blackout's first correction measures real elapsed
+    // time against ITS OWN start, never against a stale timestamp left over from a previous
+    // blackout (which would let an artificially large dt waive the physical bound entirely).
+    resetDriftCorrClock(){ _lastDriftCorrT = 0; },
+    driftCorrStats(){ return driftCorrStats; }
+  };
 })();
 
 // Load the trained pipeline as soon as the page is idle — non-blocking, fails open.

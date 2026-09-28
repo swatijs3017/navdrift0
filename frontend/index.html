@@ -2,6 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Routing fix: Cloudflare Pages' build output directory is `frontend/`, so this file is what
+       gets served at the deployed site root ("/"), and it is also what Cloudflare falls back to
+       for any nonexistent path (e.g. a stale "/frontend/mobile.html" link) — meaning any legacy
+       or dead link into this file must still land the visitor on the current, approved mobile
+       app. This is a routing-only redirect: it changes nothing about mobile.html itself, the map,
+       the navigation engine, or any sensor/EKF/ONNX/RoadGraph code. Query string and hash are
+       preserved so links like "?mapdebug=1" keep working after the redirect. -->
+  <script>location.replace('mobile.html'+location.search+location.hash);</script>
+  <noscript><meta http-equiv="refresh" content="0;url=mobile.html"></noscript>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script>if(window.innerWidth<900&&!/[?&]desktop/.test(location.search)){location.replace('mobile.html');}</script>
   <title>NAVDRIFT-0 · Mission Control · ISRO SIH 2026 PS #26168</title>
