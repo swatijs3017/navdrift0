@@ -1063,11 +1063,32 @@ function onDeviceMotion(e){
     IMU._alignBuf.push([fax, fay, faz]);
     if(IMU._alignBuf.length >= 150){ // ~5 s at 30 Hz
       const buf = IMU._alignBuf;
-      // Gravity axis = highest absolute mean
-      const means = [0,1,2].map(i => Math.abs(buf.reduce((s,r)=>s+r[i],0)/buf.length));
-      const gravIdx = means.indexOf(Math.max(...means));
-      // Forward axis = highest variance among the other two
-      const cands = [0,1,2].filter(i=>i!==gravIdx);
+      // Which axes are even eligible candidates depends on whether this buffer's samples
+      // still contain a gravity DC component. IMU._gravFree records that per-sample (true
+      // when the browser's gravity-free e.acceleration is in use, which is the normal,
+      // preferred case — e.g. iPhone Safari almost always provides it). When gravity has
+      // ALREADY been subtracted by the platform, none of fax/fay/faz carries a gravity
+      // component any more, so "the axis with the highest mean" is just whichever axis
+      // happens to have the largest residual sensor bias that session — pure noise, not
+      // gravity. Excluding that axis from candidacy in that case was throwing away one of
+      // the three real candidates at random, and if it happened to be the true forward
+      // axis, real driving acceleration would land on an axis the alignment could never
+      // select — producing exactly "IMU active, Hz normal, speed stays ~0 during real
+      // driving" with no error anywhere. Only exclude a "gravity axis" when this buffer's
+      // samples genuinely still contain one (the manual gravity-removal fallback path).
+      const gravFreeBuf = IMU._gravFree;
+      let cands;
+      if(gravFreeBuf){
+        // No gravity component to identify/exclude — all three axes are real candidates.
+        cands = [0,1,2];
+      } else {
+        // Gravity axis = highest absolute mean (still valid here: this buffer's samples
+        // come from accelerationIncludingGravity, so gravity really is present on one axis).
+        const means = [0,1,2].map(i => Math.abs(buf.reduce((s,r)=>s+r[i],0)/buf.length));
+        const gravIdx = means.indexOf(Math.max(...means));
+        cands = [0,1,2].filter(i=>i!==gravIdx);
+      }
+      // Forward axis = highest variance among the candidates
       const vars  = cands.map(i => {
         const mn = buf.reduce((s,r)=>s+r[i],0)/buf.length;
         return buf.reduce((s,r)=>s+(r[i]-mn)**2,0)/buf.length;
@@ -1089,6 +1110,15 @@ function onDeviceMotion(e){
         // Sign: net displacement during buffer should be positive (car moved forward)
         const netFwd = buf.reduce((s,r)=>s+r[IMU.fwdAxisIdx],0);
         IMU.fwdAxisSign = netFwd >= 0 ? 1 : -1;
+        // IMU.fwdAccelBias was measured during stationary calibration, which always runs
+        // before alignment can even start (alignDone begins false, calibrated must be true
+        // first) — so that bias was captured on the DEFAULT axis (index 1), never on
+        // whichever axis alignment ends up locking. Applying a bias measured on one physical
+        // axis to a different one is not a real per-axis bias — it is an arbitrary offset.
+        // If alignment locked a different axis than the default, that measurement simply
+        // doesn't exist for the new axis; 0 is the honest value until it's actually measured,
+        // not the old axis's number carried over.
+        if(IMU.fwdAxisIdx !== 1) IMU.fwdAccelBias = 0;
         IMU.alignDone   = true;
         IMU._alignBuf   = [];
         const axNames = ['X','Y','Z'];
