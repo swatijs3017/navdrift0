@@ -359,7 +359,14 @@
     .tr-item{display:flex;flex-direction:column;align-items:center;min-width:56px;flex:1;padding:3px 4px;}
     .tr-sep{width:1px;background:var(--div);align-self:stretch;margin:2px 0;flex-shrink:0;}
     .tr-l{font-family:var(--sans);font-size:.4rem;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;font-weight:500;}
-    .tr-v{font-family:var(--mono);font-size:.68rem;font-weight:600;color:var(--bone-dim);margin-top:2px;font-variant-numeric:tabular-nums;}
+    .tr-v{font-family:var(--mono);font-size:.68rem;font-weight:600;color:var(--bone-dim);margin-top:2px;font-variant-numeric:tabular-nums;white-space:normal;word-break:break-word;text-align:center;}
+    /* Long values (Pos Source / ONNX Pipeline / Road Graph) wrap instead of overlapping the
+       next column on narrow iPhone widths — no redesign, same grid/colors/scroll, just a
+       wider minimum column and slightly smaller type so more fits before it needs to scroll. */
+    @media (max-width:400px){
+      .tr-item{min-width:78px;}
+      .tr-v{font-size:.6rem;}
+    }
     .tun-chip{font-size:.52rem;font-family:var(--mono);font-weight:600;transition:color .3s;}
     .tun-chip.clear{color:rgba(53,196,114,0.55);}
     .tun-chip.tunnel{color:var(--nr);animation:blink .7s step-end infinite;}
@@ -1117,8 +1124,24 @@ function onDeviceMotion(e){
   IMU.fwdAccel = clamp(deadFwd, -15, 15);
 
   if(dt>0 && dt<0.5){
-    IMU.intSpeed = Math.max(0, IMU.intSpeed + IMU.fwdAccel*dt);
-    IMU.intSpeed = Math.min(IMU.intSpeed, 40); // cap at 40 m/s (~144 km/h)
+    // ── Signed raw accumulator, clamped only for what's actually consumed ──
+    // The previous integrator clamped IMU.intSpeed itself to >=0 EVERY tick, then fed that
+    // already-clamped value back in as next tick's base. That clamp is a reflecting boundary:
+    // whenever noise pushed the running total slightly negative, that excursion was discarded
+    // (snapped to 0) instead of being carried forward to cancel a later positive excursion.
+    // With symmetric, zero-mean sensor noise, a reflecting boundary at zero produces a net
+    // UPWARD drift over time on its own — a real statistical effect, independent of any
+    // accelerometer bias. That is the actual source of the stationary speed-ratchet. Fix: keep
+    // the true signed running total in IMU._intSpeedRaw (allowed to go negative — physically
+    // "net deceleration past the last zero-crossing"), and only clamp to >=0 at the point a
+    // value is reported/consumed (IMU.intSpeed). Up-noise and down-noise now properly cancel
+    // in the raw accumulator while stationary instead of ratcheting. Real motion is unaffected:
+    // during genuine acceleration the raw total stays positive and IMU.intSpeed tracks it
+    // exactly as before; a real constant-speed cruise (near-zero net accel for as long as it
+    // lasts) leaves the raw total sitting wherever real acceleration/deceleration last put it,
+    // not reset toward zero by anything time-based.
+    IMU._intSpeedRaw = clamp((IMU._intSpeedRaw||0) + IMU.fwdAccel*dt, -40, 40);
+    IMU.intSpeed = Math.max(0, IMU._intSpeedRaw);
     // heading from gz integration
     IMU.intHeading += IMU.gz * dt;
   }
@@ -1127,7 +1150,7 @@ function onDeviceMotion(e){
   // integration error, not real motion. If that pattern recurs, reset rather than trust it.
   if(IMU.intSpeed > 33 && Math.abs(IMU.fwdAccel) < 0.3){
     IMU._pinnedMs = (IMU._pinnedMs||0) + dt*1000;
-    if(IMU._pinnedMs > 2500){ IMU.intSpeed = 0; IMU._pinnedMs = 0; }
+    if(IMU._pinnedMs > 2500){ IMU.intSpeed = 0; IMU._intSpeedRaw = 0; IMU._pinnedMs = 0; }
   } else {
     IMU._pinnedMs = 0;
   }
@@ -1162,6 +1185,7 @@ function onDeviceMotion(e){
       IMU._zuptMs = (IMU._zuptMs||0) + dt*1000;
       if(IMU._zuptMs > 800 && IMU.intSpeed < 2.5){ // sustained stillness AND already near rest
         IMU.intSpeed = 0;
+        IMU._intSpeedRaw = 0; // clear the raw accumulator too, or the next tick reads it back
       }
     } else {
       IMU._zuptMs = 0;
@@ -1349,7 +1373,7 @@ async function requestSensorAccess(){
         }
         // Always start integrated speed from a clean zero regardless of calibration quality —
         // never let a bad calibration window hand off a pre-poisoned speed value.
-        IMU.intSpeed = 0; IMU.intHeading = 0;
+        IMU.intSpeed = 0; IMU._intSpeedRaw = 0; IMU.intHeading = 0;
         IMU.calibrated = true;
         if(IMU.active){
           status.textContent = '✓ Calibrated. Live IMU active at ~' + (IMU.hz||30) + ' Hz — ' + IMU.evtCount + ' samples received.';
@@ -1555,6 +1579,7 @@ function updateDebugPanel(){
 
 const DT=0.067;
 let _map,_mapReady=false,_gtC=[],_ndC=[],_imuC=[],_ekfC=[],_vm,_gtm,_mapMoving=false,_mapZooming=false;
+let _lastCamLa=null,_lastCamLo=null; // last position the camera was actually recentered to (follow-mode jumpTo gate)
 
 function _emptyLine(){return{type:'Feature',geometry:{type:'LineString',coordinates:[]}};}
 function _geoCircle(lat,lon,rM,n=32){
@@ -2226,7 +2251,7 @@ function init(key){
   S.totND=0;S.totEKF=0;S.n=0;S.spd=0;S.pH=0;S.nhcN=0;
   S.vibBuf=[];S.baroAlt=220;S.baroPrev=220;S.inTunnel=false;S.tunDur=0;S.hmmCorrN=0;
   S.hmmProb=new Float32Array(S.route.length).fill(-Math.log(S.route.length));
-  IMU.intSpeed=0; IMU.intHeading=0;
+  IMU.intSpeed=0; IMU._intSpeedRaw=0; IMU.intHeading=0;
   IMU.alignDone=false; IMU._alignBuf=[];
   ekfReset(st[0],st[1]);
   initMap(key);
@@ -2388,8 +2413,20 @@ function step(){
       if(_gtm && S.gnss) _gtm.setLngLat([S.gtLo,S.gtLa]);
       const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(S.gtH*180/Math.PI)+'deg)';
       if(GPS.zoomed&&!_mapMoving&&!_mapZooming){
-        const ctr=S.gnss?[S.gtLo,S.gtLa]:[S.ndLo,S.ndLa];
-        _map.jumpTo({center:ctr,zoom:_map.getZoom()});
+        const camLa=S.gnss?S.gtLa:S.ndLa, camLo=S.gnss?S.gtLo:S.ndLo;
+        // This used to jumpTo the live position on EVERY tick (~15Hz), regardless of how far
+        // it had actually moved — including the ~0.5-1m of real GPS/EKF measurement noise
+        // that's expected while genuinely stationary. Recentering the camera 15x/sec off that
+        // noise is what produced the apparent "jumping/reframing" — not a large movement, just
+        // a constant, needless re-snap. Gate on real distance moved since the last recenter
+        // (still using the real, unaltered position — nothing here changes what NAVDRIFT
+        // reports, only how often the camera itself re-centers on it), so the follow-camera
+        // still tracks genuine movement immediately but no longer fights a stationary phone's
+        // own measurement noise.
+        if(_lastCamLa===null || dist(camLa,camLo,_lastCamLa,_lastCamLo) > 3){
+          _map.jumpTo({center:[camLo,camLa],zoom:_map.getZoom()});
+          _lastCamLa=camLa; _lastCamLo=camLo;
+        }
       }
     }
     const eND=dist(S.ndLa,S.ndLo,S.gtLa,S.gtLo);S.totND+=eND;S.n++;
@@ -2647,7 +2684,7 @@ function triggerOut(){
   if(!S.gnss)return;
   S.gnss=false;S.outt=0;S.outN++;
   // Reset live IMU speed integration on blackout start
-  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; }
+  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; IMU._intSpeedRaw=0; }
   document.getElementById('flash').classList.add('on');
   const ob=document.getElementById('ob');ob.classList.remove('snap');ob.classList.add('on');
   document.getElementById('hdr-dot').classList.add('out');
@@ -2669,7 +2706,7 @@ function reacq(){
   // measured positions must be allowed to differ, or "correction" would be theater.
   const fe=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);
   // Reset live IMU integration on reacquisition
-  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; IMU.intHeading=0; }
+  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; IMU._intSpeedRaw=0; IMU.intHeading=0; }
   const ob=document.getElementById('ob');
   ob.classList.add('snap');ob.textContent='✓ REACQUIRED: '+fe.toFixed(1)+'m drift error — EKF correcting';
   setTimeout(()=>ob.classList.remove('on'),2500);
@@ -2697,6 +2734,16 @@ function toggleOutage(){
     // real GNSS state from fix freshness and applies triggerOut()/reacq() itself, so it
     // cannot be used to fake a LOCKED state while the real signal is actually gone.
     GPS.forcedOutage = !GPS.forcedOutage;
+    // The real state transition (triggerOut()/reacq(), which is what actually changes
+    // S.gnss/the header/the banner) only fires from step()'s debounced watchdog, up to
+    // GNSS_DEBOUNCE_MS (1.5s) later — real behavior, not something to shortcut. But that
+    // means a tap produced NO visible acknowledgment at all for up to 1.5s, which is
+    // indistinguishable from the tap not having registered. This only gives the button
+    // itself immediate press feedback of the real GPS.forcedOutage value just set above —
+    // it does not touch S.gnss, does not fake LOCKED/BLACKOUT, and the debounced watchdog
+    // is still the sole authority for the actual GNSS state and banner.
+    const b=document.getElementById('btn-gnss');
+    if(b) b.textContent = GPS.forcedOutage ? '● Forcing outage…' : '● Releasing…';
     return;
   }
   S.gnss?triggerOut():reacq();
