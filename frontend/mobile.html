@@ -2231,6 +2231,29 @@ window.addEventListener('offline', ()=>{
   _clearMapTimers();
 });
 
+// ── CANVAS/VIEWPORT RESIZE SYNC ─────────────────────────────────────────────
+// Root cause of the "huge light-gray polygon/block shapes" rendering bug: #map is
+// `position:fixed;inset:0`, so its CSS box already tracks the mobile browser's dynamic
+// viewport (URL-bar/toolbar show-hide on scroll, orientation change) automatically, via pure
+// CSS. But MapLibre's WebGL canvas has its OWN internal drawing-buffer resolution, which is
+// only set at construction time and whenever `map.resize()` is explicitly called — it does
+// NOT auto-track container/CSS size changes. Before this fix, nothing in this file ever
+// called `_map.resize()`, anywhere (verified by search). Every time the CSS box changed size
+// out from under a canvas whose internal resolution didn't follow, MapLibre renders existing
+// tiles at the wrong internal scale/transform — which shows up exactly as large, blocky,
+// flat-colored polygon fills (e.g. landuse/background) until the next full repaint happens to
+// correct it, matching the reported intermittent gray-block screenshots. This does not touch
+// the style, the provider, any layer definition, or navigation/sensor code — it only keeps
+// MapLibre's renderer informed of the container size it already has.
+function _syncMapSize(){
+  if(_map){ try{ _map.resize(); }catch(e){} }
+}
+window.addEventListener('resize', _syncMapSize);
+window.addEventListener('orientationchange', ()=>{ setTimeout(_syncMapSize, 250); });
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', _syncMapSize);
+}
+
 function _createMap(c){
   const cfg=CITIES[c];
   _mapLoadProgressSeen=false; _mapLoadExtended=false; // fresh state for this attempt only
