@@ -2548,9 +2548,18 @@ function step(){
       // so a genuine live blackout was never actually NHC-constrained or road-snapped, despite
       // the debug panel's "Road Graph: N segs" implying map-matching was live. Fixed by running
       // the same real logic here, against the real EKF state, gated only on real conditions.
+      // LiveHMM.update() runs an online greedy Viterbi-style candidate selection (see its own
+      // module above — not a full graph Viterbi, RoadGraph has no adjacency data) against real
+      // RoadGraph segments, real fused EKF position/heading, real fused speed, and the real
+      // measured navDt (DT2) for this tick — falling back internally to plain RoadGraph.nearest()
+      // whenever there aren't enough real candidates. This is the ONE and ONLY live road-match/
+      // correction call per navigation tick (confirmed: step()'s real-GPS branch `return`s at its
+      // end, so the older SIM-tail map-matching code can never also run this tick). Its return
+      // shape matches RoadGraph.nearest()'s exactly, so nothing below this line (NHC, the soft
+      // road pull) needed to change.
       let roadMatch = null;
       if(GPS.active && !GPS.simMode && RoadGraph.loaded){
-        roadMatch = RoadGraph.nearest(EKF.x, EKF.y);
+        roadMatch = LiveHMM.update(EKF.x, EKF.y, EKF.th, usedSpd2, DT2);
       }
       // Non-holonomic constraint: a vehicle cannot slide sideways. Constrain against the
       // matched road segment's own bearing when one is available. When none exists yet, the
@@ -2927,6 +2936,11 @@ function toggleMode(){
 function triggerOut(){
   if(!S.gnss)return;
   S.gnss=false;S.outt=0;S.outN++;
+  // Fresh blackout — any HMM segment selection persisted from a PREVIOUS, separate blackout
+  // episode (possibly far from here) is not real evidence about this one. Reinitialize so the
+  // first tick of this blackout starts from emission-only scoring, same as reacq() below does
+  // for DriftFormer's correction clock.
+  if(typeof LiveHMM!=='undefined') LiveHMM.reset();
   // Initialize the dead-reckoning speed epoch at blackout start.
   // This used to hard-reset IMU.intSpeed/_intSpeedRaw to 0 the instant blackout began — which
   // meant the ONLY speed value the EKF received for the entire blackout (usedSpd2, derived
@@ -2984,6 +2998,9 @@ function reacq(){
   // See NAVDRIFT_ONNX.resetDriftCorrClock() comment: each blackout's DriftFormer correction
   // bound must be measured against its own start, not a stale timestamp from a prior blackout.
   if(typeof NAVDRIFT_ONNX!=='undefined' && NAVDRIFT_ONNX.resetDriftCorrClock) NAVDRIFT_ONNX.resetDriftCorrClock();
+  // See triggerOut()'s comment — GNSS is back, so a real fix is about to correct the EKF and any
+  // road-segment state from the blackout that's ending is stale the moment the next one starts.
+  if(typeof LiveHMM!=='undefined') LiveHMM.reset();
   const ob=document.getElementById('ob');
   ob.classList.add('snap');ob.textContent='✓ REACQUIRED: '+fe.toFixed(1)+'m drift error — EKF correcting';
   setTimeout(()=>ob.classList.remove('on'),2500);
@@ -3108,6 +3125,11 @@ const RoadGraphCache = (function(){
 const RoadGraph = (function(){
   let segs=[], grid=new Map(), loaded=false, loading=false, status='idle', source=null; // source: 'live' | 'cached' | null
   let centerLat=null, centerLon=null;
+  // Bumped every time segs/grid are replaced wholesale (a fresh Overpass fetch or a cache load
+  // swapping in a different area's segments). Segment array indices are only stable within one
+  // epoch, so LiveHMM (below) uses this to know its persisted candidate is no longer valid and
+  // must reinitialize rather than silently scoring against segments that no longer exist/moved.
+  let epoch=0;
   const CELL=0.006; // ~650m per grid cell at the equator — coarse but fast to bucket/search
 
   function cellKey(lat,lon){ return Math.floor(lat/CELL)+','+Math.floor(lon/CELL); }
@@ -3137,7 +3159,7 @@ const RoadGraph = (function(){
 
   function loadSegsInto(segsArr){
     const newSegs=[], newGrid=new Map();
-    segs=newSegs; grid=newGrid;
+    segs=newSegs; grid=newGrid; epoch++;
     for(const s of segsArr) addSeg(s.lat1,s.lon1,s.lat2,s.lon2);
   }
 
@@ -3153,7 +3175,7 @@ const RoadGraph = (function(){
       const nodes=new Map();
       for(const el of j.elements) if(el.type==='node') nodes.set(el.id,[el.lat,el.lon]);
       const newSegs=[], newGrid=new Map();
-      segs=newSegs; grid=newGrid; // swap before addSeg populates them
+      segs=newSegs; grid=newGrid; epoch++; // swap before addSeg populates them
       let nWays=0;
       for(const el of j.elements){
         if(el.type!=='way'||!el.nodes) continue;
@@ -3213,13 +3235,141 @@ const RoadGraph = (function(){
     return dM>1600; // drifted near the edge of the ~2.2km fetch radius — refetch around new center
   }
 
+  // Small candidate set around a point, for LiveHMM (below) — the same grid ring-search nearest()
+  // already does, just collecting the top-K distinct segments instead of stopping at the single
+  // best one. Does not replace or alter nearest() itself; nearest() stays exactly as it was and
+  // remains the fallback whenever there aren't enough real candidates to run the HMM (see
+  // LiveHMM.update()'s own fallback path). Each candidate carries its real segment index (idx)
+  // so the HMM can identify "same segment as last tick" for its transition score.
+  function candidates(lat,lon,k){
+    if(!loaded) return [];
+    const gx=Math.floor(lat/CELL), gy=Math.floor(lon/CELL);
+    const seen=new Set(), results=[];
+    for(let r=0;r<=4;r++){
+      for(let dx=-r;dx<=r;dx++)for(let dy=-r;dy<=r;dy++){
+        if(Math.max(Math.abs(dx),Math.abs(dy))!==r) continue;
+        const idxs=grid.get((gx+dx)+','+(gy+dy)); if(!idxs) continue;
+        for(const idx of idxs){
+          if(seen.has(idx)) continue; seen.add(idx);
+          const res=pointToSeg(lat,lon,segs[idx]);
+          results.push({idx, distM:res.distM, lat:res.lat, lon:res.lon, bearing:res.bearing});
+        }
+      }
+      if(results.length>=k*3 && r>=1) break; // enough real candidates gathered from nearby rings
+    }
+    results.sort((a,b)=>a.distM-b.distM);
+    return results.slice(0,k);
+  }
+
   return {
-    load, nearest, needsReload,
+    load, nearest, needsReload, candidates,
     get loaded(){return loaded;},
     get loading(){return loading;},
     get status(){return status;},
     get segCount(){return segs.length;},
-    get source(){return source;} // 'live' | 'cached' | null — never hidden from the debug panel
+    get source(){return source;}, // 'live' | 'cached' | null — never hidden from the debug panel
+    get epoch(){return epoch;}    // bumps on every segs/grid replacement — see LiveHMM
+  };
+})();
+
+/* ── LIVE ROAD MATCHING: online greedy Viterbi-style candidate selection over real RoadGraph
+ * segments ──
+ * Honest naming note: this is NOT a full graph Viterbi/HMM. RoadGraph has no OSM way/node
+ * adjacency data (see RoadGraph above — segs is a flat list of line pieces with no connectivity
+ * graph), so this does not run a multi-state path search over a road-network graph and does not
+ * maintain multiple candidate paths or backpointers. It is a single persisted state (the
+ * previously selected segment) re-scored every tick against a small, freshly generated candidate
+ * set, which is what "online greedy Viterbi-style" means here: real emission + real transition
+ * scoring each tick, argmax kept, no offline path reconstruction and no invented adjacency graph.
+ *
+ * Genuinely separate from the SIM-mode scripted-route HMM further down in this file (search for
+ * "SIMULATION PATH" / S.route / WIN,SIGMA,LAMBDA) — that block is SIM-only: step()'s real-GPS
+ * branch (if(GPS.active){...}) unconditionally `return`s (see its own comment, "done — skip
+ * simulation path below") before execution can ever reach that block, so it is provably
+ * unreachable whenever GPS.active is true, regardless of any other state. This module never
+ * calls it or shares any state with it.
+ *
+ * Runs only during a real GNSS blackout, on the real fused EKF state, against REAL RoadGraph
+ * segments (live-fetched Overpass data, or the offline IndexedDB cache — candidates() doesn't
+ * care which). At each tick it scores every nearby candidate segment by emission (how well it
+ * explains the current fused position + heading) plus a transition term (how well it explains the
+ * REAL movement — actual speed × real elapsed dt — since the last selected segment), then keeps
+ * only the argmax as this tick's state. The previous tick's selected segment is real persisted
+ * state (idx/lat/lon/bearing), carried tick to tick — transition scoring still happens every tick
+ * using real data, it just isn't accumulated into an unbounded log-probability path sum, since
+ * only the local decision is ever needed for real-time driving.
+ */
+const LiveHMM = (function(){
+  const K = 5;                              // small candidate set — never an unbounded search
+  const EMIT_DIST_SIGMA_M = 25;              // distance-to-segment emission scale (~typical GPS/road-match accuracy)
+  const EMIT_HEADING_SIGMA_RAD = 35*Math.PI/180; // heading-agreement emission scale (~35°)
+  const TRANS_CONTINUITY_SIGMA_M = 20;       // how tightly actual movement must match speed*dt to score well
+  const TRANS_STAY_BONUS = 0.6;              // log-space bonus for remaining on the same real segment
+  const MIN_CANDIDATES = 1;                  // fewer real candidates than this → fall back to nearest()
+
+  let state = null;     // {idx, lat, lon, bearing, distM}, persists tick-to-tick within one blackout
+  let lastEpoch = -1;
+
+  function reset(){ state = null; }
+
+  function wrappedHeadingDiff(a,b){
+    // Road segments are undirected (a two-way street's bearing and its reverse are equally
+    // "aligned" with travel in either direction), so fold the difference into [0, pi/2].
+    let d = Math.abs(((a-b+Math.PI)%(2*Math.PI))-Math.PI);
+    return Math.min(d, Math.PI-d);
+  }
+
+  function emissionLogProb(cand, fusedHeading){
+    const dTerm = -(cand.distM*cand.distM)/(2*EMIT_DIST_SIGMA_M*EMIT_DIST_SIGMA_M);
+    const dh = wrappedHeadingDiff(fusedHeading, cand.bearing);
+    const hTerm = -(dh*dh)/(2*EMIT_HEADING_SIGMA_RAD*EMIT_HEADING_SIGMA_RAD);
+    return dTerm + hTerm;
+  }
+
+  function transitionLogProb(cand, speedMps, dtS){
+    if(!state) return 0; // no history yet this blackout — emission-only, a real uninformative prior
+    const sameSeg = cand.idx===state.idx;
+    const expectedStepM = clamp(speedMps,0,40) * Math.max(0, dtS);
+    const actualStepM = dist(cand.lat, cand.lon, state.lat, state.lon);
+    const discrepancy = Math.abs(actualStepM - expectedStepM);
+    const contTerm = -(discrepancy*discrepancy)/(2*TRANS_CONTINUITY_SIGMA_M*TRANS_CONTINUITY_SIGMA_M);
+    return contTerm + (sameSeg ? TRANS_STAY_BONUS : 0);
+  }
+
+  // fusedLat/fusedLon/fusedHeading = real EKF state; speedMps = real fused speed; dtS = real
+  // elapsed navigation dt (navDt) for this tick. Returns the same {distM,lat,lon,bearing} shape
+  // RoadGraph.nearest() already returned, so NHC/the soft road-pull downstream need no changes.
+  function update(fusedLat, fusedLon, fusedHeading, speedMps, dtS){
+    if(!isFinite(fusedLat)||!isFinite(fusedLon)||!isFinite(fusedHeading)){
+      return RoadGraph.nearest(fusedLat, fusedLon); // bad input — don't run scoring on it, fall back
+    }
+    if(RoadGraph.epoch !== lastEpoch){
+      // Graph reloaded (new Overpass fetch or cache swap) since our last tick — segment indices
+      // from before this point no longer mean anything real. Reinitialize rather than scoring
+      // stale state against a new segment array.
+      lastEpoch = RoadGraph.epoch;
+      reset();
+    }
+    const cands = RoadGraph.candidates(fusedLat, fusedLon, K);
+    if(cands.length < MIN_CANDIDATES){
+      // Not enough real candidates to run the HMM meaningfully — clean fallback to the existing
+      // plain-nearest behavior rather than inventing a selection from too little real data.
+      reset();
+      return RoadGraph.nearest(fusedLat, fusedLon);
+    }
+    let best=null, bestScore=-Infinity;
+    for(const c of cands){
+      const score = emissionLogProb(c, fusedHeading) + transitionLogProb(c, speedMps, dtS);
+      if(score>bestScore){ bestScore=score; best=c; }
+    }
+    state = { idx:best.idx, lat:best.lat, lon:best.lon, bearing:best.bearing, distM:best.distM };
+    return { distM:best.distM, lat:best.lat, lon:best.lon, bearing:best.bearing };
+  }
+
+  return {
+    update, reset,
+    get active(){ return state!==null; },
+    get segIdx(){ return state ? state.idx : null; }
   };
 })();
 
