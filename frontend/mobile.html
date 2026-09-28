@@ -2417,11 +2417,19 @@ function step(){
         roadMatch = RoadGraph.nearest(EKF.x, EKF.y);
       }
       // Non-holonomic constraint: a vehicle cannot slide sideways. Constrain against the
-      // matched road segment's own bearing when one is available — the correct implementation
-      // TODO_MAP_MATCHING.md flagged as still open — falling back to the last real
-      // GPS-derived heading (S.gtH) only when no road match exists yet (never a scripted or
-      // fabricated bearing).
-      const nhcH = roadMatch ? roadMatch.bearing : S.gtH;
+      // matched road segment's own bearing when one is available. When none exists yet, the
+      // fallback must be the actual current dead-reckoning heading (EKF.th) — not S.gtH.
+      // S.gtH is derived purely from consecutive REAL GPS fixes (atan2 of successive
+      // GPS.lat/lon deltas); during a genuine GNSS blackout those fixes stop arriving, so
+      // S.gtH freezes at whatever heading it had the instant blackout began and never
+      // reflects the vehicle actually turning. EKF.th, by contrast, is integrated every tick
+      // from the real gyro rate (usedDH2 = IMU.gz*DT2) regardless of GNSS state, so it is the
+      // only heading value that is still genuinely current during blackout. Using the stale
+      // S.gtH here was constraining the EKF's real, correctly-turning predicted displacement
+      // back onto a frozen pre-blackout bearing every tick whenever no road match existed —
+      // discarding real turning motion as if it were sideways slip, a direct, provable
+      // contributor to a large reacquisition correction after any blackout that included a turn.
+      const nhcH = roadMatch ? roadMatch.bearing : EKF.th;
       const ndDLa = EKF.x - prevEkfLa, ndDLo = EKF.y - prevEkfLo;
       const fwdC = ndDLa*Math.cos(nhcH) + ndDLo*Math.sin(nhcH);
       const latC = -ndDLa*Math.sin(nhcH) + ndDLo*Math.cos(nhcH);
@@ -2445,6 +2453,16 @@ function step(){
     // NAVDRIFT displayed position IS the EKF state — traceable, not a separate variable.
     S.ndLa = EKF.x; S.ndLo = EKF.y;
     S.unc  = ekfUncertaintyM();
+    // Displayed/marker heading must follow the same principle as position above: while
+    // GNSS-locked, S.gtH (heading from consecutive real GPS fixes) is the best available
+    // estimate, so it's used as before. During blackout, real fixes stop arriving and S.gtH
+    // freezes at its last value — it was still being shown to the user as "the" heading even
+    // while the vehicle kept turning, because every display/marker-rotation site below read
+    // S.gtH unconditionally. EKF.th is the value that's actually still current (integrated
+    // every tick from the real gyro rate regardless of GNSS state), so it's what gets shown
+    // once GNSS is no longer locked. S.gtH itself is left untouched — it still drives ATE
+    // error math and the NHC road-bearing fallback's real-GPS case elsewhere.
+    const dispH = S.gnss ? S.gtH : EKF.th;
 
     // Log IMU data
     if(S.useLiveIMU && IMU.active && S.step%3===0){
@@ -2468,7 +2486,7 @@ function step(){
       // the position it had the instant blackout began, so you can SEE the predicted dot
       // separate from it, rather than watching both markers drift together.
       if(_gtm && S.gnss) _gtm.setLngLat([S.gtLo,S.gtLa]);
-      const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(S.gtH*180/Math.PI)+'deg)';
+      const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(dispH*180/Math.PI)+'deg)';
       if(GPS.zoomed&&!_mapMoving&&!_mapZooming){
         // Camera-follow now always tracks the FUSED position (S.ndLa/S.ndLo — the real EKF
         // output, same value the predicted dot itself is drawn from), never the raw GPS fix
@@ -2512,7 +2530,7 @@ function step(){
       document.getElementById('v-ekf').textContent=ekfATE+'m';
       document.getElementById('v-unc').textContent=S.unc.toFixed(1)+'m';
       document.getElementById('v-spd').textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0);
-      document.getElementById('v-hdg').textContent=hdgStr(S.gtH);
+      document.getElementById('v-hdg').textContent=hdgStr(dispH);
       renderBaroDisplay();
       document.getElementById('v-out').textContent=S.outN;
       document.getElementById('v-nhc').textContent=S.nhcN;
@@ -2521,13 +2539,13 @@ function step(){
       // the map, or the Debug panel's "gps=" field, for the actual raw GPS coordinate.
       document.getElementById('hud-pos').textContent=S.ndLa.toFixed(4)+'°N '+S.ndLo.toFixed(4)+'°E';
       const hspd=document.getElementById('h-spd');if(hspd)hspd.textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0);
-      const hhdg=document.getElementById('h-hdg');if(hhdg)hhdg.textContent=hdgStr(S.gtH);
+      const hhdg=document.getElementById('h-hdg');if(hhdg)hhdg.textContent=hdgStr(dispH);
       const hdrift=document.getElementById('h-drift');if(hdrift)hdrift.textContent=ndATE+'m';
       const hpos=document.getElementById('h-pos');if(hpos)hpos.textContent=S.ndLa.toFixed(3)+'·'+S.ndLo.toFixed(3);
     }catch(e){}
     try{
       const nbspd=document.getElementById('nb-spd');if(nbspd)nbspd.textContent=(S.useLiveIMU&&IMU.active?IMU.intSpeed*3.6:0).toFixed(0);
-      const nbhdg=document.getElementById('nb-hdg');if(nbhdg)nbhdg.textContent=hdgStr(S.gtH);
+      const nbhdg=document.getElementById('nb-hdg');if(nbhdg)nbhdg.textContent=hdgStr(dispH);
       const nberr=document.getElementById('nb-err');if(nberr)nberr.textContent=ndATE+'m';
     }catch(e){}
     updateDebugPanel();
@@ -2795,8 +2813,17 @@ function reacq(){
   // next tick(s). We do NOT teleport ndLa/ndLo to the GPS position here: predicted and
   // measured positions must be allowed to differ, or "correction" would be theater.
   const fe=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);
-  // Reset live IMU integration on reacquisition
-  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; IMU._intSpeedRaw=0; IMU.intHeading=0; }
+  // Reset live IMU SPEED integration on reacquisition — speed is a relative quantity, so
+  // restarting its accumulation at a fresh dead-reckoning epoch is legitimate (unchanged).
+  // IMU.intHeading must NOT be reset here: unlike speed, heading is an absolute orientation.
+  // Snapping it to a literal 0 on every reacquisition claims the vehicle is suddenly facing
+  // due north regardless of its real compass heading — a real, reproducible bug (confirmed
+  // against an exported IMU log: heading dropped ~56° to ~0° in one 52ms tick, with gz at
+  // that instant far too small to have produced it by integration — it was this reset firing,
+  // not a physical turn). IMU.intHeading is diagnostic-log-only and never feeds navigation
+  // (EKF.th, integrated independently every tick from the same real gyro rate, is what the
+  // EKF/position/display actually use), but the log itself must stay honest.
+  if(S.useLiveIMU && IMU.active){ IMU.intSpeed=0; IMU._intSpeedRaw=0; }
   const ob=document.getElementById('ob');
   ob.classList.add('snap');ob.textContent='✓ REACQUIRED: '+fe.toFixed(1)+'m drift error — EKF correcting';
   setTimeout(()=>ob.classList.remove('on'),2500);
