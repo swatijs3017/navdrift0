@@ -183,7 +183,7 @@
       transition:opacity 0.25s ease;
     }
     /* when readings sheet is open, float the toggle just above the sheet edge */
-    body.tech-mode #map-mode-ctrl{bottom:calc(50dvh + 10px);}
+    body.tech-mode #map-mode-ctrl{bottom:calc(50svh + 10px);}
     .mm-btn{
       padding:4px 10px;border-radius:16px;border:none;background:transparent;
       font-size:.42rem;font-weight:600;font-family:var(--mono);letter-spacing:.07em;
@@ -280,7 +280,7 @@
     /* ── TECH PANEL — bottom sheet, never covers more than lower half ── */
     .tech-panel{
       position:fixed;bottom:0;left:0;right:0;
-      height:50dvh;max-height:50dvh;
+      height:50svh;max-height:50svh;
       z-index:200;
       background:var(--glass-b);
       border-top:1px solid rgba(0,200,185,0.12);
@@ -292,7 +292,7 @@
     body.tech-mode .tech-panel{transform:translateY(0);}
     .tech-drag-area{display:flex;justify-content:center;padding:10px 0 6px;flex-shrink:0;cursor:pointer;}
     .tech-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,0.15);}
-    .tech-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 0 env(safe-area-inset-bottom,16px);
+    .tech-scroll{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:0 0 env(safe-area-inset-bottom,16px);
       scrollbar-width:thin;scrollbar-color:rgba(0,200,185,0.15) transparent;}
     .tech-scroll::-webkit-scrollbar{width:3px;}
     .tech-scroll::-webkit-scrollbar-thumb{background:rgba(0,200,185,0.15);border-radius:2px;}
@@ -1058,15 +1058,32 @@ function onDeviceMotion(e){
         const mn = buf.reduce((s,r)=>s+r[i],0)/buf.length;
         return buf.reduce((s,r)=>s+(r[i]-mn)**2,0)/buf.length;
       });
-      IMU.fwdAxisIdx  = cands[vars.indexOf(Math.max(...vars))];
-      // Sign: net displacement during buffer should be positive (car moved forward)
-      const netFwd = buf.reduce((s,r)=>s+r[IMU.fwdAxisIdx],0);
-      IMU.fwdAxisSign = netFwd >= 0 ? 1 : -1;
-      IMU.alignDone   = true;
-      IMU._alignBuf   = [];
-      const axNames = ['X','Y','Z'];
-      console.log(`[NAVDRIFT] Alignment: forward=${axNames[IMU.fwdAxisIdx]} sign=${IMU.fwdAxisSign}`);
-      try{ document.getElementById('sv-be').textContent = axNames[IMU.fwdAxisIdx]+'✓'; }catch(e){}
+      const maxVar = Math.max(...vars);
+      // Require actual evidence of motion before locking a forward axis. A stationary phone
+      // produces near-zero variance on every axis, and picking "highest variance" out of pure
+      // sensor noise locks an arbitrary, permanent axis — that was the real bug (a 5s window
+      // that fills entirely during a stationary calibration period had nothing but noise to
+      // distinguish axes by). 0.0625 (m/s²)² is the square of the same 0.25 m/s² dead-band
+      // already used elsewhere in this function to separate real acceleration from sensor
+      // noise, so this reuses an existing, already-justified threshold rather than inventing
+      // a new one. Genuine walking/driving variance (footstep impacts, vehicle acceleration)
+      // is well above this, so real motion still aligns within one window as before; a
+      // noise-only window is simply discarded and a fresh one starts collecting, rather than
+      // locking onto it or waiting forever (real motion, once it occurs, is caught promptly).
+      if(maxVar >= 0.0625){
+        IMU.fwdAxisIdx  = cands[vars.indexOf(maxVar)];
+        // Sign: net displacement during buffer should be positive (car moved forward)
+        const netFwd = buf.reduce((s,r)=>s+r[IMU.fwdAxisIdx],0);
+        IMU.fwdAxisSign = netFwd >= 0 ? 1 : -1;
+        IMU.alignDone   = true;
+        IMU._alignBuf   = [];
+        const axNames = ['X','Y','Z'];
+        console.log(`[NAVDRIFT] Alignment: forward=${axNames[IMU.fwdAxisIdx]} sign=${IMU.fwdAxisSign}`);
+        try{ document.getElementById('sv-be').textContent = axNames[IMU.fwdAxisIdx]+'✓'; }catch(e){}
+      } else {
+        // Noise-only calibration window. Do NOT lock an axis.
+        IMU._alignBuf = [];
+      }
     }
   }
 
