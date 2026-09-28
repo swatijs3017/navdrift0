@@ -678,6 +678,11 @@
       </div>
       <div class="tr-sep"></div>
       <div class="tr-item">
+        <div class="tr-l">Nav Hz</div>
+        <div class="tr-v" id="dbg-navhz">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
         <div class="tr-l">Pos Source</div>
         <div class="tr-v" id="dbg-src" style="color:var(--nt)">—</div>
       </div>
@@ -992,6 +997,86 @@ let _lastDMT = 0, _dmCount = 0, _hzInterval = null;
 // must not be confused with it.
 let _lastRawTrailT = 0;
 
+/* ── REAL POTHOLE / SHOCK DETECTION ──
+ * Operates on the RAW (pre-Butterworth) gravity-free acceleration magnitude, not the filtered
+ * fax/fay/faz the speed-integration path uses — a low-pass filter tuned to remove vibration is
+ * exactly what would erase a genuine short shock impulse, so detecting on the filtered signal
+ * would be detecting nothing. This never touches rawAx/rawAy/rawAz themselves or the existing
+ * filter/speed-integration pipeline; it only reads the same raw values already computed in
+ * onDeviceMotion for other purposes.
+ *
+ * Thresholds (documented, physically reasoned — not benchmark-fit, same category as the existing
+ * 60 m/s raw-trail ceiling):
+ *   SHOCK_ACCEL_THRESHOLD_MPS2 = 15  → normal in-vehicle gravity-free acceleration (accelerating,
+ *     braking, cornering) on a smartphone accelerometer rarely exceeds ~8 m/s² (0.8g); a pothole
+ *     or speed-bump impulse transmitted through the vehicle chassis routinely exceeds 15 m/s²
+ *     (1.5g) for one or a few samples. 15 m/s² is used as the rising-edge trigger.
+ *   SHOCK_RELEASE_MPS2 = 9           → hysteresis: the event doesn't end until magnitude drops
+ *     back below ~0.9g, so a signal oscillating right at 15 m/s² can't fire dozens of start/stop
+ *     transitions on its own.
+ *   SHOCK_MAX_DURATION_MS = 250      → a genuine pothole/shock impulse is over in well under a
+ *     quarter second; anything that stays elevated longer is sustained real motion (hard
+ *     acceleration/braking/a rough road segment), not a discrete shock, and is REJECTED — the
+ *     event is logged either way, but only an accepted one boosts EKF process noise.
+ *   SHOCK_REFRACTORY_MS = 400        → minimum gap between two ACCEPTED events (debounce), so one
+ *     physical pothole (which can ring for a few impulses) can't be counted as dozens of events.
+ *   SHOCK_Q_BOOST / SHOCK_NOISE_BOOST_MS → after an accepted shock, EKF process noise (Q) is
+ *     temporarily multiplied (ekfStep, unchanged formula otherwise) for a short window, reflecting
+ *     genuine reduced confidence in clean kinematic integration right after a jolt — never a
+ *     position correction, never a teleport, and it decays back to the ordinary constant on its
+ *     own with no separate "undo" step required.
+ */
+const SHOCK_ACCEL_THRESHOLD_MPS2 = 15;
+const SHOCK_RELEASE_MPS2 = 9;
+const SHOCK_MAX_DURATION_MS = 250;
+const SHOCK_REFRACTORY_MS = 400;
+const SHOCK_Q_BOOST = 4;
+const SHOCK_NOISE_BOOST_MS = 800;
+const Shock = {
+  active: false, startT: 0, peakMag: 0, peakAxis: '', lastEventT: -Infinity,
+  eventsTotal: 0, acceptedTotal: 0, log: [] // {t, peakMag, axis, durationMs, accepted}
+};
+function detectShock(rawAx, rawAy, rawAz, now){
+  // Safety against NaN/Infinite sensor spikes: the caller (onDeviceMotion) already dropped
+  // non-finite acceleration samples before this is reached, but guard independently here too —
+  // this function must never be the thing that lets a bad value into Shock.peakMag or EKF.
+  if(!isFinite(rawAx) || !isFinite(rawAy) || !isFinite(rawAz) || !isFinite(now)) return;
+  const mag = Math.hypot(rawAx, rawAy, rawAz);
+  if(!isFinite(mag)) return;
+  if(!Shock.active){
+    if(mag >= SHOCK_ACCEL_THRESHOLD_MPS2){
+      Shock.active = true; Shock.startT = now; Shock.peakMag = mag;
+      const ax=Math.abs(rawAx), ay=Math.abs(rawAy), az=Math.abs(rawAz);
+      Shock.peakAxis = (ax>=ay && ax>=az) ? 'x' : (ay>=az ? 'y' : 'z');
+    }
+    return;
+  }
+  if(mag > Shock.peakMag) Shock.peakMag = mag;
+  const elapsed = now - Shock.startT;
+  if(mag < SHOCK_RELEASE_MPS2 || elapsed > SHOCK_MAX_DURATION_MS*3){
+    // Event resolved (dropped back below release threshold) OR a safety valve fired: magnitude
+    // never released for 3x the shock window, meaning this is sustained real motion, not a
+    // stuck detector — stop tracking it as a shock candidate either way.
+    const durationMs = elapsed;
+    const withinRefractory = (now - Shock.lastEventT) < SHOCK_REFRACTORY_MS;
+    const accepted = durationMs <= SHOCK_MAX_DURATION_MS && !withinRefractory;
+    Shock.eventsTotal++;
+    if(accepted){
+      Shock.acceptedTotal++;
+      Shock.lastEventT = now;
+      S.shockNoiseBoostUntil = now + SHOCK_NOISE_BOOST_MS;
+      console.log('[Shock] accepted: peak='+Shock.peakMag.toFixed(2)+'m/s² axis='+Shock.peakAxis
+        +' dur='+durationMs.toFixed(0)+'ms — EKF process noise boosted '+SHOCK_Q_BOOST+'x for '+SHOCK_NOISE_BOOST_MS+'ms');
+    } else {
+      console.log('[Shock] rejected: peak='+Shock.peakMag.toFixed(2)+'m/s² axis='+Shock.peakAxis
+        +' dur='+durationMs.toFixed(0)+'ms reason='+(durationMs>SHOCK_MAX_DURATION_MS?'too-long(sustained motion)':'refractory'));
+    }
+    Shock.log.push({t:now.toFixed(1), peakMag:Shock.peakMag.toFixed(2), axis:Shock.peakAxis, durationMs:durationMs.toFixed(0), accepted});
+    if(Shock.log.length>500) Shock.log.shift();
+    Shock.active = false; Shock.peakMag = 0;
+  }
+}
+
 function onDeviceMotion(e){
   // Honest activation: IMU is only "ACTIVE" once a real devicemotion event has arrived —
   // never merely because requestPermission() resolved.
@@ -1033,6 +1118,11 @@ function onDeviceMotion(e){
   const rawAx = (acc.x || 0) - IMU.axOff;
   const rawAy = (acc.y || 0) - IMU.ayOff;
   const rawAz = (acc.z || 0) - (useLinear ? IMU.azOff : (IMU.azOff + 9.81));
+
+  // Real pothole/shock detection runs on these RAW samples, before the low-pass filter below
+  // would attenuate a genuine short impulse. Read-only with respect to rawAx/rawAy/rawAz — does
+  // not alter them or anything downstream of them; see detectShock()'s own comment block above.
+  detectShock(rawAx, rawAy, rawAz, now);
 
   // Butterworth low-pass filter (vibration removal)
   const fax = bw2(rawAx, _bw_xp[0], _bw_yp1[0], _bw_yp2[0]);
@@ -1466,8 +1556,13 @@ function exportIMULog(){
   // speed_mps      = current dead-reckoned (IMU-integrated) speed — unchanged, still the same
   //                  column it always was. Both are m/s. 'NaN' in gnss_speed_mps means no real
   //                  GNSS speed had been accepted yet at that row, never a fabricated 0.
-  const header = 't_ms,ax_mps2,ay_mps2,az_mps2,gx_rps,gy_rps,gz_rps,fwd_accel_mps2,speed_mps,gnss_speed_mps,heading_rad\n';
-  const rows = IMU.log.map(r=>`${r.t},${r.ax},${r.ay},${r.az},${r.gx},${r.gy},${r.gz},${r.fwd_accel},${r.speed_mps},${r.gnss_speed_mps!==undefined?r.gnss_speed_mps:'NaN'},${r.heading_rad}`).join('\n');
+  // nav_hz/imu_hz/onnx_hz = real measured rates (see startNavHzTracker/startHzTracker/the ONNX
+  // module's own inference counter), not fixed constants — a stalled tab or a paused nav loop
+  // shows up here as a real drop, never a value pretending the scheduler is still running.
+  // shock_* = real pothole/shock detector state at this row (see detectShock()); accepted-total
+  // only increments on a genuine accepted event, never a simulated one.
+  const header = 't_ms,ax_mps2,ay_mps2,az_mps2,gx_rps,gy_rps,gz_rps,fwd_accel_mps2,speed_mps,gnss_speed_mps,heading_rad,nav_hz,imu_hz,onnx_hz,shock_events_total,shock_accepted_total,shock_active\n';
+  const rows = IMU.log.map(r=>`${r.t},${r.ax},${r.ay},${r.az},${r.gx},${r.gy},${r.gz},${r.fwd_accel},${r.speed_mps},${r.gnss_speed_mps!==undefined?r.gnss_speed_mps:'NaN'},${r.heading_rad},${r.nav_hz!==undefined?r.nav_hz:''},${r.imu_hz!==undefined?r.imu_hz:''},${r.onnx_hz!==undefined?r.onnx_hz:''},${r.shock_events_total!==undefined?r.shock_events_total:''},${r.shock_accepted_total!==undefined?r.shock_accepted_total:''},${r.shock_active!==undefined?r.shock_active:''}`).join('\n');
   const blob = new Blob([header+rows], {type:'text/csv'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1483,6 +1578,7 @@ const S={city:'delhi',run:true,step:0,gnss:true,outt:0,outN:0,snapN:0,
   baroAlt:220,baroPrev:220,inTunnel:false,tunDur:0,
   hmmProb:null,hmmCorrN:0,
   useLiveIMU:false,
+  shockNoiseBoostUntil:0, // real-wall-clock deadline (performance.now()); set by detectShock() on an accepted shock
   posSource:null}; // explicit source of the displayed position — never an ambiguous silent switch
 
 /* EKF — decoupled-axis (lat,lon) Kalman filter.
@@ -1511,8 +1607,12 @@ function ekfStep(spd,dh,dt,gpsMeasured,gla,glo,gpsAccM){
   const th=EKF.th+dh*.5,dl=spd*Math.cos(th)/111000*dt,dn=spd*Math.sin(th)/(111000*Math.cos(EKF.x*Math.PI/180))*dt;
   EKF.x+=dl;EKF.y+=dn;EKF.th+=dh;
   // process noise: covariance grows every tick, GPS or not. Uses the trained Adaptive-EKF
-  // model's Qp when it's loaded and running; otherwise the fixed classical constant.
-  const Q=(EKF.Qp!=null?EKF.Qp:2.2e-11)*(1+dt*4);
+  // model's Qp when it's loaded and running; otherwise the fixed classical constant. A recent
+  // accepted pothole/shock (detectShock(), above) temporarily multiplies this — never a position
+  // correction, just genuinely reduced confidence in clean kinematic integration right after a
+  // physical jolt. Decays back to 1x on its own once S.shockNoiseBoostUntil elapses.
+  const shockBoost = (S.shockNoiseBoostUntil && performance.now()<S.shockNoiseBoostUntil) ? SHOCK_Q_BOOST : 1;
+  const Q=(EKF.Qp!=null?EKF.Qp:2.2e-11)*(1+dt*4)*shockBoost;
   EKF.P[0]+=Q; EKF.P[4]+=Q;
   // ── UPDATE — only when a fresh GPS fix is actually supplied this tick ──
   if(gpsMeasured && isFinite(gla) && isFinite(glo)){
@@ -1573,6 +1673,11 @@ function updateDebugPanel(){
     }
     const hEl=document.getElementById('dbg-imuhz');
     if(hEl) hEl.textContent = IMU.active ? (IMU.hz||0)+'Hz' : '—';
+    // Real navigation-tick rate (loop()'s gated step() calls), distinct from IMU Hz above —
+    // see startNavHzTracker()/NAV_TICK_MS. Shown regardless of live/sim mode since the scheduler
+    // runs either way; '—' only if the row itself doesn't exist in this build of the debug panel.
+    const nhEl=document.getElementById('dbg-navhz');
+    if(nhEl) nhEl.textContent = navHz+'Hz (target 10Hz)';
     const sEl=document.getElementById('dbg-src');
     if(sEl) sEl.textContent = S.posSource || (S.gnss?'GNSS-FUSED':'DEAD-RECKONING');
     const dEl=document.getElementById('dbg-detail');
@@ -1581,7 +1686,7 @@ function updateDebugPanel(){
     if(typeof NAVDRIFT_ONNX!=='undefined'){
       const st=NAVDRIFT_ONNX.status();
       const oEl=document.getElementById('dbg-onnx');
-      if(oEl) oEl.textContent = st.label + (st.loaded?' · '+st.ms.toFixed(1)+'ms':'');
+      if(oEl) oEl.textContent = st.label + (st.loaded?' · '+st.ms.toFixed(1)+'ms · '+st.hz+'Hz infer':'');
       const chip=document.getElementById('drift-chip');
       if(chip){
         if(st.loaded){ chip.textContent='DRIFT-FORMER · ONNX ACTIVE'; chip.title='Trained transformer running live in-browser (onnxruntime-web/WASM)'; }
@@ -1623,7 +1728,25 @@ function updateDebugPanel(){
   }catch(e){}
 }
 
-const DT=0.067;
+// DT is the SIMULATION path's fixed nominal tick interval (seconds) — SIM mode has no real
+// sensor timing to measure (it's a scripted route), so it correctly keeps using this fixed
+// constant, unchanged, exactly as before. Matches NAV_TICK_MS (100ms = 10Hz) below.
+// The LIVE GPS path no longer uses this constant for its EKF predict step — see navDt below,
+// which is the REAL measured (and clamped) elapsed time between navigation ticks. DT is kept
+// here only as navDt's initial/fallback value before the first real tick has been timed.
+const DT=0.1;
+// Real, clamped elapsed time (seconds) between the two most recent navigation ticks — computed
+// in loop() from real rAF timestamps (the same t-lt this scheduler already uses for its own
+// gating), not assumed to be exactly NAV_TICK_MS. Used by the LIVE GPS branch of step() in place
+// of the old fixed DT2=DT, so a tick that actually took longer or shorter than 100ms (WASM/ONNX
+// load, a dropped frame, GC pause) integrates over its own real duration instead of a nominal
+// one. Clamped to (0, NAV_DT_CLAMP_MAX_S] — the upper bound exists specifically so a backgrounded
+// tab/browser stall (rAF simply stops firing, then resumes with t-lt in the tens of seconds or
+// more) produces one bounded, honest integration step instead of a huge kinematic jump; this
+// reuses the same "cap, don't fabricate a replacement value" philosophy as the raw trail's 0.5s
+// dt clamp and the 60 m/s physical ceilings elsewhere in this file.
+const NAV_DT_CLAMP_MAX_S = 0.5;
+let navDt = DT;
 let _map,_mapReady=false,_gtC=[],_ndC=[],_imuC=[],_ekfC=[],_vm,_gtm,_mapMoving=false,_mapZooming=false;
 let _lastCamLa=null,_lastCamLo=null,_camAwayMs=0; // camera-follow jumpTo gate state (last recentered position, sustained-distance timer)
 
@@ -2343,7 +2466,11 @@ function step(){
     if(GPS.lastLat !== null && GPS.lastLat !== GPS.lat){
       S.gtH = Math.atan2(GPS.lon - GPS.lastLon, GPS.lat - GPS.lastLat);
     }
-    const DT2 = DT;
+    // Real measured (and clamped) elapsed time since the last navigation tick — see navDt's own
+    // comment above. This replaces the old fixed DT2=DT nominal-cadence assumption for the LIVE
+    // GPS branch only; ekfStep's predict/update formulas themselves are unchanged, they just now
+    // receive an honest dt instead of an assumed one.
+    const DT2 = navDt;
     let usedSpd2 = S.useLiveIMU && IMU.active ? clamp(IMU.intSpeed, 0, 35) : 0;
     let usedDH2  = S.useLiveIMU && IMU.active ? IMU.gz * DT2 : 0;
 
@@ -2475,7 +2602,7 @@ function step(){
 
     // Log IMU data
     if(S.useLiveIMU && IMU.active && S.step%3===0){
-      IMU.log.push({t:performance.now().toFixed(1),ax:IMU.ax.toFixed(3),ay:IMU.ay.toFixed(3),az:IMU.az.toFixed(3),gx:IMU.gx.toFixed(4),gy:IMU.gy.toFixed(4),gz:IMU.gz.toFixed(4),fwd_accel:IMU.fwdAccel.toFixed(3),speed_mps:usedSpd2.toFixed(2),gnss_speed_mps:(GPS.lastSpeedMps!=null&&isFinite(GPS.lastSpeedMps))?GPS.lastSpeedMps.toFixed(2):'NaN',heading_rad:IMU.intHeading.toFixed(4)});
+      IMU.log.push({t:performance.now().toFixed(1),ax:IMU.ax.toFixed(3),ay:IMU.ay.toFixed(3),az:IMU.az.toFixed(3),gx:IMU.gx.toFixed(4),gy:IMU.gy.toFixed(4),gz:IMU.gz.toFixed(4),fwd_accel:IMU.fwdAccel.toFixed(3),speed_mps:usedSpd2.toFixed(2),gnss_speed_mps:(GPS.lastSpeedMps!=null&&isFinite(GPS.lastSpeedMps))?GPS.lastSpeedMps.toFixed(2):'NaN',heading_rad:IMU.intHeading.toFixed(4),nav_hz:navHz,imu_hz:(IMU.hz||0),onnx_hz:onnxHz,shock_events_total:Shock.eventsTotal,shock_accepted_total:Shock.acceptedTotal,shock_active:Shock.active?1:0});
       if(IMU.log.length>3000)IMU.log.shift();
     }
 
@@ -3301,8 +3428,48 @@ function startLiveGPS(){
     {enableHighAccuracy: true, maximumAge: 0, timeout: 30000});
 }
 
-let lt=0;
-function loop(t){requestAnimationFrame(loop);if(t-lt>65){step();lt=t;}}
+/* ── EXPLICIT 10 Hz NAVIGATION/FUSION/INFERENCE SCHEDULER ──
+ * Raw sensor events (devicemotion, geolocation) keep arriving at their own native rate and keep
+ * updating IMU state / GPS state immediately, same as before — this only gates how often step() (the single
+ * place that runs EKF predict/update, DriftFormer/adaptive-EKF/tunnel ONNX inference, RoadGraph
+ * matching and NHC) actually executes. There is exactly one requestAnimationFrame(loop) call site
+ * (at the bottom of this script) and step() is only ever called from inside loop() — this is the
+ * same single-loop architecture as before, just with the gate corrected from an ad-hoc ~65ms
+ * (~15Hz) to an explicit, named 100ms (10Hz) constant. `t` is rAF's own high-resolution real
+ * timestamp (equivalent to performance.now()), so this is real elapsed wall-clock time, never a
+ * frame-count or event-count heuristic — a slow/backgrounded tab produces a real skipped tick,
+ * never a fabricated one. Each tick reads the CURRENT IMU/GPS/S state (which raw sensor
+ * callbacks keep fresh independently of this scheduler) rather than replaying a queued sample, so
+ * a tick can never duplicate a stale measurement as if it were new. S.run (checked at the top of
+ * step()) already gates pause; GNSS blackout/reacquisition and live/sim mode all flow through this
+ * same single step() call, so none of them can spawn a second scheduler.
+ */
+const NAV_TICK_MS = 100; // 10 Hz — see DT above, which must match this
+let lt=0, navTickCount=0, navHz=0, _navHzInterval=null;
+function startNavHzTracker(){
+  if(_navHzInterval) return; // idempotent — never start a second measurement timer
+  _navHzInterval = setInterval(()=>{ navHz = navTickCount; navTickCount = 0; }, 1000);
+}
+function loop(t){
+  requestAnimationFrame(loop);
+  if(t-lt>=NAV_TICK_MS){
+    // Real elapsed time since the last ACTUAL navigation tick (not since the last rAF frame —
+    // this scheduler already only advances lt on a tick that passed the 10Hz gate). lt===0 only
+    // on the very first tick ever, where there is no prior tick to measure from; navDt keeps its
+    // DT fallback for that one tick. This also means lt keeps advancing every ~100ms even while
+    // paused (S.run=false — step() itself returns immediately, checked at its own top), so a
+    // pause/resume never produces one huge elapsed-time reading on resume: only a genuine
+    // rAF-level stall (backgrounded tab, browser suspension) can make t-lt large, and that's
+    // exactly what the clamp below exists to bound.
+    if(lt>0){
+      navDt = Math.min(Math.max((t-lt)/1000, 0), NAV_DT_CLAMP_MAX_S);
+      if(navDt<=0) navDt = DT; // guard against a non-positive/duplicate timestamp — never divide-by-zero downstream
+    }
+    lt=t;
+    navTickCount++;
+    step();
+  }
+}
 
 /* ── NAVDRIFT_ONNX — the actual trained model pipeline, ported from frontend/index.html ──
    These are the SAME 4 FP32 ONNX exports validated in results/validation_full.json
@@ -3327,6 +3494,15 @@ const NAVDRIFT_ONNX = (function(){
   // never accepted on faith just because the model produced a finite number.
   let _lastDriftCorrT = 0;
   let driftCorrStats = { applied: 0, rejected: 0, lastRawDLat: 0, lastRawDLon: 0, lastAppliedM: 0, lastRejectedM: 0 };
+  // Real model-inference call rate — incremented once per actual runStep() invocation (i.e. once
+  // per applyToStep() call where the pipeline is loaded and genuinely runs), separate from both
+  // the raw IMU event rate (IMU.hz) and the navigation-tick rate (navHz above): this is how often
+  // the ONNX models themselves actually execute, which can legitimately be lower than navHz if a
+  // model call takes longer than one 100ms tick. Same measurement-only 1s-interval pattern as
+  // startHzTracker()/startNavHzTracker() — never a decision-making loop.
+  let _inferCount = 0;
+  window.onnxHz = 0; // read by the CSV logger (IMU.log.push) and the debug panel below
+  setInterval(()=>{ window.onnxHz = _inferCount; _inferCount = 0; }, 1000);
 
   function _f32(arr){
     const flat=arr.flat(Infinity);
@@ -3363,6 +3539,7 @@ const NAVDRIFT_ONNX = (function(){
 
   async function runStep(imuVec){
     if(!loaded)return null;
+    _inferCount++;
     const t0=performance.now();
     const res={};
     imuBuf.push(imuVec); if(imuBuf.length>IMU_WIN) imuBuf.shift();
@@ -3461,7 +3638,7 @@ const NAVDRIFT_ONNX = (function(){
 
   return {
     load, applyToStep,
-    status(){ return {loaded,failed,label:lastStatus,ms:lastMs}; },
+    status(){ return {loaded,failed,label:lastStatus,ms:lastMs,hz:(window.onnxHz||0)}; },
     // Called on GNSS reacquisition so a new blackout's first correction measures real elapsed
     // time against ITS OWN start, never against a stale timestamp left over from a previous
     // blackout (which would let an artificially large dt waive the physical bound entirely).
@@ -3491,6 +3668,7 @@ NAVDRIFT_ONNX.load();
 // Boot: start in Live GPS mode, India overview until fix arrives
 document.getElementById('city-buttons').style.display = 'none';
 init('delhi'); // sets up route/state; map view overridden to India overview in initMap
+startNavHzTracker(); // measurement-only 1s counter, same pattern as startHzTracker() for IMU.hz — never a second nav loop
 requestAnimationFrame(loop);
 startLiveGPS(); // auto-request location — map flyTo on first fix
 </script>
