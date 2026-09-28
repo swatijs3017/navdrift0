@@ -292,8 +292,9 @@
     body.tech-mode .tech-panel{transform:translateY(0);}
     .tech-drag-area{display:flex;justify-content:center;padding:10px 0 6px;flex-shrink:0;cursor:pointer;}
     .tech-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,0.15);}
-    .tech-scroll{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:0 0 env(safe-area-inset-bottom,16px);
+    .tech-scroll{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:0 0 8px;
       scrollbar-width:thin;scrollbar-color:rgba(0,200,185,0.15) transparent;}
+    .tech-footer{flex-shrink:0;padding:0 0 env(safe-area-inset-bottom,16px);}
     .tech-scroll::-webkit-scrollbar{width:3px;}
     .tech-scroll::-webkit-scrollbar-thumb{background:rgba(0,200,185,0.15);border-radius:2px;}
 
@@ -711,7 +712,13 @@
       <span class="mod perm-needed" id="imu-chip" onclick="openSensorModal()">⊕ REAL IMU</span>
     </div>
 
-    <!-- Section: Controls -->
+  </div><!-- end .tech-scroll -->
+
+  <!-- Controls footer: deliberately OUTSIDE .tech-scroll so its buttons (GNSS Toggle above
+       all) sit at a fixed position within the panel regardless of scroll position or any
+       reflow from variable-height debug content above — that variable-height content stays
+       inside .tech-scroll and can wrap/scroll freely without moving these buttons at all. -->
+  <div class="tech-footer">
     <div class="tp-divider"></div>
     <div class="actions" style="padding:0 16px;">
       <button class="abtn play" id="btn-play" onclick="toggleSim()">⏸ Pause</button>
@@ -723,7 +730,7 @@
     </div>
 
     <div class="desktop-link"><a href="index.html?desktop=1">↗ Open desktop view</a></div>
-  </div><!-- end .tech-scroll -->
+  </div><!-- end .tech-footer -->
 </div><!-- end .tech-panel -->
 
 <!-- SENSOR MODAL -->
@@ -1579,7 +1586,7 @@ function updateDebugPanel(){
 
 const DT=0.067;
 let _map,_mapReady=false,_gtC=[],_ndC=[],_imuC=[],_ekfC=[],_vm,_gtm,_mapMoving=false,_mapZooming=false;
-let _lastCamLa=null,_lastCamLo=null; // last position the camera was actually recentered to (follow-mode jumpTo gate)
+let _lastCamLa=null,_lastCamLo=null,_camAwayMs=0; // camera-follow jumpTo gate state (last recentered position, sustained-distance timer)
 
 function _emptyLine(){return{type:'Feature',geometry:{type:'LineString',coordinates:[]}};}
 function _geoCircle(lat,lon,rM,n=32){
@@ -2413,19 +2420,36 @@ function step(){
       if(_gtm && S.gnss) _gtm.setLngLat([S.gtLo,S.gtLa]);
       const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(S.gtH*180/Math.PI)+'deg)';
       if(GPS.zoomed&&!_mapMoving&&!_mapZooming){
-        const camLa=S.gnss?S.gtLa:S.ndLa, camLo=S.gnss?S.gtLo:S.ndLo;
-        // This used to jumpTo the live position on EVERY tick (~15Hz), regardless of how far
-        // it had actually moved — including the ~0.5-1m of real GPS/EKF measurement noise
-        // that's expected while genuinely stationary. Recentering the camera 15x/sec off that
-        // noise is what produced the apparent "jumping/reframing" — not a large movement, just
-        // a constant, needless re-snap. Gate on real distance moved since the last recenter
-        // (still using the real, unaltered position — nothing here changes what NAVDRIFT
-        // reports, only how often the camera itself re-centers on it), so the follow-camera
-        // still tracks genuine movement immediately but no longer fights a stationary phone's
-        // own measurement noise.
-        if(_lastCamLa===null || dist(camLa,camLo,_lastCamLa,_lastCamLo) > 3){
+        // Camera-follow now always tracks the FUSED position (S.ndLa/S.ndLo — the real EKF
+        // output, same value the predicted dot itself is drawn from), never the raw GPS fix
+        // directly. While GNSS-locked this used to follow S.gtLa/S.gtLo (raw GPS) instead —
+        // raw fixes can legitimately swing by several to tens of meters between samples
+        // (the same accuracy-scale noise already documented elsewhere in this app), which is
+        // a much bigger real signal than the fused position's much smaller, Kalman-damped
+        // noise. That's what was still producing substantial reframing even with a distance
+        // gate. Nothing here changes what NAVDRIFT reports or how it's computed — only which
+        // already-real, already-computed position variable the camera itself reads.
+        const camLa=S.ndLa, camLo=S.ndLo;
+        if(_lastCamLa===null){
           _map.jumpTo({center:[camLo,camLa],zoom:_map.getZoom()});
-          _lastCamLa=camLa; _lastCamLo=camLo;
+          _lastCamLa=camLa; _lastCamLo=camLo; _camAwayMs=0;
+        } else {
+          const camD=dist(camLa,camLo,_lastCamLa,_lastCamLo);
+          // Distance gate alone still let a single noisy sample over the 3m threshold snap
+          // the camera. Requiring that distance to be SUSTAINED for half a second (using the
+          // same real per-tick DT2 already used for the EKF predict step above, not a fake
+          // timer) filters out a one-off spike while still recentering within half a second
+          // of genuine, sustained movement — real motion keeps camD>3 continuously, so it is
+          // never delayed by more than this short, fixed window.
+          if(camD>3){
+            _camAwayMs += DT2*1000;
+            if(_camAwayMs>500){
+              _map.jumpTo({center:[camLo,camLa],zoom:_map.getZoom()});
+              _lastCamLa=camLa; _lastCamLo=camLo; _camAwayMs=0;
+            }
+          } else {
+            _camAwayMs=0;
+          }
         }
       }
     }
