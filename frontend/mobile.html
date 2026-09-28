@@ -2326,8 +2326,17 @@ function step(){
       // Pulls 30% of the way toward the real GPS fix each fresh fix (never a full snap, so the
       // trace still visibly shows its own drift between fixes) — no added jitter of any kind.
       if(freshFixThisTick){
-        S.iLa += (S.gtLa - S.iLa) * 0.3;
-        S.iLo += (S.gtLo - S.iLo) * 0.3;
+        // Same hard physical sanity bound as the blackout trail below: a single fix-to-fix
+        // pull implying more than 60 m/s is rejected outright (this tick's pull is skipped)
+        // rather than drawn, so one bad/glitched GPS fix can't produce a giant jump on this
+        // diagnostic line either. DT here is the nominal ~1s fix interval, used only to size
+        // a generous outer bound, not to compute the pull itself (unchanged: still 0.3 of the
+        // real raw gt-iLa gap, no added jitter).
+        const pullDistM = dist(S.gtLa, S.gtLo, S.iLa, S.iLo);
+        if(pullDistM <= 60){
+          S.iLa += (S.gtLa - S.iLa) * 0.3;
+          S.iLo += (S.gtLo - S.iLo) * 0.3;
+        }
       }
     } else {
       ekfStep(usedSpd2, usedDH2, DT2, false, S.gtLa, S.gtLo);
@@ -2353,8 +2362,19 @@ function step(){
       // No Math.random(), no synthetic jitter, no fabricated drift — only the real,
       // sensor-derived dead-reckoning calculation above. If real IMU drift is large, this
       // shows a large trail; if it's small (a genuinely stationary phone), it stays small.
-      S.iLa += dl;
-      S.iLo += dn;
+      //
+      // Hard physical sanity bound: reject a single step's displacement outright if it implies
+      // a speed beyond any physically plausible vehicle/pedestrian value (60 m/s ≈ 216 km/h),
+      // rather than drawing whatever it computed to. This is a bound on THIS diagnostic trail
+      // only — it never touches usedSpd2, IMU.intSpeed, EKF state, or the navigation solution —
+      // so a bad single sample is dropped (this tick contributes no displacement) instead of
+      // drawing a giant segment, without hiding or disabling the trail itself.
+      const stepDistM = Math.hypot(dl*111000, dn*111000*Math.cos(S.iLa*Math.PI/180));
+      const maxStepDistM = 60 * rawDt; // 60 m/s hard ceiling × this tick's own real dt
+      if(rawDt>0 && stepDistM<=maxStepDistM && isFinite(dl) && isFinite(dn)){
+        S.iLa += dl;
+        S.iLo += dn;
+      }
 
       // ── Real NHC + live OSM map-matching, during an actual GNSS blackout ──
       // This used to exist only in the simulation code path further down in this file, which
@@ -2485,6 +2505,22 @@ function step(){
   }
 
   // ── SIMULATION MODE (no live GPS) ──
+  // This block must only ever run when the user has explicitly chosen the demo
+  // simulation mode (GPS.simMode === true, set by enterSimMode()). GPS.active
+  // being false is NOT the same thing as simulation mode: it is also the normal,
+  // transient state during ordinary live-mode startup, for however long it takes
+  // the phone's first real GPS fix to land (can be several seconds, longer
+  // indoors). Before this guard existed, that startup window fell through into
+  // this same branch and ran the fabricated demo route below — synthetic
+  // Math.random() jitter growing unbounded with S.outt, feeding straight into
+  // S.iLa/S.iLo and the same 'imu' map source the RAW IMU trail is rendered
+  // from. That is the exact, reproducible cause of a raw trail exploding into
+  // huge zig-zags on a genuinely stationary phone: it was drawing invented demo
+  // motion, not real sensor data, for however long GPS took to acquire. Fix:
+  // do absolutely nothing this tick (no fabricated movement, no trail update,
+  // no render) until the user is actually in simulation mode. Real live-mode
+  // startup just waits, silently, for the first real fix — never fabricates.
+  if(!GPS.simMode) return;
   S.ri=(S.ri+1)%S.route.length;
   const cur=S.route[S.ri],prv=S.route[(S.ri-1+S.route.length)%S.route.length];
   const dLa=cur[0]-prv[0],dLo=cur[1]-prv[1];
