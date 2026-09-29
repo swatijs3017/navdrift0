@@ -2057,8 +2057,41 @@ const NAV_DT_CLAMP_MAX_S = 0.5;
 let navDt = DT;
 let _map,_mapReady=false,_gtC=[],_ndC=[],_imuC=[],_ekfC=[],_vm,_gtm,_mapMoving=false,_mapZooming=false;
 let _lastCamLa=null,_lastCamLo=null,_camAwayMs=0; // camera-follow jumpTo gate state (last recentered position, sustained-distance timer)
+// Purple "Raw IMU integration" trail segmentation — VISUALIZATION ONLY, read-only
+// investigation confirmed the trail's own math (S.iLa/S.iLo, _lastRawTrailT, rawDt,
+// EKF.th, the blackout dead-reckoning integration) is real and unmodified by this;
+// this only changes how the already-computed points are grouped for rendering, so a
+// real GNSS-lock/blackout transition breaks the drawn line instead of visually
+// connecting two segments that were never actually continuous IMU drift. _imuC itself
+// (the flat point list) is left fully intact and still populated exactly as before —
+// nothing reads it differently and no point is capped or discarded. _imuSegs groups
+// the same points into one array per uninterrupted GNSS-state run; _imuLastGnss is
+// the S.gnss value the last point was pushed under, so a change is detected exactly
+// once, at the tick it happens, using the same live S.gnss flag the trail's own
+// integration branch already switches on.
+let _imuSegs=[[]],_imuLastGnss=null;
 
 function _emptyLine(){return{type:'Feature',geometry:{type:'LineString',coordinates:[]}};}
+// Same purpose as _emptyLine() above but for the 'imu' source once it carries a
+// MultiLineString (see _imuGeom()) — an empty MultiLineString clears the layer the
+// same way an empty LineString does; kept separate only so the geometry `type` stays
+// honest about what the source actually holds between pushes.
+function _emptyMultiLine(){return{type:'Feature',geometry:{type:'MultiLineString',coordinates:[]}};}
+// Appends one already-computed raw-IMU point to the current segment, starting a new
+// segment first if the live GNSS-lock state just changed since the last point pushed.
+// Does not compute, adjust, or filter the point itself — lon/lat/gnssNow are passed in
+// exactly as the caller already had them (S.iLo, S.iLa, S.gnss).
+function _imuPushPoint(lon,lat,gnssNow){
+  if(_imuLastGnss!==null && gnssNow!==_imuLastGnss) _imuSegs.push([]);
+  _imuSegs[_imuSegs.length-1].push([lon,lat]);
+  _imuLastGnss=gnssNow;
+}
+// Builds the 'imu' source's current MultiLineString from _imuSegs. A segment with
+// only one point can't form a line and is dropped from the RENDERED geometry only —
+// the point itself remains in _imuSegs (and always did in _imuC), nothing is deleted.
+function _imuGeom(){
+  return {type:'Feature',geometry:{type:'MultiLineString',coordinates:_imuSegs.filter(seg=>seg.length>1)}};
+}
 function _geoCircle(lat,lon,rM,n=32){
   const pts=[];
   for(let i=0;i<=n;i++){const a=(i/n)*2*Math.PI;pts.push([lon+(rM/(111000*Math.cos(lat*Math.PI/180)))*Math.sin(a),lat+(rM/111000)*Math.cos(a)]);}
@@ -2378,7 +2411,7 @@ function _readdOverlays(){
   /* Restore trajectory data into sources */
   if(_gtC.length>2)_map.getSource('gt').setData({type:'Feature',geometry:{type:'LineString',coordinates:_gtC}});
   if(_ndC.length>2)_map.getSource('nd').setData({type:'Feature',geometry:{type:'LineString',coordinates:_ndC}});
-  if(_imuC.length>2)_map.getSource('imu').setData({type:'Feature',geometry:{type:'LineString',coordinates:_imuC}});
+  if(_imuC.length>2)_map.getSource('imu').setData(_imuGeom());
   if(_ekfC.length>2)_map.getSource('ekf').setData({type:'Feature',geometry:{type:'LineString',coordinates:_ekfC}});
   /* Marker is a DOM element — survives setStyle but re-register to be safe */
   if(_vm)_vm.addTo(_map);
@@ -2733,8 +2766,9 @@ function initMap(c){
     _createMap(c);
   } else {
     _gtC=[];_ndC=[];_imuC=[];_ekfC=[];
+    _imuSegs=[[]];_imuLastGnss=null;
     _srcData('gt',_emptyLine());_srcData('nd',_emptyLine());
-    _srcData('imu',_emptyLine());_srcData('ekf',_emptyLine());
+    _srcData('imu',_emptyMultiLine());_srcData('ekf',_emptyLine());
     if(_vm)_vm.setLngLat([cfg.lon,cfg.lat]);
     if(_gtm)_gtm.setLngLat([cfg.lon,cfg.lat]);
   }
@@ -2965,9 +2999,10 @@ function step(){
     if(_map&&_mapReady){
       _gtC.push([S.gtLo,S.gtLa]);_ndC.push([S.ndLo,S.ndLa]);
       _imuC.push([S.iLo,S.iLa]);_ekfC.push([EKF.y,EKF.x]);
+      _imuPushPoint(S.iLo,S.iLa,S.gnss); // segment the raw-IMU trail at GNSS transitions — rendering only, see declaration above
       if(_gtC.length>2)_srcData('gt',{type:'Feature',geometry:{type:'LineString',coordinates:_gtC}});
       if(_ndC.length>2)_srcData('nd',{type:'Feature',geometry:{type:'LineString',coordinates:_ndC}});
-      if(_imuC.length>2)_srcData('imu',{type:'Feature',geometry:{type:'LineString',coordinates:_imuC}});
+      if(_imuC.length>2)_srcData('imu',_imuGeom());
       if(_ekfC.length>2)_srcData('ekf',{type:'Feature',geometry:{type:'LineString',coordinates:_ekfC}});
       _srcData('unc',_geoCircle(S.ndLa,S.ndLo,Math.max(4,S.unc)));
       if(_vm)_vm.setLngLat([S.ndLo,S.ndLa]);
@@ -3222,9 +3257,10 @@ function step(){
   if(_map&&_mapReady){
     _gtC.push([S.gtLo,S.gtLa]);_ndC.push([S.ndLo,S.ndLa]);
     _imuC.push([S.iLo,S.iLa]);_ekfC.push([EKF.y,EKF.x]);
+    _imuPushPoint(S.iLo,S.iLa,S.gnss); // segment the raw-IMU trail at GNSS transitions — rendering only, see declaration above
     if(_gtC.length>2)_srcData('gt',{type:'Feature',geometry:{type:'LineString',coordinates:_gtC}});
     if(_ndC.length>2)_srcData('nd',{type:'Feature',geometry:{type:'LineString',coordinates:_ndC}});
-    if(_imuC.length>2)_srcData('imu',{type:'Feature',geometry:{type:'LineString',coordinates:_imuC}});
+    if(_imuC.length>2)_srcData('imu',_imuGeom());
     if(_ekfC.length>2)_srcData('ekf',{type:'Feature',geometry:{type:'LineString',coordinates:_ekfC}});
     _srcData('unc',_geoCircle(S.ndLa,S.ndLo,Math.max(4,S.unc)));
     if(_vm)_vm.setLngLat([S.ndLo,S.ndLa]);
@@ -3874,8 +3910,9 @@ function startLiveGPS(){
       EKF.x = lat; EKF.y = lon;
       S.totND=0; S.n=0; S.totEKF=0; S.outN=0; S.nhcN=0; S.outt=0;
       _gtC=[];_ndC=[];_imuC=[];_ekfC=[];
+      _imuSegs=[[]];_imuLastGnss=null;
       _srcData('gt',_emptyLine());_srcData('nd',_emptyLine());
-      _srcData('imu',_emptyLine());_srcData('ekf',_emptyLine());
+      _srcData('imu',_emptyMultiLine());_srcData('ekf',_emptyLine());
       GPS.zoomed = false;
       if(_map){ _map.flyTo({center:[lon,lat],zoom:18,duration:1.8}); setTimeout(()=>{GPS.zoomed=true;},2000); }
       setBtnGnss(true);
@@ -3908,8 +3945,9 @@ function startLiveGPS(){
         S.ndLa = S.iLa = lat; S.ndLo = S.iLo = lon;
         EKF.x = lat; EKF.y = lon; EKF.P=[2.5e-9,0,0,0,2.5e-9,0,0,0,.1];
         _gtC=[];_ndC=[];_imuC=[];_ekfC=[];
+        _imuSegs=[[]];_imuLastGnss=null;
         _srcData('gt',_emptyLine());_srcData('nd',_emptyLine());
-        _srcData('imu',_emptyLine());_srcData('ekf',_emptyLine());
+        _srcData('imu',_emptyMultiLine());_srcData('ekf',_emptyLine());
       }
       if(S.gnss && _map && !_mapMoving && !_mapZooming){
         _map.jumpTo({center:[lon,lat],zoom:_map.getZoom()});
