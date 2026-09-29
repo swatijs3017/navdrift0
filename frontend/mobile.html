@@ -1855,7 +1855,12 @@ function updateDebugPanel(){
       setAF('af-df', st.failed?'FAILED TO LOAD':st.loaded?(S.gnss?'ACTIVE (idle — GNSS locked)':'ACTIVE — correcting'):'LOADING…');
       setAF('af-applied', cs?cs.applied+'':'—');
       setAF('af-rejected', cs?cs.rejected+(fc?' · '+fc.driftformer+' infer err':''):'—');
-      setAF('af-ekf', st.loaded?(fc&&fc.adaptive_ekf>0?'ACTIVE · '+fc.adaptive_ekf+' infer err':'ACTIVE'):'INACTIVE');
+      // ad3/ad4/ad5 are the adaptive EKF model's other 3 raw outputs (unused for Q/R fusion) —
+      // observational only, generic labels since the repository establishes no physical meaning
+      // for them. Never influences EKF.Qp/EKF.Rp or any navigation state.
+      const ad = NAVDRIFT_ONNX.adaptiveDiag ? NAVDRIFT_ONNX.adaptiveDiag() : null;
+      const adTxt = ad ? ' (out3 '+(ad.o3!=null?ad.o3.toFixed(3):'—')+' · out4 '+(ad.o4!=null?ad.o4.toFixed(3):'—')+' · out5 '+(ad.o5!=null?ad.o5.toFixed(3):'—')+')' : '';
+      setAF('af-ekf', (st.loaded?(fc&&fc.adaptive_ekf>0?'ACTIVE · '+fc.adaptive_ekf+' infer err':'ACTIVE'):'INACTIVE')+adTxt);
       setAF('af-tunnel', st.loaded?(S.inTunnel?'ACTIVE — tunnel detected':(fc&&fc.tunnel_det>0?'ACTIVE · '+fc.tunnel_det+' infer err':'ACTIVE — no tunnel')):'INACTIVE');
     }
     if(typeof RoadGraph!=='undefined'){
@@ -3888,6 +3893,13 @@ const NAVDRIFT_ONNX = (function(){
   // to classical EKF" actually looks like as a number: nonzero here means real inference errors
   // occurred and that tick's model output was skipped, not fabricated.
   let inferFailCount = { adaptive_ekf: 0, tunnel_det: 0, driftformer: 0 };
+  // Adaptive EKF outputs d[2]/d[3]/d[4] — the model produces 5 values, only d[0]/d[1] (qRaw/rRaw)
+  // are consumed for Q/R fusion below. These three are NOT independently verified against any
+  // known physical quantity in this repository, so they are surfaced as generic diagnostic
+  // telemetry only — never labeled with an invented meaning, never read by any navigation code.
+  // Non-finite values are dropped rather than stored, so a bad inference can't leak a NaN/Infinity
+  // into the diagnostics panel.
+  let adaptiveDiag = { o3: null, o4: null, o5: null };
   // Real model-inference call rate — incremented once per actual runStep() invocation (i.e. once
   // per applyToStep() call where the pipeline is loaded and genuinely runs), separate from both
   // the raw IMU event rate (IMU.hz) and the navigation-tick rate (navHz above): this is how often
@@ -3961,6 +3973,12 @@ const NAVDRIFT_ONNX = (function(){
         // pass straight through this "clamp" as if it were a real bounded value.
         if(isFinite(qRaw)) res.ekfQ=Math.min(1e-9, Math.max(1e-12,qRaw));
         if(isFinite(rRaw)) res.ekfR=Math.min(5, Math.max(0.2,rRaw));
+        // Diagnostic-only: d[2..4] are not used for Q/R and do not affect res.ekfQ/res.ekfR or
+        // the EKF above in any way. Raw finite values are kept as-is (no clamping, since nothing
+        // downstream trusts them as a bounded physical quantity); non-finite ones are dropped.
+        if(isFinite(d[2])) adaptiveDiag.o3=d[2];
+        if(isFinite(d[3])) adaptiveDiag.o4=d[3];
+        if(isFinite(d[4])) adaptiveDiag.o5=d[4];
       }catch(e){ inferFailCount.adaptive_ekf++; }
     }
     // Tunnel Detector BiLSTM — structural-blackout classifier from telemetry window
@@ -4041,7 +4059,8 @@ const NAVDRIFT_ONNX = (function(){
     // blackout (which would let an artificially large dt waive the physical bound entirely).
     resetDriftCorrClock(){ _lastDriftCorrT = 0; },
     driftCorrStats(){ return driftCorrStats; },
-    inferFailCount(){ return inferFailCount; }
+    inferFailCount(){ return inferFailCount; },
+    adaptiveDiag(){ return adaptiveDiag; }
   };
 })();
 
