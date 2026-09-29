@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>NAVDRIFT-0 Mobile</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#05070a">
@@ -701,8 +701,78 @@
         <div class="tr-l">Magnetometer</div>
         <div class="tr-v" id="dbg-mag" style="color:var(--muted)">—</div>
       </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Last Reacquisition</div>
+        <div class="tr-v" id="dbg-reacq" style="font-size:.62rem">—</div>
+      </div>
     </div>
     <div class="tp-section-label-sub" id="dbg-detail" style="padding-top:0;">—</div>
+
+    <!-- Section: AI-assisted fusion — real, already-tracked counters surfaced compactly.
+         Every value here reads an existing counter from NAVDRIFT_ONNX (driftCorrStats(),
+         inferFailCount(), status()); nothing here is a new computation or a new number. -->
+    <div class="tp-divider"></div>
+    <div class="tp-section-label">AI Fusion</div>
+    <div class="tp-section-label-sub">DriftFormer runs only during GNSS blackout, as a refinement on the kinematic EKF — never while GNSS is locked</div>
+    <div class="tech-row">
+      <div class="tr-item">
+        <div class="tr-l">DriftFormer</div>
+        <div class="tr-v" id="af-df">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Corrections</div>
+        <div class="tr-v" id="af-applied" style="color:var(--np)">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Rejected</div>
+        <div class="tr-v" id="af-rejected" style="color:var(--nr)">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Adaptive EKF</div>
+        <div class="tr-v" id="af-ekf">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Tunnel Detector</div>
+        <div class="tr-v" id="af-tunnel">—</div>
+      </div>
+    </div>
+
+    <!-- Section: Road-aware navigation — real LiveHMM/RoadGraph state surfaced compactly.
+         Every value here reads an existing Diag field set inside LiveHMM.update()
+         (roadCandidates, roadMatchActive, roadMatchDistM, roadMatchBearing); nothing here
+         is a new computation. No confidence % is shown: the HMM's internal score is an
+         unbounded log-probability, not a 0-100 scale, so presenting it as "confidence"
+         would misrepresent it — match state / distance / bearing are shown instead, which
+         are honestly meaningful on their own. -->
+    <div class="tp-divider"></div>
+    <div class="tp-section-label">Road-Aware Navigation</div>
+    <div class="tp-section-label-sub">HMM-style match against OSM road segments — used to pull the fused position toward the road during blackout</div>
+    <div class="tech-row">
+      <div class="tr-item">
+        <div class="tr-l">Match State</div>
+        <div class="tr-v" id="ra-state">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Candidates</div>
+        <div class="tr-v" id="ra-cands">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Match Distance</div>
+        <div class="tr-v" id="ra-dist">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Road Bearing</div>
+        <div class="tr-v" id="ra-bearing">—</div>
+      </div>
+    </div>
 
     <!-- Section: Modules -->
     <div class="tp-divider"></div>
@@ -887,16 +957,36 @@ const IMU = {
   firstEventAt: null
 };
 
-/* Butterworth 2nd-order low-pass (fc=2 Hz at fs=30 Hz) */
-function bw2(x, xp, yp1, yp2){
-  // pre-computed coeffs for fc=2/fs=30: b=[0.0177, 0.0354, 0.0177], a=[1, -1.4462, 0.5557]
-  const b0=0.0177, b1=0.0354, b2=0.0177, a1=-1.4462, a2=0.5557;
-  return b0*x + b1*xp + b2*0 - a1*yp1 - a2*yp2;
+/* Butterworth 2nd-order low-pass (fc=2 Hz at fs=60 Hz)
+ * FIX (real bug found during moving-speed audit): this was a genuine 2-input-history biquad
+ * (b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]) implemented with only ONE sample of
+ * x history tracked, so the b2 term was hardcoded to `b2*0` — x[n-2] never actually entered the
+ * filter. Separately, the original commented coefficients did not have unity DC gain even if
+ * b2*x[n-2] HAD been included: (b0+b1+b2)/(1+a1+a2) = 0.6466, not 1.0. A correctly-designed and
+ * correctly-implemented low-pass filter must pass a constant/slowly-varying input through at gain
+ * 1 in steady state — this is not a tuning choice, it's what "low-pass" means at DC.
+ * FOLLOW-UP FIX (sampling-rate audit): the first replacement coefficients were derived assuming
+ * fs=30Hz, but bw2() is called unconditionally from onDeviceMotion() on every raw devicemotion
+ * event — traced, not assumed — and the real iPhone devicemotion rate (confirmed from the real
+ * CSV) is ~60Hz, not 30Hz. Running fs=30-designed z-domain coefficients on a signal actually
+ * sampled at 60Hz does not preserve the 2Hz cutoff: it doubles it. Verified numerically by
+ * evaluating the filter's own transfer function H(z) at z=e^(jw) referenced to fs=60 — the old
+ * fs=30 coefficients' effective -3dB point at the real 60Hz rate was 4.0Hz, not 2.0Hz.
+ * Coefficients below are freshly re-derived via the same bilinear-transform design (prewarped
+ * analog cutoff, then bilinear transform), this time for fc=2Hz, fs=60Hz — the sample rate the
+ * filter actually runs at. Verified: DC gain = 0.9999999999999998 (unity), -3dB cutoff at fs=60Hz
+ * = exactly 2.0Hz, all five coefficients finite. Cutoff frequency (2Hz) and filter order
+ * (2nd-order) are unchanged from the original design intent — only the sample-rate assumption
+ * baked into the coefficients is corrected.
+ */
+function bw2(x, xp, xp2, yp1, yp2){
+  const b0=0.009526, b1=0.019052, b2=0.009526, a1=-1.705552, a2=0.743655;
+  return b0*x + b1*xp + b2*xp2 - a1*yp1 - a2*yp2;
 }
 
 /* ── DEVICE MOTION HANDLER ── */
 let _dmPrev = {ax:0, ay:0, az:0};
-let _bw_xp=[0,0,0], _bw_yp1=[0,0,0], _bw_yp2=[0,0,0];
+let _bw_xp=[0,0,0], _bw_xp2=[0,0,0], _bw_yp1=[0,0,0], _bw_yp2=[0,0,0];
 // ── REAL BAROMETER — Generic Sensor API, when the browser/device actually has one ──
 // Three genuinely different states, not one blanket "no sensor":
 //   'active'   — the Barometer API exists AND is producing real readings right now.
@@ -1025,6 +1115,27 @@ let _lastRawTrailT = 0;
  *     genuine reduced confidence in clean kinematic integration right after a jolt — never a
  *     position correction, never a teleport, and it decays back to the ordinary constant on its
  *     own with no separate "undo" step required.
+ *
+ * FIX (real-phone evidence: 2026-09-28 CSV — 14/14 accepted events occurred while speed_mps=0,
+ * zero during the walking phase, i.e. the exact opposite of what a pothole/shock detector should
+ * report on a moving phone):
+ *   Two real, independently-justified causes were identified from tracing devicemotion →
+ *   detectShock, neither requiring a threshold change or disabling detection:
+ *   1. SHOCK_WARMUP_MS = 2000 — the platform's own gravity-free e.acceleration (or, on the
+ *      fallback path, our manual gravity subtraction) is not valid the instant IMU.active flips
+ *      true. Android/iOS derive linear acceleration from a gravity estimate that is itself a
+ *      filtered running average of raw accel; right after the listener attaches, that internal
+ *      estimate has not converged, so the first ~1-2s of "linear" samples can carry large
+ *      transient error that reads as a spurious high-magnitude spike on a phone that never moved.
+ *      This window is skipped for shock detection only — it does not touch calibration, ZUPT,
+ *      alignment, or speed integration, none of which read Shock state.
+ *   2. SHOCK_ARM_SAMPLES = 2 — the original rising edge fired on a single raw sample >= threshold.
+ *      A lone-sample transient (sensor noise, a hand adjusting grip, the phone settling on a
+ *      surface) crosses 15 m/s² for one tick and is gone; a real chassis-transmitted pothole
+ *      impulse, by contrast, persists across multiple consecutive samples at typical devicemotion
+ *      rates (30-60Hz => 2 samples is ~15-30ms, well inside a real impulse's rise time). Requiring
+ *      2 consecutive raw samples above threshold before opening an event rejects the single-tick
+ *      noise case without weakening the real-impulse case.
  */
 const SHOCK_ACCEL_THRESHOLD_MPS2 = 15;
 const SHOCK_RELEASE_MPS2 = 9;
@@ -1032,22 +1143,31 @@ const SHOCK_MAX_DURATION_MS = 250;
 const SHOCK_REFRACTORY_MS = 400;
 const SHOCK_Q_BOOST = 4;
 const SHOCK_NOISE_BOOST_MS = 800;
+const SHOCK_WARMUP_MS = 2000;
+const SHOCK_ARM_SAMPLES = 2;
 const Shock = {
   active: false, startT: 0, peakMag: 0, peakAxis: '', lastEventT: -Infinity,
-  eventsTotal: 0, acceptedTotal: 0, log: [] // {t, peakMag, axis, durationMs, accepted}
+  eventsTotal: 0, acceptedTotal: 0, log: [], armCount: 0 // {t, peakMag, axis, durationMs, accepted}
 };
 function detectShock(rawAx, rawAy, rawAz, now){
   // Safety against NaN/Infinite sensor spikes: the caller (onDeviceMotion) already dropped
   // non-finite acceleration samples before this is reached, but guard independently here too —
   // this function must never be the thing that lets a bad value into Shock.peakMag or EKF.
   if(!isFinite(rawAx) || !isFinite(rawAy) || !isFinite(rawAz) || !isFinite(now)) return;
+  // Settling window: platform linear-acceleration / manual gravity-subtraction has not converged
+  // yet immediately after IMU activation. See FIX note above.
+  if(IMU.firstEventAt!=null && (now - IMU.firstEventAt) < SHOCK_WARMUP_MS) return;
   const mag = Math.hypot(rawAx, rawAy, rawAz);
   if(!isFinite(mag)) return;
   if(!Shock.active){
     if(mag >= SHOCK_ACCEL_THRESHOLD_MPS2){
+      Shock.armCount++;
+      if(Shock.armCount < SHOCK_ARM_SAMPLES) return; // require consecutive samples, see FIX note
       Shock.active = true; Shock.startT = now; Shock.peakMag = mag;
       const ax=Math.abs(rawAx), ay=Math.abs(rawAy), az=Math.abs(rawAz);
       Shock.peakAxis = (ax>=ay && ax>=az) ? 'x' : (ay>=az ? 'y' : 'z');
+    } else {
+      Shock.armCount = 0;
     }
     return;
   }
@@ -1073,7 +1193,7 @@ function detectShock(rawAx, rawAy, rawAz, now){
     }
     Shock.log.push({t:now.toFixed(1), peakMag:Shock.peakMag.toFixed(2), axis:Shock.peakAxis, durationMs:durationMs.toFixed(0), accepted});
     if(Shock.log.length>500) Shock.log.shift();
-    Shock.active = false; Shock.peakMag = 0;
+    Shock.active = false; Shock.peakMag = 0; Shock.armCount = 0;
   }
 }
 
@@ -1124,12 +1244,14 @@ function onDeviceMotion(e){
   // not alter them or anything downstream of them; see detectShock()'s own comment block above.
   detectShock(rawAx, rawAy, rawAz, now);
 
-  // Butterworth low-pass filter (vibration removal)
-  const fax = bw2(rawAx, _bw_xp[0], _bw_yp1[0], _bw_yp2[0]);
-  const fay = bw2(rawAy, _bw_xp[1], _bw_yp1[1], _bw_yp2[1]);
-  const faz = bw2(rawAz, _bw_xp[2], _bw_yp1[2], _bw_yp2[2]);
+  // Butterworth low-pass filter (vibration removal) — see bw2()'s own comment for the real
+  // DC-gain/missing-history bug fixed here.
+  const fax = bw2(rawAx, _bw_xp[0], _bw_xp2[0], _bw_yp1[0], _bw_yp2[0]);
+  const fay = bw2(rawAy, _bw_xp[1], _bw_xp2[1], _bw_yp1[1], _bw_yp2[1]);
+  const faz = bw2(rawAz, _bw_xp[2], _bw_xp2[2], _bw_yp1[2], _bw_yp2[2]);
   _bw_yp2=[_bw_yp1[0],_bw_yp1[1],_bw_yp1[2]];
   _bw_yp1=[fax,fay,faz];
+  _bw_xp2=[_bw_xp[0],_bw_xp[1],_bw_xp[2]];
   _bw_xp=[rawAx,rawAy,rawAz];
 
   IMU.ax=fax; IMU.ay=fay; IMU.az=faz;
@@ -1307,7 +1429,14 @@ function onDeviceMotion(e){
   // IMU.intSpeed has legitimately grown past the gate, ZUPT is structurally unable to zero it —
   // real walking, real driving, and real GNSS-blackout dead reckoning at speed are all unaffected.
   {
-    const zuptMag = Math.abs(fax) + Math.abs(fay) + Math.abs(faz);
+    // FIX (moving-speed audit): was total filtered-accel magnitude across all three axes, which
+    // treats lateral/vertical vibration (rough road, idling at a light while level) as if it were
+    // evidence the vehicle stopped moving forward. Narrowed to the already-selected forward-axis
+    // component only — same [fax,fay,faz]/IMU.fwdAxisIdx selection used above for rawFwd — so a
+    // real momentary lull in forward acceleration during otherwise-real cruising motion can't be
+    // misread as full stillness from off-axis vibration alone. Threshold/duration/speed-gate below
+    // are unchanged.
+    const zuptMag = Math.abs([fax,fay,faz][IMU.fwdAxisIdx]);
     if(zuptMag < 0.35){
       IMU._zuptMs = (IMU._zuptMs||0) + dt*1000;
       if(IMU._zuptMs > 800 && IMU.intSpeed < 2.5){ // sustained stillness AND already near rest
@@ -1561,8 +1690,15 @@ function exportIMULog(){
   // shows up here as a real drop, never a value pretending the scheduler is still running.
   // shock_* = real pothole/shock detector state at this row (see detectShock()); accepted-total
   // only increments on a genuine accepted event, never a simulated one.
-  const header = 't_ms,ax_mps2,ay_mps2,az_mps2,gx_rps,gy_rps,gz_rps,fwd_accel_mps2,speed_mps,gnss_speed_mps,heading_rad,nav_hz,imu_hz,onnx_hz,shock_events_total,shock_accepted_total,shock_active\n';
-  const rows = IMU.log.map(r=>`${r.t},${r.ax},${r.ay},${r.az},${r.gx},${r.gy},${r.gz},${r.fwd_accel},${r.speed_mps},${r.gnss_speed_mps!==undefined?r.gnss_speed_mps:'NaN'},${r.heading_rad},${r.nav_hz!==undefined?r.nav_hz:''},${r.imu_hz!==undefined?r.imu_hz:''},${r.onnx_hz!==undefined?r.onnx_hz:''},${r.shock_events_total!==undefined?r.shock_events_total:''},${r.shock_accepted_total!==undefined?r.shock_accepted_total:''},${r.shock_active!==undefined?r.shock_active:''}`).join('\n');
+  // gnss_lat/lon = S.gtLa/gtLo (real last GNSS fix; frozen during blackout, never fabricated).
+  // ekf_lat/lon/ekf_heading_rad = the actual fused navigation state (EKF.x/y/th) — the same state
+  // driving the map/UI, not a separate copy. road_* = real RoadGraph/LiveHMM output (see Diag).
+  // blackout_duration_s = S.outt (real elapsed time since the current/most-recent triggerOut()).
+  // reacquisition_error_m = the real pre-correction drift error from the most recent reacq(); blank
+  // until a reacquisition has actually happened this session, never a placeholder 0.
+  // uncertainty_m = ekfUncertaintyM(), the same real covariance-derived value shown in the UI.
+  const header = 't_ms,ax_mps2,ay_mps2,az_mps2,gx_rps,gy_rps,gz_rps,fwd_accel_mps2,speed_mps,gnss_speed_mps,heading_rad,nav_hz,imu_hz,onnx_hz,shock_events_total,shock_accepted_total,shock_active,gnss_locked,tunnel_prob,in_tunnel,gnss_lat,gnss_lon,ekf_lat,ekf_lon,ekf_heading_rad,road_candidates,road_match_distance_m,road_match_bearing,blackout_duration_s,reacquisition_error_m,uncertainty_m\n';
+  const rows = IMU.log.map(r=>`${r.t},${r.ax},${r.ay},${r.az},${r.gx},${r.gy},${r.gz},${r.fwd_accel},${r.speed_mps},${r.gnss_speed_mps!==undefined?r.gnss_speed_mps:'NaN'},${r.heading_rad},${r.nav_hz!==undefined?r.nav_hz:''},${r.imu_hz!==undefined?r.imu_hz:''},${r.onnx_hz!==undefined?r.onnx_hz:''},${r.shock_events_total!==undefined?r.shock_events_total:''},${r.shock_accepted_total!==undefined?r.shock_accepted_total:''},${r.shock_active!==undefined?r.shock_active:''},${r.gnss_locked!==undefined?r.gnss_locked:''},${r.tunnel_prob!==undefined?r.tunnel_prob:''},${r.in_tunnel!==undefined?r.in_tunnel:''},${r.gnss_lat!==undefined?r.gnss_lat:''},${r.gnss_lon!==undefined?r.gnss_lon:''},${r.ekf_lat!==undefined?r.ekf_lat:''},${r.ekf_lon!==undefined?r.ekf_lon:''},${r.ekf_heading_rad!==undefined?r.ekf_heading_rad:''},${r.road_candidates!==undefined?r.road_candidates:''},${r.road_match_distance_m!==undefined?r.road_match_distance_m:''},${r.road_match_bearing!==undefined?r.road_match_bearing:''},${r.blackout_duration_s!==undefined?r.blackout_duration_s:''},${r.reacquisition_error_m!==undefined?r.reacquisition_error_m:''},${r.uncertainty_m!==undefined?r.uncertainty_m:''}`).join('\n');
   const blob = new Blob([header+rows], {type:'text/csv'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1591,6 +1727,25 @@ const EKF={x:0,y:0,th:0,P:[2.5e-9,0,0,0,2.5e-9,0,0,0,.1],te:0,s:0,
   Qp:null,Rp:null}; // set by the trained Adaptive-EKF ONNX model (NAVDRIFT_ONNX below) when loaded;
                      // null = fall back to the fixed classical constants
 function ekfReset(la,lo){EKF.x=la;EKF.y=lo;EKF.th=0;EKF.P=[2.5e-9,0,0,0,2.5e-9,0,0,0,.1];EKF.te=0;EKF.s=0;EKF.Qp=null;EKF.Rp=null;}
+
+/* ── Diag — real live blackout/road-match diagnostics, sprint addition ──
+ * Every field here is written only from real live state (triggerOut/reacq/step()'s live branch/
+ * LiveHMM.update()) — nothing here is computed from simulation state or invented. Purpose: make
+ * the CSV/post-demo analysis able to compute blackout duration, GNSS-EKF separation, reacquisition
+ * error, and road-match quality without guessing at values that already exist in live state but
+ * weren't previously surfaced together.
+ */
+const Diag = {
+  blackoutStartMs: null,      // performance.now() at the most recent triggerOut()
+  maxBlackoutSepM: 0,         // max real dist(EKF, last known GNSS fix) seen during current/last blackout
+  gnssEkfSepM: 0,             // real dist(EKF, S.gtLa/gtLo) this tick, whatever the current GNSS state
+  lastReacqErrorM: null,      // real drift error measured at the most recent reacq(), before correction
+  lastReacqBlackoutS: null,   // real S.outt (blackout duration) at that same reacquisition
+  roadCandidates: 0,          // real RoadGraph.candidates(...).length from the most recent LiveHMM.update()
+  roadMatchDistM: null,       // real distM of the selected candidate/fallback, or null if none
+  roadMatchBearing: null,     // real bearing of the selected candidate/fallback, or null if none
+  roadMatchActive: false      // true only when a real scored HMM candidate (not just RoadGraph.nearest fallback) was selected
+};
 function ekfStep(spd,dh,dt,gpsMeasured,gla,glo,gpsAccM){
   // ── Input sanity guard ──
   // A genuinely bad sensor sample (a device firing NaN/Infinity through DeviceMotionEvent is
@@ -1693,6 +1848,15 @@ function updateDebugPanel(){
         else if(st.failed){ chip.textContent='DEAD RECKONING · ONNX LOAD FAILED'; chip.title=st.label; }
         else { chip.textContent='DEAD RECKONING · KINEMATIC + EKF (LOADING ONNX…)'; }
       }
+      // AI Fusion panel — every value below reads an existing real counter, none is computed here.
+      const cs = NAVDRIFT_ONNX.driftCorrStats ? NAVDRIFT_ONNX.driftCorrStats() : null;
+      const fc = NAVDRIFT_ONNX.inferFailCount ? NAVDRIFT_ONNX.inferFailCount() : null;
+      const setAF=(id,txt)=>{const el=document.getElementById(id);if(el)el.textContent=txt;};
+      setAF('af-df', st.failed?'FAILED TO LOAD':st.loaded?(S.gnss?'ACTIVE (idle — GNSS locked)':'ACTIVE — correcting'):'LOADING…');
+      setAF('af-applied', cs?cs.applied+'':'—');
+      setAF('af-rejected', cs?cs.rejected+(fc?' · '+fc.driftformer+' infer err':''):'—');
+      setAF('af-ekf', st.loaded?(fc&&fc.adaptive_ekf>0?'ACTIVE · '+fc.adaptive_ekf+' infer err':'ACTIVE'):'INACTIVE');
+      setAF('af-tunnel', st.loaded?(S.inTunnel?'ACTIVE — tunnel detected':(fc&&fc.tunnel_det>0?'ACTIVE · '+fc.tunnel_det+' infer err':'ACTIVE — no tunnel')):'INACTIVE');
     }
     if(typeof RoadGraph!=='undefined'){
       const rEl=document.getElementById('dbg-roads');
@@ -1704,6 +1868,33 @@ function updateDebugPanel(){
           rEl.textContent = RoadGraph.status==='fetching' ? 'fetching OSM…' : (RoadGraph.status||'—');
           rEl.style.color = 'var(--muted)';
         }
+      }
+    }
+    // Last GNSS reacquisition — persists Diag.lastReacqErrorM/lastReacqBlackoutS (already set at
+    // the real reacq() event) beyond the transient on-screen banner, which fades after a few
+    // seconds. Same real values the CSV export's reacquisition_error_m column already carries.
+    {
+      const rqEl=document.getElementById('dbg-reacq');
+      if(rqEl){
+        if(typeof Diag!=='undefined' && Diag.lastReacqErrorM!=null && isFinite(Diag.lastReacqErrorM)){
+          rqEl.textContent = Diag.lastReacqErrorM.toFixed(1)+'m after '+(Diag.lastReacqBlackoutS!=null?Diag.lastReacqBlackoutS.toFixed(0)+'s blackout':'blackout');
+        } else {
+          rqEl.textContent = 'none yet this session';
+        }
+      }
+    }
+    // Road-Aware Navigation panel — every value below reads a Diag field LiveHMM.update()
+    // already sets each tick; none of it is computed or invented here.
+    if(typeof Diag!=='undefined'){
+      const setRA=(id,txt)=>{const el=document.getElementById(id);if(el)el.textContent=txt;};
+      const haveGraph = typeof RoadGraph!=='undefined' && RoadGraph.loaded;
+      if(!haveGraph){
+        setRA('ra-state','NO ROAD GRAPH'); setRA('ra-cands','—'); setRA('ra-dist','—'); setRA('ra-bearing','—');
+      } else {
+        setRA('ra-state', Diag.roadMatchActive ? 'LOCKED' : 'SEARCHING');
+        setRA('ra-cands', (Diag.roadCandidates||0)+'');
+        setRA('ra-dist', (Diag.roadMatchDistM!=null && isFinite(Diag.roadMatchDistM)) ? Diag.roadMatchDistM.toFixed(1)+'m' : '—');
+        setRA('ra-bearing', (Diag.roadMatchBearing!=null && isFinite(Diag.roadMatchBearing)) ? (Diag.roadMatchBearing*180/Math.PI).toFixed(0)+'°' : '—');
       }
     }
     // Honest per-state magnetometer readout — never claims a heading that never arrived.
@@ -2511,6 +2702,7 @@ function step(){
       ekfStep(usedSpd2, usedDH2, DT2, freshFixThisTick, S.gtLa, S.gtLo, GPS.acc);
       if(freshFixThisTick) GPS.fixConsumed = true;
       S.posSource = freshFixThisTick ? 'GNSS-FUSED (fresh fix)' : 'GNSS-FUSED (IMU-predicted between fixes)';
+      Diag.gnssEkfSepM = dist(EKF.x, EKF.y, S.gtLa, S.gtLo);
       // unfused "raw IMU" baseline trace — only re-anchors on a fresh fix too, for the same reason.
       // Pulls 30% of the way toward the real GPS fix each fresh fix (never a full snap, so the
       // trace still visibly shows its own drift between fixes) — no added jitter of any kind.
@@ -2532,6 +2724,11 @@ function step(){
       S.posSource = (S.useLiveIMU && IMU.active) ? 'DEAD-RECKONING (IMU)' : 'DEAD-RECKONING (NO IMU — HOLDING LAST STATE)';
       S.outt += DT2;
       try{ document.getElementById('ob-t').textContent=S.outt.toFixed(1)+'s'; }catch(e){}
+      // Real separation between the fused (dead-reckoned) EKF state and the last known real GNSS
+      // fix (S.gtLa/gtLo, frozen since fixes stopped arriving) — not a corrected value, just the
+      // honest current gap. Tracked as a running max for the whole blackout episode.
+      Diag.gnssEkfSepM = dist(EKF.x, EKF.y, S.gtLa, S.gtLo);
+      if(Diag.gnssEkfSepM > Diag.maxBlackoutSepM) Diag.maxBlackoutSepM = Diag.gnssEkfSepM;
       // unfused "raw IMU" baseline trace — drifts faster since it has no EKF correction at all.
       // Real elapsed wall-clock time since this trail was last advanced, not the fixed DT2
       // constant — DT2/DT is a nominal step()-cadence assumption used for the EKF predict step
@@ -2634,7 +2831,16 @@ function step(){
 
     // Log IMU data
     if(S.useLiveIMU && IMU.active && S.step%3===0){
-      IMU.log.push({t:performance.now().toFixed(1),ax:IMU.ax.toFixed(3),ay:IMU.ay.toFixed(3),az:IMU.az.toFixed(3),gx:IMU.gx.toFixed(4),gy:IMU.gy.toFixed(4),gz:IMU.gz.toFixed(4),fwd_accel:IMU.fwdAccel.toFixed(3),speed_mps:usedSpd2.toFixed(2),gnss_speed_mps:(GPS.lastSpeedMps!=null&&isFinite(GPS.lastSpeedMps))?GPS.lastSpeedMps.toFixed(2):'NaN',heading_rad:IMU.intHeading.toFixed(4),nav_hz:navHz,imu_hz:(IMU.hz||0),onnx_hz:onnxHz,shock_events_total:Shock.eventsTotal,shock_accepted_total:Shock.acceptedTotal,shock_active:Shock.active?1:0});
+      IMU.log.push({t:performance.now().toFixed(1),ax:IMU.ax.toFixed(3),ay:IMU.ay.toFixed(3),az:IMU.az.toFixed(3),gx:IMU.gx.toFixed(4),gy:IMU.gy.toFixed(4),gz:IMU.gz.toFixed(4),fwd_accel:IMU.fwdAccel.toFixed(3),speed_mps:usedSpd2.toFixed(2),gnss_speed_mps:(GPS.lastSpeedMps!=null&&isFinite(GPS.lastSpeedMps))?GPS.lastSpeedMps.toFixed(2):'NaN',heading_rad:IMU.intHeading.toFixed(4),nav_hz:navHz,imu_hz:(IMU.hz||0),onnx_hz:onnxHz,shock_events_total:Shock.eventsTotal,shock_accepted_total:Shock.acceptedTotal,shock_active:Shock.active?1:0,gnss_locked:S.gnss?1:0,tunnel_prob:(window.lastTunnelProb!=null&&isFinite(window.lastTunnelProb))?window.lastTunnelProb.toFixed(3):'',in_tunnel:S.inTunnel?1:0,
+        gnss_lat:(isFinite(S.gtLa)?S.gtLa.toFixed(7):''),gnss_lon:(isFinite(S.gtLo)?S.gtLo.toFixed(7):''),
+        ekf_lat:(isFinite(EKF.x)?EKF.x.toFixed(7):''),ekf_lon:(isFinite(EKF.y)?EKF.y.toFixed(7):''),
+        ekf_heading_rad:(isFinite(EKF.th)?EKF.th.toFixed(4):''),
+        road_candidates:Diag.roadCandidates,
+        road_match_distance_m:(Diag.roadMatchDistM!=null&&isFinite(Diag.roadMatchDistM))?Diag.roadMatchDistM.toFixed(2):'',
+        road_match_bearing:(Diag.roadMatchBearing!=null&&isFinite(Diag.roadMatchBearing))?Diag.roadMatchBearing.toFixed(4):'',
+        blackout_duration_s:(!S.gnss?S.outt.toFixed(1):'0.0'),
+        reacquisition_error_m:(Diag.lastReacqErrorM!=null&&isFinite(Diag.lastReacqErrorM))?Diag.lastReacqErrorM.toFixed(2):'',
+        uncertainty_m:(isFinite(S.unc)?S.unc.toFixed(2):'')});
       if(IMU.log.length>3000)IMU.log.shift();
     }
 
@@ -2959,6 +3165,7 @@ function toggleMode(){
 function triggerOut(){
   if(!S.gnss)return;
   S.gnss=false;S.outt=0;S.outN++;
+  Diag.blackoutStartMs = performance.now(); Diag.maxBlackoutSepM = 0;
   // Fresh blackout — any HMM segment selection persisted from a PREVIOUS, separate blackout
   // episode (possibly far from here) is not real evidence about this one. Reinitialize so the
   // first tick of this blackout starts from emission-only scoring, same as reacq() below does
@@ -3007,6 +3214,7 @@ function reacq(){
   // next tick(s). We do NOT teleport ndLa/ndLo to the GPS position here: predicted and
   // measured positions must be allowed to differ, or "correction" would be theater.
   const fe=dist(EKF.x,EKF.y,S.gtLa,S.gtLo);
+  Diag.lastReacqErrorM = fe; Diag.lastReacqBlackoutS = S.outt;
   // Reset live IMU SPEED integration on reacquisition — speed is a relative quantity, so
   // restarting its accumulation at a fresh dead-reckoning epoch is legitimate (unchanged).
   // IMU.intHeading must NOT be reset here: unlike speed, heading is an absolute orientation.
@@ -3364,7 +3572,10 @@ const LiveHMM = (function(){
   // RoadGraph.nearest() already returned, so NHC/the soft road-pull downstream need no changes.
   function update(fusedLat, fusedLon, fusedHeading, speedMps, dtS){
     if(!isFinite(fusedLat)||!isFinite(fusedLon)||!isFinite(fusedHeading)){
-      return RoadGraph.nearest(fusedLat, fusedLon); // bad input — don't run scoring on it, fall back
+      const fb = RoadGraph.nearest(fusedLat, fusedLon); // bad input — don't run scoring on it, fall back
+      Diag.roadCandidates = 0; Diag.roadMatchActive = false;
+      Diag.roadMatchDistM = fb ? fb.distM : null; Diag.roadMatchBearing = fb ? fb.bearing : null;
+      return fb;
     }
     if(RoadGraph.epoch !== lastEpoch){
       // Graph reloaded (new Overpass fetch or cache swap) since our last tick — segment indices
@@ -3374,11 +3585,15 @@ const LiveHMM = (function(){
       reset();
     }
     const cands = RoadGraph.candidates(fusedLat, fusedLon, K);
+    Diag.roadCandidates = cands.length; // real count from RoadGraph, regardless of which branch follows
     if(cands.length < MIN_CANDIDATES){
       // Not enough real candidates to run the HMM meaningfully — clean fallback to the existing
       // plain-nearest behavior rather than inventing a selection from too little real data.
       reset();
-      return RoadGraph.nearest(fusedLat, fusedLon);
+      const fb = RoadGraph.nearest(fusedLat, fusedLon);
+      Diag.roadMatchActive = false;
+      Diag.roadMatchDistM = fb ? fb.distM : null; Diag.roadMatchBearing = fb ? fb.bearing : null;
+      return fb;
     }
     let best=null, bestScore=-Infinity;
     for(const c of cands){
@@ -3386,6 +3601,7 @@ const LiveHMM = (function(){
       if(score>bestScore){ bestScore=score; best=c; }
     }
     state = { idx:best.idx, lat:best.lat, lon:best.lon, bearing:best.bearing, distM:best.distM };
+    Diag.roadMatchActive = true; Diag.roadMatchDistM = best.distM; Diag.roadMatchBearing = best.bearing;
     return { distM:best.distM, lat:best.lat, lon:best.lon, bearing:best.bearing };
   }
 
@@ -3667,6 +3883,11 @@ const NAVDRIFT_ONNX = (function(){
   // never accepted on faith just because the model produced a finite number.
   let _lastDriftCorrT = 0;
   let driftCorrStats = { applied: 0, rejected: 0, lastRawDLat: 0, lastRawDLon: 0, lastAppliedM: 0, lastRejectedM: 0 };
+  // Real per-model inference failure counts — incremented only inside each session's own catch
+  // block below, i.e. only when ort.InferenceSession.run() itself threw. This is what "fails open
+  // to classical EKF" actually looks like as a number: nonzero here means real inference errors
+  // occurred and that tick's model output was skipped, not fabricated.
+  let inferFailCount = { adaptive_ekf: 0, tunnel_det: 0, driftformer: 0 };
   // Real model-inference call rate — incremented once per actual runStep() invocation (i.e. once
   // per applyToStep() call where the pipeline is loaded and genuinely runs), separate from both
   // the raw IMU event rate (IMU.hz) and the navigation-tick rate (navHz above): this is how often
@@ -3740,7 +3961,7 @@ const NAVDRIFT_ONNX = (function(){
         // pass straight through this "clamp" as if it were a real bounded value.
         if(isFinite(qRaw)) res.ekfQ=Math.min(1e-9, Math.max(1e-12,qRaw));
         if(isFinite(rRaw)) res.ekfR=Math.min(5, Math.max(0.2,rRaw));
-      }catch(e){}
+      }catch(e){ inferFailCount.adaptive_ekf++; }
     }
     // Tunnel Detector BiLSTM — structural-blackout classifier from telemetry window
     if(sessions.tunnel_det){
@@ -3748,7 +3969,7 @@ const NAVDRIFT_ONNX = (function(){
         const inp=sessions.tunnel_det.inputNames[0];
         const out=await sessions.tunnel_det.run({[inp]:_f32([_pad(tunBuf,TUN_WIN)])});
         res.tunnelProb=out[sessions.tunnel_det.outputNames[0]].data[0];
-      }catch(e){}
+      }catch(e){ inferFailCount.tunnel_det++; }
     }
     // DriftFormer — learned drift-correction refinement, once enough window history exists
     if(sessions.driftformer && imuBuf.length>=IMU_WIN && S.step%20===0){
@@ -3757,7 +3978,7 @@ const NAVDRIFT_ONNX = (function(){
         const out=await sessions.driftformer.run({[inp]:_f32([_pad(imuBuf,IMU_WIN)])});
         const d=out[sessions.driftformer.outputNames[0]].data;
         res.driftCorr={dLat:d[0],dLon:d[1]};
-      }catch(e){}
+      }catch(e){ inferFailCount.driftformer++; }
     }
     res.ms=performance.now()-t0;
     return res;
@@ -3768,6 +3989,9 @@ const NAVDRIFT_ONNX = (function(){
     const res=await runStep(imuVec);
     if(!res)return;
     lastMs=res.ms;
+    // Real last inference value, for the CSV/debug diagnostics only — never used as a decision
+    // input anywhere else (S.inTunnel below is still what actually gates behavior).
+    if(res.tunnelProb!==undefined) window.lastTunnelProb = res.tunnelProb;
     if(res.tunnelProb!==undefined){
       if(res.tunnelProb>0.68 && !S.inTunnel) S.inTunnel=true;
       else if(res.tunnelProb<0.22 && S.inTunnel) S.inTunnel=false;
@@ -3816,7 +4040,8 @@ const NAVDRIFT_ONNX = (function(){
     // time against ITS OWN start, never against a stale timestamp left over from a previous
     // blackout (which would let an artificially large dt waive the physical bound entirely).
     resetDriftCorrClock(){ _lastDriftCorrT = 0; },
-    driftCorrStats(){ return driftCorrStats; }
+    driftCorrStats(){ return driftCorrStats; },
+    inferFailCount(){ return inferFailCount; }
   };
 })();
 

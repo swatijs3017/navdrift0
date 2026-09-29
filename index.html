@@ -1,1 +1,55 @@
-<!doctype html><meta http-equiv="refresh" content="0;url=frontend/index.html">
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NAVDRIFT-0</title>
+<style>
+  html,body{margin:0;padding:0;background:#05070c;height:100%}
+  #boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#8aa0c8;font-size:13px;letter-spacing:.04em}
+  noscript{color:#8aa0c8;font-family:sans-serif;padding:24px;display:block}
+</style>
+</head>
+<body>
+<div id="boot">NAVDRIFT-0 — loading…</div>
+<noscript>
+  <p>JavaScript is required. Open the mobile app directly at <a href="frontend/mobile.html">frontend/mobile.html</a>,
+  or the desktop dashboard at <a href="frontend/desktop.html">frontend/desktop.html</a>.</p>
+</noscript>
+<script>
+(function(){
+  // Thin device router only. No navigation logic, no simulated data, no new features —
+  // this file's only job is deciding which existing, unmodified application to load:
+  //   phone / tablet  -> frontend/mobile.html   (real sensors, real GNSS, live nav pipeline)
+  //   desktop / laptop -> frontend/desktop.html (ISRO Mission Control dashboard)
+  //
+  // Detection combines two independent signals so a single false reading (e.g. a desktop
+  // touchscreen monitor, or a UA string) can't misroute on its own:
+  //   1. Coarse pointer + touch support (the actual input capability of the device)
+  //   2. Viewport width (catches phones/small tablets even if a signal above is ambiguous)
+  // A user agent check is used only as a final tie-breaker, never as the sole signal.
+
+  function isMobileDevice(){
+    var coarsePointer = false;
+    try { coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches; } catch(e) {}
+
+    var hasTouch = (navigator.maxTouchPoints || 0) > 0 || ('ontouchstart' in window);
+
+    var narrowViewport = Math.min(window.innerWidth || 9999, window.screen ? window.screen.width || 9999 : 9999) <= 900;
+
+    var uaMobile = /Android|iPhone|iPad|iPod|Windows Phone|Mobile/i.test(navigator.userAgent || '');
+
+    // Require touch capability AND (a narrow viewport OR a mobile UA string).
+    // A touch-capable desktop monitor with a wide viewport and a desktop UA stays on desktop.
+    if (hasTouch && (narrowViewport || uaMobile)) return true;
+    if (coarsePointer && narrowViewport) return true;
+    return false;
+  }
+
+  var target = isMobileDevice() ? 'frontend/mobile.html' : 'frontend/desktop.html';
+  window.location.replace(target);
+})();
+</script>
+</body>
+</html>
