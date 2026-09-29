@@ -706,6 +706,11 @@
         <div class="tr-l">Last Reacquisition</div>
         <div class="tr-v" id="dbg-reacq" style="font-size:.62rem">—</div>
       </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Wake Lock</div>
+        <div class="tr-v" id="dbg-wakelock" style="color:var(--muted)">—</div>
+      </div>
     </div>
     <div class="tp-section-label-sub" id="dbg-detail" style="padding-top:0;">—</div>
 
@@ -1507,6 +1512,53 @@ function onDeviceOrientationAbsolute(e){
   }
 }
 
+/* ── Screen Wake Lock — safety/convenience only. Keeps the screen from locking/dimming during
+   a live drive so browser sensor/GNSS callbacks are less likely to be suspended in the
+   background. Purely additive: never reads or writes any navigation state (EKF/ZUPT/NHC/
+   DriftFormer/adaptive-EKF/tunnel-detector/road-matching/blackout/reacquisition/sensor math
+   are all untouched by this module). Feature-detected, fully defensive, no polling timer —
+   only re-requests on a real visibilitychange event. */
+const WakeLockCtl = (function(){
+  let sentinel = null;
+  let lastState = 'UNSUPPORTED';
+
+  function state(){ return lastState; }
+
+  async function request(){
+    if(!('wakeLock' in navigator)){
+      lastState = 'UNSUPPORTED';
+      return;
+    }
+    try{
+      sentinel = await navigator.wakeLock.request('screen');
+      lastState = 'ACTIVE';
+      sentinel.addEventListener('release', ()=>{
+        // Released by the OS/browser (screen locked, tab backgrounded, etc.) — not a bug,
+        // just means we no longer hold the lock until visibilitychange re-requests it.
+        sentinel = null;
+        if(lastState==='ACTIVE') lastState='UNSUPPORTED';
+      });
+    }catch(e){
+      // Any rejection (permission policy, low battery mode, unsupported context, etc.) is
+      // caught here and must never propagate — this feature is a convenience, not a
+      // requirement, and navigation must keep working identically without it.
+      sentinel = null;
+      lastState = 'FAILED';
+    }
+  }
+
+  // Wake locks are released automatically when the document becomes hidden; the spec-
+  // recommended pattern is to re-request on visibility return. This listener does nothing
+  // else and touches no app/navigation state.
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible'){
+      request();
+    }
+  });
+
+  return { request, state };
+})();
+
 /* ── Hz tracker ── */
 function startHzTracker(){
   _hzInterval = setInterval(()=>{
@@ -1574,6 +1626,10 @@ async function requestSensorAccess(){
     // arrives (handled by setValue's ACTIVE flip + the 3s no-data watchdog in SensorManager).
     // Never marked ACTIVE just because listeners were attached.
     startHzTracker();
+    // Best-effort screen wake lock, requested once here at the same point sensors are granted
+    // (the natural "navigation is starting" moment). Never awaited/blocking — a slow or
+    // rejected wake-lock request must not delay or affect sensor setup in any way.
+    WakeLockCtl.request();
 
     // Watchdog: if no real devicemotion event arrives within 3s of requesting,
     // the device/browser is not actually delivering sensor data — say so, don't fake it.
@@ -1855,7 +1911,12 @@ function updateDebugPanel(){
       setAF('af-df', st.failed?'FAILED TO LOAD':st.loaded?(S.gnss?'ACTIVE (idle — GNSS locked)':'ACTIVE — correcting'):'LOADING…');
       setAF('af-applied', cs?cs.applied+'':'—');
       setAF('af-rejected', cs?cs.rejected+(fc?' · '+fc.driftformer+' infer err':''):'—');
-      setAF('af-ekf', st.loaded?(fc&&fc.adaptive_ekf>0?'ACTIVE · '+fc.adaptive_ekf+' infer err':'ACTIVE'):'INACTIVE');
+      // ad3/ad4/ad5 are the adaptive EKF model's other 3 raw outputs (unused for Q/R fusion) —
+      // observational only, generic labels since the repository establishes no physical meaning
+      // for them. Never influences EKF.Qp/EKF.Rp or any navigation state.
+      const ad = NAVDRIFT_ONNX.adaptiveDiag ? NAVDRIFT_ONNX.adaptiveDiag() : null;
+      const adTxt = ad ? ' (out3 '+(ad.o3!=null?ad.o3.toFixed(3):'—')+' · out4 '+(ad.o4!=null?ad.o4.toFixed(3):'—')+' · out5 '+(ad.o5!=null?ad.o5.toFixed(3):'—')+')' : '';
+      setAF('af-ekf', (st.loaded?(fc&&fc.adaptive_ekf>0?'ACTIVE · '+fc.adaptive_ekf+' infer err':'ACTIVE'):'INACTIVE')+adTxt);
       setAF('af-tunnel', st.loaded?(S.inTunnel?'ACTIVE — tunnel detected':(fc&&fc.tunnel_det>0?'ACTIVE · '+fc.tunnel_det+' infer err':'ACTIVE — no tunnel')):'INACTIVE');
     }
     if(typeof RoadGraph!=='undefined'){
@@ -1881,6 +1942,16 @@ function updateDebugPanel(){
         } else {
           rqEl.textContent = 'none yet this session';
         }
+      }
+    }
+    // Screen wake lock — purely a display of WakeLockCtl's own real state (see the module
+    // below); never invents ACTIVE if the browser did not actually grant a lock.
+    {
+      const wlEl=document.getElementById('dbg-wakelock');
+      if(wlEl && typeof WakeLockCtl!=='undefined'){
+        const wl=WakeLockCtl.state();
+        wlEl.textContent = wl;
+        wlEl.style.color = wl==='ACTIVE' ? 'var(--ng)' : (wl==='FAILED' ? 'var(--na)' : 'var(--muted)');
       }
     }
     // Road-Aware Navigation panel — every value below reads a Diag field LiveHMM.update()
@@ -3888,6 +3959,13 @@ const NAVDRIFT_ONNX = (function(){
   // to classical EKF" actually looks like as a number: nonzero here means real inference errors
   // occurred and that tick's model output was skipped, not fabricated.
   let inferFailCount = { adaptive_ekf: 0, tunnel_det: 0, driftformer: 0 };
+  // Adaptive EKF outputs d[2]/d[3]/d[4] — the model produces 5 values, only d[0]/d[1] (qRaw/rRaw)
+  // are consumed for Q/R fusion below. These three are NOT independently verified against any
+  // known physical quantity in this repository, so they are surfaced as generic diagnostic
+  // telemetry only — never labeled with an invented meaning, never read by any navigation code.
+  // Non-finite values are dropped rather than stored, so a bad inference can't leak a NaN/Infinity
+  // into the diagnostics panel.
+  let adaptiveDiag = { o3: null, o4: null, o5: null };
   // Real model-inference call rate — incremented once per actual runStep() invocation (i.e. once
   // per applyToStep() call where the pipeline is loaded and genuinely runs), separate from both
   // the raw IMU event rate (IMU.hz) and the navigation-tick rate (navHz above): this is how often
@@ -3961,6 +4039,12 @@ const NAVDRIFT_ONNX = (function(){
         // pass straight through this "clamp" as if it were a real bounded value.
         if(isFinite(qRaw)) res.ekfQ=Math.min(1e-9, Math.max(1e-12,qRaw));
         if(isFinite(rRaw)) res.ekfR=Math.min(5, Math.max(0.2,rRaw));
+        // Diagnostic-only: d[2..4] are not used for Q/R and do not affect res.ekfQ/res.ekfR or
+        // the EKF above in any way. Raw finite values are kept as-is (no clamping, since nothing
+        // downstream trusts them as a bounded physical quantity); non-finite ones are dropped.
+        if(isFinite(d[2])) adaptiveDiag.o3=d[2];
+        if(isFinite(d[3])) adaptiveDiag.o4=d[3];
+        if(isFinite(d[4])) adaptiveDiag.o5=d[4];
       }catch(e){ inferFailCount.adaptive_ekf++; }
     }
     // Tunnel Detector BiLSTM — structural-blackout classifier from telemetry window
@@ -4041,7 +4125,8 @@ const NAVDRIFT_ONNX = (function(){
     // blackout (which would let an artificially large dt waive the physical bound entirely).
     resetDriftCorrClock(){ _lastDriftCorrT = 0; },
     driftCorrStats(){ return driftCorrStats; },
-    inferFailCount(){ return inferFailCount; }
+    inferFailCount(){ return inferFailCount; },
+    adaptiveDiag(){ return adaptiveDiag; }
   };
 })();
 
