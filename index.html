@@ -24,13 +24,29 @@
   //   phone / tablet  -> frontend/mobile.html   (real sensors, real GNSS, live nav pipeline)
   //   desktop / laptop -> frontend/desktop.html (ISRO Mission Control dashboard)
   //
-  // Detection combines two independent signals so a single false reading (e.g. a desktop
-  // touchscreen monitor, or a UA string) can't misroute on its own:
-  //   1. Coarse pointer + touch support (the actual input capability of the device)
-  //   2. Viewport width (catches phones/small tablets even if a signal above is ambiguous)
-  // A user agent check is used only as a final tie-breaker, never as the sole signal.
+  // Bug fix (real laptop misrouted to /mobile): a touchscreen Windows laptop with OS display
+  // scaling (e.g. a high-DPI panel at 200-250% scaling) can report a CSS viewport width well
+  // under 900px even though the physical screen is a normal wide laptop panel — scaling
+  // compresses innerWidth/screen.width, not just physical pixels. The old logic used
+  // touch + narrow-viewport as sole evidence, so a scaled touchscreen laptop satisfied
+  // "hasTouch && narrowViewport" exactly like a real phone and got misrouted.
+  //
+  // Fix: device identity now takes priority over touch/viewport, per this order:
+  //   1. navigator.userAgentData.mobile, when the browser exposes it (all Chromium/Edge —
+  //      the vast majority of Windows laptops) — this is computed by the browser from the
+  //      underlying OS, is NOT affected by display scaling, touch hardware, or window size,
+  //      and is authoritative in both directions: mobile:true -> mobile, mobile:false -> desktop.
+  //   2. Only when userAgentData is unavailable (Safari/iPadOS, older Firefox) do we fall back
+  //      to the previous heuristic — touch + (narrow viewport or mobile UA string), or coarse
+  //      pointer + narrow viewport — unchanged from before, so existing iPhone/iPad/Android
+  //      routing behavior is not affected.
 
   function isMobileDevice(){
+    var uad = navigator.userAgentData;
+    if (uad && typeof uad.mobile === 'boolean') {
+      return uad.mobile;
+    }
+
     var coarsePointer = false;
     try { coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches; } catch(e) {}
 

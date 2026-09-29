@@ -9,7 +9,19 @@
     // previously this only ran once at initial parse, so narrowing the window
     // afterward (e.g. docking DevTools) left the desktop grid stuck rendering
     // below its intended minimum width instead of handing off to mobile.html.
+    //
+    // Bug fix: this guard used innerWidth<900 alone, with no device-identity check. A
+    // touchscreen Windows laptop with OS display scaling (e.g. 200-250% on a high-DPI
+    // panel) can report innerWidth under 900 even though the physical screen is a normal
+    // wide laptop panel, so it was bouncing real desktops straight to mobile.html on load.
+    // Fix: when the browser exposes navigator.userAgentData.mobile, trust it over
+    // innerWidth — it reflects actual OS/device identity, not display scaling — and skip
+    // the bounce whenever it explicitly says this is not a mobile device. Falls back to the
+    // original width-only check when that signal isn't available (e.g. Safari), so the
+    // intentional phone-opens-desktop.html-directly bounce is unchanged there.
     function checkWidth(){
+      var uad = navigator.userAgentData;
+      if (uad && typeof uad.mobile === 'boolean' && uad.mobile === false) return;
       if(window.innerWidth<900&&!/[?&]desktop/.test(location.search)){location.replace('mobile.html');}
     }
     checkWidth();
