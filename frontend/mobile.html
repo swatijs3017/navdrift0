@@ -1453,6 +1453,51 @@ function onDeviceMotion(e){
     }
   }
 
+  // ── GNSS-anchored stationary speed recovery ──
+  // A SEPARATE, additional guard from the ZUPT block above — not a change to it, and not a
+  // change to its `IMU.intSpeed < 2.5` gate. That gate is a precondition to fire, not a target
+  // to reset toward: once residual accelerometer bias/noise ratchets IMU.intSpeed past 2.5 m/s
+  // while genuinely stationary, the block above can structurally never reset it again (a real,
+  // observed failure: a stationary phone drifted to ~10 m/s of phantom integrated speed, which
+  // fed the EKF predict step every tick regardless of GNSS lock, producing a chaotic predicted
+  // trail between real GPS fixes even though GNSS itself stayed locked the whole time).
+  //
+  // This guard closes that specific gap using a SECOND, independent sensor — real GNSS ground
+  // speed — that the accelerometer-only gate above never had access to. It requires ALL of:
+  //   - GNSS is currently fresh/usable (S.gnss) — inert during any GNSS blackout, so the
+  //     existing blackout dead-reckoning path is completely unaffected by this block.
+  //   - GPS.lastSpeedMps is a real, finite, non-negative value, already only ever set from the
+  //     device's own pos.coords.speed in onFix() — never fabricated or estimated here. If the
+  //     device/browser never reports a usable speed, this stays null and the guard never fires.
+  //   - that value is CURRENT: GPS.lastSpeedMpsTime (set only when lastSpeedMps is itself set,
+  //     never on a fix that omits speed) must be within STATIONARY_SPEED_MAX_AGE_MS of now. A
+  //     later accepted fix that happens to omit coords.speed does not erase the earlier value,
+  //     but it does stop this guard from treating it as fresh evidence — a stale "0 m/s" from
+  //     several fixes ago must not be trusted as proof the vehicle is stationary right now.
+  //   - that real (and current) GNSS speed reads confidently near zero (< 0.5 m/s — well under
+  //     a slow walk, let alone any real vehicle speed), so a genuine constant-velocity cruise
+  //     (where GNSS would report the real non-zero speed) can never trigger this.
+  //   - the SAME existing 800ms sustained-stillness evidence from the accelerometer above.
+  // Two independent sensors — GNSS speed and accelerometer stillness — must agree stationary,
+  // on genuinely current evidence, before this can override an already-runaway IMU.intSpeed.
+  // Diagnostic-only counter below; does not change EKF math itself, only the IMU speed value
+  // ekfStep is later given.
+  // Freshness bound for GPS.lastSpeedMpsTime: real fixes arrive roughly once a second, so this
+  // allows a couple of missed/speed-less fixes without stalling recovery, while still discarding
+  // a genuinely stale reading from well before now. Local to this guard — not a global constant,
+  // since nothing else in the file needs it.
+  const STATIONARY_SPEED_MAX_AGE_MS = 3000;
+  const _gnssSpeedFresh = GPS.lastSpeedMpsTime!=null && (performance.now()-GPS.lastSpeedMpsTime) < STATIONARY_SPEED_MAX_AGE_MS;
+  if(S.gnss && GPS.lastSpeedMps!=null && isFinite(GPS.lastSpeedMps) && GPS.lastSpeedMps < 0.5
+     && _gnssSpeedFresh && (IMU._zuptMs||0) > 800){
+    if(IMU.intSpeed > 0.05){
+      Diag.stationarySpeedRecovery = (Diag.stationarySpeedRecovery||0) + 1;
+      console.log('[NAVDRIFT][stationary-speed-recovery] IMU.intSpeed reset '+IMU.intSpeed.toFixed(2)+'m/s -> 0 (GNSS speed='+GPS.lastSpeedMps.toFixed(2)+'m/s, stillness sustained '+IMU._zuptMs.toFixed(0)+'ms)');
+    }
+    IMU.intSpeed = 0;
+    IMU._intSpeedRaw = 0;
+  }
+
   // Log at 10Hz rate (every ~3 samples at 30Hz)
   if(_dmCount % 3 === 0){
     IMU.log.push({
@@ -1800,7 +1845,8 @@ const Diag = {
   roadCandidates: 0,          // real RoadGraph.candidates(...).length from the most recent LiveHMM.update()
   roadMatchDistM: null,       // real distM of the selected candidate/fallback, or null if none
   roadMatchBearing: null,     // real bearing of the selected candidate/fallback, or null if none
-  roadMatchActive: false      // true only when a real scored HMM candidate (not just RoadGraph.nearest fallback) was selected
+  roadMatchActive: false,     // true only when a real scored HMM candidate (not just RoadGraph.nearest fallback) was selected
+  stationarySpeedRecovery: 0  // real count of times the GNSS-anchored stationary guard actually reset a non-zero IMU.intSpeed (see onDeviceMotion); 0 if it never fired this session
 };
 function ekfStep(spd,dh,dt,gpsMeasured,gla,glo,gpsAccM){
   // ── Input sanity guard ──
@@ -3688,6 +3734,10 @@ const GPS = {active:false, simMode:false, watchId:null, lat:null, lon:null, acc:
   lastSpeedMps:null,  // most recent REAL GNSS ground speed (pos.coords.speed, m/s) that was
                        // actually reported as a valid number. null until the device's first fix
                        // that includes a usable speed value — never fabricated, never assumed.
+  lastSpeedMpsTime:null, // performance.now() at the moment lastSpeedMps was last SET (not just
+                       // read) — lets any consumer tell a genuinely current speed reading apart
+                       // from a stale one left over from an earlier fix that happened to report
+                       // a value, in case a later accepted fix omits coords.speed entirely.
   forcedOutage:false, // manual test switch (GNSS-toggle button in LIVE mode) — forces blackout, never LOCKED
   hardError:false,    // true on permission-denied / position-unavailable until a fresh fix arrives
   pendingGnss:null, pendingSince:null, // debounce state, see step()
@@ -3782,7 +3832,14 @@ function startLiveGPS(){
         gnss_state: (typeof S!=='undefined' ? (S.gnss ? 'LOCKED' : 'BLACKOUT') : null)
       });
     }
-    if(isFinite(pos.coords.speed) && pos.coords.speed >= 0) GPS.lastSpeedMps = pos.coords.speed;
+    if(isFinite(pos.coords.speed) && pos.coords.speed >= 0){
+      GPS.lastSpeedMps = pos.coords.speed;
+      GPS.lastSpeedMpsTime = performance.now(); // marks THIS value as current as of THIS accepted fix
+    }
+    // Deliberately NOT an else-branch reset of GPS.lastSpeedMps/lastSpeedMpsTime to null here:
+    // a later accepted fix that simply omits coords.speed must not erase the last real value —
+    // it only needs to stop counting as FRESH, which lastSpeedMpsTime's own age already handles
+    // for any consumer that checks it (see the stationary-speed-recovery guard below).
     SensorManager.setValue('gnss', {
       latitude:lat, longitude:lon, altitude:(pos.coords.altitude??null),
       accuracy:acc, speed:(pos.coords.speed??null), course:(pos.coords.heading??null),
