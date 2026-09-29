@@ -1,0 +1,14 @@
+{
+  "checkpoint": "checkpoints/iovnbd_speed_lstm/navdrift_lstm_best.pt",
+  "onnx_path": "checkpoints/iovnbd_speed_lstm/navdrift_lstm.onnx",
+  "onnx_size_bytes": 214277,
+  "seq_len": 50,
+  "n_features": 6,
+  "opset": 17,
+  "pytorch_vs_onnx_max_abs_diff": 3.814697265625e-06,
+  "pytorch_vs_onnx_n_checked": 50,
+  "onnx_cpu_latency_ms_mean": 0.22636035499999707,
+  "latency_hardware": "THIS MACHINE'S CPU ONLY \u2014 NOT a mobile-device or embedded-hardware measurement",
+  "validation_type": "SOFTWARE_ONLY_VALIDATED",
+  "hardware_validation": "NOT_PERFORMED"
+}

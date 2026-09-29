@@ -85,7 +85,24 @@ def detect_columns(df):
 #  BUTTERWORTH LOW-PASS (2nd order, fc=5 Hz at given fs)
 # ══════════════════════════════════════════════════════════════════════════════
 def butter_coeffs(fc, fs):
-    """Pre-compute 2nd-order Butterworth LP coefficients."""
+    """
+    Pre-compute 2nd-order Butterworth LP coefficients (bilinear transform).
+
+    FIX (numerical stability, see tests/test_butterworth_stability.py for
+    the full diagnosis): the feedback coefficients a1/a2 previously returned
+    here were sign-inverted relative to the recurrence ButterworthLP.step()
+    actually applies (`y = b0*x + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]`).
+    That sign inversion placed one pole of the implemented filter outside the
+    unit circle (verified: magnitude ~1.899 for fc=10Hz/fs=200Hz), making it
+    unconditionally unstable — any bounded input eventually overflows,
+    regardless of dtype or sample rate; only the number of samples until
+    overflow changes. b0/b1/b2 were already correct (verified against
+    scipy.signal.butter's bilinear-transform Butterworth coefficients) and
+    are unchanged here. a1/a2 below are the standard bilinear-transform
+    Butterworth LP feedback coefficients for the SAME sign convention
+    ButterworthLP.step() uses, verified to match scipy.signal.butter to full
+    float precision for fc=10Hz/fs=200Hz and fc=5Hz/fs=100Hz.
+    """
     from math import tan, pi, sqrt
     wc = tan(pi * fc / fs)
     k1 = sqrt(2) * wc
@@ -93,8 +110,8 @@ def butter_coeffs(fc, fs):
     b0 = k2 / (1 + k1 + k2)
     b1 = 2 * b0
     b2 = b0
-    a1 = 2 * b0 * (1 / k2 - 1)
-    a2 = 1 - (b0 + b1 + b2) - a1
+    a1 = 2 * (k2 - 1) / (1 + k1 + k2)
+    a2 = (1 - k1 + k2) / (1 + k1 + k2)
     return (b0, b1, b2, a1, a2)
 
 

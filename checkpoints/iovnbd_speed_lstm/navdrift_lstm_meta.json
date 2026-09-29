@@ -1,0 +1,30 @@
+{
+  "seq_len": 50,
+  "feature_cols": [
+    "accel_x",
+    "accel_y",
+    "accel_z",
+    "gyro_x",
+    "gyro_y",
+    "gyro_z"
+  ],
+  "scaler_mean": [
+    -0.005462701432406902,
+    -0.05747039616107941,
+    9.848454475402832,
+    -0.0006094514392316341,
+    -0.005259192083030939,
+    0.00020795526506844908
+  ],
+  "scaler_scale": [
+    1.749451756477356,
+    1.6233851909637451,
+    0.783566415309906,
+    0.106816366314888,
+    0.2428296059370041,
+    0.14742015302181244
+  ],
+  "target_mean_mps": 12.743955612182617,
+  "target_std_mps": 8.556112289428711,
+  "note": "ONNX export applies target denormalization internally (see SpeedLSTMWithDenorm) \u2014 the exported model's output is already real m/s, no denorm needed by the caller."
+}

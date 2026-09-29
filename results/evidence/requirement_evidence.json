@@ -114,16 +114,18 @@
   },
   {
     "requirement": "Requirement 8: Benchmark against IO-VNBD dataset",
-    "implementation": "data/loader.py contains a full IO-VNBD parser/preprocessor pipeline (ready to run once data is available). results/validation_full.json and results/isro_benchmark_table.csv contain a pre-existing benchmark from an earlier build (n_test_sequences=1).",
+    "implementation": "eval/iovnbd_benchmark.py runs a classical dead-reckoning baseline (real gyro-yaw integration + real V-file reference speed, via data/iovnbd.py's real parser) over the real, official IO-VNBD dataset's held-out TEST split (10 sequences, results/iovnbd/split_manifest.json), scoring ATE only over simulated GNSS-outage windows. This is a separate module from the older data/loader.py pipeline and from the pre-existing results/validation_full.json / results/isro_benchmark_table.csv single-sequence (n=1) benchmark, which this item does not modify or re-derive.",
     "files": [
-      "data/loader.py",
-      "results/validation_full.json",
-      "results/isro_benchmark_table.csv"
+      "eval/iovnbd_benchmark.py",
+      "data/iovnbd.py",
+      "results/iovnbd/split_manifest.json",
+      "results/iovnbd/iovnbd_classical_dr_benchmark.json",
+      "results/iovnbd/plots"
     ],
     "tests": [],
-    "evidence_artifact": "results/validation_full.json",
-    "validation_type": "DATA_BLOCKED",
-    "limitation": "No raw IO-VNBD dataset exists in this repository or workspace (confirmed by repeated full-repository search). The existing results/ artifacts are from a single prior sequence (n=1) and are not regenerable or extendable without the missing raw data."
+    "evidence_artifact": "results/iovnbd/iovnbd_classical_dr_benchmark.json",
+    "validation_type": "SOFTWARE_ONLY_VALIDATED",
+    "limitation": "Real result over 10/10 real held-out IO-VNBD test sequences: mean ATE RMSE 71.78 m, mean max drift 240.72 m (see results/iovnbd/iovnbd_classical_dr_benchmark.json for the full per-sequence record and results/iovnbd/plots/ for trajectory plots). This is a CLASSICAL dead-reckoning baseline (gyro-yaw integration + real reference speed) \u2014 it does not use, and is not a benchmark of, the Requirement 2A LSTM speed model; the two are separate numbers and must not be conflated. It is an offline, Python-side benchmark only: it does not exercise, call, or measure frontend/mobile.html's live EKF/ZUPT/NHC/DriftFormer pipeline, and makes no claim about live navigation accuracy. results/validation_full.json and results/isro_benchmark_table.csv (the older, single-sequence n=1 benchmark) were not touched, altered, or re-derived by this work."
   },
   {
     "requirement": "Requirement 9: Real-time mobile architecture (~10 Hz)",

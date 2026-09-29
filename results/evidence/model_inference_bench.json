@@ -1,0 +1,255 @@
+{
+  "validation_type": "SOFTWARE_ONLY_VALIDATED",
+  "hardware_validation": "NOT_PERFORMED",
+  "note": "Latency measured on this machine's CPU via onnxruntime's Python CPUExecutionProvider. Not a mobile-device or embedded-hardware measurement. Input is deterministic seeded synthetic data matching each model's own documented input shape; this benchmarks load success and inference latency only, not model accuracy.",
+  "n_models_attempted": 10,
+  "n_models_loaded": 6,
+  "n_models_failed_to_load": 4,
+  "results": [
+    {
+      "label": "driftformer_frontend",
+      "path": "frontend/models/driftformer_fp32.onnx",
+      "description": "DriftFormer position-correction transformer, live-deployed weights",
+      "loaded": true,
+      "load_error": null,
+      "input_name": "imu_window_9ch",
+      "input_shape": [
+        1,
+        100,
+        9
+      ],
+      "output_names": [
+        "position_correction_xy"
+      ],
+      "output_shapes": [
+        [
+          1,
+          2
+        ]
+      ],
+      "n_runs": 30,
+      "latency_ms_mean": 6.7618,
+      "latency_ms_p50": 6.5142,
+      "latency_ms_p95": 8.3448,
+      "latency_ms_max": 9.7436,
+      "validation_type": "SOFTWARE_ONLY_VALIDATED",
+      "hardware_validation": "NOT_PERFORMED"
+    },
+    {
+      "label": "adaptive_ekf_frontend",
+      "path": "frontend/models/adaptive_ekf_fp32.onnx",
+      "description": "Adaptive EKF Q/R predictor MLP, live-deployed weights",
+      "loaded": true,
+      "load_error": null,
+      "input_name": "nav_state_features",
+      "input_shape": [
+        1,
+        6
+      ],
+      "output_names": [
+        "qr_noise_matrices"
+      ],
+      "output_shapes": [
+        [
+          1,
+          5
+        ]
+      ],
+      "n_runs": 30,
+      "latency_ms_mean": 0.0189,
+      "latency_ms_p50": 0.0165,
+      "latency_ms_p95": 0.023,
+      "latency_ms_max": 0.0994,
+      "validation_type": "SOFTWARE_ONLY_VALIDATED",
+      "hardware_validation": "NOT_PERFORMED"
+    },
+    {
+      "label": "tunnel_det_frontend",
+      "path": "frontend/models/tunnel_det_fp32.onnx",
+      "description": "Tunnel/blackout detector Bi-LSTM, live-deployed weights",
+      "loaded": true,
+      "load_error": null,
+      "input_name": "telemetry_window",
+      "input_shape": [
+        1,
+        20,
+        5
+      ],
+      "output_names": [
+        "blackout_probability"
+      ],
+      "output_shapes": [
+        [
+          1
+        ]
+      ],
+      "n_runs": 30,
+      "latency_ms_mean": 0.1949,
+      "latency_ms_p50": 0.169,
+      "latency_ms_p95": 0.3199,
+      "latency_ms_max": 0.3674,
+      "validation_type": "SOFTWARE_ONLY_VALIDATED",
+      "hardware_validation": "NOT_PERFORMED"
+    },
+    {
+      "label": "navic_dop_frontend",
+      "path": "frontend/models/navic_dop_fp32.onnx",
+      "description": "NavIC DOP (PDOP/HDOP/VDOP) predictor MLP, live-deployed weights",
+      "loaded": true,
+      "load_error": null,
+      "input_name": "constellation_features",
+      "input_shape": [
+        1,
+        8
+      ],
+      "output_names": [
+        "pdop_hdop_vdop"
+      ],
+      "output_shapes": [
+        [
+          1,
+          3
+        ]
+      ],
+      "n_runs": 30,
+      "latency_ms_mean": 0.0162,
+      "latency_ms_p50": 0.0133,
+      "latency_ms_p95": 0.0227,
+      "latency_ms_max": 0.0799,
+      "validation_type": "SOFTWARE_ONLY_VALIDATED",
+      "hardware_validation": "NOT_PERFORMED"
+    },
+    {
+      "label": "imu_denoiser_frontend",
+      "path": "frontend/models/imu_denoiser_int8.onnx",
+      "description": "IMU denoiser INT8 TCN, live-deployed weights (not invoked by frontend/mobile.html's live pipeline; see requirement_evidence.py)",
+      "loaded": true,
+      "load_error": null,
+      "input_name": "raw_imu_6ax",
+      "input_shape": [
+        1,
+        6,
+        200
+      ],
+      "output_names": [
+        "denoised_imu_6ax"
+      ],
+      "output_shapes": [
+        [
+          1,
+          6,
+          200
+        ]
+      ],
+      "n_runs": 30,
+      "latency_ms_mean": 3.8835,
+      "latency_ms_p50": 3.7515,
+      "latency_ms_p95": 4.2949,
+      "latency_ms_max": 4.5303,
+      "validation_type": "SOFTWARE_ONLY_VALIDATED",
+      "hardware_validation": "NOT_PERFORMED"
+    },
+    {
+      "label": "imu_denoiser_models_dir",
+      "path": "models/imu_denoiser_int8.onnx",
+      "description": "Same IMU denoiser INT8 TCN, models/ directory copy",
+      "loaded": true,
+      "load_error": null,
+      "input_name": "raw_imu_6ax",
+      "input_shape": [
+        1,
+        6,
+        200
+      ],
+      "output_names": [
+        "denoised_imu_6ax"
+      ],
+      "output_shapes": [
+        [
+          1,
+          6,
+          200
+        ]
+      ],
+      "n_runs": 30,
+      "latency_ms_mean": 4.4514,
+      "latency_ms_p50": 3.8886,
+      "latency_ms_p95": 5.6274,
+      "latency_ms_max": 6.6228,
+      "validation_type": "SOFTWARE_ONLY_VALIDATED",
+      "hardware_validation": "NOT_PERFORMED"
+    },
+    {
+      "label": "driftformer_models_dir",
+      "path": "models/driftformer_fp32.onnx",
+      "description": "models/ directory copy \u2014 expected to fail to load (missing external .onnx.data weights file), included so that failure is reported explicitly rather than silently skipped",
+      "loaded": false,
+      "load_error": "[ONNXRuntimeError] : 1 : FAIL : External data path validation failed for initializer: input_proj.0.bias. Error: tensorprotoutils.cc:431 ValidateExternalDataPath External data path does not exist: \"/mnt/user-data/uploads/navdrift0-main/models/driftformer_fp32.onnx.data\"",
+      "input_name": null,
+      "input_shape": null,
+      "output_names": null,
+      "output_shapes": null,
+      "n_runs": 0,
+      "latency_ms_mean": null,
+      "latency_ms_p50": null,
+      "latency_ms_p95": null,
+      "latency_ms_max": null,
+      "validation_type": "SOFTWARE_ONLY_VALIDATED",
+      "hardware_validation": "NOT_PERFORMED"
+    },
+    {
+      "label": "adaptive_ekf_models_dir",
+      "path": "models/adaptive_ekf_fp32.onnx",
+      "description": "models/ directory copy \u2014 expected to fail to load (missing external .onnx.data weights file)",
+      "loaded": false,
+      "load_error": "[ONNXRuntimeError] : 1 : FAIL : External data path validation failed for initializer: net.0.weight. Error: tensorprotoutils.cc:431 ValidateExternalDataPath External data path does not exist: \"/mnt/user-data/uploads/navdrift0-main/models/adaptive_ekf_fp32.onnx.data\"",
+      "input_name": null,
+      "input_shape": null,
+      "output_names": null,
+      "output_shapes": null,
+      "n_runs": 0,
+      "latency_ms_mean": null,
+      "latency_ms_p50": null,
+      "latency_ms_p95": null,
+      "latency_ms_max": null,
+      "validation_type": "SOFTWARE_ONLY_VALIDATED",
+      "hardware_validation": "NOT_PERFORMED"
+    },
+    {
+      "label": "tunnel_det_models_dir",
+      "path": "models/tunnel_det_fp32.onnx",
+      "description": "models/ directory copy \u2014 expected to fail to load (missing external .onnx.data weights file)",
+      "loaded": false,
+      "load_error": "[ONNXRuntimeError] : 1 : FAIL : External data path validation failed for initializer: lstm.weight_hh_l0. Error: tensorprotoutils.cc:431 ValidateExternalDataPath External data path does not exist: \"/mnt/user-data/uploads/navdrift0-main/models/tunnel_det_fp32.onnx.data\"",
+      "input_name": null,
+      "input_shape": null,
+      "output_names": null,
+      "output_shapes": null,
+      "n_runs": 0,
+      "latency_ms_mean": null,
+      "latency_ms_p50": null,
+      "latency_ms_p95": null,
+      "latency_ms_max": null,
+      "validation_type": "SOFTWARE_ONLY_VALIDATED",
+      "hardware_validation": "NOT_PERFORMED"
+    },
+    {
+      "label": "navic_dop_models_dir",
+      "path": "models/navic_dop_fp32.onnx",
+      "description": "models/ directory copy \u2014 expected to fail to load (missing external .onnx.data weights file)",
+      "loaded": false,
+      "load_error": "[ONNXRuntimeError] : 1 : FAIL : External data path validation failed for initializer: net.0.bias. Error: tensorprotoutils.cc:431 ValidateExternalDataPath External data path does not exist: \"/mnt/user-data/uploads/navdrift0-main/models/navic_dop_fp32.onnx.data\"",
+      "input_name": null,
+      "input_shape": null,
+      "output_names": null,
+      "output_shapes": null,
+      "n_runs": 0,
+      "latency_ms_mean": null,
+      "latency_ms_p50": null,
+      "latency_ms_p95": null,
+      "latency_ms_max": null,
+      "validation_type": "SOFTWARE_ONLY_VALIDATED",
+      "hardware_validation": "NOT_PERFORMED"
+    }
+  ]
+}

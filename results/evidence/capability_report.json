@@ -1,0 +1,173 @@
+{
+  "report_type": "NAVDRIFT-0 capability report",
+  "generated_reproducibly_from": "edge/capability_report.py (reads edge/requirement_evidence.py and inspects the repository directly; nothing hardcoded from memory)",
+  "status_categories_used": [
+    "DATA_BLOCKED",
+    "IMPLEMENTED",
+    "OFFLINE_ONLY",
+    "SOFTWARE_ONLY_VALIDATED"
+  ],
+  "requirement_status_counts": {
+    "SOFTWARE_ONLY_VALIDATED": 4,
+    "DATA_BLOCKED": 3,
+    "OFFLINE_ONLY": 1,
+    "IMPLEMENTED": 3
+  },
+  "requirements": [
+    {
+      "requirement": "Requirement 1: In-vehicle phone alignment / calibration",
+      "status": "SOFTWARE_ONLY_VALIDATED",
+      "files": [
+        "edge/vehicle_calibration.py"
+      ],
+      "tests": [
+        "tests/test_vehicle_calibration.py"
+      ],
+      "limitation": "Validated only against hand-constructed synthetic tilt/stationary fixtures with known analytical answers. No real vehicle mounting data was used; this is a software-correctness validation, not a real-world calibration accuracy benchmark."
+    },
+    {
+      "requirement": "Requirement 2A: Learned (LSTM) speed estimation model",
+      "status": "DATA_BLOCKED",
+      "files": [
+        "navdrift_engine.py"
+      ],
+      "tests": [],
+      "limitation": "No raw IO-VNBD (or other real vehicle) dataset exists anywhere in this repository or workspace, confirmed by repeated repository scan. Training requires real ground-truth speed data this repo does not have."
+    },
+    {
+      "requirement": "Requirement 2B: Learned vibration/noise denoiser (TCN)",
+      "status": "SOFTWARE_ONLY_VALIDATED",
+      "files": [
+        "models/imu_denoiser_int8.onnx",
+        "frontend/models/imu_denoiser_int8.onnx",
+        "edge/model_inference_bench.py",
+        "results/isro_benchmark_table.csv"
+      ],
+      "tests": [
+        "tests/test_model_inference_bench.py"
+      ],
+      "limitation": "Only the inference path is validated (the model file loads and produces correctly shaped output with real measured latency). Its training provenance, and whether it actually denoises effectively, cannot be assessed: no training script and no ground-truth IO-VNBD data exist in this repository to evaluate denoising accuracy against. The pre-existing results/isro_benchmark_table.csv row for this model is an artifact from an earlier build, not evidence produced in this repository state. Also note this model is not invoked by frontend/mobile.html's live navigation pipeline (only DriftFormer, Adaptive EKF, and the tunnel detector run there); frontend/desktop.html references it but its own code comments state it does not actually execute in the browser due to an unsupported ONNX op there."
+    },
+    {
+      "requirement": "Requirement 3: Map matching against a road network",
+      "status": "OFFLINE_ONLY",
+      "files": [
+        "edge/hmm_map_matcher.py",
+        "frontend/mobile.html"
+      ],
+      "tests": [
+        "tests/test_hmm_map_matcher.py"
+      ],
+      "limitation": "edge/hmm_map_matcher.py is validated only against small, hand-constructed synthetic road/candidate fixtures built to verify algorithmic correctness (straight road, intersection, parallel roads, gaps, wrong-early-candidate correction) \u2014 not real-world map-matching accuracy against real GNSS/road data. It is not wired into the live mobile pipeline; frontend/mobile.html's separate, already-existing LiveHMM continues to serve live navigation unmodified."
+    },
+    {
+      "requirement": "Requirement 4: AI-based sensor fusion (NavIC motion-prior)",
+      "status": "DATA_BLOCKED",
+      "files": [
+        "models/navic_vae.py",
+        "training/train_navic_vae.py"
+      ],
+      "tests": [],
+      "limitation": "Training requires real GNSS/IMU trajectory data (IO-VNBD or equivalent), which is not present in this repository. The live Adaptive-EKF fusion in frontend/mobile.html is unrelated and unmodified by this item."
+    },
+    {
+      "requirement": "Requirement 5: GNSS-denied dead reckoning (blackout handling)",
+      "status": "IMPLEMENTED",
+      "files": [
+        "frontend/mobile.html"
+      ],
+      "tests": [],
+      "limitation": "Already satisfied before this build phase; documented here for completeness only, not re-validated in this pass."
+    },
+    {
+      "requirement": "Requirement 6: GNSS reacquisition / trajectory snapping",
+      "status": "IMPLEMENTED",
+      "files": [
+        "frontend/mobile.html",
+        "inference/runtime.py"
+      ],
+      "tests": [],
+      "limitation": "Already satisfied before this build phase; documented here for completeness only, not re-validated in this pass."
+    },
+    {
+      "requirement": "Requirement 7: External/plug-in IMU hardware support",
+      "status": "SOFTWARE_ONLY_VALIDATED",
+      "files": [
+        "edge/external_imu.py"
+      ],
+      "tests": [
+        "tests/test_external_imu.py"
+      ],
+      "limitation": "This is a software input contract and loader, validated with unit tests and synthetic/small real-format CSV fixtures. No physical external IMU board has been connected or tested against it."
+    },
+    {
+      "requirement": "Requirement 8: Benchmark against IO-VNBD dataset",
+      "status": "DATA_BLOCKED",
+      "files": [
+        "data/loader.py",
+        "results/validation_full.json",
+        "results/isro_benchmark_table.csv"
+      ],
+      "tests": [],
+      "limitation": "No raw IO-VNBD dataset exists in this repository or workspace (confirmed by repeated full-repository search). The existing results/ artifacts are from a single prior sequence (n=1) and are not regenerable or extendable without the missing raw data."
+    },
+    {
+      "requirement": "Requirement 9: Real-time mobile architecture (~10 Hz)",
+      "status": "IMPLEMENTED",
+      "files": [
+        "frontend/mobile.html",
+        "edge/model_inference_bench.py"
+      ],
+      "tests": [
+        "tests/test_model_inference_bench.py"
+      ],
+      "limitation": "The live in-browser tick rate itself was not re-measured in this pass; only the deployed models' own inference latency was benchmarked, offline and read-only, via Python onnxruntime on this machine's CPU, not the phone's browser/WASM runtime. frontend/mobile.html was not modified or instrumented to obtain this number."
+    },
+    {
+      "requirement": "Requirement 10: 200 Hz external-IMU-capable edge engine",
+      "status": "SOFTWARE_ONLY_VALIDATED",
+      "files": [
+        "edge/replay_200hz_demo.py",
+        "edge/external_imu.py",
+        "navdrift_engine.py"
+      ],
+      "tests": [
+        "tests/test_butterworth_stability.py"
+      ],
+      "limitation": "This measures software processing throughput only (every run's stats dict explicitly carries hardware_validation=NOT_PERFORMED). No physical 200 Hz IMU or FOG board has been used to produce any number in this repository."
+    }
+  ],
+  "requirement_evidence_consistency_problems": [],
+  "known_onnx_models_present": {
+    "models/driftformer_fp32.onnx": true,
+    "models/adaptive_ekf_fp32.onnx": true,
+    "models/tunnel_det_fp32.onnx": true
+  },
+  "new_offline_modules_present": {
+    "edge/external_imu.py": true,
+    "edge/vehicle_calibration.py": true,
+    "edge/hmm_map_matcher.py": true,
+    "edge/replay_200hz_demo.py": true,
+    "edge/imu_replay_example.py": true,
+    "edge/requirement_evidence.py": true,
+    "edge/capability_report.py": true,
+    "edge/model_inference_bench.py": true,
+    "edge/calibration_evidence_demo.py": true,
+    "edge/hmm_viterbi_evidence_demo.py": true
+  },
+  "frozen_live_files_present_unmodified_by_this_report": {
+    "frontend/mobile.html": true,
+    "frontend/desktop.html": true
+  },
+  "evidence_test_run": {
+    "ran": true,
+    "returncode": 0,
+    "passed": 69,
+    "failed": 0
+  },
+  "notes": [
+    "Frozen live files are listed for completeness only; this report does not re-validate or modify them.",
+    "DATA_BLOCKED entries cannot be upgraded to VALIDATED/IMPLEMENTED without a real IO-VNBD (or equivalent) dataset, which does not exist in this repository.",
+    "SOFTWARE_ONLY_VALIDATED means tested via software unit tests/benchmarks only; no physical hardware was used to produce any number in this report."
+  ]
+}

@@ -14,17 +14,41 @@ build/
 venv/
 env/
 
-# Model artifacts (large files)
-checkpoints/
+# Model artifacts (large files) — checkpoints/ is ignored by default;
+# the real, trained, evidence-backed IO-VNBD speed-LSTM checkpoint
+# (~425KB total: .pt + .onnx + 3 small JSON reports) is a deliberate,
+# narrow exception below. Everything else under checkpoints/ (e.g. the
+# much larger driftformer_best.pt) stays ignored as before.
+checkpoints/*
+!checkpoints/iovnbd_speed_lstm/
 *.pt
 *.pth
 *.onnx
 *.npz
+!checkpoints/iovnbd_speed_lstm/navdrift_lstm_best.pt
+!checkpoints/iovnbd_speed_lstm/navdrift_lstm.onnx
+!checkpoints/iovnbd_speed_lstm/navdrift_lstm_meta.json
+!checkpoints/iovnbd_speed_lstm/training_report.json
+!checkpoints/iovnbd_speed_lstm/onnx_export_report.json
 
 # Dataset
 data/IO-VNBD/
 data/*.csv
 data/*.zip
+# Real IO-VNBD raw archives (~400MB total) — never tracked. Only small
+# metadata/manifest files belong in git; the ZIPs stay local-only.
+/raw/
+data/raw/
+
+# Stray/accidental files from earlier sessions — not part of the
+# official project structure.
+frontend/index-2.html
+frontend/mobile-2.html
+frontend/mobile.html.bak
+frontend/index_backup.html
+README-2.md
+ilient
+tatus --short
 
 # Jupyter
 .ipynb_checkpoints/

@@ -1,0 +1,20 @@
+{
+  "validation_type": "SOFTWARE_BENCHMARK",
+  "hardware_validation": "NOT_PERFORMED",
+  "n_samples": 6000,
+  "target_hz": 200.0,
+  "budget_ms_per_sample": 5.0,
+  "measured_elapsed_s": 0.1101,
+  "measured_effective_hz": 54508.13,
+  "latency_ms_mean": 0.0165,
+  "latency_ms_p50": 0.0146,
+  "latency_ms_p95": 0.0222,
+  "latency_ms_max": 0.4654,
+  "under_budget_fraction": 1.0,
+  "non_finite_output_count": 0,
+  "warnings_raised": [],
+  "errors_raised": [],
+  "source": "SYNTHETIC TIMING FIXTURE (not real sensor data, not a navigation benchmark) \u2014 6000 samples",
+  "is_synthetic_fixture": true,
+  "hardware_validation_note": "NOT PERFORMED \u2014 software processing-rate measurement only"
+}

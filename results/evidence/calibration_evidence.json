@@ -1,0 +1,223 @@
+{
+  "validation_type": "SOFTWARE_ONLY_VALIDATED",
+  "hardware_validation": "NOT_PERFORMED",
+  "note": "Every fixture here is a deterministic, seeded synthetic accelerometer/gyroscope window with a known analytical answer, not physical vehicle test data.",
+  "cases": [
+    {
+      "case": "flat_phone_stationary",
+      "kind": "deterministic_software_fixture",
+      "known_roll_deg": 0.0,
+      "known_pitch_deg": 0.0,
+      "result": {
+        "valid": true,
+        "n_samples_used": 200,
+        "n_samples_total": 200,
+        "roll_rad": -2.7e-05,
+        "pitch_rad": -3.3e-05,
+        "yaw_rad": null,
+        "yaw_source": null,
+        "confidence": 0.9827,
+        "notes": [
+          "no reliable GNSS course available (speed below 1.0 m/s or course not supplied) \u2014 yaw left unset rather than guessed; roll/pitch calibration still valid"
+        ],
+        "R_phone_to_vehicle": [
+          [
+            0.99999999946747,
+            0.0,
+            3.263525608390256e-05
+          ],
+          [
+            8.849696417061495e-10,
+            0.9999999996323347,
+            -2.7116981676494047e-05
+          ],
+          [
+            -3.263525607190371e-05,
+            2.7116981690934654e-05,
+            0.9999999990998046
+          ]
+        ]
+      }
+    },
+    {
+      "case": "known_roll_15deg",
+      "kind": "deterministic_software_fixture",
+      "known_roll_deg": 15.0,
+      "known_pitch_deg": 0.0,
+      "result": {
+        "valid": true,
+        "n_samples_used": 200,
+        "n_samples_total": 200,
+        "roll_rad": 0.261809,
+        "pitch_rad": -1.6e-05,
+        "yaw_rad": null,
+        "yaw_source": null,
+        "confidence": 0.9913,
+        "notes": [
+          "no reliable GNSS course available (speed below 1.0 m/s or course not supplied) \u2014 yaw left unset rather than guessed; roll/pitch calibration still valid"
+        ],
+        "R_phone_to_vehicle": [
+          [
+            0.9999999998668905,
+            0.0,
+            1.6316220389233008e-05
+          ],
+          [
+            -4.223096326255562e-06,
+            0.9659233999298692,
+            0.2588281001941006
+          ],
+          [
+            -1.5760219072373e-05,
+            -0.25882810022855307,
+            0.9659233998012956
+          ]
+        ]
+      }
+    },
+    {
+      "case": "gnss_yaw_reliable_moving",
+      "kind": "deterministic_software_fixture",
+      "known_course_deg": 75.0,
+      "known_speed_mps": 8.0,
+      "result": {
+        "valid": true,
+        "n_samples_used": 200,
+        "n_samples_total": 200,
+        "roll_rad": -2.7e-05,
+        "pitch_rad": -3.3e-05,
+        "yaw_rad": 1.308997,
+        "yaw_source": "gnss_course",
+        "confidence": 0.9827,
+        "notes": [
+          "yaw initialized from GNSS course (75.0 deg) at speed 8.00 m/s"
+        ],
+        "R_phone_to_vehicle": [
+          [
+            0.2588190441098768,
+            -0.9659258259339308,
+            3.463961874864493e-05
+          ],
+          [
+            0.9659258260037308,
+            0.25881904500736197,
+            2.4504845395426184e-05
+          ],
+          [
+            -3.263525607190371e-05,
+            2.7116981690934654e-05,
+            0.9999999990998046
+          ]
+        ]
+      }
+    },
+    {
+      "case": "gnss_yaw_unreliable_too_slow",
+      "kind": "deterministic_software_fixture",
+      "known_course_deg": 75.0,
+      "known_speed_mps": 0.2,
+      "result": {
+        "valid": true,
+        "n_samples_used": 200,
+        "n_samples_total": 200,
+        "roll_rad": -2.7e-05,
+        "pitch_rad": -3.3e-05,
+        "yaw_rad": null,
+        "yaw_source": null,
+        "confidence": 0.9827,
+        "notes": [
+          "no reliable GNSS course available (speed below 1.0 m/s or course not supplied) \u2014 yaw left unset rather than guessed; roll/pitch calibration still valid"
+        ],
+        "R_phone_to_vehicle": [
+          [
+            0.99999999946747,
+            0.0,
+            3.263525608390256e-05
+          ],
+          [
+            8.849696417061495e-10,
+            0.9999999996323347,
+            -2.7116981676494047e-05
+          ],
+          [
+            -3.263525607190371e-05,
+            2.7116981690934654e-05,
+            0.9999999990998046
+          ]
+        ]
+      }
+    },
+    {
+      "case": "phone_to_vehicle_rotation_sanity",
+      "kind": "deterministic_software_fixture",
+      "orthonormality_error": 1.1102230246251565e-16,
+      "determinant": 0.9999999999999998,
+      "result": {
+        "valid": true,
+        "n_samples_used": 200,
+        "n_samples_total": 200,
+        "roll_rad": 0.101611,
+        "pitch_rad": -3.2e-05,
+        "yaw_rad": 3.490659,
+        "yaw_source": "gnss_course",
+        "confidence": 0.9827,
+        "notes": [
+          "yaw initialized from GNSS course (200.0 deg) at speed 5.00 m/s"
+        ],
+        "R_phone_to_vehicle": [
+          [
+            -0.9396937466739682,
+            0.34025601601580274,
+            0.03466274696116666
+          ],
+          [
+            -0.34201704843265474,
+            -0.9348457208370087,
+            -0.09533004150921567
+          ],
+          [
+            -3.229946144415445e-05,
+            -0.10143629428260599,
+            0.9948420362846341
+          ]
+        ]
+      }
+    },
+    {
+      "case": "fallback_insufficient_low_motion",
+      "kind": "deterministic_software_fixture",
+      "result": {
+        "valid": false,
+        "n_samples_used": 0,
+        "n_samples_total": 50,
+        "roll_rad": null,
+        "pitch_rad": null,
+        "yaw_rad": null,
+        "yaw_source": null,
+        "confidence": 0.0,
+        "notes": [
+          "only 0/50 samples passed the low-motion gate (need >= 10) \u2014 calibration not attempted"
+        ],
+        "R_phone_to_vehicle": null
+      }
+    },
+    {
+      "case": "fallback_accel_magnitude_far_from_g",
+      "kind": "deterministic_software_fixture",
+      "result": {
+        "valid": false,
+        "n_samples_used": 0,
+        "n_samples_total": 100,
+        "roll_rad": null,
+        "pitch_rad": null,
+        "yaw_rad": null,
+        "yaw_source": null,
+        "confidence": 0.0,
+        "notes": [
+          "only 0/100 samples passed the low-motion gate (need >= 10) \u2014 calibration not attempted"
+        ],
+        "R_phone_to_vehicle": null
+      }
+    }
+  ]
+}

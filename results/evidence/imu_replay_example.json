@@ -1,0 +1,12 @@
+{
+  "n_frames": 500,
+  "n_valid_frames": 500,
+  "sample_rate_hz_estimated": 100.0,
+  "sample_rate_supported": true,
+  "final_lat": 0.0,
+  "final_lon": 0.0,
+  "lat_range": 0.0,
+  "lon_range": 0.0,
+  "validation_type": "SOFTWARE_BENCHMARK",
+  "hardware_validation": "NOT_PERFORMED"
+}

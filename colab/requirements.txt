@@ -1,0 +1,7 @@
+# Colab GPU runtimes ship torch with CUDA already installed — do not
+# pip install torch here, it can downgrade/break the preinstalled CUDA
+# build. Everything below is what's NOT already on a stock Colab image.
+onnx
+onnxruntime
+matplotlib
+numpy

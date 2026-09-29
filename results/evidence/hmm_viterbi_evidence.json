@@ -1,0 +1,305 @@
+{
+  "validation_type": "OFFLINE_ONLY",
+  "hardware_validation": "NOT_PERFORMED",
+  "fixture_kind": "SYNTHETIC_HAND_CONSTRUCTED",
+  "note": "No real-world map-matching accuracy claim. This demonstrates algorithmic correctness (Viterbi path reconstruction differs from and improves on a local greedy decision) against a hand-constructed fixture with one unambiguous correct answer, not accuracy against real GNSS/road data. Distinct from, and does not call or modify, frontend/mobile.html's live LiveHMM matcher.",
+  "per_tick_trace": [
+    {
+      "tick": 0,
+      "observation": {
+        "lat": 10.0,
+        "lon": 20.0,
+        "speed_mps": 11.1
+      },
+      "candidates_raw": [
+        {
+          "seg_id": "true_rd",
+          "lat": 10.0,
+          "lon": 20.0,
+          "bearing_rad": 0.0,
+          "dist_m": 1.0
+        },
+        {
+          "seg_id": "decoy_rd",
+          "lat": 10.0,
+          "lon": 20.0,
+          "bearing_rad": 0.0,
+          "dist_m": 0.5
+        }
+      ],
+      "candidate_scores": [
+        {
+          "seg_id": "true_rd",
+          "dist_m": 1.0,
+          "bearing_rad": 0.0,
+          "emission_log_prob": -0.0008,
+          "transition_log_prob": null
+        },
+        {
+          "seg_id": "decoy_rd",
+          "dist_m": 0.5,
+          "bearing_rad": 0.0,
+          "emission_log_prob": -0.0002,
+          "transition_log_prob": null
+        }
+      ],
+      "local_greedy_pick": "decoy_rd",
+      "step_had_candidates": true
+    },
+    {
+      "tick": 1,
+      "observation": {
+        "lat": 10.0001,
+        "lon": 20.0,
+        "speed_mps": 11.1
+      },
+      "candidates_raw": [
+        {
+          "seg_id": "true_rd",
+          "lat": 10.0001,
+          "lon": 20.0,
+          "bearing_rad": 0.0,
+          "dist_m": 1.0
+        },
+        {
+          "seg_id": "decoy_rd",
+          "lat": 10.0201,
+          "lon": 20.0,
+          "bearing_rad": 1.5707963267948966,
+          "dist_m": 300.0
+        }
+      ],
+      "candidate_scores": [
+        {
+          "seg_id": "true_rd",
+          "dist_m": 1.0,
+          "bearing_rad": 0.0,
+          "emission_log_prob": -0.0008,
+          "transition_log_prob": -0.0
+        },
+        {
+          "seg_id": "decoy_rd",
+          "dist_m": 300.0,
+          "bearing_rad": 1.5707963267948966,
+          "emission_log_prob": -75.3061,
+          "transition_log_prob": -6181.6642
+        }
+      ],
+      "local_greedy_pick": "true_rd",
+      "step_had_candidates": true
+    },
+    {
+      "tick": 2,
+      "observation": {
+        "lat": 10.0002,
+        "lon": 20.0,
+        "speed_mps": 11.1
+      },
+      "candidates_raw": [
+        {
+          "seg_id": "true_rd",
+          "lat": 10.0002,
+          "lon": 20.0,
+          "bearing_rad": 0.0,
+          "dist_m": 1.0
+        },
+        {
+          "seg_id": "decoy_rd",
+          "lat": 10.020199999999999,
+          "lon": 20.0,
+          "bearing_rad": 1.5707963267948966,
+          "dist_m": 300.0
+        }
+      ],
+      "candidate_scores": [
+        {
+          "seg_id": "true_rd",
+          "dist_m": 1.0,
+          "bearing_rad": 0.0,
+          "emission_log_prob": -0.0008,
+          "transition_log_prob": 0.6
+        },
+        {
+          "seg_id": "decoy_rd",
+          "dist_m": 300.0,
+          "bearing_rad": 1.5707963267948966,
+          "emission_log_prob": -75.3061,
+          "transition_log_prob": -6182.2642
+        }
+      ],
+      "local_greedy_pick": "true_rd",
+      "step_had_candidates": true
+    },
+    {
+      "tick": 3,
+      "observation": {
+        "lat": 10.0003,
+        "lon": 20.0,
+        "speed_mps": 11.1
+      },
+      "candidates_raw": [
+        {
+          "seg_id": "true_rd",
+          "lat": 10.0003,
+          "lon": 20.0,
+          "bearing_rad": 0.0,
+          "dist_m": 1.0
+        },
+        {
+          "seg_id": "decoy_rd",
+          "lat": 10.020299999999999,
+          "lon": 20.0,
+          "bearing_rad": 1.5707963267948966,
+          "dist_m": 300.0
+        }
+      ],
+      "candidate_scores": [
+        {
+          "seg_id": "true_rd",
+          "dist_m": 1.0,
+          "bearing_rad": 0.0,
+          "emission_log_prob": -0.0008,
+          "transition_log_prob": 0.6
+        },
+        {
+          "seg_id": "decoy_rd",
+          "dist_m": 300.0,
+          "bearing_rad": 1.5707963267948966,
+          "emission_log_prob": -75.3061,
+          "transition_log_prob": -6182.2642
+        }
+      ],
+      "local_greedy_pick": "true_rd",
+      "step_had_candidates": true
+    },
+    {
+      "tick": 4,
+      "observation": {
+        "lat": 10.0004,
+        "lon": 20.0,
+        "speed_mps": 11.1
+      },
+      "candidates_raw": [
+        {
+          "seg_id": "true_rd",
+          "lat": 10.0004,
+          "lon": 20.0,
+          "bearing_rad": 0.0,
+          "dist_m": 1.0
+        },
+        {
+          "seg_id": "decoy_rd",
+          "lat": 10.0204,
+          "lon": 20.0,
+          "bearing_rad": 1.5707963267948966,
+          "dist_m": 300.0
+        }
+      ],
+      "candidate_scores": [
+        {
+          "seg_id": "true_rd",
+          "dist_m": 1.0,
+          "bearing_rad": 0.0,
+          "emission_log_prob": -0.0008,
+          "transition_log_prob": 0.6
+        },
+        {
+          "seg_id": "decoy_rd",
+          "dist_m": 300.0,
+          "bearing_rad": 1.5707963267948966,
+          "emission_log_prob": -75.3061,
+          "transition_log_prob": -6182.2642
+        }
+      ],
+      "local_greedy_pick": "true_rd",
+      "step_had_candidates": true
+    },
+    {
+      "tick": 5,
+      "observation": {
+        "lat": 10.0005,
+        "lon": 20.0,
+        "speed_mps": 11.1
+      },
+      "candidates_raw": [
+        {
+          "seg_id": "true_rd",
+          "lat": 10.0005,
+          "lon": 20.0,
+          "bearing_rad": 0.0,
+          "dist_m": 1.0
+        },
+        {
+          "seg_id": "decoy_rd",
+          "lat": 10.0205,
+          "lon": 20.0,
+          "bearing_rad": 1.5707963267948966,
+          "dist_m": 300.0
+        }
+      ],
+      "candidate_scores": [
+        {
+          "seg_id": "true_rd",
+          "dist_m": 1.0,
+          "bearing_rad": 0.0,
+          "emission_log_prob": -0.0008,
+          "transition_log_prob": 0.6
+        },
+        {
+          "seg_id": "decoy_rd",
+          "dist_m": 300.0,
+          "bearing_rad": 1.5707963267948966,
+          "emission_log_prob": -75.3061,
+          "transition_log_prob": -6182.2642
+        }
+      ],
+      "local_greedy_pick": "true_rd",
+      "step_had_candidates": true
+    }
+  ],
+  "final_comparison": [
+    {
+      "tick": 0,
+      "local_greedy_pick": "decoy_rd",
+      "viterbi_best_path_pick": "true_rd",
+      "accumulated_log_prob": -0.0008,
+      "corrected": true
+    },
+    {
+      "tick": 1,
+      "local_greedy_pick": "true_rd",
+      "viterbi_best_path_pick": "true_rd",
+      "accumulated_log_prob": 0.5984,
+      "corrected": false
+    },
+    {
+      "tick": 2,
+      "local_greedy_pick": "true_rd",
+      "viterbi_best_path_pick": "true_rd",
+      "accumulated_log_prob": 1.1976,
+      "corrected": false
+    },
+    {
+      "tick": 3,
+      "local_greedy_pick": "true_rd",
+      "viterbi_best_path_pick": "true_rd",
+      "accumulated_log_prob": 1.7968,
+      "corrected": false
+    },
+    {
+      "tick": 4,
+      "local_greedy_pick": "true_rd",
+      "viterbi_best_path_pick": "true_rd",
+      "accumulated_log_prob": 2.396,
+      "corrected": false
+    },
+    {
+      "tick": 5,
+      "local_greedy_pick": "true_rd",
+      "viterbi_best_path_pick": "true_rd",
+      "accumulated_log_prob": 2.9952,
+      "corrected": false
+    }
+  ],
+  "n_ticks_corrected_by_global_evidence": 1
+}

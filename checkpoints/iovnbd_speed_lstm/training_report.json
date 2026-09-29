@@ -1,0 +1,101 @@
+{
+  "kind": "REAL_TRAINING_RUN",
+  "device": "cuda",
+  "seed": 42,
+  "seq_len": 50,
+  "stride": 10,
+  "hidden_size": 64,
+  "num_layers": 2,
+  "n_params": 51777,
+  "n_train_sequences": 52,
+  "n_val_sequences": 10,
+  "n_test_sequences": 10,
+  "n_train_windows": 78473,
+  "n_val_windows": 24258,
+  "n_test_windows": 4015,
+  "best_epoch": 5,
+  "epochs_run": 12,
+  "training_time_s": 21.726081371307373,
+  "target_mean_mps": 12.743955612182617,
+  "target_std_mps": 8.556112289428711,
+  "val_mae_best_mps": 3.538848638534546,
+  "test_mae_mps": 3.2132365703582764,
+  "test_rmse_mps": 4.355339527130127,
+  "test_r2": 0.6964968687484558,
+  "test_n_samples": 4015,
+  "history": [
+    {
+      "epoch": 0,
+      "train_mse_loss_normalized": 0.5670531744994827,
+      "val_mae_mps": 4.11439323425293,
+      "val_rmse_mps": 5.162490367889404
+    },
+    {
+      "epoch": 1,
+      "train_mse_loss_normalized": 0.3737328494479854,
+      "val_mae_mps": 3.945221424102783,
+      "val_rmse_mps": 5.0242719650268555
+    },
+    {
+      "epoch": 2,
+      "train_mse_loss_normalized": 0.3363131931509933,
+      "val_mae_mps": 3.8504791259765625,
+      "val_rmse_mps": 4.954488754272461
+    },
+    {
+      "epoch": 3,
+      "train_mse_loss_normalized": 0.3174267375198654,
+      "val_mae_mps": 3.595141649246216,
+      "val_rmse_mps": 4.787286281585693
+    },
+    {
+      "epoch": 4,
+      "train_mse_loss_normalized": 0.30447286221904424,
+      "val_mae_mps": 3.7481801509857178,
+      "val_rmse_mps": 4.868589401245117
+    },
+    {
+      "epoch": 5,
+      "train_mse_loss_normalized": 0.2956022304294139,
+      "val_mae_mps": 3.538848638534546,
+      "val_rmse_mps": 4.691981315612793
+    },
+    {
+      "epoch": 6,
+      "train_mse_loss_normalized": 0.28830409690673353,
+      "val_mae_mps": 3.824707269668579,
+      "val_rmse_mps": 4.9671854972839355
+    },
+    {
+      "epoch": 7,
+      "train_mse_loss_normalized": 0.28414133266019925,
+      "val_mae_mps": 3.570265054702759,
+      "val_rmse_mps": 4.7626190185546875
+    },
+    {
+      "epoch": 8,
+      "train_mse_loss_normalized": 0.2759524829749396,
+      "val_mae_mps": 3.655282497406006,
+      "val_rmse_mps": 4.743655681610107
+    },
+    {
+      "epoch": 9,
+      "train_mse_loss_normalized": 0.2704395704617863,
+      "val_mae_mps": 3.6243464946746826,
+      "val_rmse_mps": 4.719433784484863
+    },
+    {
+      "epoch": 10,
+      "train_mse_loss_normalized": 0.26728377638656076,
+      "val_mae_mps": 3.6167726516723633,
+      "val_rmse_mps": 4.7606201171875
+    },
+    {
+      "epoch": 11,
+      "train_mse_loss_normalized": 0.2615704138193238,
+      "val_mae_mps": 3.6592493057250977,
+      "val_rmse_mps": 4.753370761871338
+    }
+  ],
+  "checkpoint_path": "checkpoints/iovnbd_speed_lstm/navdrift_lstm_best.pt"
+}

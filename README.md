@@ -311,6 +311,7 @@ Live tiles shown in the desktop dashboard and mobile diagnostics panel (inferenc
 - **Additional/broader training datasets.** EuRoC MAV is referenced as prior cross-validation data; there is no evidence in the current repository of an active, wired-in multi-dataset training pipeline beyond IO-VNBD.
 - **The more elaborate PyTorch model architectures under `models/`** (transformer with RoPE and a covariance head, GRU-VAE, gradient-descent SNAP corrector) versus the simpler architecture actually reflected in the deployed `.onnx` files (see section 7). It is not clear from the repository which of these, if either, produced the currently deployed models.
 - **Broader device/browser validation.** Testing so far has been on the browsers and devices used during development; broad compatibility testing across many phone models and browser versions has not been documented here.
+- **IO-VNBD speed-estimation LSTM.** A real LSTM was trained on the official IO-VNBD dataset (Google Colab A100) and evaluated on a real held-out test split: MAE 3.213 m/s, RMSE 4.355 m/s, R² 0.6965 (`checkpoints/iovnbd_speed_lstm/training_report.json`). It runs correctly in-browser via `onnxruntime-web` (`results/iovnbd/browser_demo/`), but is **not** wired into `frontend/mobile.html` — the model was trained on gravity-inclusive smartphone accelerometer data with no established phone-mount axis convention, while the live app's IMU values are gravity-compensated and the phone orientation is treated as arbitrary/auto-detected; no calibration mapping is assumed to close that gap. See `results/EVIDENCE_INDEX.md` (Requirement 2A) for the full record.
 
 ---
 
@@ -329,6 +330,7 @@ These are gaps found during this repository audit, listed honestly as things to 
 - Automated deployment and testing (there is a CI workflow that runs Python import checks and unit tests, but no automated end-to-end or device testing).
 - Resolving the `CORS_ORIGINS` / `ALLOWED_ORIGINS` environment variable name mismatch in the backend deployment configuration.
 - Reconciling the training-source model architectures under `models/` with whatever actually produced the deployed `.onnx` files, so the two are no longer in tension.
+- Live-phone integration of the trained IO-VNBD speed LSTM: a real, documented sensor-mapping gap (gravity inclusion, phone-mount axis convention — see section 15) blocks this, and closing it honestly requires either a resolved calibration/mapping or a validated assumption, neither of which exists yet.
 
 These are the areas intended for future work, not capabilities already present.
 
