@@ -113,14 +113,81 @@ consequence, this repository now has, with real numbers:
   numbers, not LSTM speed-model numbers — the two are not the same
   benchmark and must not be conflated.**
 
+### 6a. Browser ONNX runtime compatibility — validated
+
+The exact `checkpoints/iovnbd_speed_lstm/navdrift_lstm.onnx` file was run
+through `onnxruntime-web` — the same package version and execution
+provider `frontend/mobile.html` uses (`onnxruntime-web@1.18.0`,
+`executionProviders:['wasm']`) — with no modification to the model:
+
+- opset: `ai.onnx 17`
+- input: `imu_window`, shape `[1, 50, 6]`, float32
+- output: `speed_mps`, shape `[1, 1]`, float32 (de-normalization already
+  baked into the graph)
+- real session creation: succeeded
+- real inference: succeeded, ~8.9 ms mean — **this is a number measured in
+  the test environment used to check compatibility, not a phone
+  performance claim**
+- repeated inside a real headless-browser run of the live demo page
+  (section 6b below) against 40 real held-out test windows, output
+  matching the Python-`onnxruntime` cross-check numerically
+
+This confirms the model **can** execute in the browser runtime NAVDRIFT-0
+already ships. It does not by itself mean live phone integration is ready
+— see 6c below for why that remains separately blocked.
+
+### 6b. Standalone browser demo — real data, real inference, offline only
+
+`results/iovnbd/browser_demo/index.html` (+ `browser_demo_samples.json`)
+is a new, standalone page — not referenced by, and not loaded from,
+`frontend/mobile.html` or any other production file. Opening it:
+
+- loads the actual `checkpoints/iovnbd_speed_lstm/navdrift_lstm.onnx` via
+  `onnxruntime-web@1.18.0` (`wasm`)
+- runs real inference, in the browser, on 40 real windows sampled from the
+  real IO-VNBD held-out **test** split (same sequences and preprocessing
+  as training; not a re-derivation of the official 4,015-sample metric,
+  reported separately and labeled as its own subset)
+- displays the official test metrics (MAE 3.213 m/s, RMSE 4.355 m/s,
+  R² 0.6965, n=4,015) alongside this subset's own live-computed MAE/RMSE
+- is explicitly labeled `IO-VNBD OFFLINE VALIDATION` /
+  `NOT CONNECTED TO LIVE PHONE NAVIGATION`, states that browser ONNX
+  execution is validated but live phone sensor mapping is not, and makes
+  no navigation-accuracy claim
+- reads no phone sensor and fabricates no values — every window and every
+  reference speed is real IO-VNBD data
+
+### 6c. Live phone integration blocker — documented, not guessed
+
+Live integration into `frontend/mobile.html` was deliberately not
+attempted. Two specific, real mismatches block it — nothing here is an
+assumed or invented mapping:
+
+- **Gravity inclusion.** The model was trained on IO-VNBD's raw smartphone
+  accelerometer, which includes gravity (trained `accel_z` mean ≈ 9.85
+  m/s²). `frontend/mobile.html`'s live `IMU.ax/ay/az` are deliberately
+  gravity-*compensated* for its own EKF/dead-reckoning math — a different
+  physical quantity, not a relabeling.
+- **Axis/frame correspondence.** IO-VNBD's own phone-mounting axis
+  convention is not established in the dataset (`data/iovnbd.py` documents
+  this as an open item), and `frontend/mobile.html` treats phone
+  orientation as arbitrary/unknown, auto-detecting its own forward axis
+  per session rather than assuming a fixed frame. There is no verified
+  correspondence between IO-VNBD's `x/y/z` and a live phone's orientation.
+
+No live-phone mapping, calibration assumption, or navigation-accuracy
+improvement is claimed anywhere in this repository as a result of this
+work.
+
 This still does not and cannot honestly claim:
 
 - NavIC VAE fusion training or ONNX export (Requirement 4 remains
   `DATA_BLOCKED`: no trained checkpoint exists for that model)
 - a learned vibration/noise denoiser trained or validated on IO-VNBD
   (Requirement 2B is unrelated to this work and is unchanged)
-- any mobile-device, browser, or hardware validation of the LSTM speed
-  model (`hardware_validation: NOT_PERFORMED`)
+- any mobile-device (physical hardware) validation of the LSTM speed
+  model (`hardware_validation: NOT_PERFORMED`) — browser validation is
+  covered above and is a different thing
 - that the LSTM speed model is wired into `frontend/mobile.html` or the
   live navigation path (it is not) or that it improves real-world
   navigation accuracy (no such claim is made)

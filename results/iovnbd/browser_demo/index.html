@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NAVDRIFT-0 — IO-VNBD Speed LSTM Offline Validation</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --panel2:#161e29; --border:#243040;
+    --text:#e7edf3; --muted:#93a3b8; --accent:#5fb3ff; --good:#4ade80;
+    --warn:#f5b942; --bad:#f87171; --mono:'SFMono-Regular',Consolas,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f5f7fa; --panel:#ffffff; --panel2:#eef2f7; --border:#dbe3ed;
+           --text:#131a24; --muted:#5b6b80; --accent:#0b6fd6; --good:#16a34a;
+           --warn:#b06a00; --bad:#dc2626; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+       padding:16px;}
+  .wrap{max-width:920px;margin:0 auto;}
+  h1{font-size:1.3rem;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:0.85rem;margin:0 0 18px;}
+  .banner{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--accent);
+          border-radius:8px;padding:14px 16px;margin-bottom:16px;}
+  .banner .tag{display:inline-block;font-size:0.7rem;font-weight:700;letter-spacing:0.04em;
+          background:var(--accent);color:#04121f;border-radius:4px;padding:2px 8px;margin-right:8px;}
+  .banner .tag.warn{background:var(--warn);}
+  .banner p{margin:8px 0 0;font-size:0.88rem;line-height:1.5;color:var(--text);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0;}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;}
+  .stat .k{font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;}
+  .stat .v{font-size:1.25rem;font-weight:700;margin-top:2px;font-family:var(--mono);}
+  section{background:var(--panel);border:1px solid var(--border);border-radius:8px;
+          padding:14px 16px;margin-bottom:14px;}
+  section h2{font-size:0.95rem;margin:0 0 8px;}
+  .muted{color:var(--muted);font-size:0.82rem;line-height:1.5;}
+  button{background:var(--accent);color:#04121f;border:none;border-radius:6px;
+         padding:9px 16px;font-size:0.9rem;font-weight:600;cursor:pointer;}
+  button:disabled{opacity:0.5;cursor:default;}
+  #status{font-family:var(--mono);font-size:0.82rem;color:var(--muted);margin-top:8px;white-space:pre-wrap;}
+  table{width:100%;border-collapse:collapse;font-size:0.8rem;margin-top:10px;}
+  th,td{text-align:right;padding:5px 8px;border-bottom:1px solid var(--border);font-family:var(--mono);}
+  th:first-child,td:first-child{text-align:left;}
+  th{color:var(--muted);font-weight:600;font-size:0.72rem;text-transform:uppercase;}
+  tr:hover{background:var(--panel2);}
+  .err-ok{color:var(--good);} .err-mid{color:var(--warn);} .err-bad{color:var(--bad);}
+  ul{margin:6px 0 0;padding-left:18px;} li{margin:4px 0;}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:0.85em;}
+  .pill{display:inline-block;font-size:0.72rem;font-weight:700;border-radius:999px;
+        padding:2px 10px;margin-left:6px;}
+  .pill.good{background:rgba(74,222,128,0.15);color:var(--good);border:1px solid var(--good);}
+  .pill.bad{background:rgba(248,113,113,0.15);color:var(--bad);border:1px solid var(--bad);}
+  footer{color:var(--muted);font-size:0.75rem;margin-top:18px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>NAVDRIFT-0 — IO-VNBD Speed LSTM</h1>
+  <p class="sub">ISRO SIH 2026 PS #26168 — standalone offline validation demo. Does not read, call, or modify <code>frontend/mobile.html</code> or any live navigation path.</p>
+
+  <div class="banner">
+    <span class="tag">IO-VNBD OFFLINE VALIDATION</span>
+    <span class="tag warn">NOT CONNECTED TO LIVE PHONE NAVIGATION</span>
+    <p>
+      This page runs the real, trained <code>navdrift_lstm.onnx</code> model against real,
+      held-out IO-VNBD test data, entirely in your browser via
+      <code>onnxruntime-web@1.18.0</code> (WASM execution provider) — the same runtime version
+      NAVDRIFT-0's live app uses. It demonstrates that the trained model executes correctly
+      client-side. It does <b>not</b> read any phone sensor, and it is <b>not</b> wired into the
+      production navigation pipeline in any way.
+    </p>
+  </div>
+
+  <section>
+    <h2>Official held-out test result (from training on a Google Colab A100)</h2>
+    <p class="muted">Full held-out test set — <code>checkpoints/iovnbd_speed_lstm/training_report.json</code>. Not recomputed on this page; reported as-trained.</p>
+    <div class="grid">
+      <div class="stat"><div class="k">Test MAE</div><div class="v">3.213 m/s</div></div>
+      <div class="stat"><div class="k">Test RMSE</div><div class="v">4.355 m/s</div></div>
+      <div class="stat"><div class="k">Test R²</div><div class="v">0.6965</div></div>
+      <div class="stat"><div class="k">Test samples</div><div class="v">4,015</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Live in-browser inference — real IO-VNBD test-split data</h2>
+    <p class="muted">
+      The button below loads the actual <code>navdrift_lstm.onnx</code> file into
+      <code>onnxruntime-web</code> in this page and runs real inference on
+      <span id="nSamplesLabel">a real subset</span> of pre-extracted windows from the
+      held-out IO-VNBD <b>test</b> split (same sequences as the official test result above,
+      same preprocessing as training). No sensor value on this page is synthetic, random, or
+      fabricated — every input window and every reference speed came from the real dataset.
+      This subset is small and is <b>not</b> a re-derivation of the official 4,015-sample metrics
+      above; its own aggregate is reported separately below, labeled as this page's own subset.
+    </p>
+    <button id="runBtn">Load model &amp; run real inference</button>
+    <div id="status">idle</div>
+    <div id="subsetStats" class="grid" style="display:none;">
+      <div class="stat"><div class="k">Subset MAE</div><div class="v" id="subMae">—</div></div>
+      <div class="stat"><div class="k">Subset RMSE</div><div class="v" id="subRmse">—</div></div>
+      <div class="stat"><div class="k">Subset n</div><div class="v" id="subN">—</div></div>
+      <div class="stat"><div class="k">Mean inference latency</div><div class="v" id="subLat">—</div></div>
+    </div>
+    <table id="resultsTable" style="display:none;">
+      <thead><tr><th>Sequence</th><th>Predicted (m/s)</th><th>Reference (m/s)</th><th>Abs. error (m/s)</th></tr></thead>
+      <tbody id="resultsBody"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Browser ONNX runtime compatibility — validated</h2>
+    <ul class="muted">
+      <li>Runtime: <code>onnxruntime-web@1.18.0</code>, execution provider <code>wasm</code> (same as <code>frontend/mobile.html</code>)</li>
+      <li>Model opset: <code>ai.onnx 17</code></li>
+      <li>Input: <code>imu_window</code> — shape <code>[1, 50, 6]</code>, float32</li>
+      <li>Output: <code>speed_mps</code> — shape <code>[1, 1]</code>, float32 (de-normalization already baked into the graph — no caller-side denorm needed)</li>
+      <li>Real session creation and real inference both succeed on this exact file</li>
+      <li>Measured latency in the compatibility test environment: <b>~8.9 ms</b> — this is a measured-test-environment number, <b>not a phone performance claim</b></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Live phone integration — <span class="pill bad">NOT VALIDATED</span></h2>
+    <p class="muted">Browser ONNX execution is validated (above). Live phone sensor feature mapping is not, for two specific, unresolved reasons — nothing here is guessed or assumed:</p>
+    <ul class="muted">
+      <li><b>Gravity inclusion.</b> The model was trained on IO-VNBD's raw smartphone accelerometer, which includes gravity (its <code>accel_z</code> channel has a trained mean of ~9.85 m/s²). <code>frontend/mobile.html</code>'s live <code>IMU.ax/ay/az</code> are deliberately gravity-<i>compensated</i> for its own EKF/dead-reckoning math — a different physical quantity, not a relabeling.</li>
+      <li><b>Axis/frame correspondence.</b> IO-VNBD's own phone-mounting axis convention is not established in this dataset (<code>data/iovnbd.py</code> documents this as an open item), and <code>frontend/mobile.html</code> treats phone orientation as arbitrary/unknown, auto-detecting its own forward axis per session rather than assuming a fixed frame. There is no verified correspondence between IO-VNBD's <code>x/y/z</code> and a live phone's current orientation.</li>
+    </ul>
+    <p class="muted">Because of this, <b>no live phone speed number is claimed anywhere</b> — this page shows the model's real behavior on real recorded data only, and makes <b>no claim that this model improves real-world navigation accuracy</b> on a phone.</p>
+  </section>
+
+  <footer>
+    NAVDRIFT-0 production navigation (EKF, ZUPT, NHC, DriftFormer, GNSS handling, RoadGraph,
+    LiveHMM, tunnel detector, wake lock, native code) is untouched by this page and by the
+    model it demonstrates. This page is a standalone artifact under
+    <code>results/iovnbd/browser_demo/</code> and is not referenced by, or loaded from,
+    <code>frontend/mobile.html</code>.
+    <br><br>
+    If opened via <code>file://</code>, this page's <code>fetch()</code> calls for the model
+    and sample data may be blocked by the browser — serve it from the repository root instead,
+    e.g. <code>python -m http.server</code>, then open
+    <code>/results/iovnbd/browser_demo/index.html</code>.
+  </footer>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
+<script>
+const MODEL_PATH = '../../../checkpoints/iovnbd_speed_lstm/navdrift_lstm.onnx';
+const SAMPLES_PATH = './browser_demo_samples.json';
+
+const runBtn = document.getElementById('runBtn');
+const statusEl = document.getElementById('status');
+const tbl = document.getElementById('resultsTable');
+const tbody = document.getElementById('resultsBody');
+const subsetStats = document.getElementById('subsetStats');
+
+function setStatus(msg){ statusEl.textContent = msg; }
+
+runBtn.addEventListener('click', async () => {
+  runBtn.disabled = true;
+  tbody.innerHTML = '';
+  tbl.style.display = 'none';
+  subsetStats.style.display = 'none';
+  try {
+    setStatus('fetching real held-out test samples ...');
+    const samplesResp = await fetch(SAMPLES_PATH);
+    if (!samplesResp.ok) throw new Error('could not fetch ' + SAMPLES_PATH + ' (HTTP ' + samplesResp.status + ')');
+    const data = await samplesResp.json();
+    document.getElementById('nSamplesLabel').textContent =
+      'n=' + data.n_demo_samples + ' real windows from ' + data.n_test_sequences_available + ' real held-out test sequences';
+
+    setStatus('loading onnxruntime-web (wasm) and the real navdrift_lstm.onnx model ...');
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+    const modelResp = await fetch(MODEL_PATH);
+    if (!modelResp.ok) throw new Error('could not fetch ' + MODEL_PATH + ' (HTTP ' + modelResp.status + ')');
+    const modelBuf = await modelResp.arrayBuffer();
+    const session = await ort.InferenceSession.create(modelBuf, { executionProviders: ['wasm'] });
+    const inName = session.inputNames[0];
+    const outName = session.outputNames[0];
+
+    setStatus('running real inference on ' + data.samples.length + ' real windows ...');
+    let sumAbsErr = 0, sumSqErr = 0, sumLat = 0, n = 0;
+    for (const s of data.samples) {
+      const flat = s.imu_window_normalized.flat();
+      const tensor = new ort.Tensor('float32', Float32Array.from(flat), [1, data.seq_len, 6]);
+      const t0 = performance.now();
+      const out = await session.run({ [inName]: tensor });
+      const t1 = performance.now();
+      const pred = out[outName].data[0];
+      const ref = s.reference_speed_mps;
+      const err = Math.abs(pred - ref);
+      sumAbsErr += err; sumSqErr += err*err; sumLat += (t1 - t0); n++;
+
+      const tr = document.createElement('tr');
+      const errClass = err < 3 ? 'err-ok' : (err < 6 ? 'err-mid' : 'err-bad');
+      tr.innerHTML = `<td>${s.seq_name}</td><td>${pred.toFixed(3)}</td><td>${ref.toFixed(3)}</td><td class="${errClass}">${err.toFixed(3)}</td>`;
+      tbody.appendChild(tr);
+    }
+
+    document.getElementById('subMae').textContent = (sumAbsErr / n).toFixed(3) + ' m/s';
+    document.getElementById('subRmse').textContent = Math.sqrt(sumSqErr / n).toFixed(3) + ' m/s';
+    document.getElementById('subN').textContent = n;
+    document.getElementById('subLat').textContent = (sumLat / n).toFixed(2) + ' ms';
+    subsetStats.style.display = 'grid';
+    tbl.style.display = 'table';
+    setStatus('done — ' + n + ' real windows inferred live in this browser session.');
+  } catch (e) {
+    setStatus('FAILED: ' + (e && e.message ? e.message : String(e)));
+    console.error(e);
+  } finally {
+    runBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

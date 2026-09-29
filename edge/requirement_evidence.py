@@ -87,7 +87,9 @@ REQUIREMENT_EVIDENCE: List[RequirementEvidence] = [
                "checkpoints/iovnbd_speed_lstm/navdrift_lstm.onnx",
                "checkpoints/iovnbd_speed_lstm/navdrift_lstm_meta.json",
                "checkpoints/iovnbd_speed_lstm/training_report.json",
-               "checkpoints/iovnbd_speed_lstm/onnx_export_report.json"],
+               "checkpoints/iovnbd_speed_lstm/onnx_export_report.json",
+               "results/iovnbd/browser_demo/index.html",
+               "results/iovnbd/browser_demo/browser_demo_samples.json"],
         tests=[],
         evidence_artifact="checkpoints/iovnbd_speed_lstm/training_report.json",
         validation_type="SOFTWARE_ONLY_VALIDATED",
@@ -106,12 +108,30 @@ REQUIREMENT_EVIDENCE: List[RequirementEvidence] = [
                    "inference on the actual exported file, confirming the "
                    "de-normalization is baked into the exported graph. ONNX CPU latency "
                    "(0.226 ms mean) was measured on the Colab session's own CPU only and "
-                   "is not a mobile-device or browser-runtime measurement; "
-                   "hardware_validation and mobile/browser inference validation were NOT "
-                   "PERFORMED. This model is offline only: it is not wired into "
-                   "frontend/mobile.html and is not part of the live navigation path; no "
-                   "claim is made that it improves real-world navigation accuracy. This "
-                   "item covers speed estimation only — the separate learned "
+                   "is not a mobile-device or browser-runtime measurement. Separately, "
+                   "browser execution WAS validated: the exact navdrift_lstm.onnx file "
+                   "was run through onnxruntime-web 1.18.0 (execution provider 'wasm', "
+                   "the same package version and EP frontend/mobile.html uses), opset 17, "
+                   "input imu_window [1,50,6], output speed_mps [1,1] — real session "
+                   "creation and real inference both succeeded (~8.9 ms measured in that "
+                   "test environment, not a phone performance claim), and again inside a "
+                   "real headless-browser run of results/iovnbd/browser_demo/index.html "
+                   "against 40 real held-out test windows, matching the Python-side "
+                   "cross-check numerically. hardware_validation (a physical mobile "
+                   "device) was NOT PERFORMED. This model is offline only: it is not "
+                   "wired into frontend/mobile.html and is not part of the live "
+                   "navigation path; no claim is made that it improves real-world "
+                   "navigation accuracy. Live phone integration is separately blocked, "
+                   "not just undone: the model was trained on IO-VNBD's gravity-inclusive "
+                   "smartphone accelerometer (trained accel_z mean ~9.85 m/s^2), while "
+                   "frontend/mobile.html's live IMU.ax/ay/az are deliberately "
+                   "gravity-compensated for its own EKF/dead-reckoning math (a different "
+                   "physical quantity, not a relabeling); and IO-VNBD's own phone-mounting "
+                   "axis convention is not established in this dataset (see data/iovnbd.py's "
+                   "own open-item note) while frontend/mobile.html treats phone orientation "
+                   "as arbitrary and auto-detects its own forward axis per session. No "
+                   "live-phone mapping is claimed or assumed anywhere in this repository. "
+                   "This item covers speed estimation only — the separate learned "
                    "vibration/noise denoiser tracked under Requirement 2B was not "
                    "touched by this work, and the existing classical "
                    "Butterworth/dead-band filtering in the live pipeline is unchanged.",
