@@ -3565,7 +3565,10 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
   function updateUI(eND,eIMU,spdKmh){try{
     const mn=(S.totND/S.n).toFixed(2),mi=(S.totIMU/S.n).toFixed(2);
     const ekfATE=EKF.s>0?(EKF.te/EKF.s).toFixed(2):'—';
-    const lat=API_MODE?S.lat.toFixed(1):(1.7+Math.random()*.5).toFixed(1);
+    // Real measured latency: API_MODE uses the backend's reported latency_ms; otherwise use
+    // S.dfLastMs, the actual performance.now()-measured wall time of the local ONNX inference
+    // batch (set in runStep(), see "Latency displays" below) — never a fabricated number.
+    const lat=API_MODE?S.lat.toFixed(1):(S.dfLastMs!==undefined?S.dfLastMs.toFixed(1):'—');
 
     const _nd=$('v-nd');if(_nd)_nd.innerHTML=mn+'<span class="mu">m</span>';
     const _im=$('v-imu');if(_im)_im.innerHTML=mi+'<span class="mu">m</span>';
@@ -3642,9 +3645,9 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const liveATE=S.n>0?(S.totND/S.n):0;
     const ateReady=S.n>100; // warm-up guard — don't flag FAIL before 100 steps
     const drift50=S.blackoutPeakDrift;
-    const ps50El=$('ps-50m');if(ps50El){const ok=drift50<5||drift50===0;ps50El.textContent=(drift50>0?drift50.toFixed(2)+' m':'3.19 m')+(ok?' ✓':' ✗');ps50El.className='mv '+(ok?'g':'r');}
-    const ps1kEl=$('ps-1km');if(ps1kEl){const ok=!ateReady||liveATE<100;ps1kEl.textContent=(liveATE>0?liveATE.toFixed(2)+' m':'78.41 m')+(ateReady?(ok?' ✓':' ✗'):'…');ps1kEl.className='mv '+(ok?'g':'r');}
-    const psLatEl=$('ps-lat');if(psLatEl){const ms=parseFloat(lat);const ok=ms<100;psLatEl.textContent=ms.toFixed(1)+' ms'+(ok?' ✓':' ✗');psLatEl.className='mv '+(ok?'g':'r');}
+    const ps50El=$('ps-50m');if(ps50El){const haveData=drift50>0;const ok=haveData?drift50<5:true;ps50El.textContent=haveData?(drift50.toFixed(2)+' m'+(ok?' ✓':' ✗')):'no blackout yet';ps50El.className='mv '+(haveData?(ok?'g':'r'):'');}
+    const ps1kEl=$('ps-1km');if(ps1kEl){const ok=!ateReady||liveATE<100;ps1kEl.textContent=ateReady?(liveATE.toFixed(2)+' m'+(ok?' ✓':' ✗')):'warming up…';ps1kEl.className='mv '+(ateReady?(ok?'g':'r'):'');}
+    const psLatEl=$('ps-lat');if(psLatEl){const haveLat=S.dfLastMs!==undefined;const ms=haveLat?S.dfLastMs:parseFloat(lat);const ok=ms<100;psLatEl.textContent=haveLat?(ms.toFixed(1)+' ms'+(ok?' ✓':' ✗')):'no inference yet';psLatEl.className='mv '+(haveLat?(ok?'g':'r'):'');}
     const psLiveEl=$('ps-live');if(psLiveEl){psLiveEl.textContent=liveATE.toFixed(2)+' m';psLiveEl.className='mv '+(liveATE<100?'g':'r');}
     const psOvEl=$('ps-overall');if(psOvEl){const allPass=(drift50<5||drift50===0)&&(!ateReady||liveATE<100);psOvEl.textContent=allPass?'✓ PASS':'✗ FAIL';psOvEl.style.color=allPass?'var(--green)':'var(--red)';}
 
@@ -4376,10 +4379,10 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
 </tbody></table>
 <div class="section">System</div>
 <div class="row"><span class="lbl">Model</span><span class="val">DRIFT-Former INT8 ONNX (14MB)</span></div>
-<div class="row"><span class="lbl">Inference latency</span><span class="val">20 ms CPU (INT8) · ~5 ms (INT4)</span></div>
+<div class="row"><span class="lbl">Inference latency (this session)</span><span class="val">${API_MODE?(S.lat!==undefined?S.lat.toFixed(1)+' ms (API)':'—'):(S.dfLastMs!==undefined?S.dfLastMs.toFixed(1)+' ms (local ONNX)':'—')}</span></div>
 <div class="row"><span class="lbl">Update rate</span><span class="val">10 Hz</span></div>
-<div class="row"><span class="lbl">50m blackout drift</span><span class="val">3.19 m <span class="pass">✓ &lt;5m target</span></span></div>
-<div class="row"><span class="lbl">1km tunnel ATE</span><span class="val">78.41 m <span class="pass">✓ &lt;100m target</span></span></div>
+<div class="row"><span class="lbl">Peak blackout drift (this session)</span><span class="val">${S.blackoutPeakDrift>0?S.blackoutPeakDrift.toFixed(2)+' m '+(S.blackoutPeakDrift<5?'<span class="pass">✓ &lt;5m target</span>':'<span class="fail">✗ exceeds 5m target</span>'):'(no blackout yet)'}</span></div>
+<div class="row"><span class="lbl">Mean ATE (this session)</span><span class="val">${mn} m ${mn!=='—'&&parseFloat(mn)<100?'<span class="pass">✓ &lt;100m target</span>':''}</span></div>
 <div class="row"><span class="lbl">Map matching</span><span class="val">HMM Viterbi · σ=18m · λ=4</span></div>
 <div class="row"><span class="lbl">Barometer</span><span class="val">9th channel · tunnel detection active</span></div>
 <div class="row"><span class="lbl">WebSocket stream</span><span class="val">10Hz push · asyncio dual-task</span></div>
@@ -5045,17 +5048,19 @@ body.tunnel-mode .card::before { background:linear-gradient(90deg,transparent,rg
     const cityEl  = document.querySelector('.city-tab.active');
     const city    = cityEl ? cityEl.textContent.trim() : 'Delhi';
 
-    // Pull live metrics from simulation state
+    // Pull live metrics from simulation state. Latency is the real
+    // performance.now()-measured backend/local-ONNX wall time (S.lat from the API, or
+    // S.dfLastMs from runStep()'s local onnxruntime-web inference) — never a fabricated number.
     const liveATE  = S.n > 0 ? (S.totND/S.n) : 0;
     const drift50  = S.blackoutPeakDrift > 0 ? S.blackoutPeakDrift : null;
-    const latMs    = API_MODE ? S.lat : (1.7 + Math.random()*0.5);
-    const ate1kmMs = (1.7 + Math.random()*0.5);
+    const haveLat  = API_MODE ? (S.lat !== undefined && S.lat !== null) : (S.dfLastMs !== undefined);
+    const latMs    = API_MODE ? S.lat : S.dfLastMs;
     const ekfATE   = EKF.s > 0 ? EKF.te/EKF.s : null;
 
     const ateReady = S.n > 100;
     const d50ok  = drift50 !== null ? drift50 < 5 : true;
     const ateOk  = ateReady ? liveATE < 100 : true;
-    const latOk  = latMs < 100;
+    const latOk  = haveLat ? latMs < 100 : true;
     const allPass = d50ok && ateOk && latOk;
 
     const fmt = (v, unit) => v !== null ? v.toFixed(2)+' '+unit : '(no blackout yet)';
@@ -5087,10 +5092,10 @@ th{color:#00fff5;font-weight:700;text-align:left;background:rgba(0,255,245,0.06)
 <tr><th>Requirement</th><th>ISRO Threshold</th><th>Measured (live)</th><th>Status</th></tr>
 <tr><td>50 m GNSS blackout positional drift</td><td>≤ 5 m</td><td class="${d50ok?'pass':'fail'}">${fmt(drift50,'m')}</td>${ps(d50ok)}</tr>
 <tr><td>1 km tunnel route ATE (mean)</td><td>≤ 100 m</td><td class="${ateOk?'pass':'fail'}">${ateReady ? liveATE.toFixed(2)+' m' : '(sim warming up)'}</td>${ps(ateOk)}</tr>
-<tr><td>On-device inference latency</td><td>≤ 100 ms</td><td class="${latOk?'pass':'fail'}">${latMs.toFixed(1)} ms</td>${ps(latOk)}</tr>
+<tr><td>On-device inference latency</td><td>≤ 100 ms</td><td class="${haveLat?(latOk?'pass':'fail'):''}">${haveLat?latMs.toFixed(1)+' ms':'(no inference yet)'}</td>${haveLat?ps(latOk):'<td>—</td>'}</tr>
 <tr><td>Position update rate</td><td>10 Hz</td><td class="pass">10 Hz</td><td class="pass">✓ PASS</td></tr>
 <tr><td>NavIC constellation integration</td><td>Required</td><td class="pass">${_navicOnly?'NavIC-only (L5/S1)':'NavIC L5/S1 + GPS'}</td><td class="pass">✓ PASS</td></tr>
-<tr><td>Seamless GNSS↔DR transition</td><td>&lt; 1 ms</td><td class="pass">0.4 ms (measured)</td><td class="pass">✓ PASS</td></tr>
+<tr><td>Seamless GNSS↔DR transition</td><td>&lt; 1 ms</td><td class="pass">${S.gnssTransMs.toFixed(1)} ms</td><td class="pass">✓ PASS</td></tr>
 </table>
 
 <h2>Algorithm Comparison (live session)</h2>
