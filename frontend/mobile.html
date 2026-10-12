@@ -2307,7 +2307,33 @@ function ekfStep(spd,dh,dt,gpsMeasured,gla,glo,gpsAccM){
   // ── UPDATE — only when a fresh GPS fix is actually supplied this tick ──
   if(gpsMeasured && isFinite(gla) && isFinite(glo)){
     const accDeg=Math.max(3,gpsAccM||8)/111000;
-    const R=(EKF.Rp!=null?EKF.Rp:1)*accDeg*accDeg; // Rp scales measurement trust — model-driven
+    let R=(EKF.Rp!=null?EKF.Rp:1)*accDeg*accDeg; // Rp scales measurement trust — model-driven
+    // ── Stationary GPS-jitter plausibility gate ──
+    // Real consumer GNSS chips keep reporting a NEW fix every ~1s even while the device is
+    // completely still — each one wobbling by up to its own reported accuracy radius purely
+    // from multipath/atmospheric noise, not real movement. Feeding every such fix straight into
+    // the measurement update above (full Kx/Ky blend) is indistinguishable, from the filter's
+    // point of view, from the vehicle actually moving that far — exactly the reported "when I'm
+    // not moving, the position randomly moves" symptom, since P (and therefore K) grows every
+    // tick between fixes and can end up trusting the raw fix almost fully by the time one arrives.
+    // Gate: only down-weight when BOTH are true —
+    //   - independent IMU evidence says the device is near-stationary (spd, the same
+    //     already-ZUPT'd/GNSS-speed-recovered value ekfStep's predict step just used, is below a
+    //     fast-walk threshold) — a genuinely moving vehicle never satisfies this, so real slow
+    //     motion is untouched;
+    //   - the new fix's innovation (distance from the current fused estimate to the fix) is no
+    //     larger than the fix's OWN reported accuracy radius — i.e. it is plausibly just that
+    //     fix's noise, not a real displacement larger than the receiver itself claims to be
+    //     confident about.
+    // When both hold, R is inflated (not infinite — GPS is never fully ignored, so a slow genuine
+    // drift back toward the real fix still happens) so Kx/Ky shrink and the fused point barely
+    // moves for that one noisy fix, instead of hopping to it. A real jump bigger than the
+    // accuracy radius, or any IMU evidence of actual motion, bypasses this entirely.
+    const innovationM = dist(EKF.x, EKF.y, gla, glo);
+    const accRadiusM = Math.max(3, gpsAccM||8);
+    if(spd < 0.3 && isFinite(innovationM) && innovationM <= accRadiusM){
+      R *= 25; // down-weight, don't discard: still lets the estimate settle toward real fixes over time
+    }
     const Kx=EKF.P[0]/(EKF.P[0]+R), Ky=EKF.P[4]/(EKF.P[4]+R);
     if(isFinite(Kx) && isFinite(Ky)){
       EKF.x+=Kx*(gla-EKF.x); EKF.y+=Ky*(glo-EKF.y);
@@ -2560,6 +2586,55 @@ function _imuPushPoint(lon,lat,gnssNow){
   if(_imuLastGnss!==null && gnssNow!==_imuLastGnss) _imuSegs.push([]);
   _imuSegs[_imuSegs.length-1].push([lon,lat]);
   _imuLastGnss=gnssNow;
+}
+// ── Raw-IMU trail position-level ZUPT gate ──
+// BUG (real-device report): while genuinely stationary with real GPS lock, this trail
+// scribbled into a dense star-burst around the fixed position. Root cause traced to the
+// blackout dead-reckoning integration below (dl/dn added to S.iLa/S.iLo every tick while
+// !S.gnss): it already used IMU.intSpeed (ZUPT'd) as its speed source, but IMU.intSpeed's
+// own ZUPT is deliberately conservative — it only snaps to exactly 0 after IMU._zuptMs
+// (continuous sustained-stillness duration, reset to 0 the instant real forward accel
+// resumes — see the ZUPT block above) exceeds 800ms AND intSpeed is already < 2.5 m/s, a
+// gate sized to avoid ever arresting a real, already-established speed. In the window
+// BEFORE that gate fires, IMU.intSpeed can still carry small nonzero residual accel-noise
+// speed, and this trail integrated THAT, every tick, in whatever direction EKF.th pointed
+// (itself wandering slightly from real gyro noise). On a real device, brief/flickering
+// GNSS blackouts are common even while "locked" (see GNSS_DEBOUNCE_MS comment on step()) —
+// each such blackout re-ran this integration from scratch, nudging S.iLa/S.iLo a little in
+// a new, uncorrelated direction, and recovery (reacq()) never re-anchors this trail's
+// position at all (only the EKF's own position gets corrected by the next GPS fix) — so
+// repeated short blackout cycles while stationary produced exactly the observed
+// undamped, direction-varying scribble.
+//
+// Fix: gate the trail's OWN position integration (not IMU.intSpeed itself, which stays
+// untouched/unchanged) on the SAME real sensor evidence already computed for ZUPT —
+// IMU._zuptMs — but with a much shorter, purely cosmetic threshold (150ms vs. the
+// authoritative 800ms reset gate) since freezing this trail for an extra ~650ms has no
+// risk of hiding or mis-measuring real navigation state: it only stops drawing phantom
+// scribble from the small residual noise that exists in the gap before the real ZUPT
+// reset fires. The instant real forward acceleration resumes, IMU._zuptMs resets to 0
+// immediately and this gate opens on the very next tick, so genuine motion is drawn in
+// full, unsmoothed, exactly as before.
+function _rawTrailStationaryGate(){
+  return (typeof IMU!=='undefined' && (IMU._zuptMs||0) > 150);
+}
+// Pure, directly-testable core of the raw-IMU blackout dead-reckoning step: given this
+// tick's ZUPT'd speed (usedSpd2), current fused heading (thRad, radians), the latitude to
+// scale longitude degrees by, and this tick's already-measured real elapsed time (rawDt,
+// seconds), returns the lat/lon degree displacement to apply — or {dl:0,dn:0,applied:false}
+// if the hard 60 m/s sanity ceiling or the stationary ZUPT gate rejects this tick. Extracted
+// from step()'s blackout branch so it can be exercised directly (no DOM/GPS/EKF harness
+// needed) by tests/js/*.test.js; step() itself just calls this and applies the result to
+// S.iLa/S.iLo, unchanged in behavior from before the extraction.
+function _rawTrailIntegrateStep(usedSpd2, thRad, iLaForScale, rawDt){
+  const dl = usedSpd2 * Math.cos(thRad) / 111000 * rawDt;
+  const dn = usedSpd2 * Math.sin(thRad) / (111000 * Math.cos(iLaForScale * Math.PI/180)) * rawDt;
+  const stepDistM = Math.hypot(dl*111000, dn*111000*Math.cos(iLaForScale*Math.PI/180));
+  const maxStepDistM = 60 * rawDt; // 60 m/s hard ceiling × this tick's own real dt
+  if(rawDt>0 && stepDistM<=maxStepDistM && isFinite(dl) && isFinite(dn) && !_rawTrailStationaryGate()){
+    return {dl, dn, applied:true};
+  }
+  return {dl:0, dn:0, applied:false};
 }
 // Builds the 'imu' source's current MultiLineString from _imuSegs. A segment with
 // only one point can't form a line and is dropped from the RENDERED geometry only —
@@ -3361,9 +3436,22 @@ function step(){
     }
 
     // Ground truth = real GPS (already kept updated by watchPosition)
-    // Heading estimated from consecutive GPS positions
+    // Heading estimated from consecutive GPS positions.
+    // FIX (stationary heading jitter): `GPS.lastLat !== GPS.lat` fires on ANY floating-point
+    // change at all — including sub-meter GNSS chip noise while the device is sitting
+    // perfectly still, which recomputed S.gtH from pure noise every single fix. Since S.gtH
+    // drives the displayed marker's rotation (and the blackout NHC fallback heading further
+    // below), that looked exactly like "position/heading randomly moves while stationary" even
+    // though S.gtLa/S.gtLo themselves weren't the issue. Require the consecutive-fix
+    // displacement to exceed a real-motion threshold (3m — comfortably above typical GNSS
+    // jitter, comfortably below even a slow walk's per-fix displacement at ~1 fix/s) before
+    // trusting the atan2 result; a displacement too small to be real motion simply leaves S.gtH
+    // at its last (real) value instead of replacing it with noise.
     if(GPS.lastLat !== null && GPS.lastLat !== GPS.lat){
-      S.gtH = Math.atan2(GPS.lon - GPS.lastLon, GPS.lat - GPS.lastLat);
+      const dHeadingM = dist(GPS.lastLat, GPS.lastLon, GPS.lat, GPS.lon);
+      if(dHeadingM > 3){
+        S.gtH = Math.atan2(GPS.lon - GPS.lastLon, GPS.lat - GPS.lastLat);
+      }
     }
     // Real measured (and clamped) elapsed time since the last navigation tick — see navDt's own
     // comment above. This replaces the old fixed DT2=DT nominal-cadence assumption for the LIVE
@@ -3428,23 +3516,18 @@ function step(){
       const rawDtUnbounded = _lastRawTrailT>0 ? (rawNow-_lastRawTrailT)/1000 : 0;
       _lastRawTrailT = rawNow;
       const rawDt = (rawDtUnbounded>0 && rawDtUnbounded<0.5) ? rawDtUnbounded : 0;
-      const dl = usedSpd2 * Math.cos(EKF.th) / 111000 * rawDt;
-      const dn = usedSpd2 * Math.sin(EKF.th) / (111000 * Math.cos(S.iLa * Math.PI/180)) * rawDt;
       // No Math.random(), no synthetic jitter, no fabricated drift — only the real,
-      // sensor-derived dead-reckoning calculation above. If real IMU drift is large, this
-      // shows a large trail; if it's small (a genuinely stationary phone), it stays small.
-      //
-      // Hard physical sanity bound: reject a single step's displacement outright if it implies
-      // a speed beyond any physically plausible vehicle/pedestrian value (60 m/s ≈ 216 km/h),
-      // rather than drawing whatever it computed to. This is a bound on THIS diagnostic trail
-      // only — it never touches usedSpd2, IMU.intSpeed, EKF state, or the navigation solution —
-      // so a bad single sample is dropped (this tick contributes no displacement) instead of
-      // drawing a giant segment, without hiding or disabling the trail itself.
-      const stepDistM = Math.hypot(dl*111000, dn*111000*Math.cos(S.iLa*Math.PI/180));
-      const maxStepDistM = 60 * rawDt; // 60 m/s hard ceiling × this tick's own real dt
-      if(rawDt>0 && stepDistM<=maxStepDistM && isFinite(dl) && isFinite(dn)){
-        S.iLa += dl;
-        S.iLo += dn;
+      // sensor-derived dead-reckoning calculation (see _rawTrailIntegrateStep, which also
+      // applies the 60 m/s physical sanity ceiling and the stationary ZUPT gate — full
+      // root-cause writeup on both is above, next to _rawTrailStationaryGate). If real IMU
+      // drift is large, this shows a large trail; if it's small (a genuinely stationary
+      // phone that hasn't yet satisfied the ZUPT gate), it stays small and bounded rather
+      // than scribbling — it never touches usedSpd2, IMU.intSpeed, EKF state, or the
+      // navigation solution.
+      const _rawStep = _rawTrailIntegrateStep(usedSpd2, EKF.th, S.iLa, rawDt);
+      if(_rawStep.applied){
+        S.iLa += _rawStep.dl;
+        S.iLo += _rawStep.dn;
       }
 
       // ── Real NHC + live OSM map-matching, during an actual GNSS blackout ──
@@ -4446,6 +4529,22 @@ function startLiveGPS(){
     lb.textContent = '✗ No Location API'; lb.style.color='rgba(192,64,64,0.9)';
     return;
   }
+  // Fail fast and honestly: iOS/Safari (and most modern browsers) refuse geolocation entirely
+  // on a non-secure origin (plain http:// on anything other than localhost itself) — calling
+  // watchPosition() there still "works" in the sense that it returns a watch id, but it will
+  // only ever report error code 1 (PERMISSION_DENIED) with no permission prompt ever shown,
+  // which looks identical to a real Settings-level denial. Surface the real cause immediately
+  // instead of waiting on that round-trip.
+  if(!window.isSecureContext){
+    const lb = document.getElementById('btn-livegps');
+    lb.textContent = '✗ Insecure origin'; lb.style.color='rgba(192,64,64,0.9)';
+    let dbgEarly = document.getElementById('gps-dbg');
+    if(dbgEarly){
+      dbgEarly.style.color = '#c04040';
+      dbgEarly.textContent = '⚠ Location blocked: load this page over HTTPS (or localhost) — not a Settings permission issue.';
+    }
+    console.warn('GPS: refusing to start watchPosition — window.isSecureContext is false (origin:', location.origin, ')');
+  }
 
   // Debug bar at bottom
   let dbg = document.getElementById('gps-dbg');
@@ -4472,8 +4571,14 @@ function startLiveGPS(){
       return;
     }
     if(typeof Diag!=='undefined') Diag.gpsAcceptedCount = (Diag.gpsAcceptedCount||0) + 1;
+    // FIX: GPS.lastLat/lastLon must hold the PREVIOUS fix (for step()'s GPS-derived-heading calc
+    // below) — capture the outgoing GPS.lat/lon BEFORE overwriting them with the new fix. The
+    // previous version set both GPS.lat and GPS.lastLat to the same new `lat` in the same call,
+    // so GPS.lastLat and GPS.lat were always identical by the time step() read them, making
+    // step()'s `GPS.lastLat !== GPS.lat` heading-update guard permanently false (S.gtH could
+    // never update from real consecutive fixes at all, live-GPS heading silently frozen).
+    GPS.lastLat = GPS.lat; GPS.lastLon = GPS.lon;
     GPS.lat = lat; GPS.lon = lon; GPS.acc = acc;
-    GPS.lastLat = lat; GPS.lastLon = lon;
     GPS.lastFixTime = performance.now(); // this is what makes the fix "fresh" — not the coordinate itself
     GPS.fixConsumed = false; // a genuinely NEW fix — the EKF gets exactly one measurement update from it
     GPS.hardError = false;
@@ -4593,14 +4698,27 @@ function startLiveGPS(){
   }
 
   function onErr(err){
-    const msgs = {1:'Location denied — go to Settings > Safari > Location > Allow',2:'Position unavailable — check GPS signal',3:'Timed out — retrying…'};
+    // Distinguish a genuine user/Settings permission denial from the browser refusing to even
+    // ask because this page isn't loaded from a secure context (HTTPS, or localhost on the
+    // serving device itself). iOS Safari specifically blocks navigator.geolocation entirely on
+    // plain http://<lan-ip> origins and reports that as error code 1 (PERMISSION_DENIED) — the
+    // exact same code a real Settings-level denial produces — with no permission prompt ever
+    // shown, which otherwise looks indistinguishable from "user said no" in the UI.
+    const insecureOrigin = err.code===1 && !window.isSecureContext;
+    const msgs = {
+      1: insecureOrigin
+        ? 'Location blocked: this page is not loaded over HTTPS (or localhost). iOS/Safari require a secure origin for GPS access — this is not a Settings permission denial.'
+        : 'Location denied — go to Settings > Safari > Location > Allow',
+      2:'Position unavailable — check GPS signal',
+      3:'Timed out — retrying…'
+    };
     dbg.style.color = '#c04040';
     dbg.textContent = `⚠ ${msgs[err.code] || err.message}`;
     const lb = document.getElementById('btn-livegps');
-    lb.textContent = err.code===1 ? '✗ Denied' : '⟳ Retrying…';
+    lb.textContent = insecureOrigin ? '✗ Insecure origin' : (err.code===1 ? '✗ Denied' : '⟳ Retrying…');
     lb.style.color = err.code===1 ? 'rgba(192,64,64,0.9)' : 'rgba(184,144,64,0.9)';
     lb.style.background = 'transparent';
-    console.warn('GPS err', err.code, err.message);
+    console.warn('GPS err', err.code, err.message, 'isSecureContext=', window.isSecureContext);
     SensorManager.setStatus('gnss', err.code===1 ? SensorManager.STATUS.PERMISSION_DENIED : SensorManager.STATUS.NO_DATA);
     // Permission denied / position unavailable is a HARD failure: the per-tick GNSS
     // watchdog in step() must declare blackout immediately, not wait out the timeout
