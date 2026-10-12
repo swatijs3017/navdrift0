@@ -146,19 +146,43 @@
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
   <style>
     :root {
-      --ink:#020507; --ink-2:#05080d;
-      --bone:#d0ddd8; --bone-dim:#7a9890; --muted:#3f5050;
+      --ink:#070b14; --ink-2:#0d1527; --ink-surface:#131f37;
+      --bone:#f8fafc; --bone-dim:#cbd5e1; --muted:#8492a6;
       --bg:var(--ink);
       --t1:var(--bone); --t2:var(--bone-dim); --t3:var(--muted);
       --mono:'JetBrains Mono',monospace;
-      --sans:'Space Grotesk','Onest',sans-serif;
-      --nt:#00d4c4; --nt-d:rgba(0,212,196,0.07); --nt-g:rgba(0,212,196,0.3);
-      --ng:#35c472; --ng-d:rgba(53,196,114,0.09);
-      --na:#e8a820; --nr:#c44040; --np:#9060d0; --np-d:rgba(144,96,208,0.09);
-      --div:rgba(0,200,185,0.08);
-      --glass:rgba(2,5,8,0.82);
-      --glass-b:rgba(2,5,8,0.96);
-      --radius:14px;
+      --sans:'Onest',-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --cyan:#38bdf8; --cyan-d:rgba(56,189,248,0.10); --cyan-g:rgba(56,189,248,0.28);
+      --green:#10b981; --green-d:rgba(16,185,129,0.10); --green-g:rgba(16,185,129,0.28);
+      --red:#ef4444; --red-d:rgba(239,68,68,0.12); --red-g:rgba(239,68,68,0.32);
+      --yellow:#f59e0b; --yellow-d:rgba(245,158,11,0.12);
+      --violet:#8b5cf6; --violet-d:rgba(139,92,246,0.10);
+      --nt:var(--cyan); --nt-d:var(--cyan-d); --nt-g:var(--cyan-g);
+      --ng:var(--green); --ng-d:var(--green-d);
+      --nr:var(--red); --na:var(--yellow); --np:var(--violet); --np-d:var(--violet-d);
+      --div:rgba(255,255,255,0.08);
+      --glass:rgba(13,21,39,0.88);
+      --glass-b:rgba(7,11,20,0.96);
+      --radius:12px;
+
+      /* Precision Aerospace Crisp Type Scale */
+      --fs-3xs:  0.58rem; /* 9.3px */
+      --fs-2xs:  0.64rem; /* 10.2px */
+      --fs-xs:   0.70rem; /* 11.2px */
+      --fs-sm:   0.76rem; /* 12.2px */
+      --fs-base: 0.82rem; /* 13.1px */
+      --fs-md:   0.92rem; /* 14.7px */
+      --fs-lg:   1.08rem; /* 17.3px */
+      --fs-xl:   1.35rem; /* 21.6px */
+      --fs-2xl:  1.75rem; /* 28.0px */
+
+      --sp-1: 4px;
+      --sp-2: 7px;
+      --sp-3: 11px;
+      --sp-4: 15px;
+      --r-sm: 6px;
+      --r-md: 9px;
+      --tx: 180ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--t1);font-family:var(--sans);-webkit-tap-highlight-color:transparent;user-select:none;}
@@ -168,7 +192,7 @@
 
     /* ── MAP CONTAINER (always full screen) ── */
     .map-container{position:fixed;inset:0;z-index:1;}
-    #map{width:100%;height:100%;background:#18202e;touch-action:none;}
+    #map{width:100%;height:100%;background:#03060a;touch-action:none;}
     .maplibregl-canvas{will-change:transform;touch-action:none;}
     .maplibregl-ctrl-attrib,.maplibregl-ctrl-logo{display:none!important;}
     /* suppress maplibre default marker/popup we don't use */
@@ -176,105 +200,177 @@
 
     /* ── MAP APPEARANCE TOGGLE ── */
     #map-mode-ctrl{
-      position:absolute;bottom:84px;right:12px;z-index:150;
+      position:absolute;bottom:78px;right:10px;z-index:150;
       display:flex;align-items:center;
-      background:rgba(2,5,8,0.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-      border:1px solid rgba(0,200,185,0.1);border-radius:20px;padding:3px;gap:2px;
-      transition:opacity 0.25s ease;
+      background:rgba(4,8,14,0.85);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+      border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:2px;gap:2px;
+      box-shadow:0 6px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+      transition:opacity var(--tx), transform var(--tx);
     }
     /* when readings sheet is open, float the toggle just above the sheet edge */
     body.tech-mode #map-mode-ctrl{bottom:calc(50svh + 10px);}
     .mm-btn{
-      padding:4px 10px;border-radius:16px;border:none;background:transparent;
-      font-size:.42rem;font-weight:600;font-family:var(--mono);letter-spacing:.07em;
-      cursor:pointer;color:var(--muted);transition:all .2s;
+      padding:4px 9px;border-radius:14px;border:none;background:transparent;
+      font-size:var(--fs-3xs);font-weight:700;font-family:var(--mono);letter-spacing:.05em;
+      cursor:pointer;color:var(--muted);transition:all var(--tx);
     }
+    .mm-btn:active{transform:scale(0.96);}
     .mm-btn.active{
-      background:rgba(0,212,196,0.1);color:rgba(0,212,196,0.85);
-      border:1px solid rgba(0,212,196,0.18);
+      background:rgba(56,189,248,0.14);color:var(--cyan);
+      border:1px solid rgba(56,189,248,0.3);box-shadow:0 0 8px rgba(56,189,248,0.2);
     }
+
+    /* Apple Maps Floating Navigation Controls (Mobile) */
+    .m-apple-nav-ctrls {
+      position: absolute; top: 56px; right: 10px; z-index: 150;
+      display: flex; flex-direction: column; align-items: center; padding: 2px; gap: 2px;
+      background: rgba(5,9,16,0.85); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--div); border-radius: 18px;
+      box-shadow: 0 6px 22px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+      transition: opacity var(--tx), transform var(--tx);
+    }
+    .m-am-btn {
+      width: 28px; height: 28px; border-radius: 50%; border: none; background: transparent;
+      color: var(--bone-dim); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all var(--tx);
+    }
+    .m-am-btn:active { transform: scale(0.92); background: rgba(56,189,248,0.15); color: var(--cyan); }
+    .m-am-sep { width: 14px; height: 1px; background: rgba(255,255,255,0.1); margin: 1px 0; }
 
     /* GNSS blackout overlay */
     #ob{position:absolute;top:0;left:0;right:0;z-index:600;
-      background:rgba(70,10,10,0.95);backdrop-filter:blur(12px);
-      padding:7px 16px;display:none;font-family:var(--mono);
-      font-size:.58rem;font-weight:600;letter-spacing:.07em;text-align:center;
-      color:rgba(200,130,130,0.9);border-bottom:1px solid rgba(100,20,20,0.4);}
-    #ob.snap{background:rgba(10,45,30,0.95);border-color:rgba(53,196,114,0.2);color:rgba(130,195,155,0.9);}
+      background:rgba(30,6,6,0.96);backdrop-filter:blur(16px);
+      padding:6px 14px;display:none;font-family:var(--mono);
+      font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;text-align:center;
+      color:rgba(255,180,180,0.95);border-bottom:1px solid rgba(239,68,68,0.45);
+      box-shadow:0 4px 20px rgba(239,68,68,0.25);}
+    #ob.snap{background:rgba(6,24,14,0.96);border-color:rgba(16,185,129,0.45);color:rgba(180,255,200,0.95);box-shadow:0 4px 20px rgba(16,185,129,0.25);}
     #ob.on{display:block;}
-    #flash{position:absolute;inset:0;z-index:400;pointer-events:none;border:0 solid rgba(110,20,20,0.4);opacity:0;transition:opacity .25s;}
-    #flash.on{border:2px solid rgba(110,20,20,0.35);opacity:1;animation:rfp 1.6s ease-in-out infinite alternate;}
-    @keyframes rfp{0%{box-shadow:inset 0 0 24px rgba(90,12,12,.1)}100%{box-shadow:inset 0 0 60px rgba(90,12,12,.22)}}
+    #flash{position:absolute;inset:0;z-index:400;pointer-events:none;border:0 solid rgba(239,68,68,0.4);opacity:0;transition:opacity var(--tx);}
+    #flash.on{border:2px solid rgba(239,68,68,0.4);opacity:1;animation:rfp 1.6s ease-in-out infinite alternate;}
+    @keyframes rfp{0%{box-shadow:inset 0 0 24px rgba(239,68,68,0.12)}100%{box-shadow:inset 0 0 70px rgba(239,68,68,0.28)}}
 
     /* HUD overlays */
     .hud{position:absolute;z-index:500;pointer-events:none;}
-    .hud.tl{left:10px;}
-    .hud.tr{right:10px;}
-    .hbox{background:rgba(2,5,8,0.78);backdrop-filter:blur(14px);
-      -webkit-backdrop-filter:blur(14px);
-      border:1px solid rgba(0,200,185,0.1);border-radius:10px;padding:7px 11px;}
-    .hl{font-size:.4rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
-    .hv{font-size:.62rem;font-weight:500;font-family:var(--mono);color:rgba(0,212,196,0.8);margin-top:2px;font-variant-numeric:tabular-nums;}
-    .hv.red{color:rgba(210,70,70,0.9);}
-    .leg{display:flex;flex-direction:column;gap:4px;}
-    .leg-row{display:flex;align-items:center;gap:6px;}
-    .leg-line{width:14px;height:2px;border-radius:1px;}
-    .leg-txt{font-size:.43rem;font-family:var(--mono);color:var(--muted);}
+    .hud.tl{top:56px; left:10px;}
+    .hud.tr{top:154px; right:10px;}
+    .hbox{background:rgba(4,8,14,0.85);backdrop-filter:blur(18px);
+      -webkit-backdrop-filter:blur(18px);
+      border:1px solid var(--div);border-radius:9px;padding:5px 9px;
+      box-shadow:0 6px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);}
+    .hl{font-size:var(--fs-3xs);font-family:var(--sans);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;}
+    .hv{font-size:var(--fs-xs);font-weight:700;font-family:var(--mono);color:var(--cyan);margin-top:1px;font-variant-numeric:tabular-nums;}
+    .hv.red{color:var(--red);}
+    .leg{display:flex;flex-direction:column;gap:3px;}
+    .leg-row{display:flex;align-items:center;gap:5px;}
+    .leg-line{width:12px;height:2px;border-radius:1px;}
+    .leg-txt{font-size:var(--fs-3xs);font-family:var(--mono);color:var(--muted);font-weight:500;}
 
     /* ── FLOATING NAV HEADER ── */
     .nav-header{
       position:absolute;top:10px;left:10px;right:10px;z-index:100;
       display:flex;align-items:center;justify-content:space-between;
-      background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-      border:1px solid rgba(0,200,185,0.1);border-radius:var(--radius);
-      padding:10px 14px;
+      background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+      border:1px solid var(--div);border-radius:var(--radius);
+      padding:7px 12px;box-shadow:0 6px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
     }
-    .nav-brand{display:flex;align-items:center;gap:9px;}
-    .logo-ring{width:24px;height:24px;flex-shrink:0;}
-    .logo-ring svg{width:24px;height:24px;}
-    .nav-brand-name{font-size:.75rem;font-weight:600;letter-spacing:.13em;color:rgba(0,212,196,0.88);font-family:var(--mono);}
-    .nav-brand-sub{font-size:.38rem;color:var(--muted);letter-spacing:.06em;margin-top:1px;font-family:var(--mono);}
-    .nav-right{display:flex;align-items:center;gap:7px;}
-    .gnss-pill{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:.5rem;font-weight:600;letter-spacing:.06em;color:var(--bone-dim);}
-    .dot{width:6px;height:6px;border-radius:50%;background:var(--ng);box-shadow:0 0 5px rgba(53,196,114,0.65);transition:all .3s;}
-    .dot.out{background:var(--nr);box-shadow:0 0 5px rgba(196,64,64,0.75);animation:blink .7s step-end infinite;}
-    .mode-badge{padding:3px 9px;border-radius:6px;font-size:.46rem;font-weight:600;
-      letter-spacing:.08em;font-family:var(--mono);background:transparent;color:var(--muted);
-      border:1px solid rgba(255,255,255,0.07);cursor:pointer;transition:all .2s;}
+    .nav-brand{display:flex;align-items:center;gap:8px;}
+    .logo-ring{width:22px;height:22px;flex-shrink:0;}
+    .logo-ring svg{width:22px;height:22px;filter:drop-shadow(0 0 6px rgba(56,189,248,0.35));}
+    .nav-brand-name{font-size:var(--fs-base);font-weight:700;letter-spacing:.03em;color:var(--bone);font-family:var(--sans);line-height:1.1;}
+    .nav-brand-sub{font-size:var(--fs-3xs);color:var(--muted);letter-spacing:.05em;margin-top:1px;font-family:var(--mono);line-height:1;}
+    .nav-right{display:flex;align-items:center;gap:6px;}
+    .gnss-pill{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:var(--fs-2xs);font-weight:700;letter-spacing:.04em;color:var(--bone-dim);}
+    .dot{width:6px;height:6px;border-radius:50%;background:var(--ng);box-shadow:0 0 6px rgba(16,185,129,0.7);transition:all var(--tx);animation:dot-breathe 2.4s ease-in-out infinite;}
+    @keyframes dot-breathe {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.25); opacity: 1; box-shadow: 0 0 10px rgba(16,185,129,0.9); }
+    }
+    .dot.out{background:var(--nr);box-shadow:0 0 8px rgba(239,68,68,0.85);animation:blink .65s step-end infinite;}
+    .mode-badge{padding:2px 7px;border-radius:var(--r-sm);font-size:var(--fs-3xs);font-weight:700;
+      letter-spacing:.05em;font-family:var(--mono);background:transparent;color:var(--muted);
+      border:1px solid rgba(255,255,255,0.08);cursor:pointer;transition:all var(--tx);}
+    .mode-badge:active{transform:scale(0.96);}
     .badge-sim{color:var(--muted);}
-    .badge-live{color:var(--nt);border-color:rgba(0,212,196,0.2);background:var(--nt-d);}
-    .badge-sensor{color:var(--np);border-color:rgba(144,96,208,0.25);background:var(--np-d);animation:sensor-pulse 2s infinite;}
+    .badge-live{color:var(--nt);border-color:rgba(0,245,212,0.3);background:var(--nt-d);box-shadow:0 0 10px rgba(0,245,212,0.15);}
+    .badge-sensor{color:var(--np);border-color:rgba(162,89,255,0.3);background:var(--np-d);animation:sensor-pulse 2s infinite;}
 
     @keyframes blink{50%{opacity:0;}}
-    @keyframes sensor-pulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(144,96,208,0.3)}}
+    @keyframes sensor-pulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 10px rgba(162,89,255,0.35)}}
     @keyframes logo-rot{to{transform:rotate(360deg)}}
     @keyframes logo-rot2{to{transform:rotate(-360deg)}}
 
+    /* ── LIVING MOBILE BEACON & HEADING BEAM ── */
+    .m-beacon-wrap {
+      position: relative; width: 44px; height: 44px; margin-left: -22px; margin-top: -22px;
+      display: flex; align-items: center; justify-content: center; pointer-events: none;
+    }
+    .m-beacon-sonar {
+      position: absolute; inset: 4px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,245,212,0.28) 0%, rgba(0,245,212,0.06) 60%, transparent 80%);
+      border: 1px solid rgba(0,245,212,0.5);
+      animation: m-beacon-ping 2.2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+      box-shadow: 0 0 16px rgba(0,245,212,0.3);
+    }
+    .m-heading-beam {
+      position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+      width: 22px; height: 26px;
+      background: linear-gradient(180deg, rgba(0,245,212,0.8) 0%, rgba(0,245,212,0.15) 65%, transparent 100%);
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      filter: drop-shadow(0 0 6px rgba(0,245,212,0.6));
+      pointer-events: none; transform-origin: 50% 26px;
+    }
+    .m-beacon-core {
+      position: relative; z-index: 2; width: 15px; height: 15px; border-radius: 50%;
+      background: #00F5D4; border: 2.5px solid #ffffff;
+      box-shadow: 0 0 10px #00F5D4, 0 0 20px rgba(0,245,212,0.6), 0 2px 6px rgba(0,0,0,0.7);
+    }
+    @keyframes m-beacon-ping {
+      0% { transform: scale(0.65); opacity: 0.95; }
+      75% { transform: scale(1.4); opacity: 0.15; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+    /* Mobile Outage Mode Alert */
+    body.outage-active .m-beacon-sonar {
+      border-color: rgba(255, 59, 48, 0.75);
+      background: radial-gradient(circle, rgba(255,59,48,0.35) 0%, transparent 75%);
+      box-shadow: 0 0 20px rgba(255,59,48,0.55);
+      animation: m-beacon-ping 0.95s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+    }
+    body.outage-active .m-heading-beam {
+      background: linear-gradient(180deg, rgba(255,59,48,0.85) 0%, transparent 100%);
+      filter: drop-shadow(0 0 6px rgba(255,59,48,0.65));
+    }
+    body.outage-active .m-beacon-core {
+      background: #FF3B30;
+      box-shadow: 0 0 12px #FF3B30, 0 0 24px rgba(255,59,48,0.75);
+    }
+
     /* ── NAV BOTTOM CARD (floating, compact) ── */
     .nav-bottom-card{
-      position:fixed;bottom:16px;left:12px;right:12px;z-index:100;
-      background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-      border:1px solid rgba(0,200,185,0.12);border-radius:var(--radius);
-      padding:12px 14px 10px;
-      transition:opacity 0.25s ease, transform 0.25s ease;
+      position:fixed;bottom:10px;left:10px;right:10px;z-index:100;
+      background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+      border:1px solid var(--div);border-radius:var(--radius);
+      padding:7px 12px;box-shadow:0 8px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+      transition:opacity var(--tx), transform var(--tx);
     }
-    body.tech-mode .nav-bottom-card{opacity:0;pointer-events:none;transform:translateY(12px);}
+    body.tech-mode .nav-bottom-card{opacity:0;pointer-events:none;transform:translateY(14px);}
     .nbc-inner{display:flex;align-items:center;gap:0;}
     .nbc-metrics{display:flex;align-items:center;flex:1;gap:0;}
     .nbc-met{display:flex;flex-direction:column;align-items:center;flex:1;}
-    .nbc-v{font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--bone);font-variant-numeric:tabular-nums;line-height:1.1;min-width:4ch;text-align:center;}
-    .nbc-l{font-family:var(--sans);font-size:.38rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-top:2px;font-weight:500;}
-    .nbc-sep{width:1px;height:28px;background:var(--div);flex-shrink:0;}
-    .nbc-status{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;}
-    .nbc-state-l{font-family:var(--mono);font-size:.42rem;color:var(--bone-dim);letter-spacing:.06em;font-weight:600;text-align:center;}
+    .nbc-v{font-family:var(--mono);font-size:var(--fs-md);font-weight:700;color:var(--bone);font-variant-numeric:tabular-nums;line-height:1.1;min-width:4ch;text-align:center;}
+    .nbc-l{font-family:var(--sans);font-size:var(--fs-3xs);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:1px;font-weight:600;}
+    .nbc-sep{width:1px;height:24px;background:var(--div);flex-shrink:0;}
+    .nbc-status{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;}
+    .nbc-state-l{font-family:var(--mono);font-size:var(--fs-3xs);color:var(--bone-dim);letter-spacing:.06em;font-weight:700;text-align:center;}
     .nbc-expand{
-      width:36px;height:36px;border-radius:10px;border:1px solid var(--div);
-      background:rgba(0,200,185,0.05);cursor:pointer;
+      width:32px;height:32px;border-radius:var(--r-sm);border:1px solid rgba(56,189,248,0.25);
+      background:rgba(56,189,248,0.08);cursor:pointer;
       display:flex;align-items:center;justify-content:center;
-      flex-shrink:0;margin-left:8px;transition:background .2s;
+      flex-shrink:0;margin-left:6px;transition:all var(--tx);
     }
-    .nbc-expand:active{background:rgba(0,200,185,0.12);}
-    .nbc-expand.open svg path{stroke:rgba(0,212,196,0.9);transform:rotate(180deg);transform-box:fill-box;transform-origin:center;}
+    .nbc-expand:active{background:rgba(56,189,248,0.18);transform:scale(0.96);}
+    .nbc-expand.open svg path{stroke:var(--cyan);transform:rotate(180deg);transform-box:fill-box;transform-origin:center;}
     .nbc-expand svg path{transition:transform 0.3s ease;}
 
     /* ── TECH PANEL — bottom sheet, never covers more than lower half ── */
@@ -283,98 +379,90 @@
       height:50svh;max-height:50svh;
       z-index:200;
       background:var(--glass-b);
-      border-top:1px solid rgba(0,200,185,0.12);
-      border-radius:18px 18px 0 0;
+      border-top:1px solid var(--div);
+      border-radius:16px 16px 0 0;box-shadow:0 -8px 36px rgba(0,0,0,0.55);
       transform:translateY(105%);
       transition:transform 0.38s cubic-bezier(0.32,0,0,1);
       display:flex;flex-direction:column;
     }
     body.tech-mode .tech-panel{transform:translateY(0);}
-    .tech-drag-area{display:flex;justify-content:center;padding:10px 0 6px;flex-shrink:0;cursor:pointer;}
-    .tech-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,0.15);}
-    .tech-scroll{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:0 0 8px;
-      scrollbar-width:thin;scrollbar-color:rgba(0,200,185,0.15) transparent;}
-    .tech-footer{flex-shrink:0;padding:0 0 env(safe-area-inset-bottom,16px);}
+    .tech-drag-area{display:flex;justify-content:center;padding:8px 0 5px;flex-shrink:0;cursor:pointer;}
+    .tech-handle{width:32px;height:4px;border-radius:2px;background:rgba(255,255,255,0.18);}
+    .tech-scroll{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:0 0 6px;
+      scrollbar-width:thin;scrollbar-color:rgba(56,189,248,0.15) transparent;}
+    .tech-footer{flex-shrink:0;padding:0 0 env(safe-area-inset-bottom,12px);}
     .tech-scroll::-webkit-scrollbar{width:3px;}
-    .tech-scroll::-webkit-scrollbar-thumb{background:rgba(0,200,185,0.15);border-radius:2px;}
+    .tech-scroll::-webkit-scrollbar-thumb{background:rgba(56,189,248,0.15);border-radius:2px;}
 
     /* City bar (inside tech panel) */
-    .city-bar{display:flex;gap:5px;padding:6px 16px 8px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--div);}
+    .city-bar{display:flex;gap:4px;padding:5px 12px 6px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--div);}
     .city-bar::-webkit-scrollbar{display:none;}
-    .cbtn{padding:4px 12px;font-size:.54rem;font-weight:500;white-space:nowrap;
-      border-radius:20px;border:1px solid rgba(255,255,255,0.07);cursor:pointer;
-      background:transparent;color:var(--muted);transition:all .2s;flex-shrink:0;font-family:var(--mono);letter-spacing:.05em;}
-    .cbtn.on{background:var(--nt-d);color:var(--nt);border-color:rgba(0,212,196,0.22);}
-    #btn-livegps{border-color:rgba(53,196,114,0.28)!important;color:var(--ng)!important;background:var(--ng-d)!important;}
-    #btn-simmode{border-color:rgba(144,96,208,0.18)!important;color:var(--np)!important;}
+    .cbtn{padding:3px 9px;font-size:var(--fs-2xs);font-weight:500;white-space:nowrap;
+      border-radius:14px;border:1px solid rgba(255,255,255,0.08);cursor:pointer;
+      background:transparent;color:var(--muted);transition:all var(--tx);flex-shrink:0;font-family:var(--sans);letter-spacing:.02em;}
+    .cbtn:active{transform:scale(0.96);}
+    .cbtn.on{background:var(--nt-d);color:var(--nt);border-color:rgba(56,189,248,0.3);font-weight:600;}
+    #btn-livegps{border-color:rgba(16,185,129,0.3)!important;color:var(--ng)!important;background:var(--ng-d)!important;}
+    #btn-simmode{border-color:rgba(139,92,246,0.25)!important;color:var(--np)!important;}
 
     /* Sensor strip */
-    .sensor-strip{display:none;align-items:center;gap:6px;padding:5px 16px;
-      background:rgba(144,96,208,0.04);border-bottom:1px solid rgba(144,96,208,0.1);
+    .sensor-strip{display:none;align-items:center;gap:6px;padding:4px 12px;
+      background:rgba(139,92,246,0.04);border-bottom:1px solid rgba(139,92,246,0.1);
       overflow-x:auto;scrollbar-width:none;flex-shrink:0;}
     .sensor-strip.on{display:flex;}
     .sensor-strip::-webkit-scrollbar{display:none;}
-    .sv{font-size:.49rem;font-family:var(--mono);color:rgba(144,96,208,0.7);white-space:nowrap;}
-    .sv span{color:rgba(144,96,208,0.36);margin-right:2px;}
-    .sv-sep{width:1px;height:10px;background:rgba(144,96,208,0.15);flex-shrink:0;}
+    .sv{font-size:var(--fs-2xs);font-family:var(--mono);color:rgba(139,92,246,0.8);white-space:nowrap;}
+    .sv span{color:rgba(139,92,246,0.45);margin-right:2px;}
+    .sv-sep{width:1px;height:9px;background:rgba(139,92,246,0.15);flex-shrink:0;}
 
     /* Section labels */
-    .tp-section-label{font-family:var(--sans);font-size:.58rem;font-weight:600;color:var(--t1);letter-spacing:.03em;padding:14px 16px 2px;opacity:0.8;}
-    .tp-section-label-sub{font-family:var(--sans);font-size:.42rem;color:var(--muted);padding:0 16px 6px;letter-spacing:.02em;}
+    .tp-section-label{font-family:var(--sans);font-size:var(--fs-xs);font-weight:700;color:var(--t1);letter-spacing:.02em;padding:10px 12px 2px;}
+    .tp-section-label-sub{font-family:var(--sans);font-size:var(--fs-3xs);color:var(--muted);padding:0 12px 5px;letter-spacing:.01em;}
 
     /* Header telemetry (inside tech panel) */
-    .hdr-tel{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--div);padding:0 0 10px;}
-    .htel{display:flex;flex-direction:column;align-items:center;padding:8px 2px 0;}
-    .htel:not(:last-child){border-right:1px solid var(--div);}
-    .htel-v{font-family:var(--mono);font-size:.84rem;font-weight:700;color:var(--bone);letter-spacing:-.01em;line-height:1.15;font-variant-numeric:tabular-nums;min-width:5ch;text-align:center;transition:color .2s;}
+    .hdr-tel{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px 10px 8px;border-bottom:1px solid var(--div);}
+    .htel{display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,0.025);border:1px solid var(--div);border-radius:7px;padding:5px 2px;}
+    .htel-v{font-family:var(--mono);font-size:var(--fs-sm);font-weight:700;color:var(--bone);letter-spacing:-.01em;line-height:1.15;font-variant-numeric:tabular-nums;min-width:4ch;text-align:center;}
     .htel-v.live{color:var(--nt);}
-    .htel-l{font-family:var(--sans);font-size:.37rem;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;margin-top:2px;font-weight:500;}
+    .htel-l{font-family:var(--sans);font-size:var(--fs-3xs);color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px;font-weight:500;}
 
     /* Primary 4-up metrics */
-    .tp-row4{display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr 1px 1fr;padding:10px 0 8px;}
-    .pm-div{background:var(--div);width:1px;align-self:stretch;margin:4px 0;}
-    .tp-met{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px;gap:3px;}
-    .pm-v{font-family:var(--mono);font-size:1.25rem;font-weight:700;color:var(--bone);letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums;min-width:5ch;text-align:center;transition:color .3s;}
+    .tp-row4{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 10px;}
+    .pm-div{display:none;}
+    .tp-met{display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,0.025);border:1px solid var(--div);border-radius:7px;padding:5px 2px;}
+    .pm-v{font-family:var(--mono);font-size:var(--fs-md);font-weight:700;color:var(--bone);letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums;min-width:4ch;text-align:center;}
     .pm-v.live{color:var(--nt);}
-    .pm-l{font-family:var(--sans);font-size:.37rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-weight:500;}
+    .pm-l{font-family:var(--sans);font-size:var(--fs-3xs);color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:500;margin-top:2px;}
 
     /* Divider */
-    .tp-divider{height:1px;background:var(--div);margin:6px 0;}
+    .tp-divider{height:1px;background:var(--div);margin:4px 0;}
 
     /* System state */
-    .sys-state{display:flex;align-items:center;gap:10px;padding:10px 16px;}
-    .sys-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:background .4s,box-shadow .4s;}
-    .sys-dot.ok{background:var(--ng);box-shadow:0 0 5px rgba(53,196,114,0.45);}
-    .sys-dot.warn{background:var(--na);box-shadow:0 0 5px rgba(232,168,32,0.45);}
-    .sys-dot.err{background:var(--nr);box-shadow:0 0 5px rgba(196,64,64,0.45);}
-    .sys-label{font-family:var(--sans);font-size:.58rem;font-weight:600;color:var(--bone-dim);flex:1;}
-    .sys-sensors{display:flex;gap:8px;}
-    .ss-item{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:.44rem;color:var(--muted);letter-spacing:.05em;}
-    .ss-dot{width:5px;height:5px;border-radius:50%;background:rgba(60,80,75,.35);transition:background .3s,box-shadow .3s;}
-    .ss-dot.active{background:var(--ng);box-shadow:0 0 4px rgba(53,196,114,0.45);}
+    .sys-state{display:flex;align-items:center;gap:8px;padding:8px 12px;}
+    .sys-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;transition:background var(--tx),box-shadow var(--tx);}
+    .sys-dot.ok{background:var(--ng);box-shadow:0 0 5px rgba(16,185,129,0.45);}
+    .sys-dot.warn{background:var(--na);box-shadow:0 0 5px rgba(245,158,11,0.45);}
+    .sys-dot.err{background:var(--nr);box-shadow:0 0 5px rgba(239,68,68,0.45);}
+    .sys-label{font-family:var(--sans);font-size:var(--fs-xs);font-weight:600;color:var(--bone-dim);flex:1;}
+    .sys-sensors{display:flex;gap:6px;}
+    .ss-item{display:flex;align-items:center;gap:3px;font-family:var(--sans);font-size:var(--fs-3xs);color:var(--muted);letter-spacing:.03em;font-weight:500;}
+    .ss-dot{width:4px;height:4px;border-radius:50%;background:rgba(60,80,75,.35);transition:background var(--tx),box-shadow var(--tx);}
+    .ss-dot.active{background:var(--ng);box-shadow:0 0 4px rgba(16,185,129,0.45);}
     .ss-dot.warn{background:var(--na);}
 
-    /* Tech row */
-    .tech-row{display:flex;gap:0;padding:6px 0;overflow-x:auto;scrollbar-width:none;}
-    .tech-row::-webkit-scrollbar{display:none;}
-    .tr-item{display:flex;flex-direction:column;align-items:center;min-width:56px;flex:1;padding:3px 4px;}
-    .tr-sep{width:1px;background:var(--div);align-self:stretch;margin:2px 0;flex-shrink:0;}
-    .tr-l{font-family:var(--sans);font-size:.4rem;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;font-weight:500;}
-    .tr-v{font-family:var(--mono);font-size:.68rem;font-weight:600;color:var(--bone-dim);margin-top:2px;font-variant-numeric:tabular-nums;white-space:normal;word-break:break-word;text-align:center;}
-    /* Long values (Pos Source / ONNX Pipeline / Road Graph) wrap instead of overlapping the
-       next column on narrow iPhone widths — no redesign, same grid/colors/scroll, just a
-       wider minimum column and slightly smaller type so more fits before it needs to scroll. */
-    @media (max-width:400px){
-      .tr-item{min-width:78px;}
-      .tr-v{font-size:.6rem;}
-    }
-    .tun-chip{font-size:.52rem;font-family:var(--mono);font-weight:600;transition:color .3s;}
-    .tun-chip.clear{color:rgba(53,196,114,0.55);}
+    /* Tech row — Responsive Clean Cards Grid */
+    .tech-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:4px;padding:4px 10px;}
+    .tr-item{display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,0.025);border:1px solid var(--div);border-radius:6px;padding:5px 3px;text-align:center;}
+    .tr-sep{display:none;}
+    .tr-l{font-family:var(--sans);font-size:var(--fs-3xs);color:var(--muted);letter-spacing:.04em;text-transform:uppercase;font-weight:500;}
+    .tr-v{font-family:var(--mono);font-size:var(--fs-xs);font-weight:600;color:var(--bone);margin-top:1px;font-variant-numeric:tabular-nums;white-space:normal;word-break:break-word;text-align:center;}
+    .tun-chip{font-size:var(--fs-3xs);font-family:var(--mono);font-weight:600;transition:color var(--tx);}
+    .tun-chip.clear{color:var(--ng);}
     .tun-chip.tunnel{color:var(--nr);animation:blink .7s step-end infinite;}
 
     /* Module chips */
     .mod-row{display:flex;flex-wrap:wrap;gap:4px;padding:8px 16px;}
-    .mod{font-size:.43rem;font-weight:500;font-family:var(--mono);
+    .mod{font-size:var(--fs-2xs);font-weight:500;font-family:var(--mono);
       padding:2px 8px;border-radius:20px;
       border:1px solid rgba(0,200,185,0.1);
       background:transparent;color:rgba(0,200,185,0.42);letter-spacing:.03em;}
@@ -385,11 +473,11 @@
 
     /* Actions */
     .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-    .abtn{padding:11px;font-size:.6rem;font-weight:600;border-radius:10px;
+    .abtn{padding:11px;font-size:var(--fs-sm);font-weight:600;border-radius:var(--r-md);
       border:1px solid rgba(255,255,255,0.07);cursor:pointer;font-family:var(--mono);
       display:flex;align-items:center;justify-content:center;gap:6px;
       background:rgba(255,255,255,0.03);color:var(--muted);letter-spacing:.05em;
-      transition:all .15s;}
+      transition:all var(--tx);}
     .abtn:active{opacity:.6;transform:scale(0.97);}
     .abtn.play{color:rgba(0,212,196,0.75);border-color:rgba(0,212,196,0.14);}
     .abtn.gnss-t{color:rgba(196,64,64,0.8);border-color:rgba(196,64,64,0.18);}
@@ -398,29 +486,260 @@
     .abtn.sensor-btn.active{color:var(--ng);border-color:rgba(53,196,114,0.22);}
 
     .desktop-link{text-align:center;padding:12px 0 16px;}
-    .desktop-link a{font-size:.43rem;font-family:var(--mono);color:var(--muted);text-decoration:none;letter-spacing:.05em;}
+    .desktop-link a{font-size:var(--fs-2xs);font-family:var(--mono);color:var(--muted);text-decoration:none;letter-spacing:.05em;}
 
     /* Modal */
-    .modal-bg{position:fixed;inset:0;z-index:2000;background:rgba(2,5,8,0.9);
+    .modal-bg{position:fixed;inset:0;z-index:2000;background:rgba(2,5,8,0.85);
       backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
       display:none;align-items:center;justify-content:center;padding:24px;}
     .modal-bg.on{display:flex;}
-    .modal{background:rgba(4,8,12,0.99);border:1px solid rgba(144,96,208,0.18);
-      border-radius:16px;padding:24px;max-width:320px;width:100%;}
-    .modal-title{font-size:.8rem;font-weight:600;color:var(--np);font-family:var(--mono);letter-spacing:.08em;margin-bottom:6px;}
-    .modal-sub{font-size:.56rem;color:var(--muted);line-height:1.65;margin-bottom:16px;font-family:var(--sans);}
+    .modal{background:var(--ink-2);border:1px solid rgba(144,96,208,0.22);
+      border-radius:var(--r-lg);padding:24px;max-width:320px;width:100%;box-shadow:0 12px 48px rgba(0,0,0,0.7);}
+    .modal-title{font-size:var(--fs-md);font-weight:700;color:var(--bone);font-family:var(--sans);letter-spacing:.02em;margin-bottom:6px;}
+    .modal-sub{font-size:var(--fs-xs);color:var(--muted);line-height:1.6;margin-bottom:16px;font-family:var(--sans);}
     .modal-rows{display:flex;flex-direction:column;gap:7px;margin-bottom:18px;}
     .modal-row{display:flex;align-items:center;gap:10px;padding:8px 10px;
-      background:rgba(144,96,208,0.04);border:1px solid rgba(144,96,208,0.1);border-radius:8px;}
+      background:rgba(144,96,208,0.04);border:1px solid rgba(144,96,208,0.12);border-radius:var(--r-sm);}
     .modal-icon{font-size:.9rem;width:20px;text-align:center;}
-    .modal-row-text .mrt{font-size:.56rem;font-weight:600;color:var(--bone-dim);font-family:var(--mono);}
-    .modal-row-text .mrd{font-size:.48rem;color:var(--muted);}
+    .modal-row-text .mrt{font-size:var(--fs-xs);font-weight:600;color:var(--bone-dim);font-family:var(--mono);}
+    .modal-row-text .mrd{font-size:var(--fs-2xs);color:var(--muted);}
     .modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-    .mbtn{padding:10px;font-size:.6rem;font-weight:600;border-radius:8px;cursor:pointer;
-      font-family:var(--mono);letter-spacing:.05em;border:1px solid;transition:opacity .15s;}
-    .mbtn:active{opacity:.6;}
-    .mbtn.cancel{background:transparent;color:var(--muted);border-color:rgba(255,255,255,0.07);}
-    .mbtn.grant{background:var(--np-d);color:rgba(144,96,208,0.9);border-color:rgba(144,96,208,0.22);}
+    .mbtn{padding:10px;font-size:var(--fs-sm);font-weight:600;border-radius:var(--r-sm);cursor:pointer;
+      font-family:var(--mono);letter-spacing:.05em;border:1px solid;transition:all var(--tx);}
+    .mbtn:active{opacity:.7;transform:scale(0.97);}
+    .mbtn.cancel{background:transparent;color:var(--muted);border-color:rgba(255,255,255,0.08);}
+    .mbtn.grant{background:var(--np-d);color:rgba(144,96,208,0.95);border-color:rgba(144,96,208,0.25);}
+
+    /* ════════════════════════════════════════════════════
+       MOBILE FIRST-CLASS LIGHT THEME ADAPTATION
+       ════════════════════════════════════════════════════ */
+    body:has(#mm-light.active), body.light-theme,
+    :root:has(#mm-light.active),
+    body.light-theme {
+      --ink: #f4f6fa;
+      --ink-2: #ffffff;
+      --bg: #f4f6fa;
+      --bone: #0a0f1d;
+      --bone-dim: #263346;
+      --muted: #5a6b82;
+      --t1: #0a0f1d;
+      --t2: #263346;
+      --t3: #5a6b82;
+      --div: rgba(15,23,42,0.08);
+
+      --nt: #0284c7;
+      --nt-d: rgba(2,132,199,0.09);
+      --nt-g: rgba(2,132,199,0.25);
+      --ng: #16a34a;
+      --ng-d: rgba(22,163,74,0.09);
+      --na: #b45309;
+      --nr: #dc2626;
+      --np: #7c3aed;
+      --np-d: rgba(124,58,237,0.09);
+
+    body.light-theme, body:has(#mm-light.active) {
+      --ink: #f8fafc;
+      --ink-2: #ffffff;
+      --ink-surface: #ffffff;
+      --bone: #0f172a;
+      --bone-dim: #334155;
+      --muted: #64748b;
+      --div: rgba(15,23,42,0.08);
+      --glass: rgba(255,255,255,0.92);
+      --glass-b: rgba(255,255,255,0.98);
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+    }
+
+    body.light-theme .nav-header, body:has(#mm-light.active) .nav-header,
+    body.light-theme .nav-bottom-card, body:has(#mm-light.active) .nav-bottom-card,
+    body.light-theme .hbox, body:has(#mm-light.active) .hbox,
+    body.light-theme #map-mode-ctrl, body:has(#mm-light.active) #map-mode-ctrl {
+      background: rgba(255,255,255,0.94) !important;
+      border-color: rgba(15,23,42,0.12) !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+    }
+    body.light-theme .hl, body:has(#mm-light.active) .hl {
+      color: #64748b !important;
+    }
+    body.light-theme .hv, body:has(#mm-light.active) .hv {
+      color: #0f172a !important;
+    }
+
+    body.light-theme .tech-panel, body:has(#mm-light.active) .tech-panel {
+      background: rgba(255,255,255,0.98) !important;
+      border-top-color: rgba(15,23,42,0.12) !important;
+      box-shadow: 0 -8px 36px rgba(0,0,0,0.12) !important;
+    }
+
+    body.light-theme .tech-handle, body:has(#mm-light.active) .tech-handle {
+      background: rgba(15,23,42,0.18) !important;
+    }
+
+    body.light-theme .nav-brand-name, body:has(#mm-light.active) .nav-brand-name {
+      color: #0284c7 !important;
+    }
+
+    body.light-theme .logo-ring svg circle[stroke="rgba(0,212,196,0.4)"],
+    body:has(#mm-light.active) .logo-ring svg circle[stroke="rgba(0,212,196,0.4)"] {
+      stroke: rgba(2,132,199,0.5) !important;
+    }
+
+    body.light-theme .logo-ring svg line[stroke="rgba(0,212,196,0.55)"],
+    body:has(#mm-light.active) .logo-ring svg line[stroke="rgba(0,212,196,0.55)"] {
+      stroke: rgba(2,132,199,0.7) !important;
+    }
+
+    body.light-theme .nbc-expand, body:has(#mm-light.active) .nbc-expand {
+      background: rgba(15,23,42,0.04) !important;
+      border-color: rgba(15,23,42,0.12) !important;
+    }
+
+    body.light-theme .abtn, body:has(#mm-light.active) .abtn {
+      background: rgba(255,255,255,0.95) !important;
+      border-color: rgba(15,23,42,0.12) !important;
+      color: var(--bone-dim) !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+    }
+
+    body.light-theme .abtn:hover, body:has(#mm-light.active) .abtn:hover {
+      background: rgba(241,245,249,0.95) !important;
+    }
+
+    body.light-theme .cbtn, body:has(#mm-light.active) .cbtn {
+      color: var(--muted) !important;
+      border-color: rgba(15,23,42,0.12) !important;
+    }
+
+    body.light-theme .cbtn.on, body:has(#mm-light.active) .cbtn.on {
+      background: rgba(2,132,199,0.1) !important;
+      color: #0284c7 !important;
+      border-color: rgba(2,132,199,0.3) !important;
+    }
+
+    body.light-theme .modal, body:has(#mm-light.active) .modal {
+      background: #ffffff !important;
+      border-color: rgba(15,23,42,0.15) !important;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.18) !important;
+    }
+
+    body.light-theme .modal-row, body:has(#mm-light.active) .modal-row {
+      background: rgba(124,58,237,0.04) !important;
+      border-color: rgba(124,58,237,0.15) !important;
+    }
+
+    body.light-theme .mbtn.cancel, body:has(#mm-light.active) .mbtn.cancel {
+      border-color: rgba(15,23,42,0.15) !important;
+      color: var(--muted) !important;
+    }
+
+    body.light-theme .leg-txt, body:has(#mm-light.active) .leg-txt,
+    body.light-theme .tr-l, body:has(#mm-light.active) .tr-l {
+      color: var(--muted) !important;
+    }
+    body.light-theme .tr-v, body:has(#mm-light.active) .tr-v {
+      color: var(--bone-dim) !important;
+    }
+    body.light-theme .sv, body:has(#mm-light.active) .sv {
+      color: rgba(124,58,237,0.85) !important;
+    }
+    body.light-theme .sv span, body:has(#mm-light.active) .sv span {
+      color: var(--muted) !important;
+    }
+    body.light-theme .sv-sep, body:has(#mm-light.active) .sv-sep {
+      background: rgba(124,58,237,0.2) !important;
+    }
+    body.light-theme .mod, body:has(#mm-light.active) .mod {
+      background: rgba(15,23,42,0.03) !important;
+      border-color: rgba(15,23,42,0.12) !important;
+      color: var(--muted) !important;
+    }
+    body.light-theme .mod.live-imu, body:has(#mm-light.active) .mod.live-imu {
+      color: #15803d !important;
+      border-color: rgba(22,163,74,0.3) !important;
+      background: rgba(22,163,74,0.08) !important;
+    }
+    body.light-theme .mod.dr, body:has(#mm-light.active) .mod.dr {
+      color: #7c3aed !important;
+      border-color: rgba(124,58,237,0.3) !important;
+      background: rgba(124,58,237,0.08) !important;
+    }
+    body.light-theme #ob, body:has(#mm-light.active) #ob {
+      background: rgba(220,38,38,0.95) !important;
+      color: #ffffff !important;
+      border-bottom-color: rgba(220,38,38,0.4) !important;
+    }
+    body.light-theme #ob.snap, body:has(#mm-light.active) #ob.snap {
+      background: rgba(22,163,74,0.95) !important;
+      color: #ffffff !important;
+      border-bottom-color: rgba(22,163,74,0.4) !important;
+    }
+  
+    body:has(#mm-light.active) .nbc-v,
+    body.light-theme .nbc-v {
+      color: #0a0f1d !important;
+    }
+    body:has(#mm-light.active) .nbc-l,
+    body.light-theme .nbc-l {
+      color: #5a6b82 !important;
+    }
+    body:has(#mm-light.active) .pm-v,
+    body.light-theme .pm-v {
+      color: #0a0f1d !important;
+    }
+    body:has(#mm-light.active) .htel-v,
+    body.light-theme .htel-v {
+      color: #0a0f1d !important;
+    }
+    body:has(#mm-light.active) .htel-l,
+    body:has(#mm-light.active) .pm-l,
+    body.light-theme .htel-l,
+    body.light-theme .pm-l {
+      color: #5a6b82 !important;
+    }
+    body:has(#mm-light.active) .tp-section-label,
+    body.light-theme .tp-section-label {
+      color: #0a0f1d !important;
+    }
+    body:has(#mm-light.active) .tp-section-label-sub,
+    body.light-theme .tp-section-label-sub {
+      color: #5a6b82 !important;
+    }
+    body:has(#mm-light.active) .cbtn,
+    body.light-theme .cbtn {
+      color: #5a6b82 !important;
+      border-color: rgba(15, 23, 42, 0.12) !important;
+      background: transparent !important;
+    }
+    body:has(#mm-light.active) .cbtn.on,
+    body.light-theme .cbtn.on {
+      background: rgba(2, 132, 199, 0.1) !important;
+      color: #0284c7 !important;
+      border-color: rgba(2, 132, 199, 0.3) !important;
+    }
+    body:has(#mm-light.active) .tr-item,
+    body.light-theme .tr-item {
+      color: #263346 !important;
+    }
+    body:has(#mm-light.active) .tr-v,
+    body.light-theme .tr-v {
+      color: #263346 !important;
+    }
+    body:has(#mm-light.active) .tr-l,
+    body.light-theme .tr-l {
+      color: #5a6b82 !important;
+    }
+    body:has(#mm-light.active) .mm-btn,
+    body.light-theme .mm-btn {
+      color: #5a6b82 !important;
+    }
+    body:has(#mm-light.active) .mm-btn.active,
+    body.light-theme .mm-btn.active {
+      background: #0284c7 !important;
+      color: #ffffff !important;
+      border-color: #0284c7 !important;
+    }
+
   </style>
 </head>
 <body>
@@ -488,6 +807,20 @@
     <button class="mm-btn" id="mm-light" onclick="setMapMode('light')">☀ LIGHT</button>
     <button class="mm-btn active" id="mm-dark" onclick="setMapMode('dark')">● DARK</button>
   </div>
+
+  <!-- Apple Maps Floating Navigation Controls (Mobile) -->
+  <div class="m-apple-nav-ctrls" id="m-apple-nav-ctrls">
+    <button class="m-am-btn" onclick="if(_map)_map.zoomIn()" title="Zoom In">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
+    <button class="m-am-btn" onclick="if(_map)_map.zoomOut()" title="Zoom Out">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
+    <div class="m-am-sep"></div>
+    <button class="m-am-btn" onclick="mRecenterVehicle()" title="Recenter Vehicle">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3" fill="currentColor"></circle><line x1="12" y1="2" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="22"></line><line x1="2" y1="12" x2="5" y2="12"></line><line x1="19" y1="12" x2="22" y2="12"></line></svg>
+    </button>
+  </div>
 </div>
 
 <!-- NAV BOTTOM CARD (floating, compact, always visible in nav mode) -->
@@ -533,7 +866,7 @@
     <div class="city-bar">
       <button class="cbtn on" id="btn-livegps" onclick="exitSimMode()">◉ Live</button>
       <button class="cbtn" id="btn-simmode" onclick="enterSimMode()">⊞ Sim</button>
-      <span id="city-buttons" style="display:none;contents">
+      <span id="city-buttons" style="display:none;">
         <button class="cbtn on" id="cbtn-delhi" onclick="switchCity('delhi',this)">Delhi</button>
         <button class="cbtn" onclick="switchCity('mumbai',this)">Mumbai</button>
         <button class="cbtn" onclick="switchCity('bengaluru',this)">Bengaluru</button>
@@ -558,11 +891,11 @@
       <div class="sv-sep"></div>
       <div class="sv"><span>Hz</span><span id="sv-hz">--</span></div>
       <div class="sv-sep"></div>
-      <div class="sv" style="color:rgba(180,140,60,0.7)"><span>α</span><span id="sv-al">--</span>°</div>
+      <div class="sv" style="color:rgba(180,140,60,0.7);"><span>α</span><span id="sv-al">--</span>°</div>
       <div class="sv-sep"></div>
-      <div class="sv" style="color:rgba(180,140,60,0.7)"><span>β</span><span id="sv-be">--</span>°</div>
+      <div class="sv" style="color:rgba(180,140,60,0.7);"><span>β</span><span id="sv-be">--</span>°</div>
       <div class="sv-sep"></div>
-      <div class="sv" style="color:rgba(180,140,60,0.7)"><span>γ</span><span id="sv-ga">--</span>°</div>
+      <div class="sv" style="color:rgba(180,140,60,0.7);"><span>γ</span><span id="sv-ga">--</span>°</div>
     </div>
 
     <!-- Section: Navigation -->
@@ -719,7 +1052,7 @@
          inferFailCount(), status()); nothing here is a new computation or a new number. -->
     <div class="tp-divider"></div>
     <div class="tp-section-label">AI Fusion</div>
-    <div class="tp-section-label-sub">DriftFormer runs only during GNSS blackout, as a refinement on the kinematic EKF — never while GNSS is locked</div>
+    <div class="tp-section-label-sub">DriftFormer would run only during GNSS blackout, as a refinement on the kinematic EKF, never while GNSS is locked — currently its correction is DISABLED pending real training-time normalization stats (DRIFTFORMER_VALIDATED=false); inference still runs for diagnostics but never touches fused position</div>
     <div class="tech-row">
       <div class="tr-item">
         <div class="tr-l">DriftFormer</div>
@@ -788,7 +1121,7 @@
       <span class="mod">MAP MATCH</span>
       <span class="mod">EKF FUSE</span>
       <span class="mod snap-off" id="snap-chip">SNAP</span>
-      <span class="mod dr" id="drift-chip" title="No neural model runs in-browser — dead reckoning is a kinematic IMU integration + EKF, not DriftFormer inference">DEAD RECKONING · KINEMATIC + EKF (SIM)</span>
+      <span class="mod dr" id="drift-chip" title="Static placeholder shown only until the first debug-panel refresh (NAVDRIFT_ONNX status, see ~line 2304), which reflects real ONNX load/validation state">DEAD RECKONING · KINEMATIC + EKF (LOADING ONNX…)</span>
       <span class="mod perm-needed" id="imu-chip" onclick="openSensorModal()">⊕ REAL IMU</span>
     </div>
 
@@ -959,7 +1292,17 @@ const IMU = {
      event has been received, never merely because permission was granted */
   state: 'INACTIVE', // INACTIVE | WAITING | ACTIVE | UNAVAILABLE | DENIED
   evtCount: 0,
-  firstEventAt: null
+  firstEventAt: null,
+  /* Raw per-devicemotion-event sample ring buffer, feeding DriftFormer's 9-channel window
+     (see NAVDRIFT_ONNX._buildDriftformerWindow below). Unlike IMU.ax/ay/az above — which are
+     gravity-removed and Butterworth-filtered for the speed-integration/EKF path — these are the
+     RAW per-sample accel (gravity INCLUDED, matching what the model was trained on: az is not a
+     fixed -9.81 constant, it varies with device attitude) and raw gyro (offset-calibrated only,
+     unfiltered), each tagged with its real arrival timestamp so a true measured dt can be
+     computed instead of assuming a fixed 100Hz. Capped well above the model's 100-sample window
+     so a window can always be sliced from real contiguous samples. */
+  rawWin: [],
+  RAW_WIN_MAX: 150
 };
 
 /* Butterworth 2nd-order low-pass (fc=2 Hz at fs=60 Hz)
@@ -1269,6 +1612,20 @@ function onDeviceMotion(e){
     IMU.gy = (rot.beta||0)  * Math.PI/180 - IMU.gyOff;
     IMU.gz = (rot.gamma||0) * Math.PI/180 - IMU.gzOff;
     SensorManager.setValue('gyroscope', {x:IMU.gx,y:IMU.gy,z:IMU.gz}, null, 'devicemotion');
+  }
+
+  // Raw sample capture for DriftFormer's 9-channel window — gravity-INCLUDED accel (accGrav),
+  // not the gravity-removed rawAx/rawAy/rawAz computed above, per the model's real training
+  // convention (idx0-2: raw accel incl. gravity; see NAVDRIFT_ONNX._buildDriftformerWindow).
+  // Falls back to `acc` (whatever the device actually gave this event) if the platform never
+  // provides accelerationIncludingGravity, which is the best available approximation in that
+  // case, not a fabricated value.
+  {
+    const gSrc = accGrav || acc;
+    if(gSrc && isFinite(gSrc.x) && isFinite(gSrc.y) && isFinite(gSrc.z)){
+      IMU.rawWin.push({ax:gSrc.x||0, ay:gSrc.y||0, az:gSrc.z||0, gx:IMU.gx||0, gy:IMU.gy||0, gz:IMU.gz||0, t:now});
+      if(IMU.rawWin.length>IMU.RAW_WIN_MAX) IMU.rawWin.shift();
+    }
   }
 
   // Speed estimation: project filtered accel onto forward axis
@@ -1946,7 +2303,13 @@ function updateDebugPanel(){
       if(oEl) oEl.textContent = st.label + (st.loaded?' · '+st.ms.toFixed(1)+'ms · '+st.hz+'Hz infer':'');
       const chip=document.getElementById('drift-chip');
       if(chip){
-        if(st.loaded){ chip.textContent='DRIFT-FORMER · ONNX ACTIVE'; chip.title='Trained transformer running live in-browser (onnxruntime-web/WASM)'; }
+        // st.validated===false means DRIFTFORMER_VALIDATED is off: the ONNX model may be loaded
+        // and running inference (for diagnostics), but its output never touches EKF.x/EKF.y —
+        // see the VALIDATION GATE comment above DRIFTFORMER_VALIDATED for why (no verified
+        // training-time normalization stats exist). The chip must not claim "ACTIVE" correction
+        // in that state, or it would overstate what's actually happening to live navigation.
+        if(st.loaded && st.validated){ chip.textContent='DRIFT-FORMER · ONNX ACTIVE'; chip.title='Trained transformer running live in-browser (onnxruntime-web/WASM)'; }
+        else if(st.loaded && !st.validated){ chip.textContent='DEAD RECKONING · KINEMATIC + EKF (DRIFTFORMER UNVALIDATED)'; chip.title='DriftFormer ONNX runs but its correction is NOT applied to position: no verified training-time normalization stats exist (DRIFTFORMER_STATS=null) — see DRIFTFORMER_VALIDATED comment in mobile.html. Navigation is kinematic IMU + EKF only.'; }
         else if(st.failed){ chip.textContent='DEAD RECKONING · ONNX LOAD FAILED'; chip.title=st.label; }
         else { chip.textContent='DEAD RECKONING · KINEMATIC + EKF (LOADING ONNX…)'; }
       }
@@ -1954,7 +2317,7 @@ function updateDebugPanel(){
       const cs = NAVDRIFT_ONNX.driftCorrStats ? NAVDRIFT_ONNX.driftCorrStats() : null;
       const fc = NAVDRIFT_ONNX.inferFailCount ? NAVDRIFT_ONNX.inferFailCount() : null;
       const setAF=(id,txt)=>{const el=document.getElementById(id);if(el)el.textContent=txt;};
-      setAF('af-df', st.failed?'FAILED TO LOAD':st.loaded?(S.gnss?'ACTIVE (idle — GNSS locked)':'ACTIVE — correcting'):'LOADING…');
+      setAF('af-df', st.failed?'FAILED TO LOAD':!st.validated?(st.loaded?'LOADED — correction disabled (unvalidated stats)':'LOADING…'):(st.loaded?(S.gnss?'ACTIVE (idle — GNSS locked)':'ACTIVE — correcting'):'LOADING…'));
       setAF('af-applied', cs?cs.applied+'':'—');
       setAF('af-rejected', cs?cs.rejected+(fc?' · '+fc.driftformer+' infer err':''):'—');
       // ad3/ad4/ad5 are the adaptive EKF model's other 3 raw outputs (unused for Q/R fusion) —
@@ -2422,29 +2785,54 @@ function setMapMode(mode){
   const lb=document.getElementById('mm-light'),db=document.getElementById('mm-dark');
   if(lb)lb.classList.toggle('active',mode==='light');
   if(db)db.classList.toggle('active',mode==='dark');
+  document.body.classList.toggle('light-theme', mode === 'light');
   /* Apply color overrides only — no setStyle, so tiles/overlays/camera are untouched */
   _applyTheme(mode);
 }
+
+window.mRecenterVehicle = function(){
+  if(!_map||!window.S) return;
+  const lon=S.ndLo||S.gtLo||(CITIES[S.city||'delhi']&&CITIES[S.city||'delhi'].lon);
+  const lat=S.ndLa||S.gtLa||(CITIES[S.city||'delhi']&&CITIES[S.city||'delhi'].lat);
+  if(lon&&lat){
+    _map.easeTo({center:[lon,lat],duration:600});
+  }
+};
 
 function addOverlayLayers(){
   const src={type:'geojson',data:_emptyLine()};
   _map.addSource('gt',{...src});_map.addSource('nd',{...src});
   _map.addSource('imu',{...src});_map.addSource('ekf',{...src});
   _map.addSource('unc',{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[[]]}}});
-  _map.addLayer({id:'gt-l',type:'line',source:'gt',paint:{'line-color':'#00d4cc','line-width':2,'line-opacity':0.78}});
-  _map.addLayer({id:'nd-l',type:'line',source:'nd',paint:{'line-color':'#9b72d8','line-width':2.5,'line-opacity':0.82}});
-  _map.addLayer({id:'imu-l',type:'line',source:'imu',paint:{'line-color':'rgba(180,70,70,0.72)','line-width':1.4,'line-opacity':0.6,'line-dasharray':[5,3]}});
-  _map.addLayer({id:'ekf-l',type:'line',source:'ekf',paint:{'line-color':'rgba(200,160,70,0.72)','line-width':1.4,'line-opacity':0.6}});
-  _map.addLayer({id:'unc-l',type:'fill',source:'unc',paint:{'fill-color':'rgba(155,114,216,0.08)','fill-outline-color':'rgba(155,114,216,0.35)'}});
-  /* Vehicle marker — blue filled dot = NAVDRIFT predicted/fused position */
+  _map.addLayer({id:'gt-l',type:'line',source:'gt',paint:{'line-color':'#00F5D4','line-width':2.5,'line-opacity':0.85}});
+  _map.addLayer({id:'nd-l',type:'line',source:'nd',paint:{'line-color':'#A259FF','line-width':3.0,'line-opacity':0.95}});
+  _map.addLayer({id:'imu-l',type:'line',source:'imu',paint:{'line-color':'#FF3B30','line-width':1.5,'line-opacity':0.75,'line-dasharray':[6,4]}});
+  _map.addLayer({id:'ekf-l',type:'line',source:'ekf',paint:{'line-color':'#FFB703','line-width':1.8,'line-opacity':0.75}});
+  _map.addLayer({id:'unc-l',type:'fill',source:'unc',paint:{'fill-color':'rgba(162,89,255,0.08)','fill-outline-color':'rgba(162,89,255,0.35)'}});
+  /* Vehicle marker — living precision navigation beacon */
   const vmEl=document.createElement('div');
-  vmEl.innerHTML='<div id="vm-inner" style="width:20px;height:20px;position:relative;transform-origin:center center"><div style="width:20px;height:20px;border-radius:50%;background:#2979ff;border:2.5px solid #fff;box-shadow:0 0 0 3px rgba(41,121,255,0.28),0 2px 8px rgba(0,0,0,0.45);"></div></div>';
+  vmEl.innerHTML='<div id="vm-inner" class="m-beacon-wrap" style="transform-origin:center center">'
+    + '<div class="m-beacon-sonar"></div>'
+    + '<div class="m-heading-beam"></div>'
+    + '<div class="m-beacon-core"></div>'
+    + '</div>';
   _vm=new maplibregl.Marker({element:vmEl,anchor:'center'}).setLngLat([CITIES[S.city||'delhi'].lon,CITIES[S.city||'delhi'].lat]).addTo(_map);
-  /* Ground-truth marker — hollow cyan ring = actual GPS fix (frozen during blackout, so you
-     can SEE the blue predicted dot separate from it, then watch them converge on reacquire) */
+  /* Ground-truth marker — hollow cyan ring = actual GPS fix */
   const gtEl=document.createElement('div');
-  gtEl.innerHTML='<div style="width:16px;height:16px;border-radius:50%;background:rgba(0,212,196,0.12);border:2.5px solid #00d4cc;box-shadow:0 0 8px rgba(0,212,196,0.65);"></div>';
+  gtEl.innerHTML='<div style="width:18px;height:18px;border-radius:50%;background:rgba(0,245,212,0.12);border:2px solid #00F5D4;box-shadow:0 0 10px rgba(0,245,212,0.7);"></div>';
   _gtm=new maplibregl.Marker({element:gtEl,anchor:'center'}).setLngLat([CITIES[S.city||'delhi'].lon,CITIES[S.city||'delhi'].lat]).addTo(_map);
+  /* Restore trajectory data accumulated before this map instance existed — this function runs
+     on every 'load' event, including after _rebuildMap() tears down and recreates the MapLibre
+     instance for cellular recovery (see MAP NETWORK RESILIENCE above). Without this, a rebuild
+     would silently wipe the ground-truth/fused/raw-IMU/EKF polylines from the screen even though
+     the underlying _gtC/_ndC/_imuC/_ekfC arrays (and all navigation state) are untouched by a
+     rebuild — only the map's own GeoJSON sources start empty again. Mirrors the same restore
+     _readdOverlays() already does after a setStyle() call. Does not read or write any
+     navigation/sensor state, only re-applies already-computed coordinates to the new sources. */
+  if(_gtC.length>2)_map.getSource('gt').setData({type:'Feature',geometry:{type:'LineString',coordinates:_gtC}});
+  if(_ndC.length>2)_map.getSource('nd').setData({type:'Feature',geometry:{type:'LineString',coordinates:_ndC}});
+  if(_imuC.length>2)_map.getSource('imu').setData(_imuGeom());
+  if(_ekfC.length>2)_map.getSource('ekf').setData({type:'Feature',geometry:{type:'LineString',coordinates:_ekfC}});
 }
 
 /* ── MAP NETWORK RESILIENCE ──────────────────────────────────────────────────
@@ -2487,7 +2875,20 @@ const MAP_LOAD_TIMEOUT_MAX_MS = 21000; // hard ceiling regardless of retry count
 const MAP_LOAD_TIMEOUT_STEP_MS = 4000; // each retry attempt gets a bit more patience, capped at the ceiling above
 const MAP_LOAD_EXTENSION_MS = 6000; // one bounded grace period, granted only if real progress was observed right at the deadline
 const MAP_RETRY_DELAYS_MS = [2000,4000,8000,15000,30000]; // caps out at 30s and keeps retrying at that interval — never switches provider
-const MAP_TILE_ERROR_WINDOW_MS = 10000, MAP_TILE_ERROR_THRESHOLD = 5; // 5+ tile errors within 10s post-load = treat as a real disruption
+// ROOT CAUSE (this pass): zooming out issues dozens of NEW vector-tile requests at once (the
+// previously-loaded zoom's tiles don't cover the new view). On real cellular, a handful of those
+// many parallel requests failing/timing out is normal and self-heals on its own — MapLibre
+// re-requests each miss the next time it's needed, exactly as documented at case (D) above. The
+// old threshold (5 errors in 10s) was low enough that a completely ordinary zoom-out burst could
+// cross it, triggering _rebuildMap() — which tears down the whole map and starts a BLANK one from
+// scratch. That blank-then-slowly-repopulating map is exactly what "mostly blue/incomplete after
+// zooming out" looks like: not a still-broken map, but a healthy map we ourselves just reset.
+// Fix: (1) require a much stronger, sustained signal before assuming a real disruption, and
+// (2) never let a normal in-gesture tile burst count toward it at all — only evaluate once the
+// user has stopped actively zooming/panning (_mapMoving/_mapZooming, the same 4s gesture window
+// already used elsewhere in this file), so an ordinary zoom transition can never trigger a rebuild
+// by itself. A genuine dead connection still crosses this bar and still recovers via rebuild.
+const MAP_TILE_ERROR_WINDOW_MS = 20000, MAP_TILE_ERROR_THRESHOLD = 25; // sustained failures, not one zoom-out burst
 const MAP_REBUILD_DEBOUNCE_MS = 5000; // don't rebuild more than once every 5s, however many triggers fire
 let _mapRetryAttempt=0, _mapLoadTimer=null, _mapRetryTimer=null, _pendingCityKey='delhi';
 let _mapTileErrorTimes=[], _lastMapRebuildAt=0;
@@ -2702,8 +3103,11 @@ function _createMap(c){
       _mapTileErrorTimes.push(now);
       _mapTileErrorTimes=_mapTileErrorTimes.filter(t=>now-t<MAP_TILE_ERROR_WINDOW_MS);
       console.warn('[Map] (D) post-load tile error ('+_mapTileErrorTimes.length+' in the last '+(MAP_TILE_ERROR_WINDOW_MS/1000)+'s):', msg);
-      if(_mapTileErrorTimes.length>=MAP_TILE_ERROR_THRESHOLD){
-        console.warn('[Map] tile-error burst crossed threshold — treating as a real network disruption');
+      // Never act on a burst while the user is actively zooming/panning — that is exactly when a
+      // large batch of brand-new tile requests is normal and expected, not evidence of a real
+      // disruption. Only a sustained burst observed once gestures have settled is acted on.
+      if(!_mapMoving && !_mapZooming && _mapTileErrorTimes.length>=MAP_TILE_ERROR_THRESHOLD){
+        console.warn('[Map] tile-error burst crossed threshold (outside any active gesture) — treating as a real network disruption');
         _rebuildMap();
       }
     } else {
@@ -2773,7 +3177,25 @@ function initMap(c){
     if(_gtm)_gtm.setLngLat([cfg.lon,cfg.lat]);
   }
   if(GPS&&GPS.simMode) setTimeout(()=>{if(_map)_map.jumpTo({center:[cfg.lon,cfg.lat],zoom:cfg.zoom});},_mapReady?0:1200);
-  else if(!GPS||!GPS.active) setTimeout(()=>{if(_map)_map.jumpTo({center:[78.9629,20.5937],zoom:5});},_mapReady?0:1200);
+  // ROOT CAUSE (real 5G test): this branch used to jumpTo a whole-India overview
+  // (center [78.9629,20.5937], zoom 5) the instant the map was created, purely as a
+  // placeholder while waiting for the first real GPS fix. On cellular that is exactly
+  // the "white screen" symptom — MapLibre now has to fetch/render an entire subcontinent
+  // of low-zoom tiles for a view that gets thrown away a couple of seconds later anyway.
+  // Then onFix()'s first-fix handler (see flyTo({center:[lon,lat],zoom:18,...}) below)
+  // flies from that zoom-5 whole-India view straight to zoom 18 at the real GPS position —
+  // a 13-level zoom jump that is the visible "sudden jump/zoom" and, because none of the
+  // intermediate zoom levels around the real location were ever requested, also explains
+  // why zooming back OUT afterwards is extremely slow: every intermediate zoom level's
+  // tiles for the real location are still completely uncached.
+  // Fix: do nothing here for the live-GPS case. _createMap() already left the camera at a
+  // sane default (CITIES[c]'s own city-level zoom, set at construction time), which is a
+  // far smaller/cheaper initial tile footprint than a whole-country view and is only ever
+  // on screen for the couple of seconds before the real fix arrives. That first real fix's
+  // existing flyTo (unchanged, still real GNSS only, still zoom 18, still the same
+  // "useful navigation-level zoom" the map already used) now starts from a normal city-level
+  // zoom instead of a country-level zoom, which is both less visually jarring and requires
+  // far fewer new zoom levels of previously-unrequested tiles once the user zooms back out.
 }
 
 function init(key){
@@ -3013,6 +3435,7 @@ function step(){
       // separate from it, rather than watching both markers drift together.
       if(_gtm && S.gnss) _gtm.setLngLat([S.gtLo,S.gtLa]);
       const vmi=document.getElementById('vm-inner');if(vmi)vmi.style.transform='rotate('+(dispH*180/Math.PI)+'deg)';
+      document.body.classList.toggle('outage-active', !S.gnss);
       if(GPS.zoomed&&!_mapMoving&&!_mapZooming){
         // Camera-follow now always tracks the FUSED position (S.ndLa/S.ndLo — the real EKF
         // output, same value the predicted dot itself is drawn from), never the raw GPS fix
@@ -4041,7 +4464,7 @@ const NAVDRIFT_ONNX = (function(){
   };
   let sessions={}, loaded=false, loading=false, failed=false, lastStatus='INACTIVE', lastMs=0;
   const IMU_WIN=100, TUN_WIN=20;
-  let imuBuf=[], tunBuf=[];
+  let tunBuf=[]; // imuBuf removed — DriftFormer now windows directly off IMU.rawWin (see below)
   // Physical sanity bound for DriftFormer's blackout-only position correction, reusing the
   // exact same reject-don't-clamp pattern as the raw trail's 60 m/s hard ceiling (see
   // _lastRawTrailT / maxStepDistM above): a correction is only as trustworthy as the real
@@ -4082,6 +4505,122 @@ const NAVDRIFT_ONNX = (function(){
       [...Array(n-buf.length).fill(buf[0]||Array(9).fill(0)),...buf];
   }
 
+  // ── DriftFormer 9-channel window construction ──
+  // CORRECTNESS FIX (traced against navdrift_outputs/navdrift_01_data_pipeline.py's
+  // extract_driftformer_windows and navdrift_02_driftformer.py, which match the real deployed
+  // ONNX's imu_window_9ch (batch,100,9) input): the previous feed fabricated a 9-vector per
+  // step() tick as [ax,0,-9.81,0,0,gz,intSpeed,gtH,baroAlt] — wrong channel semantics (ay/gx/gy
+  // hardcoded to 0, az hardcoded to a fixed gravity constant instead of the real
+  // attitude-varying value, and idx6-8 were integrated-speed/ground-truth-heading/baro-altitude,
+  // not the model's actual heading_proxy/speed_proxy/dt channels) AND wrong cadence (one row per
+  // ~10Hz step() tick, so a 100-row window spanned ~10s of wall time, not the ~1s/100-sample
+  // window the model was trained on).
+  //
+  // This builds the window from IMU.rawWin — real per-devicemotion-event raw samples (gravity
+  // INCLUDED accel, offset-calibrated raw gyro) — in the exact trained channel order:
+  //   0:ax 1:ay 2:az (raw, incl. gravity) 3:gx 4:gy 5:gz (raw rad/s)
+  //   6:heading_proxy = sin(cumsum(gz)*dt) over this window
+  //   7:speed_proxy   = ||[ax,ay,az]|| per sample
+  //   8:dt            = REAL measured mean sample interval of this window, not a hardcoded 0.01.
+  // CAVEAT (cannot be fixed without a live device): real devicemotion rate on phones is commonly
+  // ~30-60Hz, not the 100Hz the model's 100-sample windows were trained on (see onDeviceMotion's
+  // own Hz-tracking comments). Using the real measured dt keeps the dt channel and the
+  // heading-proxy integration internally honest, but a 100-sample window at ~30-60Hz still spans
+  // more wall-clock time (~1.7-3.3s) than the ~1s training windows did — this is a real,
+  // documented train/inference skew that a browser-side fix cannot fully close without a fixed
+  // ~100Hz IMU source. Not silently hidden: surfaced here and in the handback report.
+  // ── Fixed-100Hz resampling of the raw (irregular-rate) devicemotion ring buffer ──
+  // CAVEAT FOLLOW-UP: the comment block above documents that real devicemotion fires at
+  // ~30-60Hz while training windows were ~100 samples @ ~100Hz (~1s). Simply taking the last
+  // 100 RAW events (the previous version of this function) doesn't fix that: at 30-60Hz, 100
+  // raw samples span ~1.7-3.3s of wall time, not ~1s — a real distribution-shift versus training
+  // regardless of how the dt channel is computed. This resamples the raw ring buffer onto a
+  // fixed 0.01s-spaced grid (linear interpolation between the two bracketing raw samples) before
+  // extracting the 100-sample window, so the window always spans ~1.0s of wall time at a
+  // consistent ~100Hz-equivalent cadence — matching the training distribution's *timing*
+  // regardless of the device's actual event rate. This does NOT fix the still-missing
+  // normalization stats (see DRIFTFORMER_STATS below) — it only closes the sample-rate gap.
+  const DRIFTFORMER_TARGET_DT = 0.01; // seconds; matches navdrift_01_data_pipeline.py's ~100Hz training windows
+  function _resampleTo100Hz(raw, n, dt){
+    // raw: IMU.rawWin, ascending by .t (ms), real per-devicemotion-event samples.
+    if(!raw || raw.length<2) return null;
+    const tEnd = raw[raw.length-1].t;
+    const tStart = tEnd - (n-1)*dt*1000;
+    const out = [];
+    let j = 0;
+    for(let i=0;i<n;i++){
+      const tq = tStart + i*dt*1000;
+      while(j < raw.length-2 && raw[j+1].t < tq) j++;
+      const a = raw[j], b = raw[Math.min(j+1, raw.length-1)];
+      if(tq<=a.t || a.t===b.t || tq>=b.t){
+        const s = (tq>=b.t) ? b : a; // clamp to nearest endpoint outside raw's real time span
+        out.push({ax:s.ax||0, ay:s.ay||0, az:s.az||0, gx:s.gx||0, gy:s.gy||0, gz:s.gz||0});
+      } else {
+        const f = (tq-a.t)/(b.t-a.t);
+        out.push({
+          ax:(a.ax||0)+((b.ax||0)-(a.ax||0))*f, ay:(a.ay||0)+((b.ay||0)-(a.ay||0))*f, az:(a.az||0)+((b.az||0)-(a.az||0))*f,
+          gx:(a.gx||0)+((b.gx||0)-(a.gx||0))*f, gy:(a.gy||0)+((b.gy||0)-(a.gy||0))*f, gz:(a.gz||0)+((b.gz||0)-(a.gz||0))*f,
+        });
+      }
+    }
+    return out;
+  }
+  function _buildDriftformerWindow(){
+    const raw = IMU.rawWin;
+    if(!raw || raw.length<2) return null;
+    const dt = DRIFTFORMER_TARGET_DT;
+    const resampled = _resampleTo100Hz(raw, IMU_WIN, dt);
+    if(!resampled) return null;
+    let cumGz=0;
+    const rows = resampled.map(s=>{
+      cumGz += (s.gz||0)*dt;
+      const heading = Math.sin(cumGz);
+      const speed = Math.hypot(s.ax||0, s.ay||0, s.az||0);
+      return [s.ax||0, s.ay||0, s.az||0, s.gx||0, s.gy||0, s.gz||0, heading, speed, dt];
+    });
+    return rows; // already exactly IMU_WIN rows from the fixed-dt resample grid, no padding needed
+  }
+
+  // NORMALIZATION STATUS: navdrift_02_driftformer.py trains on z-score-normalized channels
+  // ((x-mean)/std per channel, saved via train_ds.save_stats() to
+  // PATHS["models"]/"driftformer_stats.npz") and the ONNX model expects that same normalization
+  // at inference. Searched training/, navdrift_outputs/, checkpoints/, models/, and
+  // frontend/models/ in this repo for driftformer_stats.npz or any equivalent saved mean/std —
+  // NOT FOUND anywhere in this repository. Fabricating plausible-looking mean/std numbers here
+  // would silently corrupt every DriftFormer inference with made-up constants, which is worse
+  // than running unnormalized and saying so. Until driftformer_stats.npz (or equivalent) is
+  // regenerated from the real training run and committed, this feeds the corrected RAW channel
+  // values below with NO normalization applied — numerically this is still an interim state and
+  // should not be trusted for drift-correction magnitude until real stats are sourced.
+  const DRIFTFORMER_STATS = null; // set to {mean:[9], std:[9]} once driftformer_stats.npz is found/regenerated
+  //
+  // VALIDATION GATE — per explicit instruction: "If the original training contract cannot be
+  // established, do not enable unvalidated corrections in live navigation." Investigation
+  // outcome (searched navdrift_outputs/, checkpoints/, models/, frontend/models/, raw/, and the
+  // whole repo): driftformer_stats.npz was never committed, and checkpoints/driftformer_best.pt
+  // (inspected directly, its data.pkl contains no mean/std/stats/scale keys) holds only model
+  // weights. navdrift_01_data_pipeline.py downloads its training sources (EuRoC/TUM-VI/NCLT,
+  // KAIST) via wget into a Google-Drive-mounted Colab path (navdrift_00_setup.py:
+  // DRIVE_ROOT=/content/drive/MyDrive/NAVDRIFT0) that does not exist in this repo or filesystem;
+  // the only datasets under raw/ here ("Synchronised/Unsynchronised V and S datasets.zip") are
+  // unrelated to that pipeline. So the real training-time z-score stats are NEITHER present NOR
+  // reproducible in this environment — there is no original data to re-run normalization on.
+  // DECISION: leave DRIFTFORMER_STATS=null (not fabricated) AND keep the DriftFormer ONNX
+  // inference path running (useful for the diagnostics panel / future validation work), but gate
+  // its OUTPUT from ever touching EKF.x/EKF.y behind this flag, OFF by default. The resampling
+  // fix above (sample-rate mismatch) is independent and safe to ship regardless of this flag.
+  // TO RE-ENABLE: (1) locate or regenerate driftformer_stats.npz from the real training run
+  // (train_ds.save_stats() in navdrift_02_driftformer.py) and populate DRIFTFORMER_STATS with its
+  // {mean,std}; (2) confirm the resampling above still matches whatever cadence that stats run
+  // assumed; (3) flip DRIFTFORMER_VALIDATED to true; (4) re-test end-to-end on a real device
+  // before trusting corrected positions.
+  const DRIFTFORMER_VALIDATED = false; // OFF: no verified training-time normalization stats exist — see block above
+  function _normalizeWindow(rows){
+    if(!DRIFTFORMER_STATS) return rows; // interim: unnormalized, see comment block above
+    const {mean,std} = DRIFTFORMER_STATS;
+    return rows.map(r=>r.map((v,i)=>(v-mean[i])/(std[i]||1e-8)));
+  }
+
   async function load(){
     if(loading||loaded||failed)return;
     loading=true; lastStatus='LOADING';
@@ -4109,7 +4648,6 @@ const NAVDRIFT_ONNX = (function(){
     _inferCount++;
     const t0=performance.now();
     const res={};
-    imuBuf.push(imuVec); if(imuBuf.length>IMU_WIN) imuBuf.shift();
     const accelMag=Math.sqrt(imuVec[0]*imuVec[0]+imuVec[1]*imuVec[1]+imuVec[2]*imuVec[2]);
     tunBuf.push([imuVec[6]/30, imuVec[7]/35, S.gnss?1:0, (imuVec[8]||0)/500, accelMag/15]);
     if(tunBuf.length>TUN_WIN) tunBuf.shift();
@@ -4150,14 +4688,19 @@ const NAVDRIFT_ONNX = (function(){
         res.tunnelProb=out[sessions.tunnel_det.outputNames[0]].data[0];
       }catch(e){ inferFailCount.tunnel_det++; }
     }
-    // DriftFormer — learned drift-correction refinement, once enough window history exists
-    if(sessions.driftformer && imuBuf.length>=IMU_WIN && S.step%20===0){
-      try{
-        const inp=sessions.driftformer.inputNames[0];
-        const out=await sessions.driftformer.run({[inp]:_f32([_pad(imuBuf,IMU_WIN)])});
-        const d=out[sessions.driftformer.outputNames[0]].data;
-        res.driftCorr={dLat:d[0],dLon:d[1]};
-      }catch(e){ inferFailCount.driftformer++; }
+    // DriftFormer — learned drift-correction refinement, once enough window history exists.
+    // Window is built from real raw IMU samples (IMU.rawWin), not the ekf/tunnel imuVec param —
+    // see _buildDriftformerWindow()'s comment block above for why and what changed.
+    if(sessions.driftformer && S.step%20===0){
+      const win = _buildDriftformerWindow();
+      if(win){
+        try{
+          const inp=sessions.driftformer.inputNames[0];
+          const out=await sessions.driftformer.run({[inp]:_f32([_normalizeWindow(win)])});
+          const d=out[sessions.driftformer.outputNames[0]].data;
+          res.driftCorr={dLat:d[0],dLon:d[1]};
+        }catch(e){ inferFailCount.driftformer++; }
+      }
     }
     res.ms=performance.now()-t0;
     return res;
@@ -4180,7 +4723,7 @@ const NAVDRIFT_ONNX = (function(){
     // refinement layered on top of the kinematic EKF prediction. It must never move the
     // fused position while GNSS is locked — that would be exactly the "silently cheating
     // toward a known point" behavior this whole rebuild exists to eliminate.
-    if(res.driftCorr && !S.gnss && isFinite(res.driftCorr.dLat) && isFinite(res.driftCorr.dLon)){
+    if(DRIFTFORMER_VALIDATED && res.driftCorr && !S.gnss && isFinite(res.driftCorr.dLat) && isFinite(res.driftCorr.dLon)){
       const sc=1e-6;
       driftCorrStats.lastRawDLat=res.driftCorr.dLat;
       driftCorrStats.lastRawDLon=res.driftCorr.dLon;
@@ -4214,7 +4757,7 @@ const NAVDRIFT_ONNX = (function(){
 
   return {
     load, applyToStep,
-    status(){ return {loaded,failed,label:lastStatus,ms:lastMs,hz:(window.onnxHz||0)}; },
+    status(){ return {loaded,failed,label:lastStatus,ms:lastMs,hz:(window.onnxHz||0),validated:DRIFTFORMER_VALIDATED}; },
     // Called on GNSS reacquisition so a new blackout's first correction measures real elapsed
     // time against ITS OWN start, never against a stale timestamp left over from a previous
     // blackout (which would let an artificially large dt waive the physical bound entirely).
