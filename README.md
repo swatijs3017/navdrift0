@@ -1,511 +1,601 @@
 # NAVDRIFT-0
 
-**AI-assisted dead reckoning for ground vehicles and smartphones. Built for ISRO Smart India Hackathon 2026, Problem Statement 26168.**
+Dead reckoning navigation for ground vehicles and smartphones, built to keep a usable position estimate when GNSS (GPS / NavIC) is degraded or unavailable. Built for ISRO Smart India Hackathon 2026, Problem Statement 26168.
 
-NAVDRIFT-0 keeps a vehicle's position estimate usable when GNSS (GPS/NavIC) becomes unavailable or unreliable. It does this by fusing smartphone IMU data, a set of small trained neural network models, an Extended Kalman Filter, and OpenStreetMap road data, so the navigation state degrades gracefully instead of failing outright during a GNSS blackout.
+**Live production site:** https://navdrift0.pages.dev/ (device-routed: phones and tablets load the navigation app, desktops and laptops load the Mission Control replay dashboard)
 
-There is no banner or logo asset in this repository, so none is included here.
+`Python 3.11` `JavaScript (vanilla, no framework)` `ONNX Runtime / onnxruntime-web 1.18.0` `PyTorch 2.x` `Cloudflare Pages (frontend)` `Render (backend API, demo mode)` `IO-VNBD dataset (real)` `MIT License`
 
-Live production site: **https://navdrift0.pages.dev/**
-The same URL serves a different experience depending on the device: a laptop or desktop opens the Mission Control dashboard, a phone or tablet opens the NAVDRIFT mobile navigation interface.
+Status banners (each one is a fact checked against the repository during this audit, not a marketing claim):
 
----
+| Banner | Status | Basis |
+|---|---|---|
+| Live smartphone navigation | Working, in production | `frontend/mobile.html`, real GNSS/IMU, unmodified this pass |
+| Backend test suite | 96 / 97 passing | see section 12, full run recorded this pass |
+| CI | Configured, non-blocking | `.github/workflows/ci.yml` runs on push/PR to `main`; test step uses `|| true`, so a failing test does not fail the workflow |
+| Speed LSTM model | Trained and validated offline / in-browser | not wired into live phone navigation, see section 9 |
+| IO-VNBD dataset | Real, parsed, split, trained on | 72 paired runs, seed 42, see section 10 |
+| Hardware / embedded validation | Not performed | stated explicitly wherever it applies, never implied |
 
-## 1. The Problem
-
-GNSS (GPS, and for this project specifically NavIC, India's regional satellite navigation system) works well in open sky. It becomes unavailable or degraded in several common situations:
-
-- **Tunnels and underground structures**, where the satellite signal is physically blocked.
-- **Urban canyons**, where tall buildings reflect and block signals (multipath and signal blockage), producing either no fix or a badly degraded one.
-- **Temporary outages** caused by terrain, weather, or receiver limitations, even in places that are not permanently GNSS-denied.
-
-When GNSS drops out, the only information a smartphone has left is its inertial sensors: the accelerometer and gyroscope (and, on some devices, a barometer and magnetometer). Raw integration of accelerometer and gyroscope readings drifts quickly. Small sensor biases and noise accumulate error at every time step, so a naive "just integrate the IMU" approach becomes unusable within tens of metres.
-
-A useful GNSS-outage system needs more than raw IMU integration. It needs:
-
-- **Sensor fusion** (an Extended Kalman Filter or similar) to combine IMU data with whatever position information is available, and to track how uncertain the current estimate is.
-- **Motion constraints**, because a wheeled vehicle cannot slide sideways the way raw double-integrated acceleration would suggest.
-- **Road information**, because knowing the vehicle is on a road network can correct a drifting estimate back onto a plausible path.
-- **A GNSS reacquisition strategy**, because when the signal comes back, the system needs to reconcile the drifted dead-reckoning estimate with the new fix smoothly rather than jumping.
-
-NAVDRIFT-0 is built around this pipeline rather than around a single trick. It does not claim that a neural network "predicts GPS" on its own; the position estimate is maintained by sensor fusion and dead reckoning throughout, with trained models assisting specific parts of that pipeline (denoising, adaptive filter tuning, tunnel detection, and a learned drift correction).
+No badge in this file claims continuous integration gating, certification, field validation, or production scale beyond what is verified below.
 
 ---
 
-## 2. What NAVDRIFT-0 Does
+## 1. What NAVDRIFT-0 Does
 
-At a system level, the pipeline looks like this:
+GNSS works well in open sky and degrades or disappears in tunnels, urban canyons (tall buildings causing multipath and signal blockage), and other temporary outages. When it drops out, a phone still has an accelerometer and gyroscope (and on some devices a barometer and magnetometer), but raw double integration of accelerometer data drifts quickly: small biases and noise accumulate error every tick, so a naive "just integrate the IMU" approach becomes unusable within tens of metres.
+
+NAVDRIFT-0's control flow:
 
 ```
-GNSS (when available)
-      |
-Smartphone IMU + orientation sensors (accelerometer, gyroscope, magnetometer, barometer)
-      |
-Preprocessing (filtering, calibration, axis alignment)
-      |
-AI-assisted motion estimation (DriftFormer correction, adaptive EKF noise tuning, tunnel detection)
-      |
-EKF sensor fusion (maintains position, heading, and uncertainty)
-      |
-Dead reckoning during GNSS loss (IMU-driven propagation, zero-velocity updates, non-holonomic constraint)
-      |
-Road graph / road matching (pulls the estimate toward the nearest plausible OpenStreetMap road segment)
-      |
-GNSS reacquisition (reconciles the drifted estimate with the new fix)
-      |
-State fusion and recovery
+GNSS available        -> GNSS + IMU fusion (EKF measurement update on every fresh fix)
+GNSS lost              -> dead reckoning: EKF predict-only, ZUPT, non-holonomic constraint,
+                           road-graph matching, DriftFormer correction (all IMU-driven)
+GNSS remains unavailable -> uncertainty grows with time, inertial estimate continues,
+                           heading display switches to the gyro-integrated EKF heading
+                           (GPS-derived heading would otherwise freeze)
+GNSS returns            -> reacquisition: pre-correction drift is measured and logged,
+                           the EKF is corrected via its normal measurement update
+                           (no teleport, no discontinuous jump)
 ```
 
-The core navigation state (position, heading, and uncertainty) is always maintained by the Extended Kalman Filter and dead-reckoning logic. The AI components (DriftFormer, the adaptive EKF noise predictor, and the tunnel detector) assist specific steps in that pipeline; they do not replace it, and none of them ever runs in place of a real GNSS fix while one is available.
+Commodity smartphone sensors (not a dedicated IMU/GNSS unit) are used deliberately: the target deployment is any Android or iOS phone a driver already carries, with no extra hardware required for the core navigation path. An external, higher-rate IMU is supported as an optional input (section 16) but is not required.
+
+---
+
+## 2. Current System Status
+
+| Capability | Status | Where | Evidence |
+|---|---|---|---|
+| Live smartphone navigation | Live | `frontend/mobile.html` | production app |
+| GNSS (`navigator.geolocation.watchPosition`) | Live | `frontend/mobile.html` | real device API |
+| Accelerometer / gyroscope (`DeviceMotionEvent`) | Live | `frontend/mobile.html` | real device API |
+| Orientation (`DeviceOrientationEvent`, `deviceorientationabsolute`) | Live | `frontend/mobile.html` | real device API |
+| EKF fusion | Live | `frontend/mobile.html` | predict every tick, update on fresh GNSS |
+| ZUPT | Live | `frontend/mobile.html` | forward-axis accel threshold + dwell time |
+| Non-holonomic constraint (NHC) | Live | `frontend/mobile.html` | applied against matched road bearing when available |
+| Road graph (Overpass + IndexedDB cache) | Live | `frontend/mobile.html` | real fetch, real cache fallback |
+| Live road matching (`LiveHMM`) | Live, greedy | `frontend/mobile.html` | per-tick local argmax, not full Viterbi (see section 18) |
+| DriftFormer (ONNX) | Live | `frontend/models/driftformer_fp32.onnx`, loaded and run in `frontend/mobile.html` | see section 6 |
+| Adaptive EKF (ONNX) | Live | `frontend/models/adaptive_ekf_fp32.onnx`, loaded and run in `frontend/mobile.html` | see section 7 |
+| Tunnel Detector (ONNX) | Live | `frontend/models/tunnel_det_fp32.onnx`, loaded and run in `frontend/mobile.html` | see section 8 |
+| IMU denoiser (ONNX, int8) | Not live | `models/imu_denoiser_int8.onnx` | referenced by `frontend/desktop.html` only, and that page's own comment states it does not execute there (`ConvInteger` op unsupported in ort-web WASM); classical filtering is what actually runs in `mobile.html` |
+| NavIC DOP model (ONNX) | Not live | `models/navic_dop_fp32.onnx` | not referenced by `mobile.html`; no live wiring found anywhere |
+| Speed LSTM | Offline / browser-demo only | `checkpoints/iovnbd_speed_lstm/navdrift_lstm.onnx` | trained on real IO-VNBD data, not wired into `mobile.html`, see section 9 |
+| Vibration filtering (classical) | Live | `frontend/mobile.html` (Butterworth / dead-band) | unmodified this pass |
+| Full HMM/Viterbi map matcher | Offline only | `edge/hmm_map_matcher.py` | separate module, not wired into live matching |
+| Vehicle calibration (gravity roll/pitch, GNSS-course yaw) | Offline module, software-validated | `edge/vehicle_calibration.py` | not the same code path as `mobile.html`'s own live auto-alignment |
+| External IMU input contract | Software-validated, no physical board tested | `edge/external_imu.py` | |
+| 200 Hz edge engine (`NavdriftRTEngine`) | Software throughput validated, hardware not validated | `navdrift_engine.py`, `edge/replay_200hz_demo.py` | |
+| IO-VNBD training pipeline | Real, executed | `data/iovnbd.py`, `data/iovnbd_split.py`, `training/train_iovnbd_speed_lstm.py` | 72 runs, 52/10/10 split |
+| Browser ONNX inference (Speed LSTM demo) | Validated | `results/iovnbd/browser_demo/index.html` | real headless-browser run |
+| Desktop replay dashboard | Live (as a replay tool) | `frontend/desktop.html` | recorded/replay data, not live phone telemetry |
+| Android | Working, standalone-PWA orientation bug fixed this pass | `frontend/manifest.json` | see section 19 |
+| iPhone | Working | `frontend/mobile.html` | barometer unavailable via WebKit, documented |
+| Edge/native deployment | Source exists, unbuilt on physical hardware | `native/android-plugin/`, `native/ios-plugin/` | Kotlin/Swift source present, not build-tested this pass |
 
 ---
 
 ## 3. System Architecture
 
-There are three parts to the deployed system: the mobile client (the actual navigation engine, running in the phone's browser), the desktop Mission Control dashboard (a monitoring and demonstration interface, not the navigation engine), and a backend API (currently a demo/prototype service, explained honestly in section 8).
+```
+Phone sensors (GNSS, accel, gyro, orientation, optional magnetometer/barometer)
+        |
+Calibration / auto forward-axis detection (mobile.html, per-session)
+        |
+Signal processing (classical Butterworth / dead-band filtering, ZUPT trigger)
+        |
+AI models (DriftFormer position correction, Adaptive EKF Q/R tuning, tunnel-blackout probability)
+        |
+EKF fusion (predict every tick; measurement update only on a fresh GNSS fix)
+        |
+Road constraints (NHC against matched road bearing; LiveHMM greedy road matching)
+        |
+Navigation state (fused position/heading/speed/uncertainty, displayed and logged)
+        |
+GNSS reacquisition (pre-correction error measured, then EKF measurement update)
+        |
+Correction + updated state (uncertainty shrinks, blackout counters/telemetry updated)
+```
 
-### Mobile client (`frontend/mobile.html`)
-
-This is where the real navigation pipeline runs, entirely in the browser, on-device:
-
-- **GNSS**: read via `navigator.geolocation.watchPosition`, a real browser API, not a scripted route.
-- **Accelerometer / gyroscope / orientation**: read via `DeviceMotionEvent` / `DeviceOrientationEvent`, filtered and calibrated in-browser.
-- **Barometer**: read via the Generic Sensor API's `Barometer` class where the browser supports it. The code explicitly detects and reports when this is not the case (see section 10).
-- **Sensor status abstraction (`SensorManager`)**: every sensor (GNSS, accelerometer, gyroscope, orientation, magnetometer, barometer) is tracked through an explicit status vocabulary: `AVAILABLE`, `ACTIVE`, `NO_DATA`, `PERMISSION_DENIED`, `API_BLOCKED`, `UNAVAILABLE`. A 3-second watchdog degrades a sensor from `ACTIVE` to `NO_DATA` if readings stop arriving, so the UI never keeps showing a stale "active" state.
-- **EKF**: maintains position, heading, and an uncertainty estimate, fused with GNSS when it is available.
-- **DriftFormer**: a trained ONNX model that provides a learned drift correction, applied only during a genuine GNSS blackout, never while GNSS is locked.
-- **GNSS blackout handling**: dead reckoning takes over, with zero-velocity updates (ZUPT, gated on measured acceleration magnitude and sustained stillness) and a non-holonomic constraint (a vehicle cannot slide sideways).
-- **Road matching**: candidate road segments are scored against the fused position and heading (see section 9 for exactly how, including an honest note on what this is and is not).
-- **Map visualization**: MapLibre GL JS, using the OpenFreeMap Liberty vector tile style (`tiles.openfreemap.org`), which is itself rendered from OpenStreetMap data.
-- **Diagnostics**: a dedicated panel surfaces live GNSS state, fix age, IMU state and rate, navigation loop rate, position source, ONNX pipeline status, road graph status, AI Fusion counters, road-aware navigation state, and the most recent GNSS reacquisition, all reading real runtime values rather than being decorative.
-- **GNSS reacquisition**: when a fix returns after a blackout, the drift error at that moment is measured and displayed, and the EKF reconciles the dead-reckoning estimate with the new fix.
-
-A native app shell (Capacitor, wrapping this same HTML/CSS/JS) exists in source form for Android and iOS, with real native sensor plugins written in Kotlin and Swift. As of this writing it has not been built and run on physical native hardware; see section 16 for exactly what that means.
-
-### Desktop Mission Control (`frontend/desktop.html`)
-
-This is the monitoring and demonstration interface, not the phone's navigation engine. It is a separate HTML file with its own Leaflet-based map and its own tabbed panel layout (LIVE, MODULES, SENSORS, LOG on the left; METRICS, AI, COMPLY, BENCH, FLEET, EXPLAIN on the right). It exists so a person at a laptop can watch the system's state, review compliance metrics, and inspect the trained models' live runtime status, without needing a phone in hand. The AI and EXPLAIN tabs show the DriftFormer model's actual measured runtime telemetry (load status, input/output tensor shapes, inference count, latency, correction counts) rather than a fabricated visualization; earlier versions of this panel showed a randomized attention heatmap, which has been removed because the exported ONNX model does not expose attention weights (confirmed by inspecting the ONNX graph directly: it has exactly one input tensor and one output tensor, a 2D position correction, nothing else). A small "Live Navigation" section reads this laptop's own real GNSS/motion browser APIs when granted; since most laptops have no IMU, it is expected and correct for this to show "NOT AVAILABLE" rather than inventing a value.
-
-### Single production URL and device routing
-
-Both interfaces are served from the same URL, `https://navdrift0.pages.dev/`. The device-routing logic was specifically hardened this development cycle after a real bug: a touchscreen Windows laptop with OS display scaling could report a CSS viewport width under 900px even though its physical screen was a normal wide laptop panel, which caused it to be misclassified as a phone. The fix makes `navigator.userAgentData.mobile` (where the browser exposes it, which covers the large majority of Windows/Chromium laptops) the primary signal, since it reflects actual device identity rather than touch hardware or display scaling, and falls back to the previous touch-and-viewport heuristic only on browsers that don't expose that API (Safari/iPadOS, older Firefox). This is documentation of an existing routing fix, not a marketing feature.
-
-### Backend (`api/app.py`)
-
-A FastAPI service, deployed on Render, exists as a separate real-time streaming/session backend. It is not the same thing as the in-browser ONNX pipeline that actually drives the mobile and desktop UIs, and it is important not to conflate the two.
-
-What it actually provides: HTTP endpoints `POST /init`, `POST /ingest`, `POST /gnss_lost`, `POST /reacquire`, `GET /trajectory`, `GET /status`, `POST /reset`, and a WebSocket `/ws/stream` that pushes pose updates at roughly 10 Hz. Authentication is a shared `X-API-Key` header (or `?api_key=` query parameter for the WebSocket, since browsers cannot set custom headers on a WS connection).
-
-Whether this backend does real inference or demo inference depends entirely on the `DEMO_MODE` environment variable, and the deployed Render configuration (`render.yaml`) sets `DEMO_MODE: "true"` explicitly. In demo mode, every `/ingest` call and every WebSocket tick returns a deterministic simulated pose delta generated from a sine wave plus Gaussian noise (`_demo_infer` in `api/app.py`), and this is clearly demo output, not a model prediction. When `DEMO_MODE` is false, the code path (`_onnx_infer`) attempts to run ONNX inference on a model file expected at a path such as `drift_former_int8.onnx`, with a 10-value flattened input (`accel_x/y/z, gyro_x/y/z, mag_x/y/z, baro_hpa`) and outputs `dx, dy, dh` plus two uncertainty values. This input/output shape does not match the DriftFormer ONNX model actually used in the browser pipeline (`driftformer_fp32.onnx`, confirmed by direct ONNX graph inspection to take a `[batch, 100, 9]` IMU window and output a single `[1, 2]` position correction, with no uncertainty output). No model file matching the backend's expected shape and filename is present in this repository. In practice, this means the deployed backend currently only ever runs in demo mode; the "real inference" code path exists in source but is not connected to a matching trained model in this repository. This is stated plainly here so it is never mistaken for a live cloud inference service.
-
-Also worth noting plainly: the deployed `render.yaml` sets an environment variable named `ALLOWED_ORIGINS`, but `api/app.py` reads `CORS_ORIGINS` (defaulting to `*` if unset). Those names do not match, so in the current deployment configuration the CORS origin restriction is not actually being applied as intended; the service is effectively running with `allow_origins=["*"]`. This is a real configuration issue, documented here rather than fixed, since this pass is documentation only.
-
-`get_trajectory()` in the backend returns only the current single pose, not a stored history; its own source comment says "In production this would be stored in a ring buffer," so treat `/trajectory` as a stub rather than a trajectory log.
-
-A second, more built-out runtime module exists at `inference/runtime.py` (also DEMO_MODE-aware, with its own ONNX loading logic), but `api/app.py` does not import or use it; it defines its own inline `NavDriftRuntime` class instead. `inference/runtime.py` is present in the repository but not currently wired into the deployed backend.
+Each stage above is described in detail, with file and line-level pointers, in sections 4 through 8.
 
 ---
 
-## 4. Mobile Website (Phone Application)
+## 4. Smartphone Runtime (`frontend/mobile.html`)
 
-Opening `https://navdrift0.pages.dev/` on a phone or tablet routes to `frontend/mobile.html`, the actual navigation client. What it shows, backed by real runtime state rather than decoration:
-
-- A full-screen map (MapLibre GL, OpenFreeMap Liberty style, light/dark aware) with the live estimated position.
-- GNSS state (locked / blackout / reacquiring), fix age, and position source (GNSS-fused vs dead-reckoning).
-- An **AI Fusion** panel: DriftFormer status (loaded, and whether it is currently idle because GNSS is locked or actively correcting during blackout), a count of corrections applied, a count of corrections rejected by the physical sanity check described in section 13, Adaptive EKF status, and Tunnel Detector status.
-- A **Road-Aware Navigation** panel: match state (`LOCKED` or `SEARCHING`, from whether the road-matching logic currently has a selected segment), the number of nearby candidate road segments considered, the match distance, and the matched road's bearing. No numeric "confidence" percentage is shown here, because the underlying scoring value is an unbounded log-probability, not a 0-100 scale, and presenting it as a percentage would misrepresent it.
-- GNSS reacquisition: the debug panel shows the drift error and blackout duration measured at the most recent reacquisition event, persisted beyond the on-screen banner that fades after a few seconds.
-- A diagnostics panel covering EKF uncertainty, barometric altitude, GNSS outage count, non-holonomic correction count, tunnel state, GNSS state, fix age, IMU state and sample rate, navigation loop rate (target 10 Hz), position source, ONNX pipeline state, road graph state (segment count and whether it came from a live Overpass fetch or the offline IndexedDB cache), and magnetometer state.
-- Light and dark map modes.
-
-Only features that actually exist in the current code are listed above.
-
----
-
-## 5. Desktop Website (Mission Control)
-
-Opening the same URL on a laptop or desktop routes to `frontend/desktop.html`. It exists to give a person watching from a laptop (a judge, a teammate, a demo audience) visibility into the system's state without needing to look over someone's shoulder at a phone screen. It shows: live telemetry tiles, the same kind of navigation/system state information as the mobile diagnostics panel, a Leaflet-based map, per-model pipeline information (the AI tab), an ISRO PS 26168 compliance view (COMPLY tab), a benchmark view (BENCH tab), and an explanatory view of the DriftFormer model's input/output shapes (EXPLAIN tab). It is a monitoring and demonstration interface. It is not the phone's actual navigation engine; the phone runs its own independent copy of the pipeline in `mobile.html`.
-
-The production routing was specifically designed so that a touchscreen laptop is not misclassified as a phone (see section 3's routing note); this matters because otherwise a demo laptop with a touchscreen could be shown the wrong interface.
+- **GNSS**: `navigator.geolocation.watchPosition`. A fresh fix drives the EKF measurement update; a stale or missing fix leaves the EKF in predict-only (dead-reckoning) mode.
+- **Accelerometer / gyroscope**: `DeviceMotionEvent`. Forward-axis acceleration is derived per-session (see calibration note below), not assumed from a fixed mounting convention.
+- **Orientation**: `DeviceOrientationEvent` plus `deviceorientationabsolute` (the latter preferred on Android/Chrome, since plain `deviceorientation` can report a relative/unanchored `alpha` on some devices).
+- **Magnetometer**: derived from `deviceorientationabsolute`'s compass heading where the browser provides it; not a separate raw magnetometer read.
+- **Barometer**: read via the Generic Sensor API `Barometer` class where the browser supports it; on iOS Safari (WebKit) this class does not exist at all, which is a browser-level restriction the web app reports honestly (unavailable), not something it works around with a fabricated value.
+- **Permissions**: standard `navigator.permissions` / iOS motion-permission prompt flow; denied or unavailable sensors report `UNAVAILABLE` / `PERMISSION_DENIED`, never a substituted value.
+- **Navigation loop**: a single `step()` tick function drives EKF predict, GNSS-conditional EKF update, ZUPT, NHC, road matching, and rendering.
+- **EKF**: `ekfStep(spd, dh, dt, gpsMeasured, gla, glo, gpsAccM)`. Predict always runs (position/heading integrated from IMU); the Kalman-gain measurement update (position only, never heading) runs only when `gpsMeasured` is true.
+- **ZUPT**: fires when forward-axis acceleration magnitude stays under 0.35 m/s^2 for more than 800 ms and current integrated speed is under 2.5 m/s.
+- **NHC**: applied using the matched road bearing when a road match is available.
+- **Road matching**: `LiveHMM`, a per-tick greedy local best-candidate matcher against `RoadGraph` data (Overpass fetch, IndexedDB cache fallback).
+- **Uncertainty**: `ekfUncertaintyM()`, derived from the real EKF covariance state, not a fixed or cosmetic number.
+- **Blackout handling**: entering blackout seeds inertial speed from the last real GNSS speed (not zero), continues EKF predict-only integration, and freezes GPS-derived heading in favor of the gyro-integrated EKF heading for display.
+- **Reacquisition**: `reacq()` measures the distance between the pre-correction EKF position and the new real GNSS fix (a pre-correction drift measurement, logged as `reacquisition_error_m`) before the EKF's own measurement update is applied.
 
 ---
 
-## 6. Data Sources
+## 5. AI Models
 
-| Source | What it is | Used for |
-|---|---|---|
-| IO-VNBD | Inertial and Odometry benchmark dataset for ground vehicle positioning (smartphone CSV files, RTK-GPS ground truth), the dataset specified by ISRO PS 26168 | Training data for the DriftFormer, IMU denoiser, adaptive EKF, and tunnel detector models |
-| EuRoC MAV | A visual-inertial dataset with Vicon motion-capture ground truth | Referenced in prior validation work as cross-validation data |
-| OpenStreetMap | Open, crowd-sourced road network data | Source of the road graph used for road-aware navigation (via Overpass and via the OpenFreeMap map tiles) |
-| Overpass API | A public query service over OpenStreetMap data | Live fetch of nearby road segments around the phone's actual GPS fix, at runtime, in the mobile client |
-| Smartphone GNSS | The phone's own GPS/NavIC receiver, via the browser's Geolocation API | Live position input when available |
-| Smartphone IMU / orientation sensors | Accelerometer, gyroscope, magnetometer, barometer, via browser device sensor APIs (or native plugins in a native build) | Live dead-reckoning input |
+| Model | Purpose | Input | Output | Live / Offline | Training | Export |
+|---|---|---|---|---|---|---|
+| Adaptive EKF | Predict per-tick EKF process/measurement noise (Q/R) | `nav_state_features [1,6]` | `qr_noise_matrices [1,5]` | Live, every tick | Pre-existing (predates this audit pass) | ONNX, `frontend/models/adaptive_ekf_fp32.onnx` |
+| Tunnel Detector | Estimate blackout probability from recent telemetry | `telemetry_window [1,20,5]` | `blackout_probability [1]` | Live, every tick | Pre-existing | ONNX, `frontend/models/tunnel_det_fp32.onnx` |
+| DriftFormer | Position correction during real GNSS blackout | `imu_window_9ch [1,100,9]` | `position_correction_xy [1,2]` | Live, every 20th tick once the window is filled, gated to blackout only | Pre-existing (`checkpoints/driftformer_best.pt`, `training/train_drift_former.py`) | ONNX, `frontend/models/driftformer_fp32.onnx` |
+| Speed LSTM | Speed estimation from a raw IMU window | `imu_window [1,50,6]` (accel_x/y/z, gyro_x/y/z) | `speed_mps [1,1]` (denormalization baked into the graph) | Offline / browser-validated only, not wired into `mobile.html` | Real, trained this project on IO-VNBD (section 9) | ONNX, `checkpoints/iovnbd_speed_lstm/navdrift_lstm.onnx`, 214,277 bytes |
+| IMU denoiser | Learned vibration/noise denoising | `raw_imu_6ax [batch,6,200]` | `denoised_imu_6ax [batch,6,200]` | Not live: referenced by `frontend/desktop.html` only, and that page's own code comment states it cannot execute there (`ConvInteger` op unsupported in onnxruntime-web WASM) | No training script or training data exists in this repository | ONNX, int8 only (`models/imu_denoiser_int8.onnx`) |
+| NavIC DOP predictor | Dilution-of-precision estimate from NavIC-style features | MLP, shape per `models/navic_dop_fp32.onnx` | n/a | Not live, no reference found in `mobile.html` or `desktop.html`'s live path | Unknown provenance; no training script for this exact checkpoint found in this repository | ONNX, `models/navic_dop_fp32.onnx` |
+| NavIC motion-prior VAE | GNSS/IMU fusion prior (product-of-Gaussians posterior) | model code exists (`models/navic_vae.py`) | n/a | Not implemented as a trained artifact | `training/train_navic_vae.py` exists; no trained checkpoint, no ONNX export, no fusion-demo artifact exists anywhere in the repository | none |
 
-No SRTM (terrain elevation) data source, no IMDAA, and no INSAT integration were found anywhere in the current codebase; they are not claimed as data sources here. NavIC-specific pseudorange/DOP handling in the trained models was trained on synthetic DOP data rather than a named external NavIC dataset; see section 8.
+A known repository inconsistency, documented and left unrepaired this pass (not a live-navigation risk, since the phone only ever loads from `frontend/models/`): the top-level `models/driftformer_fp32.onnx`, `models/adaptive_ekf_fp32.onnx`, `models/tunnel_det_fp32.onnx`, and `models/navic_dop_fp32.onnx` are much smaller than their `frontend/models/` counterparts (for example `models/driftformer_fp32.onnx` is 35,644 bytes versus `frontend/models/driftformer_fp32.onnx` at 13,085,053 bytes) and fail to load via onnxruntime, each because an external `.onnx.data` weights file it references is missing from the repository. This was confirmed by direct load attempts against both directories this pass (`edge/model_inference_bench.py`, section 6 of `results/EVIDENCE_INDEX.md`). Only `models/imu_denoiser_int8.onnx` is self-contained and loads correctly from that directory.
 
 ---
 
-## 7. AI / ML Components
+## 6. DriftFormer
 
-Five ONNX models are present in the repository and are what actually runs in the browser (`frontend/models/` and `models/`), verified by inspecting each ONNX graph directly rather than assuming:
+Input: a 100-sample, 9-channel IMU window (`imu_window_9ch [1,100,9]`). Runs every 20th navigation tick, and only once the required window is fully populated. The correction it outputs (`position_correction_xy [1,2]`) is applied only during a real GNSS blackout, never while GNSS is locked. The correction is physically bounded: if applying it would imply a displacement greater than 60 m/s over the elapsed tick interval, it is rejected rather than applied, and a fail-open counter (`inferFailCount`) tracks inference failures so a broken model session degrades to unmodified dead reckoning rather than corrupting the position silently. DriftFormer cannot move the displayed position arbitrarily: it can only nudge the existing EKF dead-reckoning estimate within that bound, and only while blackout is genuine.
 
-| Model | File | Confirmed input | Confirmed output |
+---
+
+## 7. Adaptive EKF
+
+Input: `nav_state_features [1,6]`, a small vector of current navigation-state features. Output: `qr_noise_matrices [1,5]`, interpreted as process/measurement noise terms for the EKF's own predict/update equations. Outputs are clamped to physically sane ranges and checked for non-finite values before use; a non-finite or out-of-range output is not applied. This model tunes how much the EKF trusts its process model versus incoming measurements at each tick; it does not itself compute position. Diagnostic output channels beyond the ones with a verified physical meaning are not assigned an interpretation in this document, since that was not independently confirmed this pass.
+
+---
+
+## 8. Tunnel Detector
+
+Input: a 20-sample, 5-channel telemetry window (`telemetry_window [1,20,5]`). A small BiLSTM outputs a single blackout probability. This probability is used with hysteresis (separate enter/clear thresholds) rather than a single instantaneous threshold, to avoid rapid flapping between blackout and locked state near the decision boundary. It informs uncertainty growth and blackout-state transition logic; it does not itself perform position correction (that is DriftFormer's role) and does not gate GNSS acquisition, which is driven independently by the real `navigator.geolocation` fix stream.
+
+---
+
+## 9. Speed LSTM
+
+A 2-layer LSTM (hidden size 64, 51,777 parameters) trained on real IO-VNBD data to estimate vehicle speed from a raw 50-sample, 6-channel IMU window (accel_x/y/z, gyro_x/y/z).
+
+**Dataset**: real IO-VNBD paired runs, parsed by `data/iovnbd.py` (72 of 72 run pairs parsed successfully).
+
+**Split**: sequence-level (not window-level, to avoid leakage), seed 42, `data/iovnbd_split.py`: 52 train / 10 validation / 10 test sequences (`results/iovnbd/split_manifest.json`).
+
+**Windows**: 78,473 training windows, 24,258 validation windows, 4,015 test windows (stride 10, sequence length 50).
+
+**Normalization**: input features are standardized using per-channel mean/scale computed from the training split (`checkpoints/iovnbd_speed_lstm/navdrift_lstm_meta.json`); the regression target (speed in m/s) is normalized during training and denormalized back to real m/s inside the exported ONNX graph itself (`SpeedLSTMWithDenorm`), so a caller reads real speed directly with no extra step.
+
+**Training**: `training/train_iovnbd_speed_lstm.py`, device `cuda` on an NVIDIA A100-SXM4-40GB (Colab), seed 42, best epoch 5, early stopped at epoch 11 of 12, training time 21.73 s. The first training attempt collapsed to predicting the constant mean speed because the regression target was not normalized; this was diagnosed and corrected, and every number below is from the corrected run only.
+
+**Test metrics** (4,015 held-out test windows): MAE 3.213 m/s, RMSE 4.355 m/s, R^2 0.6965. Best validation MAE during training: 3.539 m/s.
+
+**ONNX export**: `training/export_iovnbd_lstm_onnx.py`, opset 17, 214,277 bytes. PyTorch-vs-ONNX max absolute output difference: 3.81e-06 over 50 checked samples. CPU latency on the export machine: 0.226 ms mean (that machine's CPU only, not a phone or browser measurement).
+
+**Browser validation**: the exact exported file was run through `onnxruntime-web@1.18.0` (execution provider `wasm`, the same package version and EP `frontend/mobile.html` uses), input `imu_window [1,50,6]`, output `speed_mps [1,1]`. Real session creation and real inference succeeded, approximately 8.9 ms in that test environment (not a phone hardware measurement). This was repeated inside a real headless-browser run of the standalone demo page (section 15) against 40 real held-out test windows: MAE 3.395 m/s, RMSE 4.233 m/s on that subset, numerically consistent with the Python-side cross-check.
+
+**Why it is not part of live phone speed estimation**: two specific, documented mismatches, not a vague "needs more work."
+
+1. Gravity inclusion: the model was trained on IO-VNBD's raw smartphone accelerometer, which includes gravity (trained `accel_z` mean is approximately 9.85 m/s^2, essentially 1 g). `frontend/mobile.html`'s live `IMU.ax/ay/az` are deliberately gravity-*compensated* for its own EKF/dead-reckoning math; this is a different physical quantity, not simply a relabeling exercise.
+2. Axis/frame correspondence: IO-VNBD does not establish a fixed phone-mounting axis convention (documented as an open item in `data/iovnbd.py`), while `frontend/mobile.html` treats phone orientation as arbitrary and auto-detects its own forward axis per session. There is no verified correspondence between IO-VNBD's recorded x/y/z axes and a live phone's orientation, so no mapping is assumed.
+
+No live-phone mapping, calibration assumption, or navigation-accuracy improvement is claimed anywhere in this repository as a result of this model's existence.
+
+---
+
+## 10. IO-VNBD Dataset
+
+Official source: the IO-VNBD (smartphone + vehicle) paired-run dataset, manually acquired and present in this workspace (`raw/`, real ZIP archives, excluded from git via `.gitignore` since it is large binary data, not source).
+
+- 72 paired runs, `S-<run>.csv` (smartphone, 24 columns) and `V-<run>.csv` (vehicle, 29 columns), both at 10 Hz.
+- Parser: `data/iovnbd.py`. Handles timestamp alignment, row-count mismatches between the S and V files for the same run, and the m/s speed conversion from the vehicle file's own units.
+- Axis semantics: smartphone accelerometer channels include gravity (Android `TYPE_ACCELEROMETER` convention); a separate `gravity_x/y/z` channel is also present in the raw data. The dataset does not establish a fixed phone-mounting axis convention across runs, and this repository does not guess one; see section 9 for why that matters for live integration.
+- Wheel radius: not guessed. No wheel-radius-dependent speed conversion is applied anywhere in this pipeline; the real vehicle-file reference speed is used directly instead of deriving speed from wheel geometry that was never measured or provided.
+- Split: `data/iovnbd_split.py`, sequence-level (not window-level), seed 42: 52 train / 10 validation / 10 test sequences. Three small driver categories (Driver B, Driver E, Driver D) were kept in the training split rather than the validation/test split, since they had too few sequences to split further without leaving a category with zero held-out examples.
+- Limitations: 72 runs from a specific data-collection campaign is not a large-scale, multi-city, multi-season dataset; results here should be read as validated on this dataset, not as a general real-world performance claim.
+
+---
+
+## 11. Training
+
+Reproducibility for the Speed LSTM pipeline (the only model trained inside this project during this engineering phase; DriftFormer/Adaptive EKF/Tunnel Detector predate this pass and their own training scripts are `training/train_drift_former.py` and the Colab notebooks under `navdrift_colab/`):
+
+```bash
+pip install -r requirements.txt
+
+# 1. Parse and verify the raw IO-VNBD archives
+python -m data.iovnbd --verify
+
+# 2. Produce the deterministic sequence-level split (seed 42)
+python -m data.iovnbd_split --out_json results/iovnbd/split_manifest.json
+
+# 3. Train the Speed LSTM (GPU strongly recommended; this project trained on an A100 via Colab)
+python -m training.train_iovnbd_speed_lstm \
+    --out_dir checkpoints/iovnbd_speed_lstm \
+    --seed 42
+
+# 4. Export to ONNX and cross-check against the PyTorch checkpoint
+python -m training.export_iovnbd_lstm_onnx \
+    --checkpoint checkpoints/iovnbd_speed_lstm/navdrift_lstm_best.pt \
+    --out checkpoints/iovnbd_speed_lstm/navdrift_lstm.onnx
+
+# 5. Classical dead-reckoning benchmark on the held-out test split
+python -m eval.iovnbd_benchmark --out_json results/iovnbd/iovnbd_classical_dr_benchmark.json
+```
+
+The full Colab package (notebook build script, requirements, and instructions) is under `colab/`. `colab/README.md` documents the actual Colab workflow used to produce the real training run recorded in `checkpoints/iovnbd_speed_lstm/training_report.json`.
+
+---
+
+## 12. Validation and Benchmarks
+
+### A. Live phone validation
+
+No formal, recorded, analyzed live GNSS-blackout drive-test dataset exists in this repository as of this pass. Live behavior is currently verified by manual phone testing against the checklist in section 32, not by a stored benchmark file.
+
+### B. IO-VNBD offline validation (Speed LSTM)
+
+| Dataset | Split | Test size | Metric | Result | Environment |
+|---|---|---|---|---|---|
+| IO-VNBD | held-out test sequences (10) | 4,015 windows | MAE / RMSE / R^2 (speed, m/s) | 3.213 / 4.355 / 0.6965 | Colab A100, PyTorch |
+
+This is a speed-prediction error in **metres per second**, not a navigation position error in metres. See section 13.
+
+### C. Browser ONNX validation
+
+| Subset | Test size | Metric | Result | Environment |
+|---|---|---|---|---|
+| Held-out browser subset | 40 windows | MAE / RMSE (m/s) | 3.395 / 4.233 | Real headless-browser run, onnxruntime-web 1.18.0, wasm EP |
+
+CPU-only session-creation/inference latency observed in that environment: approximately 8.9 ms mean. This is not a phone hardware latency measurement.
+
+### D. Classical dead-reckoning benchmark (IO-VNBD, not the Speed LSTM)
+
+| Dataset | Sequences | Outage windows | Metric | Result |
+|---|---|---|---|---|
+| IO-VNBD held-out test split | 10 of 10 scored | seeded 10-60 s GNSS outages | mean ATE RMSE / mean max drift | 71.78 m / 240.72 m |
+
+This is a classical gyro-yaw-integration + real reference-speed baseline (`eval/iovnbd_benchmark.py`), not a benchmark of the Speed LSTM, and not a measurement of `frontend/mobile.html`'s own live EKF/ZUPT/NHC/DriftFormer pipeline. Two of the ten sequences (`Vtb7`, `Vtb8`) had no seeded outage window long enough to score and report `null` drift values rather than a fabricated number.
+
+### E. Edge timing benchmark (software only)
+
+| Fixture | Samples | Mean latency | p95 latency | Max latency | Hardware validation |
+|---|---|---|---|---|---|
+| Synthetic 200 Hz timing fixture (`edge/replay_200hz_demo.py`) | 6,000 | 0.0165 ms | 0.0222 ms | 0.4654 ms | NOT PERFORMED |
+
+Note: this repository's current `results/evidence/replay_200hz_demo.json` (re-checked during this pass) shows the numbers above. If a different set of numbers has been quoted elsewhere for this benchmark, that reflects a different run of the same synthetic fixture; this is a software timing measurement with expected run-to-run variance, not a fixed physical constant, and every run explicitly carries `hardware_validation: NOT_PERFORMED`.
+
+### F. Earlier / legacy benchmark
+
+| Dataset | Sequences | Metric | Result |
 |---|---|---|---|
-| DriftFormer | `driftformer_fp32.onnx` | `imu_window_9ch`, shape `[batch, 100, 9]` | `position_correction_xy`, shape `[1, 2]` |
-| IMU Denoiser | `imu_denoiser_int8.onnx` / `imu_denoiser_fp32.onnx` | IMU window | Denoised IMU signal |
-| Adaptive EKF noise predictor | `adaptive_ekf_fp32.onnx` | Runtime features (speed, heading variance, tunnel state) | Q/R scaling factors |
-| Tunnel Detector | `tunnel_det_fp32.onnx` | Barometric/IMU sequence | Tunnel state flag |
-| NavIC DOP predictor | `navic_dop_fp32.onnx` | Synthetic DOP-related features | DOP estimate |
+| Single earlier validation sequence (`results/validation_full.json`) | 1 | ATE RMSE / mean drift / max drift, over 36,819 steps | 0.2472 m / 0.023% / 1.742% |
 
-All five run on-device in the browser through `onnxruntime-web` (WASM), in both `mobile.html` and `desktop.html`. This was verified by tracing the actual inference call sites and how their outputs are applied to the fused position, not just by checking that the model files load. DriftFormer's correction is applied only during a genuine GNSS blackout, never while GNSS is locked, and a physical sanity check rejects a proposed correction if the implied displacement exceeds a speed-based bound since the last correction (see section 13); the count of corrections applied and rejected is shown live in the AI Fusion panel described in section 4.
-
-**DriftFormer does not expose attention weights.** The exported ONNX graph has exactly one input tensor and one output tensor (confirmed above). An earlier version of the desktop dashboard showed a fabricated, randomly generated attention heatmap in this space; it has been removed and replaced with the model's real measured runtime telemetry (load status, tensor shapes, inference count, latency, correction counts).
-
-**A separate, more elaborate set of PyTorch model definitions exists under `models/` as source code** (`drift_former.py`, `navic_vae.py`, `snap_corrector.py`): a causal transformer with rotary position encoding and a heteroscedastic covariance output head, a GRU-based conditional VAE encoding 60 seconds of trajectory history, and a differentiable gradient-descent trajectory corrector run at GNSS reacquisition. These describe a more ambitious architecture than what is actually exported and deployed: the deployed `driftformer_fp32.onnx` has a single fixed-shape input and a plain 2-value output, with no covariance head and no VAE latent injection. This is a real gap between the training-time source code and what is actually running in production, and it is documented here rather than glossed over. Whichever architecture actually produced the currently deployed `.onnx` files, it is the simpler one described by their confirmed input/output shapes above, not the one described in `models/drift_former.py`'s docstring.
-
-`inference/export_onnx.py`, which by its name should contain the ONNX export logic, currently contains something else entirely (its actual file content is JSON matching the PWA manifest, not Python). This is noted here as a repository inconsistency rather than described as working export code, since it plainly is not runnable as such.
-
-Training-only components: the training scripts under `training/` (`train_drift_former.py`, `train_navic_vae.py`) and a single validation script under `navdrift_colab/` (`navdrift_08_validate.py`) exist as source, along with a Colab notebook under `notebooks/`. These are training/validation tooling, not something that runs live.
+This is a one-sequence result and is not presented as a general performance claim. It predates the IO-VNBD work in this repository and was not touched, altered, or re-derived by this pass. The same file's ONNX pipeline latency figures (FP32 4.853 ms, INT8 4.815 ms) are recorded in `results/isro_benchmark_table.csv` and are also from this single-sequence run, not a multi-sequence benchmark.
 
 ---
 
-## 8. Navigation Engine
+## 13. IO-VNBD Speed LSTM Results
 
-**GNSS.** When available, GNSS position (and speed/heading where the fix includes them) is read via the browser's Geolocation API and fused into the EKF.
-
-**GNSS blackout.** When GNSS is lost, the system switches to dead reckoning: IMU-driven propagation of position and heading, constrained by ZUPT and the non-holonomic constraint below, optionally corrected by DriftFormer and pulled toward the road graph.
-
-**IMU.** Accelerometer and gyroscope readings, filtered, calibrated, and axis-aligned, drive the dead-reckoning integration. A watchdog tracks whether IMU data is genuinely still arriving (`ACTIVE` vs `NO_DATA`).
-
-**ZUPT (zero-velocity update).** When the measured forward-axis acceleration magnitude stays below a threshold (0.35 in the current implementation's units) for a sustained period (800 ms) while the integrated speed is already near rest, the system treats the vehicle as stationary and zeroes the drifting integrated speed. This prevents small sensor noise from accumulating into a phantom velocity while the vehicle is actually stopped.
-
-**EKF.** The Extended Kalman Filter maintains the core navigation state: position, heading, and an uncertainty covariance. It is what the rest of the pipeline (DriftFormer corrections, road matching, GNSS fixes) feeds into and reads from; it is the thing actually being estimated, not a side effect of the AI components.
-
-**DriftFormer.** Provides a learned position correction during blackout, described above; it assists the dead-reckoning estimate rather than replacing the EKF.
-
-**Motion constraints.** A non-holonomic constraint (NHC) is applied: a wheeled vehicle cannot slide sideways, so lateral velocity is constrained toward zero except for the small amount consistent with normal steering. When a road match is available, the NHC is applied relative to the matched road segment's own bearing rather than a generic forward-only assumption; it falls back to the last real GPS-derived heading when no road match is available yet.
-
-**Road graph.** Built from OpenStreetMap data fetched live from the Overpass API, centered on the phone's actual first GPS fix (roughly a 2.2 km radius), and refetched as the vehicle approaches the edge of the cached area. This works anywhere OpenStreetMap has road coverage, not one fixed demo city. Every successful fetch is also written to an IndexedDB-backed cache (`RoadGraphCache`), keyed by a coarse rounded lat/lon tile, so a later fetch failure (no signal, Overpass rate-limited, or a network drop exactly at a tunnel entrance) can fall back to a previously cached nearby tile instead of leaving road matching off. If neither a live fetch nor a cached tile is available, road matching simply stays off; nothing is fabricated in that case.
-
-**Road matching.** This is a greedy, per-tick nearest-candidate selection, not a full probabilistic Hidden Markov Model with an accumulated path. At each tick, up to `K=5` nearby candidate segments are scored by an emission term (how well the segment's distance and bearing agree with the current fused position and heading) plus a transition term (how well the actual movement since the last selected segment agrees with the segment implied by real speed times elapsed time). The single highest-scoring candidate is kept as that tick's selected state, and the previous tick's selection carries forward as real persisted state for the next tick's transition scoring. This is a real, working, and useful piece of engineering, but it should not be described as a full Viterbi decode over an accumulated log-probability path, because that is not what the current implementation does.
-
-**GNSS reacquisition.** When a GNSS fix returns after a blackout, the drift error at that moment (distance between the dead-reckoning estimate and the new fix) and the blackout duration are measured and displayed, and the EKF reconciles its state with the new fix.
+MAE 3.213 m/s is the Speed LSTM's per-window **speed prediction error**, measured in metres per second. It is not a navigation position error, and it is not measured in metres. Do not compare it directly to the ATE RMSE figures in section 12D or 12F, which are position errors in metres from an entirely different benchmark on an entirely different pipeline (classical dead reckoning, not this LSTM).
 
 ---
 
-## 9. Sensor Handling
+## 14. Classical Dead-Reckoning Benchmark
 
-| Sensor | Status handling |
-|---|---|
-| Accelerometer | `DeviceMotionEvent` in-browser (or a native plugin in a native build). Tracked through the `AVAILABLE`/`ACTIVE`/`NO_DATA`/`PERMISSION_DENIED`/`API_BLOCKED`/`UNAVAILABLE` vocabulary. |
-| Gyroscope | Same handling as accelerometer, via `DeviceMotionEvent`'s rotation rate or `DeviceOrientationEvent`. |
-| Orientation | `DeviceOrientationEvent` in-browser. |
-| Magnetometer / compass | Read where the browser exposes it; shown in the diagnostics panel with an explicit state rather than assumed present. |
-| Barometer | Read via the Generic Sensor API's `Barometer` class where supported. **iOS Safari (WebKit) does not implement this API at all**, which the code detects and reports as a browser-level block (`API_BLOCKED`), not as a bug or a missing permission. This is a documented, honest platform limitation, not something NAVDRIFT-0 can work around from the browser. |
-| GNSS | `navigator.geolocation.watchPosition` in-browser (or a native plugin in a native build, using the platform's own location manager). |
-
-**Native bridges.** Real Capacitor plugins exist in source form for both Android (`native/android-plugin/NavdriftSensorsPlugin.kt`, using `SensorManager`, `LocationManager`, and `Sensor.TYPE_PRESSURE` for a real barometer where the device has one) and iOS (`native/ios-plugin/NavdriftSensorsPlugin.swift`, using `CoreLocation`, `CoreMotion`, and `CMAltimeter` for a real barometer reading, which is how a native iOS build can get barometer data that the web version cannot due to the WebKit limitation above). A bridge script (`frontend/native-bridge.js`) routes these native sensor events into the same `SensorManager` interface the browser sensor code already uses, so the rest of the pipeline does not need to know whether it is running natively or in a browser.
-
-**As of this writing, these native builds have not been compiled and run on physical Android or iOS hardware.** Building them requires running Android Studio or Xcode on real hardware or a real emulator, which has not happened yet in this project. Until that happens, the web version (used directly in a mobile browser, or installed to the home screen as a PWA) is what has actually been tested and is what a reviewer should expect to test. Do not treat the native bridge as production-validated; treat it as complete, real source code that has not yet been exercised on a device.
-
-There is also a stale, unrelated file at the repository root, `android/NavDriftService.kt`: despite its name and extension, its actual content is an old HTML file, not Kotlin, and it is not used by anything. The real Android native code is `native/android-plugin/NavdriftSensorsPlugin.kt`.
+10 held-out IO-VNBD test sequences, each with seeded synthetic GNSS-outage windows between 10 and 60 seconds. During each outage window, position is dead-reckoned using gyro-integrated heading and the real vehicle-file reference speed; ATE RMSE and maximum drift are measured against the real ground-truth position for that window. Mean ATE RMSE across the 10 sequences: 71.78 m. Mean maximum drift: 240.72 m. This is a classical baseline, included to give an honest sense of how much drift accumulates with no learned correction at all; it is not a performance claim for the Speed LSTM, and it does not exercise `frontend/mobile.html`'s live pipeline (which additionally has ZUPT, NHC, DriftFormer, and road matching, none of which this baseline uses).
 
 ---
 
-## 10. On-Device / Edge Deployment
+## 15. Browser ONNX Validation
 
-All five ONNX models listed in section 7 run entirely in-browser via `onnxruntime-web` (WASM), on both the mobile client and the desktop dashboard. This means the actual navigation inference (DriftFormer's correction, the adaptive EKF noise prediction, and tunnel detection) can run without any backend or cloud service, once the page itself and its sensor data are available.
-
-What still requires network access, and should not be described as offline: loading the page and its CDN-hosted dependencies (MapLibre GL JS, the OpenFreeMap vector map tiles, fonts) the first time; fetching new road graph data from the Overpass API for an area that has not been cached yet (a previously cached area can fall back to the IndexedDB cache without network); and the separate backend API described in section 3, which is unrelated to the on-device inference pipeline and currently runs in demo mode.
-
-Model sizes, confirmed from the actual `.onnx` files and from `results/isro_benchmark_table.csv`: DriftFormer 0.036 MB, IMU Denoiser 0.026 MB (FP32) / 0.149 MB (INT8), Adaptive EKF predictor 0.006 MB, Tunnel Detector 0.014 MB, NavIC DOP predictor 0.004 MB. Measured FP32 inference latency for the combined pipeline was 4.853 ms in the offline benchmark recorded in `results/validation_full.json` (see section 14 for exactly how that number was produced and its limits).
-
----
-
-## 11. Map and Road Data
-
-The mobile client uses **MapLibre GL JS** (loaded from a CDN, version 4.7.1) with the **OpenFreeMap Liberty** vector tile style, which serves OpenStreetMap-derived vector tiles from `tiles.openfreemap.org`. The desktop dashboard uses **Leaflet** with its own separate map setup. Road data for road-aware navigation comes from the **Overpass API**, queried live around the phone's real GPS fix, with results cached in an **IndexedDB**-backed store (`RoadGraphCache`) so a repeat visit to the same area, or a network drop after an earlier successful fetch, can fall back to cached data instead of leaving road matching off entirely. A first-ever visit to a brand-new area with no network at the moment GNSS is lost has no cached data to fall back to, and correctly shows road matching as unavailable rather than inventing a match.
+- Runtime: `onnxruntime-web@1.18.0`, execution provider `wasm` (the same package version and EP `frontend/mobile.html` uses for its own live models).
+- Opset: `ai.onnx 17`.
+- Supported operators: the Speed LSTM's operator set (LSTM, standard linear/elementwise ops) all ran without incident; this is distinct from the IMU denoiser (section 5), whose int8 `ConvInteger` op is documented as unsupported in this same runtime by `frontend/desktop.html`'s own code comment.
+- Input/output: `imu_window [1,50,6]` float32 in, `speed_mps [1,1]` float32 out (denormalization baked into the graph).
+- Numerical agreement: browser output matched the Python-side onnxruntime cross-check.
+- 40 held-out windows: MAE 3.395 m/s, RMSE 4.233 m/s (a subset of the full 4,015-sample official test metric, reported separately and not presented as a replacement for it).
+- Latency: approximately 8.9 ms mean in the test environment used for this check. This is CPU/WASM latency in that specific environment, explicitly not a phone hardware latency measurement.
 
 ---
 
-## 12. Safety / Numerical Stability / Engineering Hardening
+## 16. Edge Engine
 
-These are engineering safeguards confirmed in the current code, not claims:
-
-- Non-finite GNSS fixes (`NaN`/`Infinity` latitude or longitude) are discarded before they can reach the position state, both in the web sensor handler and in the native bridge.
-- DriftFormer's correction is rejected if the implied physical displacement exceeds a bound derived from a maximum plausible speed (60 m/s) times the real elapsed time since the last correction; rejected and applied corrections are both counted and shown live.
-- ZUPT is gated on a measured acceleration threshold and a sustained-stillness duration, rather than firing on every low reading, specifically to avoid arresting a vehicle that is still genuinely moving slowly.
-- The road graph reinitializes its matching state when the graph itself has been reloaded (a new Overpass fetch or cache swap), rather than scoring against stale segment indices that no longer correspond to anything real.
-- Road matching falls back cleanly to a plain nearest-segment lookup when there are too few real candidate segments to run the emission/transition scoring meaningfully, rather than selecting from too little data.
-- A 3-second sensor watchdog degrades any sensor's displayed status from `ACTIVE` to `NO_DATA` if readings genuinely stop arriving.
-- The desktop dashboard's device router (see section 3) and the mobile client's map/WebGL initialization both include explicit failure-state detection and reporting rather than failing silently.
-- The backend's exception handler never leaks a stack trace to the client; it logs internally and returns a generic error.
+`navdrift_engine.py` implements `NavdriftRTEngine`, a 200 Hz-capable processing pipeline with an external-IMU input contract (`edge/external_imu.py`: validated frame/stream format, optional magnetometer/GNSS/barometer fields, CSV and streaming-record loaders). `edge/replay_200hz_demo.py` streams synthetic frames through the real, unmodified engine and measures real wall-clock per-sample latency and throughput at a 200 Hz target. Current measured result: 6,000 samples, mean 0.0165 ms, p95 0.0222 ms, max 0.4654 ms per sample, all under the 5 ms-per-sample budget for 200 Hz. This is software processing throughput on this machine only. No physical 200 Hz IMU or FOG board, and no embedded target, has been used to produce any number in this repository; `hardware_validation: NOT_PERFORMED` is recorded explicitly in the evidence file for this benchmark.
 
 ---
 
-## 13. Current Results / Benchmarks
+## 17. Vehicle Calibration
 
-This section separates three different kinds of number, since mixing them is exactly the kind of overclaiming this README is meant to avoid.
+`edge/vehicle_calibration.py`: gravity-based roll/pitch from a stationary or low-motion accelerometer window, GNSS-course-gated yaw initialization (only trusted when the GNSS course itself is reliable, with an explicit unreliable-course fallback case), and an explicit phone-to-vehicle rotation matrix with a confidence/validity flag. Validated only against hand-constructed synthetic tilt/stationary fixtures with known analytical answers (`tests/test_vehicle_calibration.py`); no real vehicle mounting data was used. This is a separate module from, and has not been integrated with, `frontend/mobile.html`'s own live auto forward-axis detection, which continues to run unmodified; the two are not the same code path.
 
-### A. Offline benchmark results
+---
 
-From `results/validation_full.json` and `results/isro_benchmark_table.csv`, produced by `navdrift_colab/navdrift_08_validate.py` against a held-out IO-VNBD test sequence:
+## 18. Map Matching
+
+**LIVE MOBILE MATCHER**: `frontend/mobile.html`'s `LiveHMM` is a real, online, per-tick greedy matcher: at each tick it scores the current set of road candidates from `RoadGraph` against the live position and picks the locally best-looking one. It is called "HMM" in the code's own naming but does not maintain an accumulated path score or backpointer history across ticks, so it is not a full Hidden Markov Model / Viterbi decoder; it is a greedy local-argmax matcher, and this document does not describe it as more than that. Its output feeds the non-holonomic constraint (road-bearing) when a match is available. `road_candidates = 0` is a legitimate, honestly-reported empty-result state (no successful Overpass fetch and no cache hit, or genuinely no matching road nearby), not an error condition, and is not silently replaced with a fabricated candidate.
+
+**OFFLINE VITERBI MATCHER**: `edge/hmm_map_matcher.py` is a separate, new, bounded-history Viterbi decoder: accumulated path score, explicit backpointers, and full path reconstruction. It is demonstrated (`tests/test_hmm_map_matcher.py`, `results/evidence/hmm_viterbi_evidence.json`) to correct an early, locally-best-looking wrong candidate using later global evidence, something the live greedy matcher structurally cannot do. It is validated only against small, hand-constructed synthetic road/candidate fixtures (straight road, intersection, parallel roads, gaps, wrong-early-candidate correction), not real-world GNSS/road data, and it is not wired into live navigation; `frontend/mobile.html`'s `LiveHMM` continues to serve live navigation unmodified.
+
+---
+
+## 19. Safety and Runtime Hardening
+
+| Mechanism | Where | Behavior |
+|---|---|---|
+| NaN/Infinity protection | Adaptive EKF output path | non-finite model outputs are detected and not applied |
+| GNSS stale protection | `frontend/mobile.html` | a fix must be recent (freshness check against `GPS.lastSpeedMpsTime`) to be trusted; a stale fix does not silently override valid inertial motion |
+| IMU watchdog | `frontend/mobile.html` | sensor inactivity is detected and reported, not silently masked |
+| DriftFormer correction bound | `frontend/mobile.html` | corrections implying more than 60 m/s of displacement are rejected |
+| EKF predict/update structure | `frontend/mobile.html` | predict always runs; measurement update only on a fresh real GNSS fix, never fabricated |
+| Road graph failure handling | `frontend/mobile.html` | Overpass failure falls back to the IndexedDB cache; both failing returns an honest empty candidate set, not a fabricated one |
+| IndexedDB fallback | `frontend/mobile.html` | cached road data used when network is unavailable |
+| Wake lock | `frontend/mobile.html` | requested during active navigation |
+| Permission handling | `frontend/mobile.html` | denied/unavailable sensors report an honest unavailable state |
+| iOS restrictions | `frontend/mobile.html` | barometer (`Barometer` Generic Sensor API) is not implemented by WebKit at all; reported as unavailable, not approximated |
+| Android orientation | `frontend/manifest.json` | fixed this pass, see below |
+| Map isolation | `frontend/mobile.html` | map resize/failure handling does not block the navigation tick loop |
+| Service worker | `frontend/sw.js` | offline asset caching for the app shell |
+
+**Android orientation fix, this pass**: `frontend/manifest.json` had `"orientation": "landscape"` combined with `"display": "standalone"`. When installed as a PWA (Add to Home Screen) on Android Chrome, this manifest field is enforced by the OS/browser regardless of physical device rotation, forcing landscape display; iOS Safari's PWA implementation does not honor this field the same way, which is why iPhone was unaffected. No CSS, JavaScript rotation hack, or user-agent-based layout branch was found anywhere in `frontend/mobile.html`; the lock was purely the manifest declaration. Fixed by changing the value to `"portrait"`. This is a one-line change confined to `frontend/manifest.json`; it does not touch navigation code, map rendering, or any other UI logic, and iPhone behavior is unaffected because iOS never enforced this field in the first place.
+
+---
+
+## 20. Mobile Platform Support
+
+| Platform | Status | Details | Validation |
+|---|---|---|---|
+| Android (browser/PWA) | Working | Chrome/Chromium; standalone-PWA orientation bug fixed this pass | manual device testing, not automated |
+| Android (native Capacitor build) | Source exists, not build-tested this pass | `native/android-plugin/NavdriftSensorsPlugin.kt`, `android/NavDriftService.kt` | not validated on physical hardware this pass |
+| iOS/iPhone (browser/PWA) | Working | Safari; barometer unavailable (WebKit Generic Sensor API limitation, not a bug in this project) | manual device testing, not automated |
+| iOS (native Capacitor build) | Source exists, not build-tested this pass | `native/ios-plugin/NavdriftSensorsPlugin.swift` | not validated on physical hardware this pass |
+| Desktop/laptop (browser) | Working | Mission Control replay dashboard (`frontend/desktop.html`), device-routed automatically from `index.html` | manual testing |
+
+The web app (browser/PWA path) is the primary, currently-deployed target. The native Capacitor plugin source (Kotlin/Swift) exists and is real, complete source code, but has not been built and run on physical hardware in this audit pass; no native-hardware validation is claimed.
+
+---
+
+## 21. Desktop Mission Control (`frontend/desktop.html`)
+
+Replays recorded IO-VNBD sequences (or an uploaded GPX/CSV ground truth) and renders: Ground Truth (from the loaded replay file), NAVDRIFT fused trajectory (the replay-side EKF/fusion accumulator), Raw IMU trajectory (a separate raw-integration accumulator), and an EKF-baseline trajectory, each from a distinct, separately-tracked accumulator, not shared or aliased variables. GNSS blackout periods are visualized against the replay data. A dashed uncertainty circle is drawn from the real EKF covariance state (eigenvalues of the 2x2 covariance submatrix), scaled and clamped for on-screen legibility, not fabricated. A separate "Live Navigation (this device)" panel reads the browser's own live sensors independently of the replay pipeline (distinct DOM element IDs, explicitly commented as independent in the source); no shared variable was found feeding both, and no replay value can silently overwrite a live value or vice versa. This dashboard is a replay/benchmark tool: anything it displays from a loaded recording is recorded data, not live phone telemetry, and the interface does not claim otherwise.
+
+---
+
+## 22. Data Sources
+
+| Source | Purpose | Used where | Status |
+|---|---|---|---|
+| IO-VNBD | Real paired smartphone/vehicle sensor dataset | Speed LSTM training, classical DR benchmark | Present in workspace, real, used |
+| OpenStreetMap / Overpass API | Road network data for live road matching | `frontend/mobile.html` live `RoadGraph` | Live, used |
+| OpenFreeMap Liberty (map tiles) | Base map rendering | `frontend/mobile.html`, `frontend/desktop.html` | Live, used, unmodified this pass |
+
+No other external data source (ERA5, GFS, IMD, IGRA, SRTM, Himawari, IMERG, METAR, or similar) is present or wired into this codebase. Only sources actually found in the repository are listed here.
+
+---
+
+## 23. Repository Structure
 
 ```
-ATE RMSE:                 0.2472 m
-Mean drift:                0.023%
-Max drift:                  1.742%
-Steps under 10% target:    100.0%
-Steps under 5%:            100.0%
-Total steps evaluated:       36,819
-Number of test sequences:         1
-Pipeline latency (FP32):    4.853 ms
-Pipeline latency (INT8):    4.815 ms
+frontend/
+  mobile.html          Live phone navigation app (the production navigation path)
+  desktop.html          Mission Control replay/benchmark dashboard
+  manifest.json          PWA manifest (orientation fixed to portrait this pass)
+  native-bridge.js       Capacitor native sensor bridge glue
+  sw.js                   Service worker (offline app-shell caching)
+  models/                 Live-deployed ONNX weights actually loaded by mobile.html/desktop.html
+
+api/
+  app.py                   FastAPI backend (demo-mode focused; not in the live phone's critical path)
+
+edge/
+  requirement_evidence.py  Source-of-truth requirement -> evidence mapping (this README's factual basis)
+  capability_report.py     Regenerates a machine-readable status report from requirement_evidence.py
+  vehicle_calibration.py   Offline calibration module
+  hmm_map_matcher.py       Offline Viterbi map matcher
+  external_imu.py           External IMU input contract and loaders
+  model_inference_bench.py  Real ONNX load/latency benchmark against deployed weights
+  replay_200hz_demo.py       200 Hz software timing benchmark
+  README.md                  Detailed narrative walkthrough of this engineering phase's evidence
+
+data/
+  iovnbd.py                Real IO-VNBD parser
+  iovnbd_split.py            Deterministic train/val/test split generator
+  loader.py                  Older, separate dataset loader (pre-existing, not IO-VNBD-specific)
+
+training/
+  train_iovnbd_speed_lstm.py   Speed LSTM training script
+  export_iovnbd_lstm_onnx.py    ONNX export + cross-check script
+  train_drift_former.py          DriftFormer training script (pre-existing)
+  train_navic_vae.py              NavIC VAE training script (no trained checkpoint exists)
+
+eval/
+  iovnbd_benchmark.py    Classical DR baseline over held-out IO-VNBD test sequences
+  metrics.py               ATE/RTE/drift-rate metric implementations
+
+colab/
+  build_notebook.py, NAVDRIFT_IOVNBD_SETUP.ipynb, README.md   Real Colab training package
+
+models/
+  drift_former.py, navic_vae.py, snap_corrector.py    Python-side model source/architecture
+  *.onnx                                                  Root-level model copies; four of five fail to load, see section 5
+
+checkpoints/
+  driftformer_best.pt
+  iovnbd_speed_lstm/       Trained Speed LSTM checkpoint, ONNX export, and real training/export reports
+
+results/
+  EVIDENCE_INDEX.md          Index of every reproducible evidence artifact and the command that regenerates it
+  evidence/                   Requirement evidence, capability report, calibration/HMM/model-bench/replay evidence (JSON)
+  iovnbd/                       Split manifest, classical DR benchmark, browser demo, trajectory plots
+  validation_full.json          Earlier, single-sequence (n=1) legacy benchmark
+  isro_benchmark_table.csv       Per-model size/latency table from that legacy benchmark
+
+tests/     9 test modules, pytest
+native/      Real Kotlin/Swift native sensor plugin source (not build-tested this pass)
+android/     NavDriftService.kt (not a full native Android project)
+.github/workflows/ci.yml   GitHub Actions CI, push/PR to main
 ```
 
-Per-model figures (FP32, from `results/isro_benchmark_table.csv`): DriftFormer 3.778 ms mean, IMU Denoiser 0.555 ms mean (FP32) / 4.815 ms mean (INT8), Adaptive EKF predictor 0.052 ms mean, Tunnel Detector 0.424 ms mean, NavIC DOP predictor 0.044 ms mean.
+---
 
-**These numbers come from a single held-out test sequence** (`n_test_sequences: 1` in the raw JSON), not a broad multi-drive statistical evaluation. They are real, computed offline validation numbers, and they are labeled here exactly as what they are: one sequence's worth of offline evaluation, not a general claim about performance across arbitrary conditions.
+## 24. Evidence Package
 
-### B. Live physical test observations
+- `results/EVIDENCE_INDEX.md`: an index of every reproducible artifact in `results/evidence/` and `results/iovnbd/`, with the exact command that regenerates each one from the current repository state. It proves reproducibility of the software-side evidence; it does not and does not claim to prove field/hardware validation, which is separately and explicitly marked `NOT_PERFORMED` throughout.
+- `results/evidence/requirement_evidence.json` (generated from `edge/requirement_evidence.py`): the single source of truth for section 29's compliance matrix.
+- `results/evidence/capability_report.json` (generated from `edge/capability_report.py`, regenerated this pass after it was found stale against `requirement_evidence.py`): status counts and per-requirement detail, plus a live internal test run at generation time.
+- `results/evidence/model_inference_bench.json`: real load/latency results against the actual deployed `.onnx` weights, including the four root-`models/` load failures documented in section 5.
+- `results/evidence/calibration_evidence.json`, `results/evidence/hmm_viterbi_evidence.json`: synthetic-fixture software correctness evidence for the two offline modules in sections 17 and 18.
+- `results/iovnbd/`: the real IO-VNBD split, classical DR benchmark, and browser demo evidence underlying sections 9 through 15.
 
-No live physical drive test log currently exists in this repository. Nobody has yet recorded the phone app driving through a real GNSS-denied stretch (a tunnel, an underpass, a parking structure) and computed drift from that recorded log. Until that test is done and its data is added here, there is no live physical benchmark to report, only the offline number above and whatever qualitative observations come out of the demo/testing process.
-
-### C. Demonstration/UI metrics
-
-Live tiles shown in the desktop dashboard and mobile diagnostics panel (inference latency, corrections applied/rejected, GNSS fix age, and so on) reflect real measured runtime values during a session, not a formal benchmark; they are not directly comparable to the offline numbers in part A, and are not presented as such in the UI.
+None of these prove real-world field performance; each explicitly states what it does and does not validate.
 
 ---
 
-## 14. What Has Been Built
-
-- [x] Smartphone GNSS integration (`navigator.geolocation.watchPosition`)
-- [x] Smartphone IMU integration (`DeviceMotionEvent` / `DeviceOrientationEvent`)
-- [x] Orientation handling with sensor status tracking (`SensorManager`)
-- [x] Extended Kalman Filter maintaining position, heading, and uncertainty
-- [x] Zero-velocity update (ZUPT)
-- [x] Non-holonomic motion constraint, tied to matched road bearing when available
-- [x] GNSS blackout handling with dead reckoning
-- [x] DriftFormer ONNX model, running on-device via onnxruntime-web, gated to blackout-only correction with a physical sanity bound
-- [x] Adaptive EKF noise-predictor ONNX model, running on-device
-- [x] Tunnel Detector ONNX model, running on-device
-- [x] NavIC DOP predictor ONNX model, running on-device
-- [x] Live OpenStreetMap road graph fetch via Overpass API, centered on the real GPS fix
-- [x] Greedy per-tick road matching (emission + transition scoring over nearby candidates; see section 8 for what this is and is not)
-- [x] IndexedDB-backed offline road graph cache with radius-based fallback
-- [x] GNSS reacquisition drift measurement, persisted in the diagnostics panel
-- [x] MapLibre GL map (mobile) and Leaflet map (desktop)
-- [x] Diagnostics panels on both mobile and desktop covering sensor state, pipeline state, and AI Fusion/road-aware navigation counters
-- [x] Desktop Mission Control dashboard, separate from the mobile navigation engine
-- [x] Single-URL production device routing, using `navigator.userAgentData.mobile` as the primary signal with a touch/viewport fallback for browsers that don't expose it
-- [x] Numerical safety checks: non-finite GNSS fix rejection, correction physical-bound rejection, sensor watchdog, road-graph epoch reinitialization
-- [x] Offline validation pipeline producing ATE, drift percentage, and per-model latency numbers against IO-VNBD
-
----
-
-## 15. What Is Partially Built / Experimental
-
-- **Native Android and iOS sensor bridges.** Real, complete Kotlin and Swift plugin source code exists and is wired into the shared web engine through `native-bridge.js`, but has not been compiled and run on physical Android or iOS hardware yet (see section 9).
-- **Backend "real" inference mode.** The code path exists (`_onnx_infer` in `api/app.py`), but expects a model file and input shape that does not match any model actually present in this repository, and the deployed configuration forces demo mode regardless. Treat the deployed backend as demo-only until a matching model is actually wired in and tested.
-- **Road matching as a full probabilistic map-matcher.** The current implementation is a real, working, greedy per-tick nearest-candidate selection with emission and transition scoring, not a full Viterbi decode over an accumulated path (see section 8).
-- **Additional/broader training datasets.** EuRoC MAV is referenced as prior cross-validation data; there is no evidence in the current repository of an active, wired-in multi-dataset training pipeline beyond IO-VNBD.
-- **The more elaborate PyTorch model architectures under `models/`** (transformer with RoPE and a covariance head, GRU-VAE, gradient-descent SNAP corrector) versus the simpler architecture actually reflected in the deployed `.onnx` files (see section 7). It is not clear from the repository which of these, if either, produced the currently deployed models.
-- **Broader device/browser validation.** Testing so far has been on the browsers and devices used during development; broad compatibility testing across many phone models and browser versions has not been documented here.
-- **IO-VNBD speed-estimation LSTM.** A real LSTM was trained on the official IO-VNBD dataset (Google Colab A100) and evaluated on a real held-out test split: MAE 3.213 m/s, RMSE 4.355 m/s, R² 0.6965 (`checkpoints/iovnbd_speed_lstm/training_report.json`). It runs correctly in-browser via `onnxruntime-web` (`results/iovnbd/browser_demo/`), but is **not** wired into `frontend/mobile.html` — the model was trained on gravity-inclusive smartphone accelerometer data with no established phone-mount axis convention, while the live app's IMU values are gravity-compensated and the phone orientation is treated as arbitrary/auto-detected; no calibration mapping is assumed to close that gap. See `results/EVIDENCE_INDEX.md` (Requirement 2A) for the full record.
-
----
-
-## 16. What Is Not Built Yet (Remaining Work)
-
-These are gaps found during this repository audit, listed honestly as things to do next, not as things that already exist:
-
-- Full native Android validation: build and run the Capacitor Android app with the real sensor plugin on physical hardware.
-- Full native iOS validation: the same, on physical iOS hardware, which requires a Mac and Xcode.
-- A real, recorded physical drive through an actual GNSS-denied stretch, with drift computed from that log rather than only from the offline IO-VNBD test set.
-- A stronger, validated road-matching implementation, if a full probabilistic map-matcher is desired over the current greedy per-tick approach.
-- A production backend inference path that is actually connected to a real, matching trained model, rather than the current demo-only deployment.
-- No IMDAA or INSAT integration exists in the repository; neither is claimed as implemented.
-- Broader sensor/device compatibility validation across phone models and browsers.
-- A formal, repeatable field benchmark protocol for live drift measurement (methodology, not just a single offline sequence).
-- Automated deployment and testing (there is a CI workflow that runs Python import checks and unit tests, but no automated end-to-end or device testing).
-- Resolving the `CORS_ORIGINS` / `ALLOWED_ORIGINS` environment variable name mismatch in the backend deployment configuration.
-- Reconciling the training-source model architectures under `models/` with whatever actually produced the deployed `.onnx` files, so the two are no longer in tension.
-- Live-phone integration of the trained IO-VNBD speed LSTM: a real, documented sensor-mapping gap (gravity inclusion, phone-mount axis convention — see section 15) blocks this, and closing it honestly requires either a resolved calibration/mapping or a validated assumption, neither of which exists yet.
-
-These are the areas intended for future work, not capabilities already present.
-
----
-
-## 17. Development Roadmap
-
-**Phase 1: Core navigation.** GNSS integration, IMU integration, EKF, ZUPT, dead reckoning. Done.
-
-**Phase 2: AI-assisted dead reckoning.** DriftFormer, adaptive EKF noise prediction, tunnel detection, all running on-device via ONNX, gated to blackout-only correction with a physical sanity bound. Done.
-
-**Phase 3: Road-aware navigation.** Live OpenStreetMap road graph via Overpass, IndexedDB offline caching, greedy per-tick road matching, non-holonomic constraint tied to matched road bearing. Done, with the open item of moving from greedy per-tick matching to a fuller probabilistic map-matcher if warranted.
-
-**Phase 4: Device/native integration.** Capacitor native app shell, real Android and iOS sensor plugins written and wired through a shared bridge. Source complete; physical device validation still to do.
-
-**Phase 5: Validation.** Offline IO-VNBD validation complete (one held-out sequence). A real physical GNSS-blackout drive test, and a formal repeatable field benchmark protocol, are the next steps.
-
-**Phase 6: Production hardening.** Reconciling the backend's demo-vs-real inference path with an actual matching deployed model, fixing the CORS environment variable mismatch, and broader device/browser compatibility testing.
-
----
-
-## 18. Running the Project
-
-### Prerequisites
-
-- Python 3.10 or newer
-- Git
-- Node.js, only if building the native Capacitor apps (see section 9)
-
-### Clone and install (backend / evaluation tooling)
+## 25. Reproducibility
 
 ```bash
-git clone https://github.com/swatijs3017/navdrift0
-cd navdrift0
-pip install -r requirements-api.txt
-```
+# Environment
+pip install -r requirements.txt
 
-`requirements-api.txt` is the production/runtime dependency set (FastAPI, onnxruntime, numpy, scipy, huggingface_hub, and so on). `requirements.txt` additionally includes training-time dependencies (`torch`, `torchvision`, `wandb`, `gradio`, `folium`, `matplotlib`).
+# Dataset parsing and split
+python -m data.iovnbd --verify
+python -m data.iovnbd_split --out_json results/iovnbd/split_manifest.json
 
-### Run the backend locally in demo mode
+# Training and export
+python -m training.train_iovnbd_speed_lstm --out_dir checkpoints/iovnbd_speed_lstm --seed 42
+python -m training.export_iovnbd_lstm_onnx \
+    --checkpoint checkpoints/iovnbd_speed_lstm/navdrift_lstm_best.pt \
+    --out checkpoints/iovnbd_speed_lstm/navdrift_lstm.onnx
 
-```bash
-DEMO_MODE=true uvicorn api.app:app --host 0.0.0.0 --port 8000
-```
+# Benchmarks
+python -m eval.iovnbd_benchmark --out_json results/iovnbd/iovnbd_classical_dr_benchmark.json
+python -m edge.model_inference_bench --out_json results/evidence/model_inference_bench.json
+python -m edge.replay_200hz_demo --hz 200 --n 6000 --out_json results/evidence/replay_200hz_demo.json
+python -m edge.imu_replay_example --hz 100 --n 500 --out_json results/evidence/imu_replay_example.json
+python -m edge.calibration_evidence_demo --out_json results/evidence/calibration_evidence.json
+python -m edge.hmm_viterbi_evidence_demo --out_json results/evidence/hmm_viterbi_evidence.json
 
-This matches the deployed Render configuration and returns simulated pose data (see section 3 for exactly what that means).
+# Evidence regeneration
+python -m edge.requirement_evidence --out_json results/evidence/requirement_evidence.json
+python -m edge.capability_report --out_json results/evidence/capability_report.json
 
-### Run the backend with environment variables
-
-Copy `.env.example` to `.env` and fill in real values; `.env` is git-ignored and should never be committed. The variables that file documents: `NAVDRIFT_API_KEY` (also read as `API_KEY` by `api/app.py`), `ONNX_PATH`, `NORM_STATS_PATH`, `ALLOWED_ORIGINS` (note the mismatch with the code's actual `CORS_ORIGINS` variable, section 3), `WINDOW`, `IMU_HZ`, `DEMO_MODE`, and an optional `WANDB_API_KEY`.
-
-### Frontend (mobile and desktop interfaces)
-
-`frontend/` is a static site with no build step. Serve it with any static file server, for example:
-
-```bash
-cd frontend
-python -m http.server 8080
-```
-
-Then open `http://localhost:8080/index.html` in a browser to go through the same device-aware router used in production, or open `mobile.html` / `desktop.html` directly.
-
-### Tests
-
-```bash
+# Tests
 pytest tests/ -v
 ```
 
-`tests/test_api.py` exists in the repository; this is what the CI workflow (`.github/workflows/ci.yml`) runs on every push and pull request to `main`, alongside a basic Python import check of `api.app`.
-
-### Native apps
-
-See section 9 and `NATIVE_BUILD.md` for the exact, real commands (`npm install`, `npx cap add android` / `npx cap add ios`, copying the plugin files in, and building from Android Studio or Xcode). These have not yet been run to completion on physical hardware as part of this project.
+The IO-VNBD/Speed-LSTM artifacts require the real IO-VNBD archives (not committed as binary data) and a GPU; they were produced via the `colab/` package documented in `colab/README.md`. Everything else above runs with only `requirements.txt` installed.
 
 ---
 
-## 19. Production Website
+## 26. Deployment
 
-**https://navdrift0.pages.dev/**
-
-- Laptop or desktop browser: opens the Mission Control dashboard (`frontend/desktop.html`).
-- Phone or tablet: opens the NAVDRIFT mobile navigation interface (`frontend/mobile.html`).
-
-Both are served from this single URL; there is no separate `/mobile` or `/desktop` URL that a person needs to know about. No other production URL is claimed here.
+- Frontend: static files under `frontend/` and the routing `index.html` at the repository root, served by Cloudflare Pages at `https://navdrift0.pages.dev/`.
+- Routing: `index.html` is a thin device router only (no navigation logic of its own). It prefers `navigator.userAgentData.mobile` when the browser exposes it (authoritative, unaffected by display scaling or touch hardware), falling back to a touch-plus-viewport heuristic on browsers that do not expose that API (Safari/iPadOS, older Firefox). Phones/tablets are routed to `frontend/mobile.html`; desktops/laptops to `frontend/desktop.html`.
+- Backend API: `api/app.py` (FastAPI), deployed separately via `render.yaml` to Render, running in `DEMO_MODE`. It is not in the live phone's navigation critical path (see section 27).
+- Static assets: map tiles (OpenFreeMap Liberty) and ONNX model weights under `frontend/models/` are served as static files alongside the app.
 
 ---
 
-## 20. Repository Structure
+## 27. Live Data Flow and Network Dependencies
 
-```
-navdrift0/
-|-- index.html                    Thin device router (repo root copy)
-|-- frontend/
-|   |-- index.html                Actual production entry point served at "/" (Cloudflare Pages
-|   |                              build output directory is frontend/); device-aware router
-|   |-- mobile.html                The real navigation client: sensors, EKF, ONNX pipeline,
-|   |                              road graph, diagnostics
-|   |-- desktop.html               Mission Control dashboard (Leaflet map, tabbed panels)
-|   |-- native-bridge.js           Routes native Capacitor sensor events into the same
-|   |                              SensorManager interface the browser code uses
-|   |-- manifest.json              PWA manifest
-|   |-- sw.js                      Service worker (never intercepts page navigation; caches two
-|   |                              static CDN assets only)
-|   `-- models/                    ONNX models loaded for in-browser inference
-|-- api/
-|   `-- app.py                     FastAPI backend: /init, /ingest, /gnss_lost, /reacquire,
-|                                  /trajectory, /status, /reset, /ws/stream (see section 3)
-|-- inference/
-|   |-- runtime.py                 A second runtime implementation, not currently used by api/app.py
-|   `-- export_onnx.py             Present in the repo, but its actual content does not match
-|                                  its filename (see section 7)
-|-- models/
-|   |-- drift_former.py            PyTorch DriftFormer source (a more elaborate architecture than
-|   |                              the deployed ONNX model; see section 7)
-|   |-- navic_vae.py                PyTorch NavIC VAE source
-|   |-- snap_corrector.py           PyTorch SNAP corrector source
-|   `-- *.onnx                      The actual deployed models (see section 7 for confirmed shapes)
-|-- training/
-|   |-- train_drift_former.py       DriftFormer training script
-|   `-- train_navic_vae.py          NavIC VAE training script
-|-- navdrift_colab/
-|   `-- navdrift_08_validate.py     The validation script that produced results/
-|-- notebooks/
-|   |-- NAVDRIFT0_Training.ipynb    Colab training notebook
-|   `-- NAVDRIFT0_Training.py
-|-- data/
-|   `-- loader.py                   IO-VNBD dataset loader and preprocessor
-|-- eval/
-|   `-- metrics.py                  ATE / RTE / NLL / drift-rate metric implementations
-|-- demo/
-|   `-- demo.py                     Standalone demo script
-|-- android/
-|   `-- NavDriftService.kt          Stale leftover HTML, not real Kotlin, not used (see section 9)
-|-- native/
-|   |-- android-plugin/NavdriftSensorsPlugin.kt   Real native Android sensor plugin source
-|   `-- ios-plugin/NavdriftSensorsPlugin.swift    Real native iOS sensor plugin source
-|-- results/
-|   |-- validation_full.json        Offline validation output (see section 13)
-|   |-- isro_benchmark_table.csv    Per-model size/latency table
-|   `-- compliance_curve.png
-|-- checkpoints/
-|   `-- driftformer_best.pt         A PyTorch training checkpoint
-|-- tests/
-|   `-- test_api.py                 Backend tests run in CI
-|-- .github/workflows/ci.yml        CI: Python import check + pytest, on push/PR to main
-|-- capacitor.config.json           Capacitor native app shell configuration
-|-- render.yaml                     Render backend deployment configuration
-|-- requirements.txt                Full dependencies, including training
-|-- requirements-api.txt            Production/runtime dependencies only
-|-- .env.example                    Environment variable reference
-|-- NATIVE_BUILD.md                 Real, detailed native build instructions
-`-- TODO_MAP_MATCHING.md            Honest running log of road-matching implementation status
-```
+- From sensors, with no network required: GNSS fix (still requires the phone's own GNSS radio, not this app's network), accelerometer, gyroscope, orientation, magnetometer (derived), barometer where available. EKF predict, ZUPT, NHC, and all three live ONNX models (DriftFormer, Adaptive EKF, Tunnel Detector) run entirely on-device once loaded; they consume real-time sensor data, not backend data.
+- Requires network: initial page/asset load, map tile fetches, and the Overpass API fetch for new road-graph areas (falls back to the IndexedDB cache when offline or when Overpass fails).
+- Does not call the backend: the live navigation pipeline in `frontend/mobile.html` does not send sensor data to, or read navigation state from, `api/app.py`. The phone's navigation core does not depend on the Python backend to function; the backend is a separate, demo-mode service not wired into the production mobile navigation path.
 
 ---
 
-## 21. Known Limitations
+## 28. Known Limitations
 
-- Browser sensor APIs differ meaningfully by platform. Most notably, iOS Safari (WebKit) does not implement the Generic Sensor API's `Barometer` class at all, which is a browser-level restriction, not something this project can fix from the web app; a native iOS build reads the barometer directly instead.
-- The native Android and iOS sensor bridges are real, complete source code that has not yet been built and run on physical hardware.
-- Road matching depends on network access to the Overpass API for any area not already in the offline IndexedDB cache; a first-ever blackout in a brand-new area with no network at that moment has no road data to match against, by design, rather than fabricating one.
-- The backend API currently only meaningfully runs in demo mode; its "real inference" code path expects a model file and shape that is not present in this repository, and the deployed configuration forces demo mode regardless.
-- A configuration mismatch exists between the backend's expected `CORS_ORIGINS` environment variable and the deployed `render.yaml`'s `ALLOWED_ORIGINS`, meaning CORS is currently effectively unrestricted (`*`) in production.
-- Road matching is a greedy per-tick nearest-candidate selection, not a full probabilistic HMM/Viterbi map-matcher; see section 8 for exactly what it does.
-- The only benchmark numbers currently available are offline validation numbers from a single held-out IO-VNBD test sequence; no live physical GNSS-blackout drive test has been recorded and analyzed yet.
-- There is a real discrepancy between the more elaborate PyTorch model source code under `models/` and the simpler architecture actually reflected in the deployed ONNX models; see section 7.
-
----
-
-## 22. Transparency Note
-
-This README distinguishes, deliberately and throughout: what is implemented and confirmed by reading the actual code versus what is experimental or partially built; offline benchmark numbers versus live physical observations versus demonstration/UI metrics; and what has been built versus what remains as future work. Nothing here claims a capability that was not confirmed against the repository during this pass, and known gaps (including a couple of real inconsistencies between different parts of the codebase) are stated plainly rather than smoothed over. This matters for anyone evaluating the project technically: a judge, mentor, or developer should be able to tell exactly what is running live, what is offline-validated, and what is still open.
+- No formal, large-scale, multi-city field benchmark exists for the live navigation pipeline; live behavior is verified by manual phone testing, not a stored dataset.
+- IO-VNBD's phone-mounting axis convention is not established in the dataset itself; this repository does not guess one (section 10).
+- The Speed LSTM is trained and validated (offline and in-browser) but is not wired into live mobile speed estimation, blocked specifically by gravity-inclusion and axis-correspondence mismatches (section 9).
+- The live road matcher (`LiveHMM`) is a greedy per-tick matcher, not a full Viterbi/HMM implementation; the full Viterbi decoder exists only offline (`edge/hmm_map_matcher.py`, section 18).
+- The barometer is unavailable through iOS WebKit's Generic Sensor API; this is a platform limitation, reported honestly, not worked around with a fabricated value.
+- The native Android/iOS Capacitor plugin source exists but has not been build-tested on physical hardware this pass.
+- The 200 Hz edge engine's throughput number is a software timing measurement only; no physical 200 Hz IMU or FOG board has produced any number in this repository.
+- Four of the five ONNX model files under the top-level `models/` directory fail to load (missing external `.onnx.data` weights) and are stale/undersized relative to their `frontend/models/` counterparts, which are the ones actually served live; this is documented, not repaired, this pass (section 5).
+- The IMU denoiser has no training script or training data in this repository, so its denoising accuracy cannot be assessed; it also does not execute in the browser at all (`ConvInteger` op unsupported in onnxruntime-web WASM), per `frontend/desktop.html`'s own code comment.
+- The NavIC motion-prior VAE has real fusion-math source code but no trained checkpoint, ONNX export, or fusion-demo artifact anywhere in this repository (`DATA_BLOCKED`).
+- `tests/test_api.py::test_init` currently fails: it posts `latitude`/`longitude`/`speed_m_s` fields, while `api/app.py`'s `InitRequest` model requires `lat`/`lon`/`heading_deg`, so the request is rejected with HTTP 422 instead of the expected 200. This is a genuine contract mismatch between the test and the API, confirmed by direct code inspection this pass; it was not fixed, per the explicit instruction not to modify tests just to make them pass, and because the API backend is not in the live phone's navigation path (section 27), it carries no live-navigation risk. The repository's CI workflow (`.github/workflows/ci.yml`) runs `pytest ... || true`, so this failure does not currently fail the CI build.
+- The single earlier `results/validation_full.json` benchmark (ATE RMSE 0.2472 m) is from one sequence only and should not be read as a general accuracy figure.
 
 ---
 
-## License
+## 29. Requirement Compliance Matrix
 
-MIT. Copyright 2026 NAVDRIFT-0 Team. ISRO Smart India Hackathon 2026, Problem Statement 26168.
+Generated from `edge/requirement_evidence.py`, the repository's own machine-checked source of truth (`validate_evidence_records()` confirms every referenced file and test path actually exists; this passed with zero inconsistencies during this audit).
+
+| Requirement | Implementation | Status | Evidence | Limitation |
+|---|---|---|---|---|
+| 1. In-vehicle phone alignment / calibration | `edge/vehicle_calibration.py`: gravity roll/pitch, GNSS-course yaw, rotation matrix, confidence/fallback | SOFTWARE_ONLY_VALIDATED | `tests/test_vehicle_calibration.py` | Synthetic fixtures only, no real vehicle mounting data |
+| 2A. Learned (LSTM) speed estimation | `training/train_iovnbd_speed_lstm.py`, real IO-VNBD training | SOFTWARE_ONLY_VALIDATED | `checkpoints/iovnbd_speed_lstm/training_report.json` | Not wired into live phone; gravity/axis mismatch documented |
+| 2B. Learned vibration/noise denoiser | `models/imu_denoiser_int8.onnx` inference-only artifact | SOFTWARE_ONLY_VALIDATED | `results/evidence/model_inference_bench.json` | No training script/data; does not execute in the browser at all |
+| 3. Map matching against a road network | Live greedy `LiveHMM` + offline `edge/hmm_map_matcher.py` Viterbi | OFFLINE_ONLY (offline Viterbi module) | `tests/test_hmm_map_matcher.py` | Offline module uses synthetic fixtures; live matcher is greedy, not full Viterbi |
+| 4. AI-based sensor fusion (NavIC motion-prior) | `models/navic_vae.py` math + `training/train_navic_vae.py` | DATA_BLOCKED | none | No trained checkpoint, no ONNX export, no fusion-demo artifact |
+| 5. GNSS-denied dead reckoning (blackout handling) | Live ZUPT/NHC/DriftFormer dead reckoning | IMPLEMENTED | production app | Pre-existing; not re-validated in this pass |
+| 6. GNSS reacquisition / trajectory snapping | Live reacquisition + `inference/runtime.py` snap correction | IMPLEMENTED | production app | Pre-existing; not re-validated in this pass |
+| 7. External/plug-in IMU hardware support | `edge/external_imu.py`, formal frame/stream contract | SOFTWARE_ONLY_VALIDATED | `tests/test_external_imu.py` | No physical external IMU board tested |
+| 8. Benchmark against IO-VNBD dataset | `eval/iovnbd_benchmark.py`, classical DR baseline | SOFTWARE_ONLY_VALIDATED | `results/iovnbd/iovnbd_classical_dr_benchmark.json` | Classical baseline only, not the live pipeline, not the LSTM |
+| 9. Real-time mobile architecture (~10 Hz) | Live tick loop + offline model-latency confirmation | IMPLEMENTED | `results/evidence/model_inference_bench.json` | Live in-browser tick rate itself not re-measured this pass |
+| 10. 200 Hz external-IMU-capable edge engine | `edge/replay_200hz_demo.py` against real `NavdriftRTEngine` | SOFTWARE_ONLY_VALIDATED | `results/evidence/replay_200hz_demo.json` | Software throughput only; no physical 200 Hz hardware used |
+
+---
+
+## 30. What Is Actually Live Right Now
+
+**LIVE ON PHONE:**
+GNSS acquisition and reacquisition, accelerometer/gyroscope/orientation sensing, EKF predict and measurement update, ZUPT, non-holonomic constraint, live greedy road matching (`LiveHMM`) against real Overpass/IndexedDB road data, DriftFormer position correction (blackout-gated), Adaptive EKF noise tuning, Tunnel Detector blackout probability, classical (non-learned) vibration filtering, wake lock, uncertainty display from real EKF covariance, raw-IMU diagnostic trail (segmented at GNSS transitions).
+
+**OFFLINE / BENCHMARK:**
+Speed LSTM (trained, browser-validated, not wired into live navigation), classical DR benchmark on IO-VNBD, IMU denoiser (inference-tested only, does not run in-browser), NavIC DOP predictor (no live reference found), NavIC motion-prior VAE (no trained artifact exists), offline Viterbi map matcher, offline vehicle calibration module, external IMU input contract, 200 Hz edge-engine software timing benchmark.
+
+**DESKTOP REPLAY:**
+Ground Truth / NAVDRIFT / Raw IMU / EKF-baseline trajectory replay, GNSS-blackout visualization over recorded data, uncertainty-circle rendering from replayed EKF covariance. All of this operates on recorded/uploaded data, never live phone telemetry, except the dashboard's separate, clearly-labeled "Live Navigation (this device)" panel, which reads the browser's own sensors independently.
+
+**EDGE:**
+`NavdriftRTEngine` (200 Hz-capable software pipeline), external IMU contract and loaders, offline Viterbi map matcher, offline vehicle calibration module. None of these run inside `frontend/mobile.html`.
+
+---
+
+## 31. Roadmap
+
+Genuine future work only; nothing below is claimed as already existing.
+
+- Live Speed LSTM integration, after the gravity-inclusion and axis-correspondence mismatch documented in section 9 is formally resolved (either by a verified live phone-orientation-to-IO-VNBD-axis mapping, or by retraining on gravity-compensated features matching the live pipeline).
+- Learned vibration denoiser integration into the live pipeline, contingent on a real training script and IO-VNBD-based accuracy validation, which do not exist yet.
+- Full live Viterbi map matching, replacing or supplementing the current greedy `LiveHMM`, using `edge/hmm_map_matcher.py` as the algorithmic starting point.
+- Native sensor bridge build-and-hardware validation for the existing Kotlin/Swift plugin source.
+- External IMU hardware validation against a physical board, using the existing `edge/external_imu.py` contract.
+- A larger, multi-session, real-world GNSS-denied field dataset collected from the live phone app itself, to replace manual-testing-only validation of the live pipeline.
+- Repair or removal of the four broken `models/*.onnx` files (missing external data), and either training or removal of the currently-dataless NavIC VAE and NavIC DOP modules.
+- Resolving the `tests/test_api.py::test_init` field-name mismatch against `api/app.py`'s actual `InitRequest` contract.
+
+---
+
+## 32. Demo
+
+- Production URL: https://navdrift0.pages.dev/
+- Desktop route: opens automatically on a desktop/laptop browser (Mission Control replay dashboard).
+- Mobile route: opens automatically on a phone/tablet browser (live navigation app).
+- What judges can observe live: real GNSS lock/loss, real dead reckoning during an actual signal blackout (a tunnel or underground parking works well), real GNSS reacquisition, live DriftFormer/Adaptive EKF/Tunnel-Detector inference (visible in the diagnostics panel), live road matching against real OpenStreetMap data, and the segmented raw-IMU diagnostic trail.
+- What is replay, not live: anything shown on the desktop dashboard from a loaded/recorded sequence, including the IO-VNBD trajectory plots and the classical DR benchmark numbers in section 12D. These are offline evaluation results, not a live field test, and are not presented as one.
+- Benchmark numbers to cite correctly if asked: the Speed LSTM's 3.213 m/s MAE is a speed error, not a position error; the classical DR benchmark's 71.78 m mean ATE RMSE is a position error from a different, non-learned pipeline. Do not combine the two.
+
+---
+
+## 33. Transparency Note
+
+This project separates live smartphone navigation, offline model validation, recorded-data replay, and edge-runtime experiments. Metrics are labeled by their source environment. Features that are not yet validated in the live mobile path are not presented as live capabilities.
+
+---
+
+## 34. Credits / License / References
+
+License: MIT. ISRO Smart India Hackathon 2026, Problem Statement 26168.
+
+Dataset: IO-VNBD (smartphone + vehicle paired-run navigation dataset).
+
+Map data: OpenStreetMap contributors, via the Overpass API. Map tiles: OpenFreeMap Liberty.
+
+Runtime: ONNX Runtime / onnxruntime-web 1.18.0, PyTorch.
