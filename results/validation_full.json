@@ -1,4 +1,5 @@
 {
+  "sample_size_warning": "n=1 sequence; not representative of general ISRO drift-accuracy compliance; see eval/iovnbd_benchmark.py for the proper held-out multi-sequence methodology, and results/iovnbd/iovnbd_classical_dr_benchmark.json for the real 10-sequence held-out IO-VNBD classical-baseline benchmark.",
   "compliance_metrics": {
     "ATE_RMSE_m": 0.2472,
     "drift_mean_pct": 0.023,
