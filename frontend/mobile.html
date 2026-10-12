@@ -1032,7 +1032,7 @@
       <div class="tr-sep"></div>
       <div class="tr-item">
         <div class="tr-l">Magnetometer</div>
-        <div class="tr-v" id="dbg-mag" style="color:var(--muted)">—</div>
+        <div class="tr-v" id="dbg-mag" style="color:var(--muted)" title="Monitored as a cross-check only — not fed into dead-reckoning/EKF fusion. In-vehicle magnetometer readings are unreliable (metal body, motors, speakers, alternator fields), so this is shown purely as a sanity signal against the gyro-integrated heading, never used to correct it.">—</div>
       </div>
       <div class="tr-sep"></div>
       <div class="tr-item">
@@ -1041,8 +1041,13 @@
       </div>
       <div class="tr-sep"></div>
       <div class="tr-item">
-        <div class="tr-l">Wake Lock</div>
-        <div class="tr-v" id="dbg-wakelock" style="color:var(--muted)">—</div>
+        <div class="tr-l">Uncertainty</div>
+        <div class="tr-v" id="dbg-uncertainty" style="color:var(--muted);font-size:.6rem" title="Approximate 1-sigma position uncertainty derived from EKF.P's diagonal lat/lon variance terms only (sqrt(max(P[0],P[4]))*111000m). EKF.P here is a decoupled diagonal-only structure, not a full coupled covariance — see docs/EKF_IMPLEMENTATIONS.md — so this is an honest order-of-magnitude estimate, not a rigorous confidence ellipse.">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">GPS Accept/Reject</div>
+        <div class="tr-v" id="dbg-gpsaccept" style="color:var(--muted);font-size:.6rem" title="Accepted = finite-coordinate fixes integrated into the EKF measurement update (every accepted fix is still weighted by its reported accuracy, never outright gated on accuracy or plausibility — see onFix()/ekfStep() comments). Rejected = fixes discarded outright for non-finite/malformed coordinates, the only hard rejection that exists today. There is no accuracy- or plausibility-based rejection gate in the live filter.">—</div>
       </div>
     </div>
     <div class="tp-section-label-sub" id="dbg-detail" style="padding-top:0;">—</div>
@@ -1109,6 +1114,11 @@
       <div class="tr-item">
         <div class="tr-l">Road Bearing</div>
         <div class="tr-v" id="ra-bearing">—</div>
+      </div>
+      <div class="tr-sep"></div>
+      <div class="tr-item">
+        <div class="tr-l">Viterbi Tick</div>
+        <div class="tr-v" id="ra-tickus" title="Real performance.now() timing around LiveHMM.update() this tick (bounded rolling-window Viterbi, W=6) — budget is <100ms/tick at 10Hz, see docs/MAP_MATCHING_UPGRADE.md">—</div>
       </div>
     </div>
 
@@ -1288,6 +1298,12 @@ const IMU = {
   fwdAxisSign: 1,   // +1 or -1
   alignDone: false, // set true after first-motion axis detection
   _alignBuf: [],    // accumulator during alignment window
+  /* Mounting-orientation snapshot, captured the moment in-vehicle alignment completes.
+     Used only to detect "phone moved in its holder" later (see the drift watch in
+     onDeviceMotion) — never read by the speed/heading/EKF math itself. */
+  mountCaptured: false, mountBeta: 0, mountGamma: 0,
+  needsRecal: false,   // surfaced in UI only; recalibration is always user-initiated, never automatic
+  _stillMs: 0,
   /* honest sensor-state tracking — 'active' is only set true once a REAL devicemotion
      event has been received, never merely because permission was granted */
   state: 'INACTIVE', // INACTIVE | WAITING | ACTIVE | UNAVAILABLE | DENIED
@@ -1695,6 +1711,11 @@ function onDeviceMotion(e){
         if(IMU.fwdAxisIdx !== 1) IMU.fwdAccelBias = 0;
         IMU.alignDone   = true;
         IMU._alignBuf   = [];
+        // Snapshot the phone's orientation at the moment alignment locked — this is the
+        // "mounting orientation" the forward-axis detection above is valid for. See the
+        // drift watch further down in this function for how it's used.
+        IMU.mountBeta = IMU.beta; IMU.mountGamma = IMU.gamma; IMU.mountCaptured = true;
+        IMU.needsRecal = false;
         const axNames = ['X','Y','Z'];
         console.log(`[NAVDRIFT] Alignment: forward=${axNames[IMU.fwdAxisIdx]} sign=${IMU.fwdAxisSign}`);
         try{ document.getElementById('sv-be').textContent = axNames[IMU.fwdAxisIdx]+'✓'; }catch(e){}
@@ -1733,6 +1754,40 @@ function onDeviceMotion(e){
   // Dead-band: small accel below 0.25 m/s² is noise (smooth road rolling)
   const deadFwd = Math.abs(biasedFwd) < 0.25 ? 0 : biasedFwd;
   IMU.fwdAccel = clamp(deadFwd, -15, 15);
+
+  // ── Mounting-orientation drift watch (diagnostic/UX only) ──
+  // Read-only with respect to fwdAccel/intSpeed/intHeading/EKF — this block only ever writes
+  // IMU._stillMs and IMU.needsRecal, and only reads values already computed above. Rationale:
+  // the forward-axis alignment above assumes the phone stays fixed in its mount. If someone
+  // picks it up, re-wedges it at a different angle, or it slides in a cheap holder, that
+  // assumption silently breaks and speed/heading quietly degrade with no visible symptom.
+  // Heuristic: if the phone has been both low-motion (small forward accel, small yaw rate)
+  // for several seconds AND its static beta/gamma tilt has drifted well past the orientation
+  // recorded when alignment last locked, the most likely explanation is a holder shift, not
+  // normal driving (normal driving is rarely perfectly still for 4+ straight seconds while
+  // also having rotated the phone). This never recalibrates by itself — it only sets a flag
+  // the UI turns into a banner the user must tap, exactly like the initial calibration.
+  const lowDynamics = Math.abs(deadFwd) < 0.3 && Math.abs(IMU.gz) < 0.05;
+  IMU._stillMs = lowDynamics ? (IMU._stillMs||0) + dt*1000 : 0;
+  if(IMU.mountCaptured && IMU._stillMs > 4000){
+    let dBeta  = Math.abs(IMU.beta  - IMU.mountBeta);
+    let dGamma = Math.abs(IMU.gamma - IMU.mountGamma);
+    if(dBeta>180) dBeta=360-dBeta; if(dGamma>180) dGamma=360-dGamma;
+    if((dBeta > 25 || dGamma > 25) && !IMU.needsRecal){
+      IMU.needsRecal = true;
+      try{
+        if(!document.getElementById('recal-banner')){
+          const rb = document.createElement('div');
+          rb.id = 'recal-banner';
+          rb.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9998;background:rgba(216,155,60,0.95);color:#111;font-family:monospace;font-size:12px;padding:10px 16px;text-align:center;cursor:pointer;letter-spacing:.05em;';
+          rb.textContent = '⚠ Phone orientation changed — TAP to recalibrate mounting';
+          rb.onclick = () => { rb.remove(); IMU.needsRecal=false; IMU.alignDone=false; IMU._alignBuf=[]; openSensorModal(); };
+          document.body.appendChild(rb);
+          setTimeout(()=>{ if(rb.parentNode) rb.remove(); }, 20000);
+        }
+      }catch(err){}
+    }
+  }
 
   if(dt>0 && dt<0.5){
     // ── Signed raw accumulator, clamped only for what's actually consumed ──
@@ -2203,7 +2258,28 @@ const Diag = {
   roadMatchDistM: null,       // real distM of the selected candidate/fallback, or null if none
   roadMatchBearing: null,     // real bearing of the selected candidate/fallback, or null if none
   roadMatchActive: false,     // true only when a real scored HMM candidate (not just RoadGraph.nearest fallback) was selected
-  stationarySpeedRecovery: 0  // real count of times the GNSS-anchored stationary guard actually reset a non-zero IMU.intSpeed (see onDeviceMotion); 0 if it never fired this session
+  stationarySpeedRecovery: 0, // real count of times the GNSS-anchored stationary guard actually reset a non-zero IMU.intSpeed (see onDeviceMotion); 0 if it never fired this session
+  // ── Bounded-lookback Viterbi (LiveHMM) diagnostics — see docs/MAP_MATCHING_UPGRADE.md ──
+  roadMatchCorrectedSegIdx: null,   // real seg idx the lazy backtrack resolved for the most recently
+                                     // EVICTED trellis column, when it differs from what was greedily
+                                     // reported for that tick at the time; null if it agreed or no
+                                     // eviction has happened yet. Never affects already-consumed EKF/NHC
+                                     // state for that past tick -- informational + feeds future ticks only.
+  roadMatchBacktrackDeltaM: null,   // real distance between the greedy-reported point and the
+                                     // backtrack-corrected point for that evicted tick, in meters;
+                                     // 0 if backtrack agreed with the greedy report; null if n/a.
+  roadMatchTickUs: null,            // real measured microseconds LiveHMM.update() took this tick
+                                     // (performance.now() around the call), so the design doc's
+                                     // ~30us/well-under-100ms-budget claim is observable, not assumed.
+  // ── GNSS-INS fusion observability additions ──
+  gpsAcceptedCount: 0,   // real count of geolocation fixes with finite coordinates that were
+                          // integrated into GPS.lat/lon and the SensorManager/EKF pipeline (onFix()).
+                          // NOTE: every accepted fix is still only ACCURACY-WEIGHTED (via R in
+                          // ekfStep), never outright gated on accuracy or physical plausibility —
+                          // there is no innovation-gating/plausibility-rejection in the live filter.
+                          // That is a real, documented gap, not something this counter papers over.
+  gpsRejectedCount: 0    // real count of fixes discarded outright in onFix() for non-finite/NaN
+                          // coordinates — the only hard rejection path that exists today.
 };
 function ekfStep(spd,dh,dt,gpsMeasured,gla,glo,gpsAccM){
   // ── Input sanity guard ──
@@ -2353,6 +2429,26 @@ function updateDebugPanel(){
         }
       }
     }
+    // State uncertainty readout — same real ekfUncertaintyM() value already folded into
+    // dbg-detail's free-text line, surfaced here as its own labeled row per the GNSS-INS
+    // observability requirement. Growth is visible by simply watching this row climb during
+    // a blackout (no GPS update step) and drop on the next accepted fix.
+    {
+      const uEl=document.getElementById('dbg-uncertainty');
+      if(uEl){
+        const u = ekfUncertaintyM();
+        uEl.textContent = isFinite(u) ? '~'+u.toFixed(1)+'m (1σ approx)'+(!S.gnss?' · growing':'') : '—';
+      }
+    }
+    // Accepted vs rejected GPS fixes — real counters incremented in onFix(); see Diag.gpsAcceptedCount/
+    // gpsRejectedCount comments for exactly what counts as a rejection today (malformed coordinates
+    // only — there is no accuracy/plausibility gate in the live filter).
+    {
+      const gaEl=document.getElementById('dbg-gpsaccept');
+      if(gaEl && typeof Diag!=='undefined'){
+        gaEl.textContent = (Diag.gpsAcceptedCount||0)+' ok / '+(Diag.gpsRejectedCount||0)+' bad-coord';
+      }
+    }
     // Screen wake lock — purely a display of WakeLockCtl's own real state (see the module
     // below); never invents ACTIVE if the browser did not actually grant a lock.
     {
@@ -2375,6 +2471,7 @@ function updateDebugPanel(){
         setRA('ra-cands', (Diag.roadCandidates||0)+'');
         setRA('ra-dist', (Diag.roadMatchDistM!=null && isFinite(Diag.roadMatchDistM)) ? Diag.roadMatchDistM.toFixed(1)+'m' : '—');
         setRA('ra-bearing', (Diag.roadMatchBearing!=null && isFinite(Diag.roadMatchBearing)) ? (Diag.roadMatchBearing*180/Math.PI).toFixed(0)+'°' : '—');
+        setRA('ra-tickus', (Diag.roadMatchTickUs!=null && isFinite(Diag.roadMatchTickUs)) ? Diag.roadMatchTickUs.toFixed(0)+'µs' : '—');
       }
     }
     // Honest per-state magnetometer readout — never claims a heading that never arrived.
@@ -2383,8 +2480,23 @@ function updateDebugPanel(){
       if(mEl){
         const mag = SensorManager.raw.magnetometer;
         switch(mag.status){
-          case SensorManager.STATUS.ACTIVE:
-            mEl.textContent = mag.value.headingDeg.toFixed(0)+'° ('+mag.source+')'; mEl.style.color='var(--ng)'; break;
+          case SensorManager.STATUS.ACTIVE: {
+            // Real but intentionally limited use: a cross-check against the gyro-integrated
+            // heading (IMU.intHeading, itself diagnostic-only per the note above onDeviceMotion's
+            // heading integration — see ~line 3801). This delta is NEVER written back into
+            // IMU.intHeading, the EKF, or navigation — magnetometer readings inside a moving
+            // vehicle are routinely corrupted by the car body, motor/alternator fields and
+            // speakers, so feeding them into fusion would silently poison heading. It exists
+            // only so a tester can see, live, whether the two independent heading sources are
+            // roughly consistent (a large/growing delta is a real signal of gyro drift or
+            // magnetic interference worth noting, not something the app auto-corrects).
+            const normDeg = d => ((d%360)+360)%360;
+            const gyroDeg = normDeg(IMU.intHeading*180/Math.PI);
+            const magDeg  = normDeg(mag.value.headingDeg);
+            let delta = Math.abs(gyroDeg-magDeg); if(delta>180) delta=360-delta;
+            mEl.textContent = magDeg.toFixed(0)+'° ('+mag.source+') · Δgyro '+delta.toFixed(0)+'° [monitor-only]';
+            mEl.style.color='var(--ng)'; break;
+          }
           case SensorManager.STATUS.PERMISSION_DENIED:
             mEl.textContent = 'permission denied'; mEl.style.color='var(--na)'; break;
           case SensorManager.STATUS.NO_DATA:
@@ -4106,6 +4218,28 @@ const RoadGraph = (function(){
  * using real data, it just isn't accumulated into an unbounded log-probability path sum, since
  * only the local decision is ever needed for real-time driving.
  */
+/* ── Bounded-lookback rolling-window Viterbi upgrade ──
+ * Implements docs/MAP_MATCHING_UPGRADE.md: a short ring of W trellis columns (candidates +
+ * accumulated path score + backpointer), scored with the exact same emission/transition
+ * formulas (same sigmas, same stay-bonus) the old single-state greedy LiveHMM used — this is a
+ * structural change (keep W columns of hypotheses instead of 1) not a re-tuning of the scoring
+ * model. Transition/emission scoring formulas match edge/hmm_map_matcher.py's
+ * emission_log_prob/transition_log_prob (the offline reference implementation), adapted to the
+ * real RoadGraph candidate shape {idx,lat,lon,bearing,distM}.
+ *
+ * Two-tier reporting, exactly as designed in section 3.3:
+ *   - Immediate/greedy tier: update() still returns an answer EVERY tick, same latency contract
+ *     as before — this is the current column's own best accumulated-score candidate, consumed
+ *     immediately by the live EKF/NHC/UI pipeline. No consumer-facing lag is introduced.
+ *   - Corrected/backtracked tier: only when a column is evicted from the trellis (once it has
+ *     been in the window for W ticks) do we trace back from the current newest column's winner
+ *     through backpointers to see what that evicted (already-reported, already-consumed) tick's
+ *     segment should have been in light of everything seen since. This is exposed purely as a
+ *     diagnostic (Diag.roadMatchCorrectedSegIdx / roadMatchBacktrackDeltaM) and can only influence
+ *     FUTURE transition scoring (which already happens naturally because scores accumulate over
+ *     the whole retained window, not a single committed idx) — it never rewrites EKF/NHC state or
+ *     the value already returned/displayed for that past tick.
+ */
 const LiveHMM = (function(){
   const K = 5;                              // small candidate set — never an unbounded search
   const EMIT_DIST_SIGMA_M = 25;              // distance-to-segment emission scale (~typical GPS/road-match accuracy)
@@ -4113,11 +4247,18 @@ const LiveHMM = (function(){
   const TRANS_CONTINUITY_SIGMA_M = 20;       // how tightly actual movement must match speed*dt to score well
   const TRANS_STAY_BONUS = 0.6;              // log-space bonus for remaining on the same real segment
   const MIN_CANDIDATES = 1;                  // fewer real candidates than this → fall back to nearest()
+  const W = 6;                               // bounded rolling-window lookback (6-8 per the design doc's budget)
 
-  let state = null;     // {idx, lat, lon, bearing, distM}, persists tick-to-tick within one blackout
+  // Ring of retained trellis columns, oldest first, length <= W+1 (we push before evicting so the
+  // eviction step can still see the full {about-to-be-dropped, everything-since} picture).
+  // Each column: { cands:[{idx,lat,lon,bearing,distM},...], scores:Float64Array, backptr:Int16Array,
+  //                reportedIdx:int }  -- reportedIdx is exactly what the greedy tier returned for
+  // that tick, recorded so eviction-time backtrack can tell whether it would have decided
+  // differently with hindsight.
+  let trellis = [];
   let lastEpoch = -1;
 
-  function reset(){ state = null; }
+  function reset(){ trellis = []; }
 
   function wrappedHeadingDiff(a,b){
     // Road segments are undirected (a two-way street's bearing and its reverse are equally
@@ -4133,24 +4274,57 @@ const LiveHMM = (function(){
     return dTerm + hTerm;
   }
 
-  function transitionLogProb(cand, speedMps, dtS){
-    if(!state) return 0; // no history yet this blackout — emission-only, a real uninformative prior
-    const sameSeg = cand.idx===state.idx;
+  function transitionLogProb(prevCand, cand, speedMps, dtS){
+    if(!prevCand) return 0; // no history yet this blackout — emission-only, a real uninformative prior
+    const sameSeg = cand.idx===prevCand.idx;
     const expectedStepM = clamp(speedMps,0,40) * Math.max(0, dtS);
-    const actualStepM = dist(cand.lat, cand.lon, state.lat, state.lon);
+    const actualStepM = dist(cand.lat, cand.lon, prevCand.lat, prevCand.lon);
     const discrepancy = Math.abs(actualStepM - expectedStepM);
     const contTerm = -(discrepancy*discrepancy)/(2*TRANS_CONTINUITY_SIGMA_M*TRANS_CONTINUITY_SIGMA_M);
     return contTerm + (sameSeg ? TRANS_STAY_BONUS : 0);
   }
 
+  // Lazy traceback on eviction (design doc 3.2.4 / 3.3). `fullTrellis` still includes the
+  // about-to-be-evicted oldest column at index 0 (caller shifts it off afterward) — this walks
+  // backpointers from the newest column's own current winner down to that oldest column, i.e.
+  // exactly the hindsight-corrected answer for the tick that's about to leave the window.
+  function resolveEviction(fullTrellis){
+    const m = fullTrellis.length;
+    if(m < 2) return; // nothing to backtrack from yet
+    const evictedCol = fullTrellis[0];
+    const newest = fullTrellis[m-1];
+    let idx = 0;
+    for(let i=1;i<newest.scores.length;i++) if(newest.scores[i]>newest.scores[idx]) idx=i;
+    for(let c=m-1; c>=1 && idx>=0; c--){
+      idx = fullTrellis[c].backptr[idx]; // after the c===1 iteration, idx indexes evictedCol.cands
+    }
+    if(idx==null || idx<0 || !evictedCol.cands[idx]){
+      Diag.roadMatchCorrectedSegIdx = null; Diag.roadMatchBacktrackDeltaM = null; return;
+    }
+    const corrected = evictedCol.cands[idx];
+    const reported = evictedCol.cands[evictedCol.reportedIdx];
+    if(corrected.idx !== reported.idx){
+      Diag.roadMatchCorrectedSegIdx = corrected.idx;
+      Diag.roadMatchBacktrackDeltaM = dist(corrected.lat, corrected.lon, reported.lat, reported.lon);
+    } else {
+      Diag.roadMatchCorrectedSegIdx = null;
+      Diag.roadMatchBacktrackDeltaM = 0;
+    }
+  }
+
   // fusedLat/fusedLon/fusedHeading = real EKF state; speedMps = real fused speed; dtS = real
   // elapsed navigation dt (navDt) for this tick. Returns the same {distM,lat,lon,bearing} shape
   // RoadGraph.nearest() already returned, so NHC/the soft road-pull downstream need no changes.
+  // Real performance.now() timing around the whole call is recorded into Diag.roadMatchTickUs on
+  // every branch/return below, so the design doc's ~30us/well-under-100ms budget is something
+  // that can actually be watched live, not just claimed.
   function update(fusedLat, fusedLon, fusedHeading, speedMps, dtS){
+    const _t0 = performance.now();
     if(!isFinite(fusedLat)||!isFinite(fusedLon)||!isFinite(fusedHeading)){
       const fb = RoadGraph.nearest(fusedLat, fusedLon); // bad input — don't run scoring on it, fall back
       Diag.roadCandidates = 0; Diag.roadMatchActive = false;
       Diag.roadMatchDistM = fb ? fb.distM : null; Diag.roadMatchBearing = fb ? fb.bearing : null;
+      Diag.roadMatchTickUs = (performance.now()-_t0)*1000;
       return fb;
     }
     if(RoadGraph.epoch !== lastEpoch){
@@ -4169,22 +4343,54 @@ const LiveHMM = (function(){
       const fb = RoadGraph.nearest(fusedLat, fusedLon);
       Diag.roadMatchActive = false;
       Diag.roadMatchDistM = fb ? fb.distM : null; Diag.roadMatchBearing = fb ? fb.bearing : null;
+      Diag.roadMatchTickUs = (performance.now()-_t0)*1000;
       return fb;
     }
-    let best=null, bestScore=-Infinity;
-    for(const c of cands){
-      const score = emissionLogProb(c, fusedHeading) + transitionLogProb(c, speedMps, dtS);
-      if(score>bestScore){ bestScore=score; best=c; }
+
+    const n = cands.length;
+    const scores = new Float64Array(n);
+    const backptr = new Int16Array(n);
+    const prevCol = trellis.length ? trellis[trellis.length-1] : null;
+    for(let i=0;i<n;i++){
+      const emit = emissionLogProb(cands[i], fusedHeading);
+      if(!prevCol){
+        scores[i] = emit; backptr[i] = -1;
+      } else {
+        let bestScore=-Infinity, bestJ=0;
+        for(let j=0;j<prevCol.cands.length;j++){
+          const trans = transitionLogProb(prevCol.cands[j], cands[i], speedMps, dtS);
+          const s = prevCol.scores[j] + trans + emit;
+          if(s>bestScore){ bestScore=s; bestJ=j; }
+        }
+        scores[i]=bestScore; backptr[i]=bestJ;
+      }
     }
-    state = { idx:best.idx, lat:best.lat, lon:best.lon, bearing:best.bearing, distM:best.distM };
+    // Immediate/greedy tier — exactly the old module's contract: the current column's own best
+    // (now accumulated-score, previously single-tick-score) candidate, returned every tick with
+    // no added latency.
+    let bestI=0;
+    for(let i=1;i<n;i++) if(scores[i]>scores[bestI]) bestI=i;
+    const best = cands[bestI];
+
+    trellis.push({cands, scores, backptr, reportedIdx:bestI});
+    if(trellis.length > W){
+      resolveEviction(trellis); // hindsight-correct the column about to leave the window
+      trellis.shift();
+    }
+
     Diag.roadMatchActive = true; Diag.roadMatchDistM = best.distM; Diag.roadMatchBearing = best.bearing;
+    Diag.roadMatchTickUs = (performance.now()-_t0)*1000;
     return { distM:best.distM, lat:best.lat, lon:best.lon, bearing:best.bearing };
   }
 
   return {
     update, reset,
-    get active(){ return state!==null; },
-    get segIdx(){ return state ? state.idx : null; }
+    get active(){ return trellis.length>0; },
+    get segIdx(){
+      if(!trellis.length) return null;
+      const last = trellis[trellis.length-1];
+      return last.cands[last.reportedIdx].idx;
+    }
   };
 })();
 
@@ -4260,7 +4466,12 @@ function startLiveGPS(){
     // failure mode — never let it into GPS.lat/lon, where it would poison EKF.x/y on the very
     // next measurement update. Treat it exactly like any other bad fix: ignored, not fabricated
     // into something plausible-looking.
-    if(!isFinite(lat) || !isFinite(lon)){ console.warn('[onFix] non-finite coordinate discarded', pos.coords); return; }
+    if(!isFinite(lat) || !isFinite(lon)){
+      console.warn('[onFix] non-finite coordinate discarded', pos.coords);
+      if(typeof Diag!=='undefined') Diag.gpsRejectedCount = (Diag.gpsRejectedCount||0) + 1;
+      return;
+    }
+    if(typeof Diag!=='undefined') Diag.gpsAcceptedCount = (Diag.gpsAcceptedCount||0) + 1;
     GPS.lat = lat; GPS.lon = lon; GPS.acc = acc;
     GPS.lastLat = lat; GPS.lastLon = lon;
     GPS.lastFixTime = performance.now(); // this is what makes the fix "fresh" — not the coordinate itself
