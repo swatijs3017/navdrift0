@@ -6,6 +6,34 @@ Environment variables:
   API_KEY      — required; shared secret for X-API-Key / ?api_key auth
   DEMO_MODE    — set to "true" to skip loading the ONNX model (simulated poses)
   CORS_ORIGINS — comma-separated allowed origins (default: *)
+
+DEMO_MODE default and real-inference status (verified 2026-10-12):
+  render.yaml ships with DEMO_MODE="true" by default, so the deployed API never
+  loads an ONNX model or runs real DriftFormer inference — every /ingest call
+  returns NavDriftRuntime._demo_infer()'s deterministic simulated pose, not a
+  model output. This is a deliberate current default, left unchanged here.
+
+  The DEMO_MODE=false ("real inference") code path exists (NavDriftRuntime.load()
+  / ._onnx_infer() below) but is CURRENTLY BROKEN and has no test coverage:
+    1. load() defaults to model_path="drift_former_int8.onnx", a filename that
+       does not exist anywhere in this repository (no int8 DriftFormer build,
+       and the real file lives at models/driftformer_fp32.onnx, not repo root).
+       With DEMO_MODE=false this raises inside lifespan() and the app fails to
+       start.
+    2. Even if that path were corrected, ._onnx_infer() builds a (1,1,10) input
+       named "imu_seq" from accel/gyro/mag/baro keys and expects 3+ named
+       outputs (dx, dy, dh, ...). The actual exported model
+       (frontend/models/driftformer_fp32.onnx) takes input "imu_window_9ch"
+       shaped (batch, 100, 9) — a 100-sample window, 9 channels, no
+       magnetometer — and returns a single output "position_correction_xy"
+       shaped (1, 2). The input name, rank, channel count and output contract
+       all mismatch the real model, so this path would also fail or produce
+       meaningless results even with a valid file at the configured path.
+  Flipping DEMO_MODE=false today would not "just work" — it would either crash
+  at startup (missing file) or, after that's patched, fail at inference time
+  (input/output schema mismatch). This has not been fixed here since it touches
+  the live inference contract; see the DriftFormer live-vs-training comparison
+  for the related frontend-side mismatch.
 """
 
 import asyncio

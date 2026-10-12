@@ -5,6 +5,15 @@ services:
     buildCommand: pip install -r requirements-api.txt && pip install -e .
     startCommand: bash start.sh
     envVars:
+      # DEMO_MODE="true": deployed API always returns simulated poses and never
+      # loads an ONNX model (see api/app.py module docstring). Verified
+      # 2026-10-12: flipping this to "false" would not work as-is — the default
+      # ONNX model path NavDriftRuntime.load() looks for does not exist in this
+      # repo, and even after fixing that, the real exported DriftFormer model's
+      # input/output contract (imu_window_9ch [batch,100,9] ->
+      # position_correction_xy [1,2]) does not match what api/app.py's
+      # _onnx_infer() currently sends/expects. This default is an intentional
+      # deployment choice, left unchanged; it is not silently "fixed" here.
       - key: DEMO_MODE
         value: "true"
       - key: NAVDRIFT_API_KEY

@@ -5,7 +5,7 @@ os.environ["NAVDRIFT_API_KEY"] = "testkey"
 
 import pytest
 from fastapi.testclient import TestClient
-from navdrift0.api.app import app
+from api.app import app
 
 client = TestClient(app)
 HEADERS = {"X-API-Key": "testkey"}
@@ -17,15 +17,15 @@ def test_status_uninitialized():
 
 def test_init():
     r = client.post("/init", json={
-        "latitude": 28.6139, "longitude": 77.2090,
-        "heading_deg": 45.0, "speed_m_s": 0.0
+        "lat": 28.6139, "lon": 77.2090,
+        "heading_deg": 45.0
     }, headers=HEADERS)
     assert r.status_code == 200
 
 def test_ingest():
     client.post("/init", json={
-        "latitude": 28.6139, "longitude": 77.2090,
-        "heading_deg": 45.0, "speed_m_s": 0.0
+        "lat": 28.6139, "lon": 77.2090,
+        "heading_deg": 45.0
     }, headers=HEADERS)
     r = client.post("/ingest", json={
         "accel_x": 0.1, "accel_y": 0.0, "accel_z": 9.8,

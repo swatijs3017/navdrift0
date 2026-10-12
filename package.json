@@ -8,7 +8,8 @@
     "cap:sync": "cap sync",
     "cap:open:android": "cap open android",
     "cap:add:ios": "cap add ios",
-    "cap:open:ios": "cap open ios"
+    "cap:open:ios": "cap open ios",
+    "test:js": "node --test tests/js/*.test.js"
   },
   "dependencies": {
     "@capacitor/core": "^6.1.2",
@@ -16,6 +17,7 @@
     "@capacitor/ios": "^6.1.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.1.2"
+    "@capacitor/cli": "^6.1.2",
+    "jsdom": "^29.1.1"
   }
 }

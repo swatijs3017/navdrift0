@@ -22,3 +22,8 @@ jobs:
         env:
           DEMO_MODE: "true"
           NAVDRIFT_API_KEY: "test-key-ci"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run test:js
