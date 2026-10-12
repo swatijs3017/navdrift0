@@ -29,6 +29,18 @@ Frame fields (per the requested contract):
 No field here is ever fabricated by this module — every optional field is
 either the real value the caller supplied, or None. This module performs no
 sensor simulation of any kind.
+
+Output contract: `NavdriftRTEngine.step()` itself returns a bare
+`(pred_lat, pred_lon)` tuple with no documented field names, velocity,
+heading, uncertainty, or operating mode. `NavState` (below, near
+`build_nav_state()`) formalizes a clean, documented per-frame output record
+(position, heading, speed, an approximate EKF-derived uncertainty, operating
+mode, calibration/alignment flags, timestamp, source) by reading the engine's
+own already-public post-step attributes — it changes nothing about the
+engine's internal math. See `docs/EDGE_ENGINE.md` for the full contract,
+the two demonstrated input adapters (this module's external-IMU/CSV path and
+`edge/dual_adapter_demo.py`'s simulated phone-sensor path), and measured
+throughput numbers.
 """
 
 from __future__ import annotations
@@ -368,3 +380,124 @@ def engine_step_from_frame(engine, frame: ExternalIMUFrame, dt: float):
     if frame.has_gnss():
         engine.gps_update(frame.lat, frame.lon)
     return result
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Output contract — NavState
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# `NavdriftRTEngine.step()` itself returns a bare `(pred_lat, pred_lon)` tuple
+# (navdrift_engine.py, class NavdriftRTEngine, method `step`) — no velocity,
+# heading, uncertainty, operating mode, or timestamp, and no documented field
+# names at all. `gps_update()` similarly returns nothing. That bare tuple is
+# left completely untouched here; NavState is a read-only, OUTSIDE wrapper
+# that reads already-public engine/EKF attributes (`engine.heading`,
+# `engine.int_spd`, `engine.ekf.x`, `engine.ekf.P`, `engine.calibrated`,
+# `engine.aligned`) immediately after a step and packages them into one
+# documented, typed, per-frame record. It changes nothing about how the
+# engine computes anything.
+@dataclass(frozen=True)
+class NavState:
+    """
+    One documented navigation-state record, one per ingested frame.
+
+    Fields:
+        timestamp     float, seconds — copied from the input frame's own
+                      `timestamp` field (whatever clock the caller used).
+        lat, lon      float, degrees — `engine.ekf.x[0]`, `engine.ekf.x[1]`,
+                      exactly what `engine.step()`/`gps_update()` returned or
+                      left current (same values `step()` already returns as a
+                      bare tuple; named here instead of positional).
+        heading_rad   float, radians — `engine.heading`, the integrated
+                      gyro-Z heading NavdriftRTEngine already tracks
+                      internally (`self.heading` in `navdrift_engine.py`).
+        speed_mps     float, m/s — `engine.int_spd`, the engine's own
+                      current forward-speed estimate (dead-reckoned
+                      integration, or the LSTM estimator's output when one is
+                      configured — `engine.estimator` is not None).
+        uncertainty_m float — derived from the EKF position-covariance trace
+                      (`engine.ekf.P[0,0] + engine.ekf.P[1,1]`, scaled by
+                      `R_EARTH` to approximate metres). This is a read-only
+                      DERIVED convenience number, not a new engine
+                      computation: the EKF's own covariance math is
+                      untouched, and the scaling is approximate (the EKF
+                      state mixes a latitude in degrees with a covariance
+                      initialized and propagated in the engine's own
+                      ad hoc units — see `EKF.predict()`/`EKF.P` in
+                      `navdrift_engine.py`). Treat this as a relative/
+                      qualitative confidence indicator, not a calibrated
+                      metres figure, unless/until that engine-internal unit
+                      question is resolved separately.
+        mode          str — "GNSS_FUSED" if this frame carried a GNSS fix
+                      (`frame.has_gnss()`), else "DEAD_RECKONING". Reflects
+                      only whether a GPS update happened on this exact frame,
+                      not a persisted "time since last fix" state.
+        calibrated    bool — `engine.calibrated` (stationary bias
+                      calibration already completed).
+        aligned       bool — `engine.aligned` (forward-axis auto-detection
+                      already completed).
+        source        Optional[str] — copied from the input frame's own
+                      `source` field, so a NavState can always be traced back
+                      to the adapter/stream that produced it.
+
+    Construct via `build_nav_state()`, immediately after calling
+    `engine_step_from_frame()` on the SAME frame/dt — never retroactively
+    from a stored frame, since several of these fields (heading, speed,
+    uncertainty, calibrated, aligned) reflect the engine's mutable state at
+    the moment of that specific step.
+    """
+    timestamp: float
+    lat: float
+    lon: float
+    heading_rad: float
+    speed_mps: float
+    uncertainty_m: float
+    mode: str
+    calibrated: bool
+    aligned: bool
+    source: Optional[str] = None
+
+    def as_dict(self) -> dict:
+        return {
+            "timestamp": self.timestamp,
+            "lat": self.lat,
+            "lon": self.lon,
+            "heading_rad": self.heading_rad,
+            "speed_mps": self.speed_mps,
+            "uncertainty_m": self.uncertainty_m,
+            "mode": self.mode,
+            "calibrated": self.calibrated,
+            "aligned": self.aligned,
+            "source": self.source,
+        }
+
+
+def build_nav_state(engine, frame: ExternalIMUFrame, dt: float) -> NavState:
+    """
+    Runs `engine_step_from_frame(engine, frame, dt)` (the existing adapter,
+    unchanged) and packages the result plus the engine's own already-public
+    post-step attributes into one documented `NavState` record. This is the
+    recommended entry point for a caller that wants a clean, named output
+    contract instead of the engine's bare `(lat, lon)` tuple; callers that
+    only need the tuple can keep calling `engine_step_from_frame()` directly
+    — both paths exercise the identical, unmodified `NavdriftRTEngine.step()`
+    call underneath.
+    """
+    lat, lon = engine_step_from_frame(engine, frame, dt)
+    P = engine.ekf.P
+    # Approximate position-uncertainty scalar from the EKF's own covariance
+    # trace; see the NavState.uncertainty_m docstring above for the caveat
+    # about the engine's internal covariance units.
+    uncertainty_m = float(np.sqrt(max(0.0, P[0, 0] + P[1, 1])) * 6_371_000)
+    return NavState(
+        timestamp=frame.timestamp,
+        lat=lat,
+        lon=lon,
+        heading_rad=float(engine.heading),
+        speed_mps=float(engine.int_spd),
+        uncertainty_m=uncertainty_m,
+        mode="GNSS_FUSED" if frame.has_gnss() else "DEAD_RECKONING",
+        calibrated=bool(engine.calibrated),
+        aligned=bool(engine.aligned),
+        source=frame.source,
+    )

@@ -18,6 +18,8 @@ and capability reporting.
 | `vehicle_calibration.py` | Static low-motion phone-to-vehicle frame calibration (roll/pitch from gravity, yaw from GNSS course when moving) | Implemented, tested |
 | `replay_200hz_demo.py` | Real wall-clock latency/throughput measurement of the external-IMU to `NavdriftRTEngine` path, with an explicit software benchmark versus hardware validation distinction in its output | Implemented, tested |
 | `imu_replay_example.py` | Minimal example command showing the external-IMU contract end to end (load, validate, replay, summarize) | Implemented, tested |
+| `dual_adapter_demo.py` | Concrete "one engine, two input sources" demo: the external-IMU CSV adapter and a clearly-labeled SIMULATED phone-sensor-shaped adapter both feeding the same unmodified `NavdriftRTEngine` | Implemented (demonstration/wiring only, not accuracy-validated) |
+| `engine_step_timing_bench.py` | Tight timing-loop benchmark of `engine_step_from_frame()`/`build_nav_state()` against a reproducible synthetic 200Hz-rate stream — real measured effective Hz and p50/p95/p99 latency, software load test only | Implemented |
 | `hmm_map_matcher.py` | Offline bounded-history Viterbi map matcher (candidate to emission to transition to accumulated path score to backpointer traceback) | Implemented, tested |
 | `model_inference_bench.py` | Read-only offline ONNX inference benchmark against the repository's existing models, including the live-deployed weight files under `frontend/models/` | Implemented, tested |
 | `calibration_evidence_demo.py` | Reproducible calibration evidence generator over deterministic synthetic fixtures | Implemented, tested |
@@ -101,6 +103,32 @@ record from a future streaming source (serial, socket, message queue), and
 direct construction for a unit test or a custom loader.
 
 `NavdriftRTEngine.step()` is untouched by any of this.
+
+### Output contract: `NavState` / `build_nav_state()`
+
+`NavdriftRTEngine.step()` itself returns only a bare `(pred_lat, pred_lon)`
+tuple — no velocity, heading, uncertainty, mode, or timestamp, and no
+documented field names. `build_nav_state(engine, frame, dt)` calls the
+existing `engine_step_from_frame()` unchanged, then reads the engine's own
+already-public post-step attributes (`engine.heading`, `engine.int_spd`,
+`engine.ekf.x`, `engine.ekf.P`, `engine.calibrated`, `engine.aligned`) into
+one documented, frozen `NavState` record: `timestamp`, `lat`, `lon`,
+`heading_rad`, `speed_mps`, an EKF-covariance-derived `uncertainty_m`
+(approximate — see the dataclass docstring for the exact caveat about the
+engine's internal covariance units), `mode` (`"GNSS_FUSED"` /
+`"DEAD_RECKONING"`), `calibrated`, `aligned`, and `source`. See
+`docs/EDGE_ENGINE.md` for the full contract table and real measured
+throughput numbers.
+
+### Two demonstrated input adapters, one engine
+
+`dual_adapter_demo.py` feeds the SAME, unmodified `NavdriftRTEngine` from two
+independent sources through this same contract: (a) the external-IMU CSV
+loader above, and (b) a clearly-labeled SIMULATED phone-sensor-shaped record
+stream (field names mirror what a real phone DeviceMotion/Geolocation bridge
+would hand over, translated through `frame_from_record()` — NOT a real phone
+capture, demonstrates the adapter boundary only). Run with
+`python -m edge.dual_adapter_demo`.
 
 ## `vehicle_calibration.py`, static calibration
 
